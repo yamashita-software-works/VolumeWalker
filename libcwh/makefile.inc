@@ -1,0 +1,12 @@
+# _BUILDARCH_X
+!if $(AMD64)
+_BUILDARCH_X=x64
+!else
+_BUILDARCH_X=x86
+!endif
+
+_LIBSTOREPATH=lib$(_BUILDTYPE)
+
+PostBuildSteps: $(TARGET)
+	md ..\lib\$(_BUILDARCH_X)\$(_LIBSTOREPATH)
+	copy obj$(BUILD_ALT_DIR)\$(TARGET_DIRECTORY)\$(TARGETNAME).lib ..\lib\$(_BUILDARCH_X)\$(_LIBSTOREPATH)

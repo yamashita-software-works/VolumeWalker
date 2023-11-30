@@ -1,0 +1,7 @@
+DIRS=\
+	libcwh\
+	libmisc\
+	libntwdk\
+	fsvolumeinfo\
+	fsvolumelist\
+	fsvolumewalker

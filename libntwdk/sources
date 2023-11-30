@@ -1,0 +1,37 @@
+TARGETTYPE=LIBRARY
+TARGETNAME=libntwdk
+TARGETPATH=obj
+
+_NT_TARGET_VERSION=$(_NT_TARGET_VERSION_VISTA)
+
+BUILD_PRODUCES=libntwdk_lib
+
+NTTARGETFILES=PostBuildSteps
+
+
+#
+# compile
+#
+
+!if $(FREEBUILD)
+USE_MSVCRT=1
+!else
+USE_LIBCMT=1
+DEBUG_CRTS=1
+!endif
+
+USE_NATIVE_EH=1
+
+INCLUDES=$(DDK_INC_PATH)
+
+C_DEFINES=$(C_DEFINES) -DUNICODE -D_UNICODE 
+
+SOURCES=\
+	ntdirtraverse.cpp\
+	ntnativehelp.cpp\
+	ntenumfiles.cpp\
+	ntobjecthelp.cpp\
+	ntvolumehelp.cpp\
+	ntvolumefunctions.cpp\
+	ntfilehelp.cpp\
+	ntwin32helper.cpp
