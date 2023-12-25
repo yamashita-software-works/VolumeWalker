@@ -23,7 +23,7 @@ class CViewBase :
 	public IViewBaseWindow
 {
 	CPageWndBase *m_pPage;
-	CPageWndBase *m_pPageTable[MAX_PAGE_TYPE];
+	CPageWndBase *m_pPageTable[VOLUME_CONSOLE_MAX_ID];
 
 public:
 	CViewBase()
@@ -94,21 +94,23 @@ public:
 	}
 
 	template <class T>
-	CPageWndBase *GetOrAllocWndObjct(int wndId)//,BOOL& bCreate)
+	CPageWndBase *GetOrAllocWndObject(int wndId)
 	{
+		ASSERT( wndId >= 0 );
+		ASSERT( wndId < VOLUME_CONSOLE_MAX_ID );
+
+		if( wndId >= VOLUME_CONSOLE_MAX_ID || wndId < 0 )
+			return NULL;
+
 		CPageWndBase *pobj;
 		if( m_pPageTable[ wndId ] == NULL )
 		{
 			pobj = (CPageWndBase*)new T ;
 			m_pPageTable[ wndId ] = pobj;
 			pobj->Create(m_hWnd,wndId,0,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN,WS_EX_CONTROLPARENT);
-//			bCreate = TRUE;
 		}
 		else
 		{
-ASSERT(FALSE);
-//			pobj = m_pPageTable[ wndId ];
-//			bCreate = FALSE;
 			pobj = NULL;
 		}
 		return pobj;
@@ -122,59 +124,64 @@ ASSERT(FALSE);
 		{
 			case VOLUME_CONSOLE_HOME:
 			{
-				pNew = GetOrAllocWndObjct<CVolumeHomeView>(nView);
+				pNew = GetOrAllocWndObject<CVolumeHomeView>(nView);
 				break;
 			}
 			case VOLUME_CONSOLE_VOLUMEINFORMAION:
 			{
-				pNew = GetOrAllocWndObjct<CVolumeBasicInfoView>(nView);
+				pNew = GetOrAllocWndObject<CVolumeBasicInfoView>(nView);
 				break;
 			}
 			case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
 			{
-				pNew = GetOrAllocWndObjct<CPhysicalDiskInfoView>(nView);
+				pNew = GetOrAllocWndObject<CPhysicalDiskInfoView>(nView);
 				break;
 			}
 			case VOLUME_CONSOLE_DISKLAYOUT:
 			{
-				pNew = GetOrAllocWndObjct<CDiskLayoutView>(nView);
+				pNew = GetOrAllocWndObject<CDiskLayoutView>(nView);
 				break;
 			}
 			case VOLUME_CONSOLE_STORAGEDEVICE:
 			{
-				pNew = GetOrAllocWndObjct<CStorageDevicePage>(nView);
+				pNew = GetOrAllocWndObject<CStorageDevicePage>(nView);
 				break;
 			}
 			case VOLUME_CONSOLE_MOUNTEDDEVICE:
 			{
-				pNew = GetOrAllocWndObjct<CMountedDevicePage>(nView);
+				pNew = GetOrAllocWndObject<CMountedDevicePage>(nView);
 				break;
 			}
 			case VOLUME_CONSOLE_VOLUMELIST:
 			{
-				pNew = GetOrAllocWndObjct<CVolumeListPage>(nView);
+				pNew = GetOrAllocWndObject<CVolumeListPage>(nView);
 				break;
 			}
 			case VOLUME_CONSOLE_PHYSICALDRIVELIST:
 			{
-				pNew = GetOrAllocWndObjct<CPhysicalDriveListPage>(nView);
+				pNew = GetOrAllocWndObject<CPhysicalDriveListPage>(nView);
 				break;
 			}
 			case VOLUME_CONSOLE_SHADOWCOPYLIST:
 			{
-				pNew = GetOrAllocWndObjct<CVolumeShadowCopyListPage>(nView);
+				pNew = GetOrAllocWndObject<CVolumeShadowCopyListPage>(nView);
 				break;
 			}
 			case VOLUME_CONSOLE_DOSDRIVELIST:
 			{
-				pNew = GetOrAllocWndObjct<CDosDriveListPage>(nView);
+				pNew = GetOrAllocWndObject<CDosDriveListPage>(nView);
 				break;
 			}
 			default:
 				return NULL;
 		}
 
-		pNew->OnInitPage(ptr);
+		ASSERT(pNew != NULL);
+
+		if( pNew )
+		{
+			pNew->OnInitPage(ptr);
+		}
 
 		return pNew;
 	}
@@ -186,16 +193,23 @@ ASSERT(FALSE);
 
 		int nView = SelItem->View;
 
+		ASSERT( nView >= 0 );
+		ASSERT( nView < VOLUME_CONSOLE_MAX_ID );
+
+		if( nView >= VOLUME_CONSOLE_MAX_ID || nView < 0 )
+			return NULL;
+
 		if( m_pPageTable[ nView ] == NULL )
 		{
 			pNew = _CreatePage(nView,SelItem);
-
-			ASSERT(pNew != NULL);
 		}
 		else
 		{
 			pNew = m_pPageTable[ nView ];
 		}
+
+		if( pNew == NULL )
+			return nView;
 
 		if( m_pPage == pNew )
 		{
@@ -213,9 +227,6 @@ ASSERT(FALSE);
 
 		m_pPage = pNew;
 		UpdateLayout();
-
-//		if( bCreate )
-//			InitLayout(NULL);
 
 		return nView;
 	}

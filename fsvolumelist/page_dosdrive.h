@@ -287,7 +287,7 @@ public:
 			UINT State = ListView_GetItemState(m_hWndList,(int)pcd->nmcd.dwItemSpec,LVIS_FOCUSED);
 			if( State & LVIS_FOCUSED )
 			{
-				DrawFocusFrame(m_hWndList,pcd->nmcd.hdc,&pcd->nmcd.rc);
+				_DrawFocusFrame(m_hWndList,pcd->nmcd.hdc,&pcd->nmcd.rc);
 			}
 		}
 

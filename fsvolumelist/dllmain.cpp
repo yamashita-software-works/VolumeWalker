@@ -121,26 +121,33 @@ HFONT GetGlobalFont(HWND hWnd,BOOL bCreate)
 	return hFont;
 }
 
-HICON SetFrameIcon(HWND hWnd,HICON hIcon)
+EXTERN_C
+HICON
+WINAPI
+GetDeviceClassIcon(
+	UINT Type,
+	const GUID *DevClassGuid
+	)
 {
-	return (HICON)SendMessage(GetParent(hWnd),WM_SETICON,ICON_SMALL,(LPARAM)hIcon);
-}
+	GUID Guid;
 
-BOOL SetFrameTitle(HWND hWnd,PCWSTR pszTitle)
-{
-	return (BOOL)SendMessage(GetParent(hWnd),WM_SETTEXT,0,(LPARAM)pszTitle);
-}
+	if( DevClassGuid != NULL )
+	{
+		Guid = *DevClassGuid;
+	}
+	else
+	{
+		switch( Type )
+		{
+			case DEVICE_ICON_VOLUMESNAPSHOT:
+				Guid = GUID_DEVCLASS_VOLUMESNAPSHOT;
+				break;
+			default:
+				SetLastError(ERROR_INVALID_PARAMETER);
+				return NULL;
+		}
+	}
 
-HICON GetShellStockIcon(SHSTOCKICONID StockIconId)
-{
-	SHSTOCKICONINFO sii = {0};
-	sii.cbSize = sizeof(sii);
-	SHGetStockIconInfo(StockIconId,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
-	return sii.hIcon;
-}
-
-HICON GetDeviceClassIcon(UINT Type,const GUID *Guid)
-{
 	HICON hIcon;
 
 	SP_CLASSIMAGELIST_DATA scd = {0};
@@ -148,12 +155,20 @@ HICON GetDeviceClassIcon(UINT Type,const GUID *Guid)
 	scd.cbSize = sizeof(scd);
 	if( SetupDiGetClassImageList(&scd) )
 	{
+		DWORD dwError = ERROR_SUCCESS;
 		int iImage = -1;
-		SetupDiGetClassImageIndex(&scd,Guid,&iImage);
-
-		hIcon = ImageList_GetIcon(scd.ImageList,iImage,ILD_NORMAL);
+		if( SetupDiGetClassImageIndex(&scd,&Guid,&iImage) )
+		{
+			hIcon = ImageList_GetIcon(scd.ImageList,iImage,ILD_NORMAL);
+		}
+		else
+		{
+			dwError = GetLastError();
+		}
 
 		SetupDiDestroyClassImageList(&scd);
+
+		SetLastError(dwError);
 	}
 
 	return hIcon;

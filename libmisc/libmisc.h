@@ -475,3 +475,12 @@ DrawListViewColumnMeter(
 	double DiskUsage,
 	UINT fMeterStyle
 	);
+
+VOID
+DrawFocusFrame(
+	HWND hWnd,
+	HDC hdc,
+	RECT *prc,
+	BOOL bDrawFocus,
+	COLORREF crActiveFrame
+	);

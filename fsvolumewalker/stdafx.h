@@ -18,6 +18,7 @@
 // Windows Header Files:
 #include <windows.h>
 #include <windowsx.h>
+#include <shellapi.h>
 #include <shlwapi.h>
 #include <strsafe.h>
 #include <winternl.h> // WinSDK 7.1
@@ -49,3 +50,18 @@
 
 HINSTANCE _GetResourceInstance();
 HWND _GetMainWnd();
+
+inline HICON GetShellStockIcon(SHSTOCKICONID StockIconId)
+{
+	SHSTOCKICONINFO sii = {0};
+	sii.cbSize = sizeof(sii);
+	SHGetStockIconInfo(StockIconId,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
+	return sii.hIcon;
+}
+
+inline HICON SetFrameIcon(HWND hWnd,HICON hIcon)
+{
+	return (HICON)SendMessage(hWnd,WM_SETICON,ICON_SMALL,(LPARAM)hIcon);
+}
+
+

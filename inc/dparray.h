@@ -42,24 +42,24 @@ public:
 		return DPA_GetPtrCount(m_hdpa);
 	}
 
-	T** GetData()
+	T* GetPtrPtr()
 	{
-		return (T**)DPA_GetPtrPtr(m_hdpa);
+		return (T*)DPA_GetPtrPtr(m_hdpa);
 	}
 
-	INT Add(T* pitem)
+	INT Add(T pitem)
 	{
 		return DPA_AppendPtr(m_hdpa,pitem);
 	}
 
-	INT Insert(INT iIndex,T* ptr)
+	INT Insert(INT iIndex,T ptr)
 	{
 		return DPA_InsertPtr(m_hdpa,iIndex,ptr);
 	}
 
-	T* Get(INT iIndex)
+	T Get(INT iIndex)
 	{
-		return (T*)DPA_GetPtr(m_hdpa,iIndex);
+		return (T)DPA_GetPtr(m_hdpa,iIndex);
 	}
 
 	INT GetIndex(const T *ptr)
@@ -72,7 +72,7 @@ public:
 		return DPA_DeleteAllPtrs(m_hdpa);
 	}
 
-	T* Delete(int iIndex)
+	T Delete(int iIndex)
 	{
 		return (T *)DPA_DeletePtr(m_hdpa);
     }

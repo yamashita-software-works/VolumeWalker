@@ -52,10 +52,14 @@ LRESULT CALLBACK MDIChildWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			ZeroMemory(pd,sizeof(MDICHILDWNDDATA));
 			SetWindowLongPtr(hWnd,GWLP_USERDATA,(LONG_PTR)pd);
 
+			SendMessage(hWnd,WM_SETICON,ICON_SMALL,(LPARAM)pmcp->hIcon);
+
 			break;
 		}
 		case WM_DESTROY:
 		{
+			DestroyIcon((HICON)SendMessage(hWnd,WM_GETICON,ICON_SMALL,0));
+
 			MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hWnd,GWLP_USERDATA);
 			SendMessage(GetParent(GetParent(hWnd)),WM_MDI_CHILDFRAME_CLOSE,(WPARAM)hWnd,0);
 			break;
@@ -136,6 +140,7 @@ ATOM RegisterMDIChildFrameClass(HINSTANCE hInstance)
 	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW+1); 
     wcex.lpszMenuName  = NULL;
     wcex.lpfnWndProc   = (WNDPROC)&MDIChildWndProc; 
+	wcex.hIcon         = NULL;
     wcex.hIconSm       = NULL;
     wcex.lpszMenuName  = (LPCTSTR) NULL; 
     wcex.cbWndExtra    = CBWNDEXTRA; 

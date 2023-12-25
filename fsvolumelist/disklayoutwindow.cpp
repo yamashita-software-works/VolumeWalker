@@ -31,20 +31,13 @@ public:
 
 	LRESULT OnCreate(HWND hWnd,UINT,WPARAM,LPARAM)
 	{
-		// Create information view host frame window
 		ViewBase_CreateObject(GETINSTANCE(m_hWnd),&m_pView);
 		m_pView->Create(hWnd);
-
-		// MDI child frame icon
-		SetFrameIcon(m_hWnd,GetShellStockIcon(SIID_DRIVEFIXED));
-
 		return 0;
 	}
 
 	LRESULT OnDestroy(HWND,UINT,WPARAM,LPARAM)
 	{
-		DestroyIcon((HICON)SendMessage(GetParent(m_hWnd),WM_GETICON,ICON_SMALL,0));
-
 		m_pView->Destroy();
 		return 0;
 	}
@@ -98,7 +91,7 @@ public:
 	{
 		switch( LOWORD(wParam) )
 		{
-			case CTRL_INIT_LAYOUT:
+			case UI_INIT_LAYOUT:
 				InitLayout((RECT*)lParam);
 				break;
 		}
@@ -153,7 +146,7 @@ public:
 	{
 		switch( LOWORD(wParam) )
 		{
-			case NOTIFY_VOLUME_SELECTED:
+			case UI_NOTIFY_VOLUME_SELECTED:
 				OnUpdateInformationView( (SELECT_ITEM*)lParam );
 				break;
 		}

@@ -6,6 +6,7 @@
 typedef struct _MDICREATEPARAM
 {
 	PCWSTR pszInitialPath;
+	HICON hIcon;
 } MDICREATEPARAM;
 
 typedef struct _MDICHILDWNDDATA
@@ -26,4 +27,4 @@ ATOM RegisterMDIChildFrameClass(HINSTANCE hInstance);
 HWND CreateMDIClient(HWND hWnd);
 HWND CreateMDIChildFrame(HWND hWndMDIClient,PCWSTR pszTitle,MDICHILDFRAMEINIT *pmdiInit,LPARAM lParam,BOOL bMaximize);
 
-__inline HWND MDIGetActive(HWND hwndMDIClient) { return (HWND)SendMessage(hwndMDIClient,WM_MDIGETACTIVE,0,0); }
+__inline HWND MDIGetActive(HWND hwndMDIClient,LPBOOL pbMaximized=NULL) { return (HWND)SendMessage(hwndMDIClient,WM_MDIGETACTIVE,0,(LPARAM)pbMaximized); }

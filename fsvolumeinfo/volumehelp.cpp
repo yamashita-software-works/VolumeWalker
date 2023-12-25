@@ -1427,13 +1427,15 @@ GetDeviceTypeByVolumeName(
 	PULONG pCharacteristics
 	)
 {
+	NTSTATUS Status;
 	HANDLE Handle;
-	OpenVolume(pszVolumeName,0,&Handle);
+	if( (Status = OpenVolume(pszVolumeName,0,&Handle)) == STATUS_SUCCESS )
+	{
+		GetVolumeDeviceType(Handle,pDeviceType,pCharacteristics);
 
-	GetVolumeDeviceType(Handle,pDeviceType,pCharacteristics);
-
-	CloseHandle(Handle);
-	return 0;
+		CloseHandle(Handle);
+	}
+	return HRESULT_FROM_NT(Status);
 }
 
 EXTERN_C 

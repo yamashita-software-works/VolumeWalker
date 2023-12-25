@@ -15,13 +15,6 @@ enum {
 	VOLUME_CONSOLE_MAX_ID,
 };
 
-//
-// Folder tree item ident
-//
-
-#define	MAX_PAGE_TYPE VOLUME_CONSOLE_MAX_ID
-
-
 typedef struct _VOLUME_CONSOLE_CREATE_PARAM
 {
 	PWSTR pszReserved;
@@ -35,3 +28,16 @@ CreateVolumeConsoleWindow(
 	UINT ConsoleType,
 	PVOLUME_CONSOLE_CREATE_PARAM pParam
 	);
+
+EXTERN_C
+HICON
+WINAPI
+GetDeviceClassIcon(
+	UINT DeviceType,
+	const GUID *DevClassGuid
+	);
+
+// DeviceType
+enum {
+	DEVICE_ICON_VOLUMESNAPSHOT = 1,
+};

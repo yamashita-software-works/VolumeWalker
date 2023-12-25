@@ -203,11 +203,12 @@ template <class T>struct SORT_PARAM
 	int directory_align;
 };
 
-VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus=FALSE,COLORREF crBorder=RGB(80,110,190));
+inline VOID _DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus=FALSE,COLORREF crActiveFrame=RGB(80,110,190))
+{
+	DrawFocusFrame(hWnd,hdc,prc,bDrawFocus,crActiveFrame);
+}
+
 HFONT GetGlobalFont(HWND hWnd,BOOL bCreate);
-HICON SetFrameIcon(HWND hWnd,HICON hIcon);
 HICON GetShellStockIcon(SHSTOCKICONID StockIconId);
-HICON GetDeviceClassIcon(UINT Type,const GUID *Guid);
-BOOL SetFrameTitle(HWND hWnd,PCWSTR pszTitle);
 
 #define DELAY_OPEN_TIMER (120) // 120ms todo:

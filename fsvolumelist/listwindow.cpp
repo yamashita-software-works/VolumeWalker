@@ -35,17 +35,13 @@ public:
 
 	LRESULT OnCreate(HWND hWnd,UINT,WPARAM,LPARAM)
 	{
-		m_hWnd = hWnd;
-
 		ViewBase_CreateObject(GETINSTANCE(m_hWnd),&m_pView);
 		m_pView->Create(hWnd);
-
 		return 0;
 	}
 
 	LRESULT OnDestroy(HWND,UINT,WPARAM,LPARAM)
 	{
-		DestroyIcon((HICON)SendMessage(GetParent(m_hWnd),WM_GETICON,ICON_SMALL,0));
 		m_pView->Destroy();
 		return 0;
 	}
@@ -101,7 +97,7 @@ public:
 	{
 		switch( LOWORD(wParam) )
 		{
-			case CTRL_INIT_LAYOUT:
+			case UI_INIT_LAYOUT:
 				InitLayout((RECT*)lParam);
 				break;
 		}
@@ -163,7 +159,7 @@ public:
 	{
 		switch( LOWORD(wParam) )
 		{
-			case NOTIFY_VOLUME_SELECTED:
+			case UI_NOTIFY_VOLUME_SELECTED:
 				OnUpdateInformationView( (SELECT_ITEM*)lParam );
 				break;
 		}
@@ -197,7 +193,7 @@ public:
 
 //////////////////////////////////////////////////////////////////////////////
 
-static HWND _CreateViewWindow(HWND hWndParent,UINT ConsoleId,PCWSTR pszTitle,HICON hIcon)
+static HWND _CreateViewWindow(HWND hWndParent,UINT ConsoleId)
 {
 	CListWindow::RegisterClass(GETINSTANCE(hWndParent));
 
@@ -205,47 +201,35 @@ static HWND _CreateViewWindow(HWND hWndParent,UINT ConsoleId,PCWSTR pszTitle,HIC
 
 	HWND hwnd = pView->Create(hWndParent,0,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN,WS_EX_CONTROLPARENT);
 
-	if( hIcon != NULL )
-		SetFrameIcon(hwnd,hIcon);
-
-	if( pszTitle != NULL )
-		SetFrameTitle(hwnd,pszTitle);
-
 	return hwnd;
 }
 
 HWND CreateVolumeListWindow(HWND hWndParent)
 {
-	HICON hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
-	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_VOLUMELIST,L"Volumes",hIcon);
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_VOLUMELIST);
 }
 
 HWND CreatePhysicalDriveListWindow(HWND hWndParent)
 {
-	HICON hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
-	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_PHYSICALDRIVELIST,L"Physical Drives",hIcon);
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_PHYSICALDRIVELIST);
 }
 
 HWND CreateStorageDeviceWindow(HWND hWndParent)
 {
-	HICON hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
-	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_STORAGEDEVICE,L"Storage Devices",hIcon);
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_STORAGEDEVICE);
 }
 
 HWND CreateMountedDeviceWindow(HWND hWndParent)
 {
-	HICON hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
-	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_MOUNTEDDEVICE,L"Mounted Devices",hIcon);
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_MOUNTEDDEVICE);
 }
 
 HWND CreateShadowCopyListWindow(HWND hWndParent)
 {
-	HICON hIcon = GetDeviceClassIcon(0,&GUID_DEVCLASS_VOLUMESNAPSHOT);
-	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_SHADOWCOPYLIST,L"Shadow Copy Volumes",hIcon);
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_SHADOWCOPYLIST);
 }
 
 HWND CreateDosDriveWindow(HWND hWndParent)
 {
-	HICON hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
-	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_DOSDRIVELIST,L"Dos Drives",hIcon);
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_DOSDRIVELIST);
 }
