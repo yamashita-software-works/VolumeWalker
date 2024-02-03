@@ -1337,7 +1337,7 @@ EXTERN_C LONG WINAPI GetDiskDriveGeometryEx(HANDLE hDisk, PDISK_GEOMETRY_EX *pGe
 			Status = ERROR_SUCCESS;
 
 			if( cb < cbSize )
-				_MemReAlloc(pg,cb); // shrink only
+				pg = (DISK_GEOMETRY_EX *)_MemReAlloc(pg,cb); // shrink only
 
 			*pGeometry = pg;
 			if( pcb )
@@ -1520,7 +1520,14 @@ GetherVolumeInformation(
 
 			if( wcsicmp(pVolDevInfo->FileSystemName,L"ntfs") == 0 )
 			{
-				pVolDevInfo->State.NtfsData = GetNtfsVolumeData(hRootDirectory,(NTFS_VOLUME_DATA_BUFFER *)&pVolDevInfo->ntfs,sizeof(pVolDevInfo->ntfs)) ? TRUE : FALSE;
+				if( GetNtfsVolumeData(hRootDirectory,(NTFS_VOLUME_DATA_BUFFER *)&pVolDevInfo->ntfs,sizeof(pVolDevInfo->ntfs)) )
+					pVolDevInfo->State.NtfsData = TRUE;
+			}
+
+			if( wcsicmp(pVolDevInfo->FileSystemName,L"ReFS") == 0 )
+			{
+				if( GetReFSVolumeData(hRootDirectory,&pVolDevInfo->refs.data) == 0 )
+					pVolDevInfo->State.RefsData = TRUE;
 			}
 		}
 
@@ -1563,13 +1570,6 @@ GetherVolumeInformation(
 			{
 				if ( QueryOnDiskVolumeInfo(hVolume,&pVolDevInfo->udf.DiskVolumeInfo) == ERROR_SUCCESS )
 					pVolDevInfo->State.UdfData = TRUE;
-			}
-
-			// ReFS
-			if( wcsicmp(pVolDevInfo->FileSystemName,L"ReFS") == 0 )
-			{
-				REFS_VOLUME_DATA_BUFFER data = {0};
-				GetReFSVolumeData(hVolume,&data);
 			}
 
 			//

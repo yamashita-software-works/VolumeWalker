@@ -150,3 +150,57 @@ EnumFiles(
     ENUMFILESCALLBACK pfnCallback,
     ULONG_PTR CallbackContext
     );
+
+EXTERN_C
+ULONG
+__cdecl
+DbgPrint (
+    __in_z __drv_formatString(printf) PCSTR Format,
+    ...
+    );
+
+#ifndef _DBGPRINT
+#ifdef _DEBUG
+#define _DBGPRINT DbgPrint
+#else
+#define _DBGPRINT __noop
+#endif
+#endif
+
+//  OBJECT_INFORMATION_CLASS compatible
+#define ObjectNameInformation      ((OBJECT_INFORMATION_CLASS)1)
+#define ObjectAllTypesInformation  ((OBJECT_INFORMATION_CLASS)3)
+#define ObjectHandleInformation    ((OBJECT_INFORMATION_CLASS)4)
+
+typedef struct _NT_FILE_BASIC_INFORMATION {
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    ULONG FileAttributes;
+} NT_FILE_BASIC_INFORMATION, *PNT_FILE_BASIC_INFORMATION;
+
+typedef struct _NT_FILE_STANDARD_INFORMATION {
+    LARGE_INTEGER AllocationSize;
+    LARGE_INTEGER EndOfFile;
+    ULONG NumberOfLinks;
+    BOOLEAN DeletePending;
+    BOOLEAN Directory;
+} NT_FILE_STANDARD_INFORMATION, *PNT_FILE_STANDARD_INFORMATION;
+
+EXTERN_C
+NTSTATUS
+NTAPI
+SetFileBasicInformation(
+	HANDLE hFile,
+	NT_FILE_BASIC_INFORMATION *pfbi
+	);
+
+EXTERN_C
+NTSTATUS
+NTAPI
+QueryAttributesFile(
+	HANDLE hRoot,
+	PCWSTR pszFileName,
+	NT_FILE_BASIC_INFORMATION *FileBasicInfo
+	);

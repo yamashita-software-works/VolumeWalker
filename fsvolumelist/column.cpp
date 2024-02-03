@@ -14,7 +14,12 @@
 #include "stdafx.h"
 #include "column.h"
 
-static PWSTR g_pszFileName = L""; // reserved
+BOOL CColumnList::SetIniFilePath(PCWSTR Path)
+{
+	_SafeMemFree(m_inifile_path);
+	m_inifile_path = _MemAllocString(Path);
+	return TRUE;
+}
 
 typedef struct _COLUMN_NAME
 {
@@ -39,6 +44,14 @@ static COLUMN_NAME column_name_map[] = {
 	{ COLUMN_BusType,        L"BusType",        0 }, 
 	{ COLUMN_DeviceId,       L"DeviceId",       0 }, 
 	{ COLUMN_Identifier,     L"Identifier",     0 }, 
+	{ COLUMN_OriginalDevice, L"OriginalDevice", 0 }, 
+	{ COLUMN_OriginalVolume, L"OriginalVolume", 0 }, 
+	{ COLUMN_SnapshotId,     L"SnapshotId",     0 }, 
+	{ COLUMN_SnapshotSetId,  L"SnapshotSetId",  0 }, 
+	{ COLUMN_Attributes,     L"Attributes",     0 }, 
+	{ COLUMN_VolumeLabel,    L"VolumeLabel",    0 }, 
+	{ COLUMN_Path,           L"Path",           0 }, 
+	{ COLUMN_Type,           L"Type",           0 }, 
 };
 
 static UINT NameToId(PCWSTR pszName)
@@ -144,26 +157,30 @@ BOOL CColumnList::PaeseLine(PWSTR pszLine,COLUMN *pcol)
 	return (id != 0) && (pcol->id != -1);
 }
 
-DSArray<COLUMN> *CColumnList::GetColumnLayout()
+DSArray<COLUMN> *CColumnList::GetColumnLayout(PCWSTR pszSectionName)
 {
-	PCWSTR pszSectionName = L"ColumnLayout";
-
 	WCHAR szIniFileName[MAX_PATH];
-	WCHAR szExeFilePath[MAX_PATH];
-	GetModuleFileName(GetModuleHandle(NULL),szExeFilePath,MAX_PATH);
-	PathRemoveExtension(szExeFilePath);
-	PathAddExtension(szExeFilePath,L".ini");
-	if( PathFileExists(szExeFilePath) )
+	if( m_inifile_path != NULL )
 	{
-		StringCchCopy(szIniFileName,MAX_PATH,szExeFilePath);
+		StringCchCopy(szIniFileName,MAX_PATH,m_inifile_path);
 	}
 	else
+	{
+		WCHAR szTemp[MAX_PATH];
+		GetModuleFileName(GetModuleHandle(NULL),szTemp,MAX_PATH);
+
+		PathRemoveExtension(szTemp);
+		PathAddExtension(szTemp,L".ini");
+		StringCchCopy(szIniFileName,MAX_PATH,szTemp);
+	}
+
+	if( !PathFileExists(szIniFileName) )
 	{
 		return NULL;
 	}
 
 	DWORD cch = 32768;
-	PWSTR buf = new WCHAR[cch+1];
+	PWSTR buf = new WCHAR[cch];
 	DWORD ret;
 
 	ret = GetPrivateProfileSection(pszSectionName,buf,cch,szIniFileName);
@@ -208,16 +225,18 @@ DSArray<COLUMN> *CColumnList::GetColumnLayout()
 		p += (wcslen(p) + 1);
 	}
 
+	delete[] buf;
+
 	return pdsa;
 }
 
-int CColumnList::LoadUserDefinitionColumnTable(COLUMN_TABLE **pColTblPtr)
+int CColumnList::LoadUserDefinitionColumnTable(COLUMN_TABLE **pColTblPtr,PCWSTR pszSectionName)
 {
 	int cItems = 0;
 
 	*pColTblPtr = NULL;
 
-	DSArray<COLUMN> *pc = GetColumnLayout();
+	DSArray<COLUMN> *pc = GetColumnLayout(pszSectionName);
 
 	if( pc )
 	{
@@ -249,52 +268,58 @@ int CColumnList::FreeUserDefinitionColumnTable(COLUMN_TABLE *pColTbl)
 	return 0;
 }
 
-int SaveColumnTable(COLUMN_TABLE *pColTblPtr,PCWSTR pszSectionName,PCWSTR)
+/////////////////////////////////////////////////////////////////////////////
+//  Column Save Functions
+
+BOOL SaveColumnTable(COLUMN_TABLE *pColTblPtr,PCWSTR pszSectionName,PCWSTR pszIniFileName)
 {
+	BOOL bSuccess = FALSE;
 	ULONG i;
 	PCWSTR pszName;
 	WCHAR szInfo[100];
 	CMultiSz msz;
 
-	for(i = 0; i < pColTblPtr->cItems; i++)
+	if( pszIniFileName != NULL )
 	{
-		pszName = IdToName(pColTblPtr->column[i].id);
-
-		if( pszName )
+		for(i = 0; i < pColTblPtr->cItems; i++)
 		{
-			COLUMN *pcol = &pColTblPtr->column[i];
+			pszName = IdToName(pColTblPtr->column[i].id);
 
-			StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s=%d",pszName,pcol->cx);
+			if( pszName )
+			{
+				COLUMN *pcol = &pColTblPtr->column[i];
 
-			msz.Add(szInfo);
+				StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s=%d",pszName,pcol->cx);
+
+				msz.Add(szInfo);
+			}
+		}
+
+		if( pszSectionName && *pszSectionName != 0 )
+		{
+			if( WritePrivateProfileSection(pszSectionName,msz.GetTop(),pszIniFileName) )
+			{
+				bSuccess = TRUE;
+			}
 		}
 	}
 
-#ifdef _DEBUG
-{
-	PCWSTR psz;
-	psz = msz.GetTop();
-
-	while( psz && *psz )
-	{
-		_TRACE("%S\n",psz);
-		msz.Next(&psz);
-	}
-}
-#endif;
-
-	if( pszSectionName && *pszSectionName != 0 )
-	{
-		WritePrivateProfileSection(pszSectionName,msz.GetTop(),g_pszFileName);
-	}
-
-	return 0;
+	return bSuccess;
 }
 
 BOOL SaveColumns(HWND hWndList,LPCWSTR SectionName)
 {
+	BOOL bSuccess;
+
 	int cColumns = ListViewEx_GetColumnCount(hWndList);
+	if( cColumns == 0 )
+	{
+		return FALSE;
+	}
+
 	COLUMN_TABLE *pcoltbl = (COLUMN_TABLE *)_MemAllocZero(sizeof(COLUMN_TABLE) + sizeof(COLUMN) * cColumns);
+	if( pcoltbl == NULL )
+		return FALSE;
 
 	pcoltbl->cItems = cColumns;
 
@@ -311,9 +336,9 @@ BOOL SaveColumns(HWND hWndList,LPCWSTR SectionName)
 		pcoltbl->column[i].id = (int)ListViewEx_GetHeaderItemData(hWndList,i);
 	}
 
-	SaveColumnTable(pcoltbl,SectionName,NULL);
+	bSuccess = SaveColumnTable(pcoltbl,SectionName,NULL);
 
 	_MemFree(pcoltbl);
 
-	return TRUE;
+	return bSuccess;
 }

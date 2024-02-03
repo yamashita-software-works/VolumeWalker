@@ -88,7 +88,10 @@ LRESULT CALLBACK MDIChildWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 		{
 			MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hWnd,GWLP_USERDATA);
 
-			SendMessage(_GetMainWnd(),WM_MDIACTIVATE,wParam,lParam);
+			if( lParam == 0 || (HWND)lParam == hWnd )
+			{
+				SendMessage(_GetMainWnd(),WM_MDIACTIVATE,wParam,lParam);
+			}
 
 			if( (HWND)wParam == hWnd )
 			{
@@ -113,12 +116,15 @@ LRESULT CALLBACK MDIChildWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 		}
 		case WM_PARENTNOTIFY:
 		{
-			if( MDIGetActive(GetParent(hWnd)) != hWnd ) {
-				switch( wParam ) {
-				case WM_MBUTTONDOWN:
-				case WM_RBUTTONDOWN:
-				case WM_XBUTTONDOWN:
-					SendMessage(GetParent(hWnd)/*MDIClient*/,WM_MDIACTIVATE,(WPARAM)hWnd,0);
+			if( MDIGetActive(GetParent(hWnd)) != hWnd )
+			{
+				switch( wParam )
+				{
+					case WM_MBUTTONDOWN:
+					case WM_RBUTTONDOWN:
+					case WM_XBUTTONDOWN:
+						SendMessage(GetParent(hWnd)/*MDIClient*/,WM_MDIACTIVATE,(WPARAM)hWnd,0);
+						break;
 				}
 			}
 			break;

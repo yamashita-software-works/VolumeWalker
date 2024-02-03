@@ -44,21 +44,29 @@ enum {
 	COLUMN_Path,
 	COLUMN_Type,
 	COLUMN_MaxItem,
+	COLUMN_MaxCount=COLUMN_MaxItem,
 };
 
-int SaveColumnTable(COLUMN_TABLE *pColTblPtr,PCWSTR,PCWSTR);
+BOOL SaveColumnTable(COLUMN_TABLE *pColTblPtr,PCWSTR,PCWSTR);
 BOOL SaveColumns(HWND hWndList,LPCWSTR SectionName);
 
 class CColumnList
 {
 	COLUMN *m_columns;
-	int m_column_count;
+	int     m_column_count;
+	PWSTR   m_inifile_path;
 
 public:
 	CColumnList()
 	{
 		m_columns = NULL;
 		m_column_count = 0;
+		m_inifile_path = NULL;
+	}
+
+	~CColumnList()
+	{
+		_SafeMemFree(m_inifile_path);
 	}
 
 	void SetDefaultColumns(COLUMN *colmums,int column_count)
@@ -72,12 +80,13 @@ public:
 		return m_column_count;
 	}
 
-	int LoadUserDefinitionColumnTable(COLUMN_TABLE **pColTblPtr);
+	int LoadUserDefinitionColumnTable(COLUMN_TABLE **pColTblPtr,LPCWSTR pszSectionName);
 	int FreeUserDefinitionColumnTable(COLUMN_TABLE *pColTbl);
 	const COLUMN *GetDefaultColumnItemFromId(UINT id);
 	const COLUMN *GetDefaultColumnItem(int index);
+	BOOL SetIniFilePath(PCWSTR Path);
 private:
 	int findColumnItem(UINT id);
 	BOOL PaeseLine(PWSTR pszLine,COLUMN *pcol);
-	DSArray<COLUMN> *GetColumnLayout();
+	DSArray<COLUMN> *GetColumnLayout(PCWSTR pszSectionName);
 };

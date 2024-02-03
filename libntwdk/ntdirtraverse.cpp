@@ -119,8 +119,6 @@ typedef struct _TRAVERSE_DIRECTORY_PARAM
 
 } TRAVERSE_DIRECTORY_PARAM;
 
-#define DTF_NO_PROCESS_WILDCARD 0x1
-
 class CTraverseDirectoryParam : public TRAVERSE_DIRECTORY_PARAM
 {
     PWSTR m_pRootPoint;
@@ -280,7 +278,7 @@ static NTSTATUS callbackFile(UNICODE_STRING& usFileName,INT InfoType,PVOID pInfo
             return Status;
         }
 
-        return pTDP->pfnCallback(FFCBR_FINDFILE,pTDP->GetFullPath(),pTDP->RefRelativeRootPtr(),&usFileName,0,InfoType,pInfoBuffer,pTDP->CallbackContext);
+	        return pTDP->pfnCallback(FFCBR_FINDFILE,pTDP->GetFullPath(),pTDP->RefRelativeRootPtr(),&usFileName,0,InfoType,pInfoBuffer,pTDP->CallbackContext);
     }
 
     return STATUS_SUCCESS;
@@ -334,21 +332,41 @@ _TraverseDirectoryImpl(
     OBJECT_ATTRIBUTES ObjectAttributes;
     IO_STATUS_BLOCK IoStatus = {0};
 
+    if( NtPath->Buffer == NULL )
+    {
+        Status = STATUS_INVALID_PARAMETER;
+        callbackError(NtPath,pTDP,Status);
+        return Status;
+    }
+
     if( (Status = callbackStartDirectory(NtPath,pTDP)) != STATUS_SUCCESS )
         return Status;
 
     // open directory
     //
-    InitializeObjectAttributes(&ObjectAttributes,NtPath,0,hParent,NULL);
+    if( NtPath->Length == 0 && NtPath->MaximumLength == 0 )
+    {
+        Status = OpenFileEx_W(&hDirectory,
+                    NtPath->Buffer,
+                    FILE_LIST_DIRECTORY|FILE_TRAVERSE|SYNCHRONIZE,
+                    FILE_SHARE_READ|FILE_SHARE_WRITE,
+                    FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT
+                    // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 
+                    );
+    }
+    else
+    {
+        InitializeObjectAttributes(&ObjectAttributes,NtPath,0,hParent,NULL);
 
-    Status = NtOpenFile(&hDirectory,
-                FILE_LIST_DIRECTORY|FILE_TRAVERSE|SYNCHRONIZE,
-                &ObjectAttributes,
-                &IoStatus,
-                FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
-                FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT
-                // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 
-                );
+        Status = NtOpenFile(&hDirectory,
+                    FILE_LIST_DIRECTORY|FILE_TRAVERSE|SYNCHRONIZE,
+                    &ObjectAttributes,
+                    &IoStatus,
+                    FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+                    FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT
+                    // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 
+                    );
+    }
 
     if( Status == STATUS_SUCCESS )
     {
@@ -384,20 +402,6 @@ _TraverseDirectoryImpl(
 #endif
                     if( !IS_RELATIVE_DIR_NAME_WITH_UNICODE_SIZE( FileName.Buffer, FileName.Length ) )
                     {
-#if 0
-                        if( pTDP->bRecursive && (FileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
-                        {
-                            pTDP->PushDirectory(FileName.Buffer,FileName.Length);
-
-                            Status = _TraverseDirectoryImpl(hDirectory,&FileName,pTDP);
-
-                            pTDP->PopDirectory(FileName.Length);
-                        }
-                        else
-                        {
-                            Status = callbackFile(FileName,pTDP->InfoType,ptr,pTDP);
-                        }
-#else
                         //
                         // Callback the Information both Directory and File.
                         //
@@ -411,7 +415,6 @@ _TraverseDirectoryImpl(
 
                             pTDP->PopDirectory(FileName.Length);
                         }
-#endif
                     }
 
                     if( *((ULONG *)ptr) == 0 ) // (p->NextEntryOffset == 0 )
@@ -462,15 +465,11 @@ QueryDirectoryEntryInformation(
 {
     HANDLE hDirectory;
     NTSTATUS Status;
-    OBJECT_ATTRIBUTES ObjectAttributes;
     IO_STATUS_BLOCK IoStatus;
 
-    InitializeObjectAttributes(&ObjectAttributes,pusPath,0,hRoot,NULL);
-
-    Status = NtOpenFile(&hDirectory,
+    Status = OpenFileEx_W(&hDirectory,
+                pusPath->Buffer,
                 FILE_LIST_DIRECTORY|FILE_TRAVERSE|SYNCHRONIZE,
-                &ObjectAttributes,
-                &IoStatus,
                 FILE_SHARE_READ|FILE_SHARE_WRITE,
                 FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT
                 // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 

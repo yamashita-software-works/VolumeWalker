@@ -10,7 +10,7 @@
 
 #include <mountdev.h>
 
-#include "newfsctldef.h"
+#include "winfsctl.h"
 
 typedef struct _VOLUME_DEVICE_INFORMATION
 {
@@ -21,6 +21,7 @@ typedef struct _VOLUME_DEVICE_INFORMATION
 		ULONG NtfsData : 1;
 		ULONG FatData : 1;
 		ULONG UdfData : 1;
+		ULONG RefsData : 1;
 		ULONG DeviceType : 1;
 		ULONG ObjectId : 1;
 	} State;
@@ -89,6 +90,6 @@ typedef struct _VOLUME_DEVICE_INFORMATION
 		} udf;
 		struct {
 			REFS_VOLUME_DATA_BUFFER data;
-		};
+		} refs;
 	};
 } VOLUME_DEVICE_INFORMATION, *PVOLUME_DEVICE_INFORMATION;

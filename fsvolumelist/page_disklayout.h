@@ -60,6 +60,14 @@ public:
 	{
 		if( m_hFont )
 			DeleteObject(m_hFont);
+
+		_SafeMemFree(m_pszPhysicalDrive);
+
+		if( m_PDInfo )
+		{
+			delete m_PDInfo;
+			m_PDInfo = NULL;
+		}
 		return 0;
 	}
 
@@ -715,11 +723,10 @@ public:
 		HRESULT hr;
 		CPhysicalDriveInformation *pdi = NULL;
 
-		PWSTR psz = _MemAllocString(pSel->pszPath);
+		_SafeMemFree(m_pszPhysicalDrive);
+		m_pszPhysicalDrive = _MemAllocString(pSel->pszPath);
 
-		m_pszPhysicalDrive = _MemAllocString(psz);
-
-		hr = GetData( psz, &pdi );
+		hr = GetData( m_pszPhysicalDrive, &pdi );
 
 		if( SUCCEEDED(hr) )
 		{

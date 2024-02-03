@@ -108,7 +108,7 @@ CreateVolumeConsoleWindow(
 	return hwndViewBase;
 }
 
-HFONT GetGlobalFont(HWND hWnd,BOOL bCreate)
+HFONT GetGlobalFont(HWND hWnd)
 {
 	HFONT hFont = NULL;
 	HDC hdc = GetWindowDC(hWnd);
@@ -119,6 +119,15 @@ HFONT GetGlobalFont(HWND hWnd,BOOL bCreate)
 	hFont = CreateFontIndirect( &lf );
 	ReleaseDC(hWnd,hdc);
 	return hFont;
+}
+
+HFONT GetIconFont()
+{
+	HFONT hFontIcon;
+	LOGFONT lf;
+	SystemParametersInfo(SPI_GETICONTITLELOGFONT,sizeof(LOGFONT),&lf,0);
+	hFontIcon = CreateFontIndirect(&lf);
+	return hFontIcon;
 }
 
 EXTERN_C

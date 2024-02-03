@@ -11,7 +11,7 @@
 #include "ntvolumenames.h"
 #include "storagedevice.h"
 #include "volumedevinfostruct.h"
-#include "newfsctldef.h"
+#include "winfsctl.h"
 
 #ifdef __cplusplus
 extern "C" {

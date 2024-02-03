@@ -2,6 +2,9 @@
  *
  *  Win32 API helper functions
  *
+ *    using in ntddk build for Win32 API.Use when you want to
+ *    call Win32 API from NTDDK user mode source code.
+ *
  *  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.
  *  Licensed under the MIT License.
  *

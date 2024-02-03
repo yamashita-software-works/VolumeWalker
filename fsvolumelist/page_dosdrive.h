@@ -23,8 +23,6 @@
 
 #define TE_OPEN_MDI_CHILD_FRAME  (1)
 
-#define WNDPROP_ORG_PROC_ADDRESS L"hook_proc_addr"
-
 struct CDosDriveItem
 {
 	WCHAR szDrive[3];
@@ -62,6 +60,7 @@ class CDosDriveListPage : public CPageWndBase
 	} m_Sort;
 
 	HFONT m_hFont;
+	HFONT m_hFontHeader;
 	UINT  m_MeterStyle;
 
 	CColumnList m_columns;
@@ -75,6 +74,7 @@ public:
 		m_disp_proc = NULL;
 		m_comp_proc = NULL;
 		m_hFont = NULL;
+		m_hFontHeader = NULL;
 		m_MeterStyle = 0;
 	}
 
@@ -85,21 +85,6 @@ public:
 
 		if( m_comp_proc )
 			delete[] m_comp_proc;
-	}
-
-	static LRESULT CALLBACK ListView_WndProc(HWND hWnd,UINT uMsg, WPARAM wParam,LPARAM lParam)
-	{
-		WNDPROC proc = (WNDPROC)GetProp(hWnd,WNDPROP_ORG_PROC_ADDRESS);
-		if( uMsg == WM_HSCROLL && proc != NULL )
-		{
-			// Avoid a draw timing off between header and list items when H-scroll.
-			SetRedraw(hWnd,FALSE);
-			LRESULT l = CallWindowProc(proc,hWnd,uMsg,wParam,lParam);
-			SetRedraw(hWnd,TRUE);
-			RedrawWindow( hWnd, NULL, NULL, RDW_INVALIDATE|RDW_UPDATENOW|RDW_ERASE|RDW_ERASENOW|RDW_ALLCHILDREN );
-			return l;
-		}
-		return CallWindowProc(proc,hWnd,uMsg,wParam,lParam);
 	}
 
 	virtual HRESULT OnInitPage(PVOID)
@@ -113,11 +98,10 @@ public:
                               GetModuleHandle(NULL), 
                               NULL); 
 
-		WNDPROC proc = (WNDPROC)GetWindowLongPtr(m_hWndList,GWLP_WNDPROC);
-		SetProp(m_hWndList,WNDPROP_ORG_PROC_ADDRESS,proc);
-		SetWindowLongPtr(m_hWndList,GWLP_WNDPROC,(ULONG_PTR)&ListView_WndProc);
-
 		_EnableVisualThemeStyle(m_hWndList);
+
+		SendMessage(m_hWndList,WM_SETFONT,(WPARAM)m_hFont,0);
+		SendMessage(ListView_GetHeader(m_hWndList),WM_SETFONT,(WPARAM)m_hFontHeader,0);
 
 		ListView_SetExtendedListViewStyle(m_hWndList,LVS_EX_DOUBLEBUFFER|LVS_EX_FULLROWSELECT|LVS_EX_HEADERDRAGDROP|LVS_EX_LABELTIP|LVS_EX_INFOTIP);
 
@@ -149,15 +133,17 @@ public:
 
 	LRESULT OnCreate(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-		m_hFont = GetGlobalFont(hWnd,FALSE);
+		m_hFont = GetGlobalFont(hWnd);
+		m_hFontHeader = GetIconFont();
 		return 0;
 	}
 
 	LRESULT OnDestroy(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-		WNDPROC proc = (WNDPROC)GetProp(m_hWndList,WNDPROP_ORG_PROC_ADDRESS);
-		SetWindowLongPtr(m_hWndList,GWLP_WNDPROC,(ULONG_PTR)proc);
-		RemoveProp(m_hWndList,WNDPROP_ORG_PROC_ADDRESS);
+		if( m_hFont )
+			DeleteObject(m_hFont);
+		if( m_hFontHeader )
+			DeleteObject(m_hFont);
 		return 0;
 	}
 
@@ -247,16 +233,8 @@ public:
 		if( pcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT )
 		{
 			CDosDriveItem *pParam = (CDosDriveItem *)pcd->nmcd.lItemlParam;
-
-			LRESULT RetFlag = 0;
-
-			if( m_hFont )
-			{
-				SelectObject(pcd->nmcd.hdc,m_hFont);
-				RetFlag |= CDRF_NEWFONT;
-			}
-
-			return CDRF_NOTIFYPOSTPAINT|RetFlag;
+			// todo:
+			return CDRF_NOTIFYPOSTPAINT;
 		}
 
 		if( pcd->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT )
@@ -461,12 +439,14 @@ public:
 		if( !pItem->pDriveInfo->State.Size )
 			return 0;
 
-		LONGLONG cb;
+		LONGLONG cb = 0;
 
 		if( id == COLUMN_Size )
 			cb = pItem->TotalSize;
 		else if( id == COLUMN_Free )
 			cb = pItem->AvailableSize;
+		else if( id == COLUMN_Usage )
+			cb = pItem->Usage;
 
 		if( 1 )
 		{
@@ -562,6 +542,7 @@ public:
 			COL_HANDLER_MAP_DEF(COLUMN_Drive,          &CDosDriveListPage::OnDisp_Drive),
 			COL_HANDLER_MAP_DEF(COLUMN_Type,           &CDosDriveListPage::OnDisp_Type),
 			COL_HANDLER_MAP_DEF(COLUMN_Size,           &CDosDriveListPage::OnDisp_Size),
+			COL_HANDLER_MAP_DEF(COLUMN_Usage,          &CDosDriveListPage::OnDisp_Size),
 			COL_HANDLER_MAP_DEF(COLUMN_Free,           &CDosDriveListPage::OnDisp_Size),
 			COL_HANDLER_MAP_DEF(COLUMN_Format,         &CDosDriveListPage::OnDisp_Format),
 			COL_HANDLER_MAP_DEF(COLUMN_Guid,           &CDosDriveListPage::OnDisp_Guid),
@@ -672,15 +653,16 @@ public:
 		LVCOLUMN lvc = {0};
 
 		static COLUMN def_columns[] = {
-			{ COLUMN_Drive,       L"Drive",       1,  80, LVCFMT_LEFT },
-			{ COLUMN_Type,        L"Type",        2,  80, LVCFMT_LEFT },
-			{ COLUMN_UsageRate,   L"Usage",       3, 100, LVCFMT_CENTER },
-			{ COLUMN_Size,        L"Size",        4, 100, LVCFMT_RIGHT },
-			{ COLUMN_Free,        L"Free",        5, 100, LVCFMT_RIGHT },
-			{ COLUMN_VolumeLabel, L"Label",       6, 100, LVCFMT_LEFT },
-			{ COLUMN_Format,      L"Format",      7,  80, LVCFMT_LEFT },
-			{ COLUMN_Guid,        L"Volume Name", 8, LVSCW_AUTOSIZE, LVCFMT_LEFT },
-			{ COLUMN_Path,        L"Path/Device", 9, LVSCW_AUTOSIZE, LVCFMT_LEFT },
+			{ COLUMN_Drive,       L"Drive",        1,  80, LVCFMT_LEFT },
+			{ COLUMN_Type,        L"Type",         2,  80, LVCFMT_LEFT },
+			{ COLUMN_UsageRate,   L"Usage Rate",   3, 100, LVCFMT_CENTER },
+			{ COLUMN_Size,        L"Size",         4, 100, LVCFMT_RIGHT },
+			{ COLUMN_Usage,       L"Usage",        5, 100, LVCFMT_RIGHT },
+			{ COLUMN_Free,        L"Free",         6, 100, LVCFMT_RIGHT },
+			{ COLUMN_VolumeLabel, L"Label",        7, 100, LVCFMT_LEFT },
+			{ COLUMN_Format,      L"Format",       8,  80, LVCFMT_LEFT },
+			{ COLUMN_Guid,        L"Volume Name",  9, LVSCW_AUTOSIZE, LVCFMT_LEFT },
+			{ COLUMN_Path,        L"Path/Device", 10, LVSCW_AUTOSIZE, LVCFMT_LEFT },
 		};
 
 		m_columns.SetDefaultColumns(def_columns,ARRAYSIZE(def_columns));
@@ -704,7 +686,7 @@ public:
 	BOOL LoadColumns(HWND hWndList)
 	{
 		COLUMN_TABLE *pcoltbl;
-		if( m_columns.LoadUserDefinitionColumnTable(&pcoltbl) == 0)
+		if( m_columns.LoadUserDefinitionColumnTable(&pcoltbl,L"ColumnLayout") == 0)
 			return FALSE;
 
 		LVCOLUMN lvc = {0};

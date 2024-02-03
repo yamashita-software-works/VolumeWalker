@@ -20,6 +20,26 @@ RtlGetLastWin32Error(
     VOID
     );
 
+#ifndef _NTIFS_
+
+EXTERN_C
+NTSTATUS
+NTAPI 
+RtlInitUnicodeStringEx (
+    UNICODE_STRING *DestinationString, 
+    PCWSTR SourceString
+    );
+
+EXTERN_C
+NTSTATUS 
+NTAPI
+RtlAppendUnicodeToString(
+    IN OUT PUNICODE_STRING  Destination,
+    IN PCWSTR  Source
+    );
+
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 
 //
@@ -487,6 +507,21 @@ NtQueryFullAttributesFile(
 EXTERN_C
 NTSTATUS
 NTAPI
+NtNotifyChangeDirectoryFile(
+    IN HANDLE  FileHandle,
+    IN HANDLE  Event OPTIONAL,
+    IN PIO_APC_ROUTINE  ApcRoutine OPTIONAL,
+    IN PVOID  ApcContext OPTIONAL,
+    OUT PIO_STATUS_BLOCK  IoStatusBlock,
+    OUT PVOID  Buffer,
+    IN ULONG  BufferLength,
+    IN ULONG  NotifyFilter,
+    IN BOOLEAN  WatchSubTree
+    );
+
+EXTERN_C
+NTSTATUS
+NTAPI
 NtWaitForSingleObject(
     IN HANDLE  Handle,
     IN BOOLEAN  Alertable,
@@ -701,9 +736,9 @@ EXTERN_C
 NTSTATUS
 NTAPI
 NtQueryAttributesFile(
-	__in  POBJECT_ATTRIBUTES ObjectAttributes,
-	__out PFILE_BASIC_INFORMATION FileInformation
-	);
+    __in  POBJECT_ATTRIBUTES ObjectAttributes,
+    __out PFILE_BASIC_INFORMATION FileInformation
+    );
 
 #endif
 
@@ -746,16 +781,16 @@ typedef struct _REPARSE_DATA_BUFFER {
 // for App Exec Link
 //
 typedef struct _REPARSE_APPEXECLINK_READ_BUFFER { // For tag IO_REPARSE_TAG_APPEXECLINK
-	ULONG  ReparseTag;
-	USHORT ReparseDataLength;
-	USHORT Reserved;
-	ULONG  Version;	        // Currently version 3
-	WCHAR  StringList[1];	// Multistring (Consecutive strings each ending with a NUL)
+    ULONG  ReparseTag;
+    USHORT ReparseDataLength;
+    USHORT Reserved;
+    ULONG  Version;	        // Currently version 3
+    WCHAR  StringList[1];	// Multistring (Consecutive strings each ending with a NUL)
   /* There are normally 4 strings here. Ex:
-	Package ID:	    L"Microsoft.WindowsTerminal_8wekyb3d8bbwe"
-	Entry Point:	L"Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"
-	Executable:	    L"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.4.3243.0_x64__8wekyb3d8bbwe\wt.exe"
-	Applic. Type:	l"0" Integer as ASCII. "0" = Desktop bridge application; Else sandboxed UWP application
+    Package ID:	    L"Microsoft.WindowsTerminal_8wekyb3d8bbwe"
+    Entry Point:	L"Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"
+    Executable:	    L"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.4.3243.0_x64__8wekyb3d8bbwe\wt.exe"
+    Applic. Type:	l"0" Integer as ASCII. "0" = Desktop bridge application; Else sandboxed UWP application
   */     
 } APPEXECLINK_READ_BUFFER, *PAPPEXECLINK_READ_BUFFER;
 
@@ -764,8 +799,48 @@ typedef struct _REPARSE_APPEXECLINK_READ_BUFFER { // For tag IO_REPARSE_TAG_APPE
 //////////////////////////////////////////////////////////////////////////////
 
 //
+// System Information Native API
+//
+
+typedef struct _SYSTEM_TIME_OF_DAY_INFORMATION
+{
+	LARGE_INTEGER BootTime;
+	LARGE_INTEGER CurrentTime;
+	LARGE_INTEGER TimeZoneBias;
+	ULONG CurrentTimeZoneId;	
+} SYSTEM_TIME_OF_DAY_INFORMATION;
+
+#ifndef _WINTERNL_
+typedef enum {
+	SystemTimeOfDayInformation = 3,
+} SYSTEM_INFORMATION_CLASS;
+
+EXTERN_C
+NTSTATUS
+NTAPI
+NtQuerySystemInformation (
+    __in SYSTEM_INFORMATION_CLASS SystemInformationClass,
+    __out_bcount_opt(SystemInformationLength) PVOID SystemInformation,
+    __in ULONG SystemInformationLength,
+    __out_opt PULONG ReturnLength
+    );
+
+EXTERN_C
+NTSTATUS
+NTAPI
+NtSetSystemInformation (
+    __in SYSTEM_INFORMATION_CLASS SystemInformationClass,
+    __in_bcount_opt(SystemInformationLength) PVOID SystemInformation,
+    __in ULONG SystemInformationLength
+    );
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+
+//
 // Object Directory Native API
 //
+
 EXTERN_C
 NTSYSCALLAPI
 NTSTATUS

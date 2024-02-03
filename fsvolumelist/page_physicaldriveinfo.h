@@ -79,7 +79,7 @@ public:
 
 	LRESULT OnCreate(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-		m_hFont = GetGlobalFont(hWnd,FALSE);
+		m_hFont = GetGlobalFont(hWnd);
 
 		m_hWndList = CreateWindowEx(0,WC_LISTVIEW, 
                               L"", 

@@ -1,6 +1,6 @@
 #pragma once
 
-#define MDICHILD_CLASSNAME  L"MDIChild";
+#define MDICHILD_CLASSNAME  L"MDIChild"
 #define CBWNDEXTRA   256
 
 typedef struct _MDICREATEPARAM

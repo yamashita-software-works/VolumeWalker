@@ -81,6 +81,7 @@ INCLUDES=$(INCLUDES);C:\WinSDK\7.1\Include
 INCLUDES=$(INCLUDES);..\libcwh
 INCLUDES=$(INCLUDES);..\libmisc
 INCLUDES=$(INCLUDES);..\libntwdk
+INCLUDES=$(INCLUDES);..\inc
 INCLUDES=$(INCLUDES);..\fsvolumelist
 
 #----------------------------------------------------------

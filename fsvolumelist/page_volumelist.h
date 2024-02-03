@@ -22,8 +22,6 @@
 
 #define TE_OPEN_MDI_CHILD_FRAME  (1)
 
-#define WNDPROP_ORG_PROC_ADDRESS L"hook_proc_addr"
-
 struct CVolumeItem
 {
 public:
@@ -84,6 +82,7 @@ class CVolumeListPage : public CPageWndBase
 	} m_Sort;
 
 	HFONT m_hFont;
+	HFONT m_hFontHeader;
 	UINT  m_MeterStyle;
 
 	CColumnList m_columns;
@@ -97,6 +96,7 @@ public:
 		m_disp_proc = NULL;
 		m_comp_proc = NULL;
 		m_hFont = NULL;
+		m_hFontHeader = NULL;
 		m_MeterStyle = 0;
 	}
 
@@ -107,21 +107,6 @@ public:
 
 		if( m_comp_proc )
 			delete[] m_comp_proc;
-	}
-
-	static LRESULT CALLBACK ListView_WndProc(HWND hWnd,UINT uMsg, WPARAM wParam,LPARAM lParam)
-	{
-		WNDPROC proc = (WNDPROC)GetProp(hWnd,WNDPROP_ORG_PROC_ADDRESS);
-		if( uMsg == WM_HSCROLL && proc != NULL )
-		{
-			// Avoid a draw timing off between header and list items when H-scroll.
-			SetRedraw(hWnd,FALSE);
-			LRESULT l = CallWindowProc(proc,hWnd,uMsg,wParam,lParam);
-			SetRedraw(hWnd,TRUE);
-			RedrawWindow( hWnd, NULL, NULL, RDW_INVALIDATE|RDW_UPDATENOW|RDW_ERASE|RDW_ERASENOW|RDW_ALLCHILDREN );
-			return l;
-		}
-		return CallWindowProc(proc,hWnd,uMsg,wParam,lParam);
 	}
 
 	virtual HRESULT OnInitPage(PVOID)
@@ -137,9 +122,8 @@ public:
 
 		ListViewEx_SetTrickColumnZero(m_hWndList,TRUE);
 
-		WNDPROC proc = (WNDPROC)GetWindowLongPtr(m_hWndList,GWLP_WNDPROC);
-		SetProp(m_hWndList,WNDPROP_ORG_PROC_ADDRESS,proc);
-		SetWindowLongPtr(m_hWndList,GWLP_WNDPROC,(ULONG_PTR)&ListView_WndProc);
+		SendMessage(m_hWndList,WM_SETFONT,(WPARAM)m_hFont,0);
+		SendMessage(ListView_GetHeader(m_hWndList),WM_SETFONT,(WPARAM)m_hFontHeader,0);
 
 		_EnableVisualThemeStyle(m_hWndList);
 
@@ -148,12 +132,13 @@ public:
 		static COLUMN def_columns[] = {
 			{ COLUMN_Name,        L"Name",       1, 160, LVCFMT_LEFT },
 			{ COLUMN_Drive,       L"Drive",      2, 100, LVCFMT_LEFT },
-			{ COLUMN_UsageRate,   L"Usage",      3, 100, LVCFMT_CENTER },
+			{ COLUMN_UsageRate,   L"Usage Rate", 3, 100, LVCFMT_CENTER },
 			{ COLUMN_Size,        L"Size",       4, 100, LVCFMT_RIGHT },
-			{ COLUMN_Free,        L"Free",       5, 100, LVCFMT_RIGHT },
-			{ COLUMN_VolumeLabel, L"Label",      7, 100, LVCFMT_LEFT },
-			{ COLUMN_Format,      L"Format",     8,  80, LVCFMT_LEFT },
-			{ COLUMN_Guid,        L"Guid",       9, 340, LVCFMT_LEFT },
+			{ COLUMN_Usage,       L"Usage",      6, 100, LVCFMT_RIGHT },
+			{ COLUMN_Free,        L"Free",       7, 100, LVCFMT_RIGHT },
+			{ COLUMN_VolumeLabel, L"Label",      8, 100, LVCFMT_LEFT },
+			{ COLUMN_Format,      L"Format",     9,  80, LVCFMT_LEFT },
+			{ COLUMN_Guid,        L"Guid",      10, 340, LVCFMT_LEFT },
 		};
 
 		m_columns.SetDefaultColumns(def_columns,ARRAYSIZE(def_columns));
@@ -192,15 +177,17 @@ public:
 
 	LRESULT OnCreate(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-		m_hFont = GetGlobalFont(hWnd,FALSE);
+		m_hFont = GetGlobalFont(hWnd);
+		m_hFontHeader = GetIconFont();
 		return 0;
 	}
 
 	LRESULT OnDestroy(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-		WNDPROC proc = (WNDPROC)GetProp(m_hWndList,WNDPROP_ORG_PROC_ADDRESS);
-		SetWindowLongPtr(m_hWndList,GWLP_WNDPROC,(ULONG_PTR)proc);
-		RemoveProp(m_hWndList,WNDPROP_ORG_PROC_ADDRESS);
+		if( m_hFont )
+			DeleteObject(m_hFont);
+		if( m_hFontHeader )
+			DeleteObject(m_hFont);
 		return 0;
 	}
 
@@ -307,12 +294,6 @@ public:
 
 					RetFlag = CDRF_NEWFONT;
 				}
-			}
-
-			if( m_hFont )
-			{
-				SelectObject(pcd->nmcd.hdc,m_hFont);
-				RetFlag |= CDRF_NEWFONT;
 			}
 
 			return CDRF_NOTIFYPOSTPAINT|RetFlag;
@@ -514,13 +495,11 @@ public:
 		LONGLONG cb;
 
 		if( id == COLUMN_Size )
-			cb = pItem->VolInfoBuffer->TotalAllocationUnits.QuadPart 
-					* pItem->VolInfoBuffer->SectorsPerAllocationUnit
-					* pItem->VolInfoBuffer->BytesPerSector;
+			cb = pItem->TotalSize;
 		else if( id == COLUMN_Free )
-			cb = pItem->VolInfoBuffer->AvailableAllocationUnits.QuadPart 
-					* pItem->VolInfoBuffer->SectorsPerAllocationUnit
-					* pItem->VolInfoBuffer->BytesPerSector;
+			cb = pItem->AvailableSize;
+		else if( id == COLUMN_Usage )
+			cb = pItem->Usage;
 
 		if( 1 )
 		{
@@ -591,6 +570,7 @@ public:
 		{
 			COL_HANDLER_MAP_DEF(COLUMN_Name,           &CVolumeListPage::OnDisp_Name),
 			COL_HANDLER_MAP_DEF(COLUMN_Size,           &CVolumeListPage::OnDisp_Size),
+			COL_HANDLER_MAP_DEF(COLUMN_Usage,          &CVolumeListPage::OnDisp_Size),
 			COL_HANDLER_MAP_DEF(COLUMN_Free,           &CVolumeListPage::OnDisp_Size),
 			COL_HANDLER_MAP_DEF(COLUMN_Format,         &CVolumeListPage::OnDisp_Format),
 			COL_HANDLER_MAP_DEF(COLUMN_Guid,           &CVolumeListPage::OnDisp_Guid),
@@ -743,7 +723,7 @@ public:
 	BOOL LoadColumns(HWND hWndList)
 	{
 		COLUMN_TABLE *pcoltbl;
-		if( m_columns.LoadUserDefinitionColumnTable(&pcoltbl) == 0)
+		if( m_columns.LoadUserDefinitionColumnTable(&pcoltbl,L"ColumnLayout") == 0)
 			return FALSE;
 
 		LVCOLUMN lvc = {0};
@@ -808,9 +788,7 @@ public:
 		pItem->VolInfoBuffer = VolInfoBufferPtr;
 
 		pItem->DrivePaths = _MemAllocString( DriveName );
-#if 0
-		pItem->Drive = _MemAllocString( DriveName );
-#else
+
 		if( IsCharAlpha(DriveName[0]) && DriveName[1] == L':' && (DriveName[2] == L'\0'||DriveName[2] == L';') )
 		{
 			if( DriveName[2] == L';' )
@@ -819,27 +797,32 @@ public:
 		}
 		if( pItem->Drive == NULL )
 			pItem->Drive = _MemAllocString( L"" );
-#endif
 
-		LONGLONG Total;
-		Total = _calcSize( pItem->VolInfoBuffer->TotalAllocationUnits.QuadPart,
+		if( pItem->VolInfoBuffer->State.SizeInformation )
+		{
+			LONGLONG Total;
+			Total = _calcSize( pItem->VolInfoBuffer->TotalAllocationUnits.QuadPart,
 						pItem->VolInfoBuffer->SectorsPerAllocationUnit,
 						pItem->VolInfoBuffer->BytesPerSector );
 
-		LONGLONG Available;
-		Available = _calcSize( pItem->VolInfoBuffer->AvailableAllocationUnits.QuadPart,
+			LONGLONG Available;
+			Available = _calcSize( pItem->VolInfoBuffer->AvailableAllocationUnits.QuadPart,
 						pItem->VolInfoBuffer->SectorsPerAllocationUnit,
 						pItem->VolInfoBuffer->BytesPerSector);
 
-		LONGLONG Usage;
-		Usage = Total - Available;
+			LONGLONG Usage;
+			Usage = Total - Available;
 
-		pItem->TotalSize = Total;
-		pItem->AvailableSize = Available;
-		pItem->Usage = Usage;
+			pItem->TotalSize = Total;
+			pItem->AvailableSize = Available;
+			pItem->Usage = Usage;
 
-		double pct = (double)Usage / (double)Total;
-		pItem->DiskUsage = pct;
+			if( Total != 0 )
+			{
+				double pct = (double)Usage / (double)Total;
+				pItem->DiskUsage = pct;
+			}
+		}
 
 		LVITEM lvi = {0};
 		lvi.mask    = LVIF_TEXT|LVIF_IMAGE|LVIF_PARAM;
@@ -988,7 +971,7 @@ public:
 	{
 		SORT_PARAM<CVolumeListPage> *op = (SORT_PARAM<CVolumeListPage> *)p;
 
-		if( pItem1->DiskUsage != 0&& pItem2->DiskUsage == 0 )
+		if( pItem1->DiskUsage != 0 && pItem2->DiskUsage == 0 )
 			return (-1 * op->direction);
 		else if( pItem1->DiskUsage == 0 && pItem2->DiskUsage != 0 )
 			return (1  * op->direction);

@@ -2,13 +2,13 @@
 //*                                                                         *
 //*  volumewalker.cpp                                                       *
 //*                                                                         *
-//*  Implemantes the main procedure and main frame window                   *
+//*  Implements the main procedure and main frame window                    *
 //*                                                                         *
 //*  AUTHOR: YAMASHITA Katsuhiro                                            *
 //*                                                                         *
 //*  2022.04.02 Create SDI frame ver.                                       *
 //*  2022.12.24 Create MDI frame ver.                                       *
-//*  2023.02.24 Create MDI based mainframe                                  *
+//*  2023.02.24 Create MDI based mainframe.                                 *
 //*                                                                         *
 //***************************************************************************
 //
@@ -48,28 +48,14 @@ HWND _GetMainWnd()
 	return hWndMain;
 }
 
-#if 0
-static DWORD g_dwOSVersion = 0;
-static DWORD g_dwOSBuildNumber = 0;
-
-DWORD _GetOSVersion()
-{
-	return g_dwOSVersion;
-}
-
-VOID InitOSVersion()
-{
-	OSVERSIONINFOEX osi = {0};
-	osi.dwOSVersionInfoSize = sizeof(osi);
-	GetVersionEx((LPOSVERSIONINFO)&osi);
-
-	g_dwOSVersion = (ULONG)MAKEWORD(osi.dwMinorVersion,osi.dwMajorVersion);
-	g_dwOSBuildNumber = osi.dwBuildNumber;
-}
-#endif
-
 //////////////////////////////////////////////////////////////////////////////
 #include "..\build.h"
+
+static void Edit_AddText(HWND hwndEdit,PCWSTR psz)
+{
+	SendMessage(hwndEdit,EM_SETSEL,(WPARAM)-1,(LPARAM)-1);
+	SendMessage(hwndEdit,EM_REPLACESEL,0,(LPARAM)psz);
+}
 
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -78,11 +64,39 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_INITDIALOG:
 		{
-			_CenterWindow(hDlg,GetActiveWindow());
-			WCHAR *psz = new WCHAR[64];
-			StringCchPrintf(psz,128,L"%u.%u.%u.%u Preview",MEJOR_VERSION,MINOR_VERSION,BUILD_NUMBER,PATCH_NUMBER);
-			SetDlgItemText(hDlg,IDC_TEXT,psz);
-			delete[] psz;
+			// version:
+			{
+				WCHAR sz[32];
+				StringCchPrintf(sz,_countof(sz),L"%u.%u.%u.%u Preview",MEJOR_VERSION,MINOR_VERSION,BUILD_NUMBER,PATCH_NUMBER);
+				SetDlgItemText(hDlg,IDC_TEXT,sz);
+			}
+
+			// miscellaneous/system information:
+			{
+				LARGE_INTEGER liBootLocalTime;
+				LARGE_INTEGER liElapsedTime;
+				GetSystemBootTime( NULL, &liBootLocalTime, &liElapsedTime );
+
+				_CenterWindow(hDlg,GetActiveWindow());
+
+				WCHAR szBuf[64];
+				WCHAR szBootTime[32];
+				WCHAR szBootElapsedTime[32];
+				_GetDateTimeString(liBootLocalTime.QuadPart,szBootTime,ARRAYSIZE(szBootTime));
+				StrFromTimeInterval(szBootElapsedTime,_countof(szBootElapsedTime),(DWORD)((liElapsedTime.QuadPart)/10000),3);
+				StrTrim(szBootElapsedTime,L" ");
+
+				HWND hwndEdit = GetDlgItem(hDlg,IDC_EDIT);
+
+				StringCchPrintf(szBuf,_countof(szBuf),L"System Boot Time : %s",szBootTime);
+				Edit_AddText(hwndEdit,szBuf);
+
+				Edit_AddText(hwndEdit,L"\r\n");
+
+				StringCchPrintf(szBuf,_countof(szBuf),L"Boot Elapsed Time : %s",szBootElapsedTime);
+				Edit_AddText(hwndEdit,szBuf);
+			}
+
 			return (INT_PTR)TRUE;
 		}
 		case WM_COMMAND:
@@ -105,13 +119,13 @@ typedef struct {
 } MDICHILDFRAMETABLE;
 
 static MDICHILDFRAMETABLE table[]= {
-	{VOLUME_CONSOLE_HOME,0},
-	{VOLUME_CONSOLE_VOLUMELIST,0},
-	{VOLUME_CONSOLE_PHYSICALDRIVELIST,0},
-	{VOLUME_CONSOLE_SHADOWCOPYLIST,0},
-	{VOLUME_CONSOLE_STORAGEDEVICE,0},
-	{VOLUME_CONSOLE_MOUNTEDDEVICE,0},
-	{VOLUME_CONSOLE_DOSDRIVELIST,0},
+	{VOLUME_CONSOLE_HOME,              0},
+	{VOLUME_CONSOLE_VOLUMELIST,        0},
+	{VOLUME_CONSOLE_PHYSICALDRIVELIST, 0},
+	{VOLUME_CONSOLE_SHADOWCOPYLIST,    0},
+	{VOLUME_CONSOLE_STORAGEDEVICE,     0},
+	{VOLUME_CONSOLE_MOUNTEDDEVICE,     0},
+	{VOLUME_CONSOLE_DOSDRIVELIST,      0},
 };
 
 int ClearWindowHandle(UINT_PTR ConsoleTypeId,HWND hwnd)
@@ -240,7 +254,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszPath,BOOL bMaximize=FAL
 	else
 		mcp.hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
 
-	struct {
+	static struct {
 		UINT ConsoleId;
 		PCWSTR Title;
 	} title[] = {

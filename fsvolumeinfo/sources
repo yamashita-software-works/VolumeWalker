@@ -85,6 +85,7 @@ INCLUDES=$(INCLUDES);C:\WinDDK\7600.16385.1\inc\ddk
 INCLUDES=$(INCLUDES);C:\WinSDK\7.1\include
 INCLUDES=$(INCLUDES);..\libcwh
 INCLUDES=$(INCLUDES);..\libntwdk
+INCLUDES=$(INCLUDES);..\inc
 #----------------------------------------------------------
 # Sources Files
 #----------------------------------------------------------

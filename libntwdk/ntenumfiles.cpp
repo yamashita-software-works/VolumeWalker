@@ -184,17 +184,30 @@ EnumFiles_W(
     )
 {
     NTSTATUS Status;
-    UNICODE_STRING NtPath = {0};
+    UNICODE_STRING usRoot;
+    PWSTR pR=NULL,pP=NULL;
+    ULONG cchR=0,cchP=0;
 
-	RtlCreateUnicodeString(&NtPath,Path);
+    SplitRootPath_W(Path,&pR,&cchR,&pP,&cchP);
+
+    RtlInitUnicodeString(&usRoot,pR);
+
+    HANDLE hRoot = NULL;
+    if( OpenRootDirectory(pR,0,&hRoot) != STATUS_SUCCESS )
+    {
+        hRoot = NULL;
+    }
 
     INTERNAL_CALLBACK_BUFFER cb;
     cb.Callback = Callback;
     cb.Context  = Context;
 
-    Status = EnumFiles(NULL,NtPath.Buffer,FileNameFilter,&EnumFilesCallback,(ULONG_PTR)&cb);
+    Status = EnumFiles(hRoot,pP,FileNameFilter,&EnumFilesCallback,(ULONG_PTR)&cb);
 
-    RtlFreeUnicodeString(&NtPath);
+    NtClose(hRoot);
 
-    return RtlNtStatusToDosError(Status);
+    FreeMemory(pR);
+    FreeMemory(pP);
+
+    return HRESULT_FROM_WIN32( RtlNtStatusToDosError(Status) );
 }

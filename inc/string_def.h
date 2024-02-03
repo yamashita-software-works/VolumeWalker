@@ -9,9 +9,19 @@
 // Common
 //
 #define diGenericBase                            10
+#define diGenericMax                             99
+
 #define diNtfsBase                               100
+#define diNtfsMax                                199
+
 #define diUdfBase                                200
+#define diUdfMax                                 299
+
 #define diPhysicalDriveBase                      300
+#define diPhysicalDriveMax                       399
+
+#define diRefsBase                               400
+#define diRefsMax                                499
 
 //
 // Volume Information
@@ -62,6 +72,23 @@
 #define diUdfAbstractInfo                        (diUdfBase + 7)
 #define diUdfFormattingImplementationInfo        (diUdfBase + 8) 
 #define diUdfLastModifyingImplementationInfo     (diUdfBase + 9)
+
+#define diRefsVersion                            (diRefsBase + 0)
+#define diRefsMajorVersion                       (diRefsBase + 1)
+#define diRefsMinorVersion                       (diRefsBase + 2)
+#define diRefsBytesPerPhysicalSector             (diRefsBase + 3)
+#define diRefsVolumeSerialNumber                 (diRefsBase + 4)
+#define diRefsNumberSectors                      (diRefsBase + 5)
+#define diRefsTotalClusters                      (diRefsBase + 6)
+#define diRefsFreeClusters                       (diRefsBase + 7)
+#define diRefsTotalReserved                      (diRefsBase + 8)
+#define diRefsBytesPerSector                     (diRefsBase + 9)
+#define diRefsBytesPerCluster                    (diRefsBase + 10)
+#define diRefsMaximumSizeOfResidentFile          (diRefsBase + 11)
+#define diRefsFastTierDataFillRatio              (diRefsBase + 12)
+#define diRefsSlowTierDataFillRatio              (diRefsBase + 13)
+#define diRefsDestagesFastTierToSlowTierRate     (diRefsBase + 14)
+#define diRefsMetadataChecksumType               (diRefsBase + 15)
 
 //
 // Physical Drive Information

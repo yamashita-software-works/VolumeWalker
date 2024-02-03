@@ -382,7 +382,10 @@ typedef struct {
 
     ULONG DestagesFastTierToSlowTierRate;       // in clusters per second
 
-    LARGE_INTEGER Reserved[9];
+    USHORT  MetadataChecksumType;
+
+    UCHAR  Reserved0[6];
+    LARGE_INTEGER Reserved[8];
 
 } REFS_VOLUME_DATA_BUFFER, *PREFS_VOLUME_DATA_BUFFER;
 

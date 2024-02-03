@@ -26,6 +26,7 @@ enum {
 	ID_GROUP_FS_NTFS,
 	ID_GROUP_FS_FAT,
 	ID_GROUP_FS_UDF,
+	ID_GROUP_FS_REFS,
 	ID_GROUP_PHYSICALDRIVE,
 	ID_GROUP_FILESYSTEM_ATTRIBUTES,
 	ID_GROUP_NAME,
@@ -82,7 +83,7 @@ public:
 
 	LRESULT OnCreate(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-		m_hFont = GetGlobalFont(hWnd,FALSE);
+		m_hFont = GetGlobalFont(hWnd);
 
 		m_hWndList = CreateWindowEx(0,WC_LISTVIEW, 
                               L"", 
@@ -178,12 +179,14 @@ public:
 				GetTitleText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
 				break;
 			case 1:
-				if( pItem->Type < 100 )
+				if( pItem->Type <= diGenericMax )
 					GetInfoText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
-				else if( pItem->Type < 200 )
+				else if( pItem->Type <= diNtfsMax )
 					GetNtfsInfoText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
-				else if( 200 <= pItem->Type &&  pItem->Type <= 299 )
+				else if( diUdfBase <= pItem->Type &&  pItem->Type <= diUdfMax )
 					GetUdfInfoText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
+				else if( diRefsBase <= pItem->Type &&  pItem->Type <= diRefsMax )
+					GetRefsInfoText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
 				break;
 		}
 		return 0;	
@@ -505,6 +508,65 @@ public:
 		}
 	}
 
+	VOID GetRefsInfoText(int iItemType,PWSTR *pszText,int cchText)
+	{
+		**pszText = L'\0';
+
+		REFS_VOLUME_DATA_BUFFER& RefsData = m_pvdi->refs.data;
+
+		switch( iItemType )
+		{
+			case diRefsVersion:
+				StringCchPrintf(*pszText,cchText,L"%d.%d",RefsData.MajorVersion,RefsData.MinorVersion);
+				break;
+/*			case diRefsMajorVersion:
+				StringCchPrintf(*pszText,cchText,L"%d",RefsData.MajorVersion);
+				break;
+			case diRefsMinorVersion:
+				StringCchPrintf(*pszText,cchText,L"%d",RefsData.MinorVersion);
+				break; */
+			case diRefsVolumeSerialNumber:
+				StringCchPrintf(*pszText,cchText,L"0x%I64X",RefsData.VolumeSerialNumber.QuadPart);
+				break;
+			case diRefsBytesPerPhysicalSector:
+				_CommaFormatString(RefsData.BytesPerPhysicalSector,*pszText);
+				break;
+			case diRefsNumberSectors:
+				_CommaFormatString(RefsData.NumberSectors.QuadPart,*pszText);
+				break;
+			case diRefsTotalClusters:
+				_CommaFormatString(RefsData.TotalClusters.QuadPart,*pszText);
+				break;
+			case diRefsFreeClusters:
+				_CommaFormatString(RefsData.FreeClusters.QuadPart,*pszText);
+				break;
+			case diRefsTotalReserved:
+				_CommaFormatString(RefsData.TotalReserved.QuadPart,*pszText);
+				break;
+			case diRefsBytesPerSector:
+				_CommaFormatString(RefsData.BytesPerSector,*pszText);
+				break;
+			case diRefsBytesPerCluster:
+				_CommaFormatString(RefsData.BytesPerCluster,*pszText);
+				break;
+			case diRefsMaximumSizeOfResidentFile:
+				_CommaFormatString(RefsData.MaximumSizeOfResidentFile.QuadPart,*pszText);
+				break;
+			case diRefsFastTierDataFillRatio:
+				_CommaFormatString(RefsData.FastTierDataFillRatio,*pszText);
+				break;
+			case diRefsSlowTierDataFillRatio:
+				_CommaFormatString(RefsData.SlowTierDataFillRatio,*pszText);
+				break;
+			case diRefsDestagesFastTierToSlowTierRate:
+				_CommaFormatString(RefsData.DestagesFastTierToSlowTierRate,*pszText);
+				break;
+			case diRefsMetadataChecksumType:
+				StringCchPrintf(*pszText,cchText,L"0x%X",RefsData.MetadataChecksumType);
+				break;
+		}
+	}
+
 	LRESULT OnContextMenu(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		int iItem = ListViewEx_GetCurSel(m_hWndList);
@@ -600,6 +662,7 @@ public:
 			{ ID_GROUP_FS_NTFS,               L"NTFS"  },
 			{ ID_GROUP_FS_FAT,                L"FAT"  },
 			{ ID_GROUP_FS_UDF,                L"UDF"  },
+			{ ID_GROUP_FS_REFS,               L"ReFS"  },
 			{ ID_GROUP_FILESYSTEM_ATTRIBUTES, L"File System Attributes" },
 			{ ID_GROUP_MEDIATYPES,            L"Media Types" },
 		};
@@ -772,6 +835,33 @@ public:
 		return iItem;
 	}
 
+	INT Insert_ReFSInfo(int iItem,VOLUME_DEVICE_INFORMATION *pvdi)
+	{
+		int iGroupId = ID_GROUP_FS_REFS;
+
+		UINT uInfoId[] = {
+			diRefsVersion,
+			diRefsVolumeSerialNumber,
+			diRefsNumberSectors,
+			diRefsBytesPerSector,
+			diRefsBytesPerPhysicalSector,
+			diRefsTotalClusters,
+			diRefsFreeClusters,
+			diRefsTotalReserved,
+			diRefsBytesPerCluster,
+			diRefsMaximumSizeOfResidentFile,
+			diRefsFastTierDataFillRatio,
+			diRefsSlowTierDataFillRatio,
+			diRefsDestagesFastTierToSlowTierRate,
+			diRefsMetadataChecksumType          
+		};
+		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
+		{
+			iItem = Insert(m_hWndList,iGroupId,iItem,uInfoId[i]);
+		}
+		return iItem;
+	}
+
 	HRESULT FillItems(VOLUME_DEVICE_INFORMATION *pvdi)
 	{
 		SetRedraw(m_hWndList,FALSE);
@@ -804,6 +894,9 @@ public:
 
 		if( _wcsicmp(pvdi->FileSystemName,L"UDF") == 0 && pvdi->State.UdfData )
 			iItem = Insert_UDFInfo(iItem,pvdi);
+
+		if( _wcsicmp(pvdi->FileSystemName,L"ReFS") == 0 && pvdi->State.RefsData )
+			iItem = Insert_ReFSInfo(iItem,pvdi);
 
 		FillDeviceCharacteristics(pvdi->Characteristics);
 

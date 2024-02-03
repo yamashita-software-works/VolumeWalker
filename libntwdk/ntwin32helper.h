@@ -1,5 +1,11 @@
 #pragma once
-
+//
+//  ntwin32helper.h
+//
+//  PURPOSE: 
+//    using in ntddk build for Win32 API.Use when you want to
+//    call Win32 API from NTDDK user mode source code.
+//
 #ifndef WINAPI
 #define WINAPI      __stdcall
 #endif

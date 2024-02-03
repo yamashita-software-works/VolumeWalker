@@ -143,7 +143,7 @@ public:
 
 	LRESULT OnCreate(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-		m_hFont = GetGlobalFont(hWnd,FALSE);
+		m_hFont = GetGlobalFont(hWnd);
 		return 0;
 	}
 
@@ -602,7 +602,7 @@ public:
 	BOOL LoadColumns(HWND hWndList)
 	{
 		COLUMN_TABLE *pcoltbl;
-		if( m_columns.LoadUserDefinitionColumnTable(&pcoltbl) == 0)
+		if( m_columns.LoadUserDefinitionColumnTable(&pcoltbl,L"ColumnLayout") == 0)
 			return FALSE;
 
 		LVCOLUMN lvc = {0};
