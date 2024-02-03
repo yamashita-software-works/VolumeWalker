@@ -1,6 +1,6 @@
 ### 0.1.2.0
 
-- VolumeList,DriveListに\[使用量\]列を追加。
+- VolumeList,DriveListに\[Usage\] (使用量)列を追加。
 
 - Volume InformationでReFSのボリュームを表示した場合、REFS_VOLUME_DATA_BUFFER情報の表示を追加。
 
