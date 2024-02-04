@@ -73,16 +73,16 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// miscellaneous/system information:
 			{
-				LARGE_INTEGER liBootLocalTime;
+				LARGE_INTEGER liBootTime;
 				LARGE_INTEGER liElapsedTime;
-				GetSystemBootTime( NULL, &liBootLocalTime, &liElapsedTime );
+				GetSystemBootTime( &liBootTime, NULL, &liElapsedTime );
 
 				_CenterWindow(hDlg,GetActiveWindow());
 
 				WCHAR szBuf[64];
 				WCHAR szBootTime[32];
 				WCHAR szBootElapsedTime[32];
-				_GetDateTimeString(liBootLocalTime.QuadPart,szBootTime,ARRAYSIZE(szBootTime));
+				_GetDateTimeString(liBootTime.QuadPart,szBootTime,ARRAYSIZE(szBootTime));
 				StrFromTimeInterval(szBootElapsedTime,_countof(szBootElapsedTime),(DWORD)((liElapsedTime.QuadPart)/10000),3);
 				StrTrim(szBootElapsedTime,L" ");
 

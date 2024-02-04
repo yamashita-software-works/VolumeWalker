@@ -1,9 +1,9 @@
 #define BUILD_NUMBER 2
 #define MEJOR_VERSION 0
 #define MINOR_VERSION 1
-#define PATCH_NUMBER 0
-#define VERSION_STRING "0.1.2.0\0"
-#define VERSION_STR_DWORD 0,1,2,0
+#define PATCH_NUMBER 1
+#define VERSION_STRING "0.1.2.1\0"
+#define VERSION_STR_DWORD 0,1,2,1
 #define PRODUCT_VER_STRING "0.1\0"
 #define PRODUCT_VER_DWORD 0,1,0,0
 #define COMMON_PRODUCTNAME "Volume Walker\0"
