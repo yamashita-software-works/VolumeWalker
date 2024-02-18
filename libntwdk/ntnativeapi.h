@@ -890,6 +890,90 @@ NtQuerySymbolicLinkObject (
     __out_opt PULONG ReturnedLength
     );
 
+//////////////////////////////////////////////////////////////////////////////
+
+//
+// Volume Information Native API
+//
+
+typedef struct _FILE_FS_SECTOR_SIZE_INFORMATION
+{
+    ULONG LogicalBytesPerSector;
+    ULONG PhysicalBytesPerSectorForAtomicity;
+    ULONG PhysicalBytesPerSectorForPerformance;
+    ULONG FileSystemEffectivePhysicalBytesPerSectorForAtomicity;
+    ULONG Flags;
+    ULONG ByteOffsetForSectorAlignment;
+    ULONG ByteOffsetForPartitionAlignment;
+} FILE_FS_SECTOR_SIZE_INFORMATION, *PFILE_FS_SECTOR_SIZE_INFORMATION;
+
+typedef struct _FILE_FS_DATA_COPY_INFORMATION
+{
+    ULONG NumberOfCopies;
+} FILE_FS_DATA_COPY_INFORMATION,*PFILE_FS_DATA_COPY_INFORMATION;
+
+typedef struct _FILE_FS_METADATA_SIZE_INFORMATION
+{
+    LARGE_INTEGER TotalMetadataAllocationUnits;
+    ULONG SectorsPerAllocationUnit;
+    ULONG BytesPerSector;
+} FILE_FS_METADATA_SIZE_INFORMATION,*PFILE_FS_METADATA_SIZE_INFORMATION;
+
+typedef struct _FILE_FS_FULL_SIZE_INFORMATION_EX {
+    ULONGLONG ActualTotalAllocationUnits;
+    ULONGLONG ActualAvailableAllocationUnits;
+    ULONGLONG ActualPoolUnavailableAllocationUnits;
+    ULONGLONG CallerTotalAllocationUnits;
+    ULONGLONG CallerAvailableAllocationUnits;
+    ULONGLONG CallerPoolUnavailableAllocationUnits;
+    ULONGLONG UsedAllocationUnits;
+    ULONGLONG TotalReservedAllocationUnits;
+    ULONGLONG VolumeStorageReserveAllocationUnits;
+    ULONGLONG AvailableCommittedAllocationUnits;
+    ULONGLONG PoolAvailableAllocationUnits;
+    ULONG     SectorsPerAllocationUnit;
+    ULONG     BytesPerSector;
+} FILE_FS_FULL_SIZE_INFORMATION_EX, *PFILE_FS_FULL_SIZE_INFORMATION_EX;
+
+//
+//  Flag definitions for FILE_FS_SECTOR_SIZE_INFORMATION structure
+//
+#define SSINFO_FLAGS_ALIGNED_DEVICE                 0x00000001
+#define SSINFO_FLAGS_PARTITION_ALIGNED_ON_DEVICE    0x00000002
+#define SSINFO_FLAGS_NO_SEEK_PENALTY                0x00000004
+#define SSINFO_FLAGS_TRIM_ENABLED                   0x00000008
+#define SSINFO_FLAGS_BYTE_ADDRESSABLE               0x00000010
+#define SSINFO_OFFSET_UNKNOWN (0xffffffff)
+
+//
+// FS_INFORMATION_CLASS Class
+//
+/*++
+typedef enum _FSINFOCLASS {
+    FileFsVolumeInformation          = 1,
+    FileFsLabelInformation,         // 2
+    FileFsSizeInformation,          // 3
+    FileFsDeviceInformation,        // 4
+    FileFsAttributeInformation,     // 5
+    FileFsControlInformation,       // 6
+    FileFsFullSizeInformation,      // 7
+    FileFsObjectIdInformation,      // 8
+    FileFsDriverPathInformation,    // 9
+    FileFsVolumeFlagsInformation,   // 10 <-- Win7 WDK defined
+    FileFsSectorSizeInformation,    // 11
+    FileFsDataCopyInformation,      // 12
+    FileFsMetadataSizeInformation,  // 13
+    FileFsFullSizeInformationEx,    // 14
+    FileFsMaximumInformation
+} FS_INFORMATION_CLASS, *PFS_INFORMATION_CLASS;
+--*/
+#define FileFsSectorSizeInformation   ((FS_INFORMATION_CLASS)11)
+#define FileFsDataCopyInformation     ((FS_INFORMATION_CLASS)12)
+#define FileFsMetadataSizeInformation ((FS_INFORMATION_CLASS)13)
+#define FileFsFullSizeInformationEx   ((FS_INFORMATION_CLASS)14)
+
+//////////////////////////////////////////////////////////////////////////////
+
 //
 // Win32 compatible
 //

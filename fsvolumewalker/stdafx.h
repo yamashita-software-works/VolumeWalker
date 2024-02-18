@@ -40,7 +40,7 @@
 #include "..\inc\common_resid.h"
 #include "..\inc\appdef_resid.h"
 #include "..\inc\simplevalarray.h"
-#include "..\fsvolumeinfo\volumeinfo.h"
+#include "..\fsvolumehelp\volumehelp.h"
 #include "..\fsvolumelist\fsvolumelist.h"
 
 #define SetRedraw(h,f)	SendMessage(h,WM_SETREDRAW,(WPARAM)f,0)

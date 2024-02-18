@@ -154,49 +154,6 @@ GetVolumeObjectId(
     return Status;
 }
 
-typedef struct _FILE_FS_SECTOR_SIZE_INFORMATION {
-  ULONG LogicalBytesPerSector;
-  ULONG PhysicalBytesPerSectorForAtomicity;
-  ULONG PhysicalBytesPerSectorForPerformance;
-  ULONG FileSystemEffectivePhysicalBytesPerSectorForAtomicity;
-  ULONG Flags;
-  ULONG ByteOffsetForSectorAlignment;
-  ULONG ByteOffsetForPartitionAlignment;
-} FILE_FS_SECTOR_SIZE_INFORMATION, *PFILE_FS_SECTOR_SIZE_INFORMATION;
-
-typedef struct _FILE_FS_DATA_COPY_INFORMATION
-{
-  ULONG NumberOfCopies;
-} FILE_FS_DATA_COPY_INFORMATION,*PFILE_FS_DATA_COPY_INFORMATION;
-
-typedef struct _FILE_FS_METADATA_SIZE_INFORMATION
-{
-  LARGE_INTEGER TotalMetadataAllocationUnits;
-  ULONG SectorsPerAllocationUnit;
-  ULONG BytesPerSector;
-} FILE_FS_METADATA_SIZE_INFORMATION,*PFILE_FS_METADATA_SIZE_INFORMATION;
-
-typedef struct _FILE_FS_FULL_SIZE_INFORMATION_EX {
-  ULONGLONG ActualTotalAllocationUnits;
-  ULONGLONG ActualAvailableAllocationUnits;
-  ULONGLONG ActualPoolUnavailableAllocationUnits;
-  ULONGLONG CallerTotalAllocationUnits;
-  ULONGLONG CallerAvailableAllocationUnits;
-  ULONGLONG CallerPoolUnavailableAllocationUnits;
-  ULONGLONG UsedAllocationUnits;
-  ULONGLONG TotalReservedAllocationUnits;
-  ULONGLONG VolumeStorageReserveAllocationUnits;
-  ULONGLONG AvailableCommittedAllocationUnits;
-  ULONGLONG PoolAvailableAllocationUnits;
-  ULONG     SectorsPerAllocationUnit;
-  ULONG     BytesPerSector;
-} FILE_FS_FULL_SIZE_INFORMATION_EX, *PFILE_FS_FULL_SIZE_INFORMATION_EX;
-
-#define FileFsSectorSizeInformation   ((FS_INFORMATION_CLASS)11)
-#define FileFsDataCopyInformation     12
-#define FileFsMetadataSizeInformation 13
-#define FileFsFullSizeInformationEx   ((FS_INFORMATION_CLASS)14)
-
 PVOID AllocAndGetInformaion(HANDLE hVolume,FS_INFORMATION_CLASS InfoClass,NTSTATUS& Status)
 {
     ULONG cbBuffer = 1024;
@@ -270,11 +227,16 @@ GetVolumeFsInformation(
             *Buffer = AllocAndGetInformaion( Handle, FileFsAttributeInformation, Status );
             break;
         }
-        case VOLFS_SECTORSIZE_INFORMATION:
+        case VOLFS_SECTOR_SIZE_INFORMATION:
         {
             *Buffer = AllocAndGetInformaion( Handle, FileFsSectorSizeInformation, Status );
             break;
         }
+		case VOLFS_CONTROL_INFORMATION:
+		{
+            *Buffer = AllocAndGetInformaion( Handle, FileFsControlInformation, Status );
+            break;
+		}
         default:
             return STATUS_INVALID_PARAMETER;
     }

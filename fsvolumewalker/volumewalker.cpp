@@ -497,7 +497,7 @@ ATOM RegisterMDIFrameClass(HINSTANCE hInstance)
 	WNDCLASSEX wcex = {0};
 
 	wcex.cbSize        = sizeof(wcex);
-	wcex.style         = CS_HREDRAW|CS_VREDRAW;
+	wcex.style         = 0;
 	wcex.lpfnWndProc   = WndProc;
 	wcex.cbClsExtra	   = 0;
 	wcex.cbWndExtra	   = 0;

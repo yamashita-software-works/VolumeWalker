@@ -19,6 +19,11 @@
 
 #define _STR_NA  L"---"
 
+#define _INDENT_WIDTH (18)
+#define _SET_INDENT(n) (n * _INDENT_WIDTH)
+
+#define _DEF_FLAG_STRING(f) { f, L#f }
+
 enum {
 	ID_GROUP_GENERIC = 1,
 	ID_GROUP_SIZE,
@@ -75,7 +80,7 @@ public:
 	~CVolumeBasicInfoView()
 	{
 		if( m_pvdi != NULL )
-			FreeVolumeInformation(m_pvdi);
+			DestroyVolumeInformationBuffer(m_pvdi);
 		_SafeMemFree(m_pszNtDeviceName);
 		_SafeMemFree(m_pszVolumeGuid);
 		_SafeMemFree(m_pszDrive);
@@ -682,7 +687,7 @@ public:
 			LVS_EX_DOUBLEBUFFER|LVS_EX_FULLROWSELECT|LVS_EX_AUTOSIZECOLUMNS|
 			LVS_EX_HEADERINALLVIEWS|LVS_EX_JUSTIFYCOLUMNS|LVS_EX_LABELTIP);
 
-		HIMAGELIST himl = ImageList_Create(8,16,ILC_COLOR32,1,1);
+		HIMAGELIST himl = ImageList_Create(1,16,ILC_COLOR32,1,1);
 		ListView_SetImageList(hWndList,himl,LVSIL_SMALL);
 
 		LVCOLUMN lvc;
@@ -714,7 +719,7 @@ public:
 		lvi.mask = LVIF_TEXT|LVIF_IMAGE|LVIF_INDENT|LVIF_PARAM|LVIF_GROUPID;
 		lvi.iItem = iItem;
 		lvi.iImage = I_IMAGENONE;
-		lvi.iIndent = 1;
+		lvi.iIndent = _SET_INDENT(1);
 		lvi.lParam = (LPARAM)pItem;
 		lvi.iGroupId = iGroupId;
 		lvi.pszText = LPSTR_TEXTCALLBACK;
@@ -870,7 +875,7 @@ public:
 		// Update m_pvdi buffer pointer
 		//
 		if( m_pvdi != NULL )
-			FreeVolumeInformation(m_pvdi);
+			DestroyVolumeInformationBuffer(m_pvdi);
 		m_pvdi = pvdi;
 
 		BOOL bFirst = (ListView_GetItemCount(m_hWndList) == 0 ? TRUE : FALSE);
@@ -951,7 +956,7 @@ public:
 			OpenFlags = OPEN_VOLUME_READ_DATA;
 
 		PVOID InformaionBuffer = NULL;
-		GetherVolumeInformation(m_pszNtDeviceName,0,OpenFlags,(void **)&InformaionBuffer);
+		CreateVolumeInformationBuffer(m_pszNtDeviceName,0,OpenFlags,(void **)&InformaionBuffer);
 		if( InformaionBuffer == NULL )
 		{
 			return E_FAIL;
@@ -1010,14 +1015,14 @@ public:
 		lvi.iImage   = 0;
 		lvi.lParam   = (LPARAM)0;
 		lvi.iGroupId = iGroupId;
-		lvi.iIndent  = iIndent;
+		lvi.iIndent  = _SET_INDENT(iIndent);
 		iItem = ListView_InsertItem(m_hWndList,&lvi);
 
 		if( pszValue )
 			ListView_SetItemText(m_hWndList,iItem,1,(LPWSTR)pszValue);
 	}
 
-	VOID _cdecl InsertItemFormat(int iIndent,LPCWSTR pszName,LPCWSTR lpszFormat, ...)
+	VOID _cdecl InsertItemFormat(int iIndent,int iGroupId,LPCWSTR pszName,LPCWSTR lpszFormat, ...)
 	{
 		va_list args;
 		va_start(args, lpszFormat);
@@ -1030,7 +1035,7 @@ public:
 
 		if( nBuf != -1 )
 		{
-			InsertItemString(iIndent,pszName,szBuffer,ID_GROUP_MEDIATYPES);
+			InsertItemString(iIndent,pszName,szBuffer,iGroupId);
 		}
 
 		va_end(args);
@@ -1047,19 +1052,19 @@ public:
 
 		for(i = 0; i < MediaInfoCount; i++)
 		{
-			InsertItemFormat(iIndent,L"Media Type",L"%s", 
+			InsertItemFormat(iIndent,ID_GROUP_MEDIATYPES,L"Media Type",L"%s", 
 					GetVolumeTypeString(CSTR_MEDIATYPE,pMediaInfo[i].DeviceSpecific.DiskInfo.MediaType,szText,_countof(szText)),ID_GROUP_MEDIATYPES);
-			InsertItemFormat(iIndent,L"Cylinders",L"%s", 
+			InsertItemFormat(iIndent,ID_GROUP_MEDIATYPES,L"Cylinders",L"%s", 
 					_CommaFormatString(pMediaInfo[i].DeviceSpecific.DiskInfo.Cylinders.QuadPart,szText),ID_GROUP_MEDIATYPES);
-			InsertItemFormat(iIndent,L"Bytes/Sector",L"%s", 
+			InsertItemFormat(iIndent,ID_GROUP_MEDIATYPES,L"Bytes/Sector",L"%s", 
 					_CommaFormatString(pMediaInfo[i].DeviceSpecific.DiskInfo.BytesPerSector,szText),ID_GROUP_MEDIATYPES);
-			InsertItemFormat(iIndent,L"Sectors/Track",L"%s", 
+			InsertItemFormat(iIndent,ID_GROUP_MEDIATYPES,L"Sectors/Track",L"%s", 
 					_CommaFormatString(pMediaInfo[i].DeviceSpecific.DiskInfo.SectorsPerTrack,szText),ID_GROUP_MEDIATYPES);
-			InsertItemFormat(iIndent,L"Tracks/Cylinder",L"%s", 
+			InsertItemFormat(iIndent,ID_GROUP_MEDIATYPES,L"Tracks/Cylinder",L"%s", 
 					_CommaFormatString(pMediaInfo[i].DeviceSpecific.DiskInfo.TracksPerCylinder,szText),ID_GROUP_MEDIATYPES);
-			InsertItemFormat(iIndent,L"Number of Media Sides",L"%s", 
+			InsertItemFormat(iIndent,ID_GROUP_MEDIATYPES,L"Number of Media Sides",L"%s", 
 					_CommaFormatString(pMediaInfo[i].DeviceSpecific.DiskInfo.NumberMediaSides,szText),ID_GROUP_MEDIATYPES);
-			InsertItemFormat(iIndent,L"Media Characteristics",L"0x%08X", 
+			InsertItemFormat(iIndent,ID_GROUP_MEDIATYPES,L"Media Characteristics",L"0x%08X", 
 					pMediaInfo[i].DeviceSpecific.DiskInfo.MediaCharacteristics,ID_GROUP_MEDIATYPES);
 
 			WCHAR szLabel[32];
@@ -1070,7 +1075,7 @@ public:
 				if( pMediaInfo[i].DeviceSpecific.DiskInfo.MediaCharacteristics & dwMask )
 				{
 					StringCchPrintf(szLabel,ARRAYSIZE(szLabel),L"0x%08X",dwMask);
-					InsertItemFormat(iIndent+1,szLabel,L"%s",
+					InsertItemFormat(iIndent+1,ID_GROUP_MEDIATYPES,szLabel,L"%s",
 							GetMediaCharacteristicsString((pMediaInfo[i].DeviceSpecific.DiskInfo.MediaCharacteristics & dwMask),szText,_countof(szText)),ID_GROUP_MEDIATYPES);
 				}
 				dwMask >>= 1;
@@ -1088,7 +1093,7 @@ public:
 
 		GetVolumeTypeString(CSTR_DEVICETYPE,pMediaTypes->DeviceType,szText,_countof(szText));
 
-		InsertItemFormat(iIndent,L"Device Type",L"%s (%u)",szText,pMediaTypes->DeviceType);
+		InsertItemFormat(iIndent,ID_GROUP_MEDIATYPES,L"Device Type",L"%s (%u)",szText,pMediaTypes->DeviceType);
 
 		switch( pMediaTypes->DeviceType )
 		{
@@ -1133,7 +1138,7 @@ public:
 			//
 			StringCchPrintf(szBuffer,MAX_PATH,L"Extent #%u",i + 1);
 			lvi.iItem = iItem++;
-			lvi.iIndent = 1;
+			lvi.iIndent = _SET_INDENT(1);
 			lvi.iGroupId = ID_GROUP_PHYSICALDRIVE;
 			lvi.pszText = szBuffer;
 			iItem = ListView_InsertItem(m_hWndList,&lvi);
@@ -1148,7 +1153,7 @@ public:
 			//
 			StringCchPrintf(szBuffer,MAX_PATH,L"Starting Offset");
 			lvi.iItem = iItem;
-			lvi.iIndent = 2;
+			lvi.iIndent = _SET_INDENT(2);
 			lvi.iGroupId = ID_GROUP_PHYSICALDRIVE;
 			iItem = ListView_InsertItem(m_hWndList,&lvi);
 
@@ -1164,7 +1169,7 @@ public:
 			//
 			StringCchPrintf(szBuffer,MAX_PATH,L"Extent Length");
 			lvi.iItem = iItem;
-			lvi.iIndent = 2;
+			lvi.iIndent = _SET_INDENT(2);
 			lvi.iGroupId = ID_GROUP_PHYSICALDRIVE;
 			iItem = ListView_InsertItem(m_hWndList,&lvi);
 
@@ -1190,7 +1195,7 @@ public:
 		lvi.lParam = 0;
 		lvi.iImage = 0;
 		lvi.iItem = iItem;
-		lvi.iIndent = 1;
+		lvi.iIndent = _SET_INDENT(1);
 		lvi.iGroupId = ID_GROUP_GENERIC;
 		ListView_InsertItem(m_hWndList,&lvi);
 
@@ -1227,7 +1232,7 @@ public:
 					lvi.lParam = 0;
 					lvi.iImage = 0;
 					lvi.iItem = iItem;
-					lvi.iIndent = 2;
+					lvi.iIndent = _SET_INDENT(2);
 					lvi.iGroupId = ID_GROUP_GENERIC;
 					ListView_InsertItem(m_hWndList,&lvi);
 
@@ -1252,7 +1257,7 @@ public:
 		lvi.lParam = 0;
 		lvi.iImage = 0;
 		lvi.iItem = iItem;
-		lvi.iIndent = 1;
+		lvi.iIndent = _SET_INDENT(1);
 		lvi.iGroupId = ID_GROUP_FILESYSTEM_ATTRIBUTES;
 		ListView_InsertItem(m_hWndList,&lvi);
 
@@ -1277,7 +1282,7 @@ public:
 					lvi.lParam = 0;
 					lvi.iImage = 0;
 					lvi.iItem = iItem;
-					lvi.iIndent = 2;
+					lvi.iIndent = _SET_INDENT(2);
 					lvi.iGroupId = ID_GROUP_FILESYSTEM_ATTRIBUTES;
 					ListView_InsertItem(m_hWndList,&lvi);
 
@@ -1294,7 +1299,7 @@ public:
 					lvi.lParam = 0;
 					lvi.iImage = 0;
 					lvi.iItem = iItem;
-					lvi.iIndent = 2;
+					lvi.iIndent = _SET_INDENT(2);
 					lvi.iGroupId = ID_GROUP_FILESYSTEM_ATTRIBUTES;
 					ListView_InsertItem(m_hWndList,&lvi);
 

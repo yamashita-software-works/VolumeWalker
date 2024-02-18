@@ -15,9 +15,8 @@
 //  Licensed under the MIT License.
 //
 #include "dparray.h"
-#include "..\inc\common.h"
+#include "common.h"
 #include "column.h"
-#include "..\fsvolumeinfo\storagedevice.h"
 #include <devguid.h>
 
 #define TE_OPEN_MDI_CHILD_FRAME  (1)
@@ -57,7 +56,7 @@ public:
 		_SafeMemFree(GuidName);
 		_SafeMemFree(Drive);
 		_SafeMemFree(DrivePaths);
-		FreeVolumeInformation(VolInfoBuffer);
+		DestroyVolumeInformationBuffer(VolInfoBuffer);
 	}
 };
 
@@ -755,7 +754,7 @@ public:
 			OpenFlags = OPEN_VOLUME_READ_DATA;
 
 		HRESULT hr;
-		hr = GetherVolumeInformation(pszVolumeName,0,OpenFlags,(void **)VolInfoBufferPtr);
+		hr = CreateVolumeInformationBuffer(pszVolumeName,0,OpenFlags,(void **)VolInfoBufferPtr);
 
 		return hr;
 	}

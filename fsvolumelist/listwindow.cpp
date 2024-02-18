@@ -169,7 +169,7 @@ public:
 	VOID OnUpdateInformationView(SELECT_ITEM* pVolume)
 	{
 		SELECT_ITEM sel = {0};
-		sel.ViewType = -1;
+		sel = *pVolume;
 		m_pView->UpdateData(&sel);
 	}
 

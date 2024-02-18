@@ -17,7 +17,6 @@
 #include "dparray.h"
 #include "..\inc\common.h"
 #include "column.h"
-#include "..\fsvolumeinfo\storagedevice.h"
 #include <devguid.h>
 #include <vss.h>
 #include <vswriter.h>

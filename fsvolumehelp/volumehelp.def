@@ -1,0 +1,69 @@
+LIBRARY "fsvolumehelp"
+
+EXPORTS
+	CreateVolumeInformationBuffer
+	DestroyVolumeInformationBuffer
+
+	;
+	; Disk/Storage funcsions (Legacy Products Compatible API)
+	;
+	OpenDisk
+	GetDeviceTypeByVolumeName
+	GetVolumeTypeString
+	GetDiskDriveGeometryEx
+	GetGPTPartitionTypeString
+	GetPartitionStyleText
+	GetGPTAttribute
+	GetPartitionTypeText
+	GetDeviceCharacteristicsFlag
+	GetDeviceCharacteristicsString
+	GetMediaCharacteristicsString
+	GetMediaTypeString
+	GetVolumeAttributeFlag
+	GetVolumeAttributeString
+	GetStorageBusTypeDescString
+
+	;
+	; Utility
+	;
+	_FormatByteSize
+	_MakeGUIDString
+
+	;
+	; Virtual Disk
+	;
+	VirtualDiskGetDependencyInformation
+	VirtualDiskIsVirtualDiskVolume
+
+	;
+	; Storage Device
+	;
+	GetKnownHardwareProducts
+	FreeKnownHardwareProducts
+	GetKnownHardwareProductsCount
+	GetKnownHardwareProductPointer
+	FindVolumeObjectPath
+
+	StorageGetDeviceNumber
+	StorageGetDeviceIdDescriptor
+	StorageGetDeviceUniqueIdentifier
+	StorageDetectSectorSize
+	StorageMediumProductTypeDescriptor
+	StorageGetMediaTypes
+	StorageAdapterDescriptor
+	StorageDeviceIdDescriptor
+
+	;
+	; Mounted Device
+	;
+	GetMountedDeviceList
+	FreeMountedDeviceList
+	GetMountedDeviceInfo
+	FreeMountedDeviceInfo
+
+	;
+	; MS-DOS Drive Heler
+	;
+	EnumDosDriveItems
+	FreeDosDriveItems
+	GetVolumeDrivePathsString @100 NONAME

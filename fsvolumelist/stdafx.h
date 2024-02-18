@@ -29,8 +29,6 @@
 
 #include "builddefs.h"
 
-#include "common_control_helper.h"
-
 #if _MSC_VER <= 1500
 #define nullptr NULL
 #endif
@@ -40,18 +38,21 @@
 #include "debug.h"
 #include "mem.h"
 #include "libmisc.h"
-#include "..\libntwdk\libntwdk.h"
-#include "..\libntwdk\ntwin32helper.h"
-#include "..\inc\common.h"
-#include "..\inc\common_control_helper.h"
-#include "..\inc\simplestack.h"
-#include "..\inc\common_resid.h"
-#include "..\inc\appdef_resid.h"
-#include "..\inc\listhelp.h"
-#include "..\fsvolumeinfo\volumeinfo.h"
+#include "common.h"
+#include "common_control_helper.h"
+#include "simplestack.h"
+#include "common_resid.h"
+#include "appdef_resid.h"
+#include "listhelp.h"
 #include "appwindowdefs.h"
 #include "interface.h"
 #include "winfsctl.h"
+#include "libntwdk.h"
+#include "ntwin32helper.h"
+#include "..\fsvolumehelp\volumehelp.h"
+#include "..\fsvolumehelp\physicaldriveinformationclass.h"
+#include "..\fsvolumehelp\volumedevinfostruct.h"
+#include "..\fsvolumehelp\storagedevice.h"
 
 HWND CreateVolumeInformationWindow(HWND hWnd);
 HWND CreateDiskLayoutWindow(HWND hWnd);

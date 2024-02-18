@@ -17,7 +17,6 @@
 #include "dparray.h"
 #include "..\inc\common.h"
 #include "column.h"
-#include "..\fsvolumeinfo\storagedevice.h"
 #include <devguid.h>
 
 struct CPhysicalDriveItem
@@ -662,6 +661,8 @@ public:
 	{
 		CWaitCursor wait;
 
+		LoadFltLibDll(NULL);
+
 		SetRedraw(m_hWndList,FALSE);
 
 		//
@@ -720,6 +721,8 @@ public:
 		// Sort in new list.
 		//
 		DoSort(m_Sort.CurrentSubItem,0);
+
+		UnloadFltLibDll(NULL);
 
 		SetRedraw(m_hWndList,TRUE);
 

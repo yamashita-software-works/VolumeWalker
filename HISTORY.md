@@ -1,3 +1,13 @@
+### 0.1.3.0
+
+- DLLの名称変更。 fsvolumeinfo.dll -> fsvolumehelp.dll
+
+- CSimpleValArrayはATLとクラス名が重複するため、CValArrayに変更。
+
+- Disk Drive Information ウィンドウでパーティション情報にDOSドライブレターが表示されていなかった不具合を修正。
+
+- コード整理、細かい不具合修正など。
+
 ### 0.1.2.1
 
 - Aboutダイアログに表示されるSystem Boot Timeを、日時をローカル時間で取得した後、再度ローカル時間に変換して表示していた不具合を修正。

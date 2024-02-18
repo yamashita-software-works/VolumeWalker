@@ -891,7 +891,12 @@ UnloadFltLibDll(
 /////////////////////////////////////////////////////////////////////////////
 // miscellaneous
 
-HRESULT IsSetDirtyBit(HANDLE Handle)
+EXTERN_C
+HRESULT
+WINAPI
+IsSetDirtyBit(
+	IN HANDLE Handle
+	)
 {
 	HRESULT hr;
 	//

@@ -211,41 +211,54 @@ public:
 				*pszText = m_pszPhysicalDrive;
 				break;
 			case diPhysicalDiskSize:
-				StrFormatByteSizeW(m_pdi->pGeometry->DiskSize.QuadPart,*pszText,cchText);
+				if( m_pdi->pGeometry )
+					StrFormatByteSizeW(m_pdi->pGeometry->DiskSize.QuadPart,*pszText,cchText);
 				break;
 			case diPartitionStyle:
-				*pszText = (PWSTR)GetPartitionStyleText(m_pdi->pDriveLayout->PartitionStyle);
+				if( m_pdi->pDriveLayout )
+					*pszText = (PWSTR)GetPartitionStyleText(m_pdi->pDriveLayout->PartitionStyle);
 				break;
 			case diMBRSignature:
-				StringCchPrintf(*pszText,cchText,L"0x%08X",m_pdi->pDriveLayout->Mbr.Signature);
+				if( m_pdi->pDriveLayout )
+					StringCchPrintf(*pszText,cchText,L"0x%08X",m_pdi->pDriveLayout->Mbr.Signature);
 				break;
 			case diGPTDiskId:
-				_MakeGUIDString(m_pdi->pDriveLayout->Gpt.DiskId,*pszText,cchText);
+				if( m_pdi->pDriveLayout )
+					_MakeGUIDString(m_pdi->pDriveLayout->Gpt.DiskId,*pszText,cchText);
 				break;
 			case diGPTStartingUsableOffset:
-				StringCchPrintf(*pszText,cchText,L"0x%I64X",m_pdi->pDriveLayout->Gpt.StartingUsableOffset.QuadPart);
+				if( m_pdi->pDriveLayout )
+					StringCchPrintf(*pszText,cchText,L"0x%I64X",m_pdi->pDriveLayout->Gpt.StartingUsableOffset.QuadPart);
 				break;
 			case diGPTUsableLength:
-				StringCchPrintf(*pszText,cchText,L"0x%I64X",m_pdi->pDriveLayout->Gpt.UsableLength.QuadPart);
+				if( m_pdi->pDriveLayout )
+					StringCchPrintf(*pszText,cchText,L"0x%I64X",m_pdi->pDriveLayout->Gpt.UsableLength.QuadPart);
 				break;
 			case diGPTMaxPartitionCount:
-				StringCchPrintf(*pszText,cchText,L"0x%X (%s)",m_pdi->pDriveLayout->Gpt.MaxPartitionCount,_CommaFormatString(m_pdi->pDriveLayout->Gpt.MaxPartitionCount,szBuffer));
+				if( m_pdi->pDriveLayout )
+					StringCchPrintf(*pszText,cchText,L"0x%X (%s)",m_pdi->pDriveLayout->Gpt.MaxPartitionCount,_CommaFormatString(m_pdi->pDriveLayout->Gpt.MaxPartitionCount,szBuffer));
 				break;
 			case diDiskSize:
-				StrFormatByteSizeW(m_pdi->pGeometry->DiskSize.QuadPart,szBuffer,_countof(szBuffer));
-				StringCchPrintf(*pszText,cchText,L"0x%016I64X (%s)",m_pdi->pGeometry->DiskSize.QuadPart,szBuffer);
+				if( m_pdi->pGeometry ) {
+					StrFormatByteSizeW(m_pdi->pGeometry->DiskSize.QuadPart,szBuffer,_countof(szBuffer));
+					StringCchPrintf(*pszText,cchText,L"0x%016I64X (%s)",m_pdi->pGeometry->DiskSize.QuadPart,szBuffer);
+				}
 				break;
 			case diCylinders:
-				StringCchPrintf(*pszText,cchText,L"0x%016I64X (%s)",m_pdi->pGeometry->Geometry.Cylinders.QuadPart,_CommaFormatString(m_pdi->pGeometry->Geometry.Cylinders.QuadPart,szBuffer));
+				if( m_pdi->pGeometry )
+					StringCchPrintf(*pszText,cchText,L"0x%016I64X (%s)",m_pdi->pGeometry->Geometry.Cylinders.QuadPart,_CommaFormatString(m_pdi->pGeometry->Geometry.Cylinders.QuadPart,szBuffer));
 				break;
 			case diTracksPerCylinder:
-				StringCchPrintf(*pszText,cchText,L"0x%08X (%s)",m_pdi->pGeometry->Geometry.TracksPerCylinder,_CommaFormatString(m_pdi->pGeometry->Geometry.TracksPerCylinder,szBuffer));
+				if( m_pdi->pGeometry )
+					StringCchPrintf(*pszText,cchText,L"0x%08X (%s)",m_pdi->pGeometry->Geometry.TracksPerCylinder,_CommaFormatString(m_pdi->pGeometry->Geometry.TracksPerCylinder,szBuffer));
 				break;
 			case diSectorsPerTrack:
-				StringCchPrintf(*pszText,cchText,L"0x%08X (%s)",m_pdi->pGeometry->Geometry.SectorsPerTrack,_CommaFormatString(m_pdi->pGeometry->Geometry.SectorsPerTrack,szBuffer));
+				if( m_pdi->pGeometry )
+					StringCchPrintf(*pszText,cchText,L"0x%08X (%s)",m_pdi->pGeometry->Geometry.SectorsPerTrack,_CommaFormatString(m_pdi->pGeometry->Geometry.SectorsPerTrack,szBuffer));
 				break;
 			case diBytesPerSector:
-				StringCchPrintf(*pszText,cchText,L"0x%08X (%s)",m_pdi->pGeometry->Geometry.BytesPerSector,_CommaFormatString(m_pdi->pGeometry->Geometry.BytesPerSector,szBuffer));
+				if( m_pdi->pGeometry )
+					StringCchPrintf(*pszText,cchText,L"0x%08X (%s)",m_pdi->pGeometry->Geometry.BytesPerSector,_CommaFormatString(m_pdi->pGeometry->Geometry.BytesPerSector,szBuffer));
 				break;
 			case diAlignmentBytesPerPhysicalSector:
 				StringCchPrintf(*pszText,cchText,L"%lu bytes", m_pdi->Alignment.BytesPerPhysicalSector);
@@ -266,8 +279,10 @@ public:
 			case diProductId:
 			case diProductRevision:
 			case diSerialNumber:
-				StringCchPrintf(*pszText,cchText,L"%S",DeviceDescriptor(iItemType,m_pdi->pDeviceDescriptor));
-				StrTrim(*pszText,L" ");
+				if( m_pdi->pDeviceDescriptor ) {
+					StringCchPrintf(*pszText,cchText,L"%S",DeviceDescriptor(iItemType,m_pdi->pDeviceDescriptor));
+					StrTrim(*pszText,L" ");
+				}
 				break;
 		}
 
@@ -481,7 +496,7 @@ public:
 		return iItem;
 	}
 
-	INT Insert_BasicInfo(int iItem,CPhysicalDriveInformation *pdi)
+	INT Insert_BasicInfo(int iItem)
 	{
 		int iGroupId = ID_GROUP_PD_BASIC;
 
@@ -500,22 +515,25 @@ public:
 			iItem = Insert(m_hWndList,iGroupId,iItem,uInfoId[i]);
 		}
 
-		if( m_pdi->pDriveLayout->PartitionStyle == PARTITION_STYLE_MBR )
+		if( m_pdi->m_dwDriveLayoutStatus == ERROR_SUCCESS )
 		{
-			iItem = Insert(m_hWndList,ID_GROUP_PD_MBR,iItem,diMBRSignature);
-		}
-		else if( m_pdi->pDriveLayout->PartitionStyle == PARTITION_STYLE_GPT ) 
-		{
-			iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTDiskId);
-			iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTStartingUsableOffset);
-			iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTUsableLength);
-			iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTMaxPartitionCount);
+			if( m_pdi->pDriveLayout->PartitionStyle == PARTITION_STYLE_MBR )
+			{
+				iItem = Insert(m_hWndList,ID_GROUP_PD_MBR,iItem,diMBRSignature);
+			}
+			else if( m_pdi->pDriveLayout->PartitionStyle == PARTITION_STYLE_GPT ) 
+			{
+				iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTDiskId);
+				iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTStartingUsableOffset);
+				iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTUsableLength);
+				iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTMaxPartitionCount);
+			}
 		}
 
 		return iItem;
 	}
 
-	INT Insert_DiskGeometry(int iItem,CPhysicalDriveInformation *)
+	INT Insert_DiskGeometry(int iItem)
 	{
 		UINT uId[] = {
 			diDiskSize,
@@ -563,7 +581,7 @@ public:
 		lvi.iIndent = iIndent;
 		lvi.lParam = (LPARAM)pItem;
 		lvi.iGroupId = ID_GROUP_PD_PARTITION;
-		lvi.pszText = (LPWSTR)pszName;//LPSTR_TEXTCALLBACK;
+		lvi.pszText = (LPWSTR)pszName;
 
 		iItem = ListView_InsertItem(m_hWndList,&lvi);
 
@@ -818,9 +836,10 @@ public:
 		//
 		int iItem = 0;
 
-		iItem = Insert_BasicInfo(iItem,pdi);
+		iItem = Insert_BasicInfo(iItem);
 
-		iItem = Insert_DiskGeometry(iItem,pdi);
+		if( m_pdi->pGeometry )
+			iItem = Insert_DiskGeometry(iItem);
 
 		if( m_pdi->IsValidAlignment() )
 			iItem = Insert_AccessAlignmentDescriptor(iItem,pdi);

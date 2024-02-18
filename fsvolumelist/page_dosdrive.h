@@ -17,7 +17,6 @@
 #include "dparray.h"
 #include "..\inc\common.h"
 #include "column.h"
-#include "..\fsvolumeinfo\storagedevice.h"
 #include "simplevalarray.h"
 #include <devguid.h>
 
@@ -715,7 +714,7 @@ public:
 			OpenFlags = OPEN_VOLUME_READ_DATA;
 
 		HRESULT hr;
-		hr = GetherVolumeInformation(pszVolumeName,0,OpenFlags,(void **)VolInfoBufferPtr);
+		hr = CreateVolumeInformationBuffer(pszVolumeName,0,OpenFlags,(void **)VolInfoBufferPtr);
 
 		return hr;
 	}
