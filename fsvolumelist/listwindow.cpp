@@ -233,3 +233,8 @@ HWND CreateDosDriveWindow(HWND hWndParent)
 {
 	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_DOSDRIVELIST);
 }
+
+HWND CreateFileSystemStatisticsWindow(HWND hWndParent)
+{
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_FILESYSTEMSTATISTICS);
+}

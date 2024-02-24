@@ -172,6 +172,11 @@ public:
 				pNew = GetOrAllocWndObject<CDosDriveListPage>(nView);
 				break;
 			}
+			case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
+			{
+				pNew = GetOrAllocWndObject<CFileSystemStatisticsPage>(nView);
+				break;
+			}
 			default:
 				return NULL;
 		}
@@ -324,6 +329,9 @@ public:
 				_SelectPage( SelItem );
 				break;
 			case VOLUME_CONSOLE_DOSDRIVELIST:
+				_SelectPage( SelItem );
+				break;
+			case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 				_SelectPage( SelItem );
 				break;
 			default:

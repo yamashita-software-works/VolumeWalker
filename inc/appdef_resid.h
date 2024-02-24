@@ -11,6 +11,7 @@
 #define ID_VOLUMELIST                  41008
 #define ID_PHYSICALDRIVELIST           41009 
 #define ID_MSDOSDRIVES                 41010
+#define ID_FILESYSTEMSTATISTICS        41011
 
 #define ID_EDIT_COPY_COUMN_FIRST       41100
 #define ID_EDIT_COPY_COUMN_LAST        41149

@@ -247,6 +247,7 @@ GetReFSVolumeData(
     );
 
 HRESULT
+WINAPI
 IsSetDirtyBit(
 	HANDLE Handle
 	);

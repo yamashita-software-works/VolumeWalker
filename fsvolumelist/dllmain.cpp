@@ -95,6 +95,9 @@ CreateVolumeConsoleWindow(
 		case VOLUME_CONSOLE_DOSDRIVELIST:
 			hwndViewBase = CreateDosDriveWindow(hwnd);
 			break;
+		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
+			hwndViewBase = CreateFileSystemStatisticsWindow(hwnd);
+			break;
 		default:
 			return NULL;
 	}

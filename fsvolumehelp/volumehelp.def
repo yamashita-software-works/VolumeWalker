@@ -22,6 +22,7 @@ EXPORTS
 	GetVolumeAttributeFlag
 	GetVolumeAttributeString
 	GetStorageBusTypeDescString
+	QueryDiskPerformance
 
 	;
 	; Utility
@@ -67,3 +68,11 @@ EXPORTS
 	EnumDosDriveItems
 	FreeDosDriveItems
 	GetVolumeDrivePathsString @100 NONAME
+
+	;
+	; Statistics
+	;
+	GetStatisticsData
+	FreeStatisticsData
+	CalcStatisticsDiffEx
+	CalcStatisticsDiffNtfsEx

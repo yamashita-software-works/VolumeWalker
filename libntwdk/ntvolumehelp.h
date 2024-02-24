@@ -24,6 +24,7 @@ OpenVolume(
 
 #define OPEN_READ_DATA     0x1
 #define OPEN_GENERIC_READ  0x2
+#define OPEN_BACKUP_INTENT 0x4
 
 EXTERN_C
 NTSTATUS

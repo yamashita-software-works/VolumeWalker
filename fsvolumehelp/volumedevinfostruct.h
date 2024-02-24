@@ -65,8 +65,6 @@ typedef struct _VOLUME_DEVICE_INFORMATION
 	WCHAR *HardwareInstanceId;   // msz reserved
 	WCHAR *HardwareDeviceObject; // msz reserved
 
-	ULONG VolumeDirtyFlags; // admin only. (ULONG)-1 is not available.
-
 	STORAGE_DEVICE_NUMBER DeviceNumber;
 	PSTORAGE_DEVICE_DESCRIPTOR pDeviceDescriptor;
 	STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR AlignmentDescriptor;
@@ -82,7 +80,7 @@ typedef struct _VOLUME_DEVICE_INFORMATION
 	VOLUME_FS_CONTROL_INFORMATION Control;                 // Same as FS_CONTROL_INFORMATION
 	VOLUME_FS_SECTOR_SIZE_INFORMATION SectorSize;          // Same as FS_SECTOR_SIZE_INFORMATION
 
-	CHAR DirtyBit;
+	CHAR DirtyBit;                                         // -1:No Data 0:Not Dirty 1:Dirty
 	CHAR VirtualDiskVolume;
     CHAR RecognitionFileSystem[9];
 

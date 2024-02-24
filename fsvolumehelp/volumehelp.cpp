@@ -1629,6 +1629,33 @@ GetVolumeTypeString(
 
 //----------------------------------------------------------------------------
 //
+//  TryOpenVolume()
+//
+//  PURPOSE: 
+//
+//----------------------------------------------------------------------------
+static 
+NTSTATUS
+TryOpenVolume(
+	HANDLE *pHandle,
+	PCWSTR pszVolumeName
+	)
+{
+	NTSTATUS Status;
+	Status = OpenVolume(pszVolumeName,OPEN_READ_DATA,pHandle);
+	if( Status != STATUS_SUCCESS )
+	{
+		Status = OpenVolume(pszVolumeName,OPEN_GENERIC_READ,pHandle);
+		if( Status != STATUS_SUCCESS )
+		{
+			Status = OpenVolume(pszVolumeName,0,pHandle);
+		}
+	}
+	return Status;
+}
+
+//----------------------------------------------------------------------------
+//
 //  CreateVolumeInformationBuffer()
 //
 //  PURPOSE: Create information buffer and gathering volume/disk information.
@@ -1639,13 +1666,13 @@ HRESULT
 WINAPI
 CreateVolumeInformationBuffer(
 	PCWSTR pszVolumeName,
-	ULONG InformationClass,
-	ULONG OpenFlags,
+	ULONG /*InformationClass*/,
+	ULONG /*OpenFlags*/,
 	PVOID *InformaionBuffer
 	)
 {
 	NTSTATUS Status;
-	HRESULT hr;
+	HRESULT hr = E_FAIL;
 
 	//
 	// Volume Device 
@@ -1663,34 +1690,27 @@ CreateVolumeInformationBuffer(
 		pVolumeInfo = new VOLUME_DEVICE_INFORMATION;
 		RtlZeroMemory(pVolumeInfo,sizeof(VOLUME_DEVICE_INFORMATION));
 
-		pVolumeInfo->VolumeDirtyFlags = (ULONG)-1;
 		pVolumeInfo->RetrievalPointerBase.FileAreaOffset.QuadPart = -1;
 
 		//
 		// Open File System through the Root Directory on volume.
 		// if no cd-rom media, fail open root directory.
 		//
-		Status = OpenRootDirectory(pszVolumeName,OpenFlags,&hRootDirectory);
+		Status = OpenRootDirectory(pszVolumeName,OPEN_VOLUME_READ_DATA,&hRootDirectory);
 
 		if( Status != STATUS_SUCCESS )
 		{
-			OpenVolume(pszVolumeName,OpenFlags,&hRootDirectory); // no file system volume, ex) RAW drive 
+			// No file system volume, ex) RAW drive 
+			Status = TryOpenVolume(&hVolume,pszVolumeName);
 		}
 
 		if( hRootDirectory != INVALID_HANDLE_VALUE )
 		{
+			//
+			// Gathering NT Volume Information
+			//
 			GatherNtVolumeDeviceInformation( hRootDirectory, pVolumeInfo );
 
-/*++
-if( pVolumeInfo->FileSystemAttributes & FILE_VOLUME_QUOTAS ) {
-VOLUME_FS_QUATA_INFORMATION_LIST *vil;
-GetQuataInformation( hRootDirectory, &vil );
-
-LPWSTR SidString = NULL;
-ConvertSidToStringSid(vil->QuataUser[0].Sid,&SidString);
-Sleep(0);
-}
---*/
 			if( wcsicmp(pVolumeInfo->FileSystemName,L"ntfs") == 0 )
 			{
 				if( GetNtfsVolumeData(hRootDirectory,(NTFS_VOLUME_DATA_BUFFER *)&pVolumeInfo->ntfs,sizeof(pVolumeInfo->ntfs)) )
@@ -1707,11 +1727,7 @@ Sleep(0);
 		//
 		// Open Volume Device
 		//
-		Status = OpenVolume(pszVolumeName,OpenFlags|OPEN_GENERIC_READ,&hVolume);
-		if( Status != STATUS_SUCCESS )
-		{
-			Status = OpenVolume(pszVolumeName,OpenFlags,&hVolume);
-		}
+		Status = TryOpenVolume(&hVolume,pszVolumeName);
 
 		if( hVolume != INVALID_HANDLE_VALUE )
 		{
@@ -1738,7 +1754,9 @@ Sleep(0);
 					&pVolumeInfo->pDiskGeometryPtrList,
 					&pVolumeInfo->pDriveLayoutPtrList);
 
+			//
 			// UDF (admin only)
+			//
 			if( wcsicmp(pVolumeInfo->FileSystemName,L"udf") == 0 )
 			{
 				if ( QueryOnDiskVolumeInfo(hVolume,&pVolumeInfo->udf.DiskVolumeInfo) == ERROR_SUCCESS )
@@ -1751,7 +1769,7 @@ Sleep(0);
 			GetRetrievalPointerBase(hVolume,&pVolumeInfo->RetrievalPointerBase);
 
 			//
-			// Dirty bit check
+			// Dirty Bit
 			//
 			hr = IsSetDirtyBit(hVolume);
 			if( SUCCEEDED(hr) )
@@ -1769,6 +1787,7 @@ Sleep(0);
 		//
 		pVolumeInfo->VirtualDiskVolume = (CHAR)VirtualDiskIsVirtualDiskVolume(pszVolumeName,NULL);
 
+		hr = S_OK;
 	}
 	__finally
 	{
@@ -1779,7 +1798,7 @@ Sleep(0);
 
 		*InformaionBuffer = pVolumeInfo;
 	}
-	return 0;
+	return hr;
 }
 
 //----------------------------------------------------------------------------

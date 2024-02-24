@@ -112,7 +112,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 //////////////////////////////////////////////////////////////////////////////
 
-// A generic programming is using stl::map<>;
+// stl::map<> is the preferred using.
 typedef struct {
 	UINT ConsoleId;
 	HWND hWnd;
@@ -213,7 +213,8 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszPath,BOOL bMaximize=FAL
 
 	if( ConsoleTypeId == VOLUME_CONSOLE_DISKLAYOUT || 
 		ConsoleTypeId == VOLUME_CONSOLE_VOLUMEINFORMAION || 
-		ConsoleTypeId == VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION )
+		ConsoleTypeId == VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION ||
+		ConsoleTypeId == VOLUME_CONSOLE_FILESYSTEMSTATISTICS )
 	{
 		hwndChildFrame = FindSameWindowTitle(ConsoleTypeId,pszPath);
 	}
@@ -323,7 +324,10 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszPath,BOOL bMaximize=FAL
 			SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_INIT_LAYOUT,(LPARAM)&rc);
 
 			SELECT_ITEM sel = {0};
-			if( VOLUME_CONSOLE_VOLUMEINFORMAION == ConsoleTypeId || VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION == ConsoleTypeId || VOLUME_CONSOLE_DISKLAYOUT == ConsoleTypeId )
+				if( VOLUME_CONSOLE_VOLUMEINFORMAION == ConsoleTypeId || 
+					VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION == ConsoleTypeId ||
+					VOLUME_CONSOLE_DISKLAYOUT == ConsoleTypeId ||
+					VOLUME_CONSOLE_FILESYSTEMSTATISTICS == ConsoleTypeId )
 			{
 				sel.pszName = (PWSTR)pszPath;
 				sel.pszPath = (PWSTR)pszPath;
@@ -394,7 +398,7 @@ VOID ShowHelp(HWND hWnd)
 //
 //----------------------------------------------------------------------------
 typedef struct _ARGPARAM {
-	CSimpleValArray<UINT> ConsoleTypeId;
+	CValArray<UINT> ConsoleTypeId;
 	INT Maximize;
 	INT WithoutOpen;
 	INT Help;

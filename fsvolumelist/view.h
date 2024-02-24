@@ -11,5 +11,6 @@
 #include "page_physicaldrivelist.h"
 #include "page_shadowcopy.h"
 #include "page_dosdrive.h"
+#include "page_statistics.h"
 
 HRESULT ViewBase_CreateObject(HINSTANCE hInstance,IViewBaseWindow **pObject);

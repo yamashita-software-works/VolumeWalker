@@ -63,6 +63,7 @@ HWND CreateVolumeListWindow(HWND hWndParent);
 HWND CreatePhysicalDriveListWindow(HWND hWndParent);
 HWND CreateShadowCopyListWindow(HWND hWndParent);
 HWND CreateDosDriveWindow(HWND hWndParent);
+HWND CreateFileSystemStatisticsWindow(HWND hWndParent);
 
 inline VOID _DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus=FALSE,COLORREF crActiveFrame=RGB(80,110,190))
 {

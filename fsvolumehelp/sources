@@ -99,6 +99,8 @@ SOURCES = \
 	mountedvolumes.cpp \
 	storagedevice.cpp \
 	dosdrivehelp.cpp \
+	statistics.cpp \
+	disk.cpp \
 	volumehelp.rc
 
 #----------------------------------------------------------

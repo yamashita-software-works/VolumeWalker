@@ -28,21 +28,33 @@ OpenVolume_U(
 {
     NTSTATUS Status;
 	UNICODE_STRING usVolumeDeviceName;
+	ULONG DesiredAccess;
+	ULONG OpenOptions;
 
 	usVolumeDeviceName = *pusVolumeName;
     RemoveBackslash_U(&usVolumeDeviceName);
 
-    ULONG DesiredAccess = STANDARD_RIGHTS_READ|FILE_READ_ATTRIBUTES|SYNCHRONIZE;
+#if 0
+    DesiredAccess = STANDARD_RIGHTS_READ|FILE_READ_ATTRIBUTES|SYNCHRONIZE;
+	OpenOptions = FILE_SYNCHRONOUS_IO_NONALERT|FILE_NON_DIRECTORY_FILE;
+#else
+	DesiredAccess = FILE_ATTRIBUTE_NORMAL|FILE_SEQUENTIAL_WRITE_ONCE;
+	OpenOptions = FILE_SYNCHRONOUS_IO_NONALERT|FILE_NON_DIRECTORY_FILE;
+#endif
+
     if( Flags & OPEN_READ_DATA )
         DesiredAccess |= FILE_READ_DATA;
 
 	if( Flags & OPEN_GENERIC_READ )
         DesiredAccess |= GENERIC_READ;
 
+	if( Flags & OPEN_BACKUP_INTENT )
+		OpenOptions |= FILE_OPEN_FOR_BACKUP_INTENT;
+
     Status = OpenFile_U(pHandle,NULL,&usVolumeDeviceName,
                         DesiredAccess,
                         FILE_SHARE_READ|FILE_SHARE_WRITE,
-                        FILE_OPEN_FOR_BACKUP_INTENT|FILE_SYNCHRONOUS_IO_NONALERT);
+						OpenOptions);
 
     RtlSetLastWin32Error( RtlNtStatusToDosError(Status) );
 

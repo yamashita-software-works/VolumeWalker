@@ -1,3 +1,8 @@
+### 0.1.4.0
+
+- File System Statisticsウィンドウを追加。   
+  VolumesまたはMS-DOS Drivesウィンドウでボリュームやドライブを選択し、メニューまたはコンテキストメニューから\[File System Statistics\]を選択します。
+
 ### 0.1.3.0
 
 - DLLの名称変更。 fsvolumeinfo.dll -> fsvolumehelp.dll
