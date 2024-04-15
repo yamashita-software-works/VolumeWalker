@@ -168,6 +168,7 @@ public:
 		OpenInformationView(
 				ListViewEx_GetCurSel(m_hWndList),
 				VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION);
+
 		return 0;
 	}
 
@@ -182,6 +183,8 @@ public:
 		HMENU hMenu = CreatePopupMenu();
 		AppendMenu(hMenu,MF_STRING,ID_PHYSICALDRIVEINFORMATION,L"Open &Information");
 		AppendMenu(hMenu,MF_STRING,ID_DRIVELAYOUT,L"Open Drive &Layout");
+		AppendMenu(hMenu,MF_STRING,0,0);
+		AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Sector &Dump");
 		AppendMenu(hMenu,MF_STRING,0,0);
 		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
 		SetMenuDefaultItem(hMenu,ID_PHYSICALDRIVEINFORMATION,FALSE);
@@ -926,6 +929,7 @@ public:
 		{
 			case ID_PHYSICALDRIVEINFORMATION:
 			case ID_DRIVELAYOUT:
+			case ID_HEXDUMP:
 			case ID_EDIT_COPY:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
@@ -951,6 +955,9 @@ public:
 				break;
 			case ID_DRIVELAYOUT:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_DISKLAYOUT );
+				break;
+			case ID_HEXDUMP:
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );
 				break;
 		}
 		return S_OK;

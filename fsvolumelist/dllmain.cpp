@@ -98,6 +98,12 @@ CreateVolumeConsoleWindow(
 		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 			hwndViewBase = CreateFileSystemStatisticsWindow(hwnd);
 			break;
+		case VOLUME_CONSOLE_SIMPLEHEXDUMP:
+			hwndViewBase = CreateSimpleHexDumpWindow(hwnd);
+			break;
+		case VOLUME_CONSOLE_FILTERDRIVER:
+			hwndViewBase = CreateFilterDriverWindow(hwnd);
+			break;
 		default:
 			return NULL;
 	}
@@ -113,15 +119,19 @@ CreateVolumeConsoleWindow(
 
 HFONT GetGlobalFont(HWND hWnd)
 {
+#if 1
 	HFONT hFont = NULL;
 	HDC hdc = GetWindowDC(hWnd);
 	LOGFONT lf = {0};
 	lf.lfHeight = -MulDiv(9, GetDeviceCaps(hdc, LOGPIXELSY), 72);
-	lf.lfCharSet = ANSI_CHARSET;
+	lf.lfCharSet = DEFAULT_CHARSET;
 	StringCchCopy(lf.lfFaceName,_countof(lf.lfFaceName),L"Consolas");
 	hFont = CreateFontIndirect( &lf );
 	ReleaseDC(hWnd,hdc);
 	return hFont;
+#else
+	return GetIconFont();
+#endif
 }
 
 HFONT GetIconFont()

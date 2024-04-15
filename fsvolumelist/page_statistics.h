@@ -161,6 +161,9 @@ public:
 	{
 		if( m_hFont )
 			DeleteObject( m_hFont );
+
+		_SafeMemFree( m_pszVolumeRoot );
+
 		return 0;
 	}
 

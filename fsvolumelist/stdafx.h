@@ -26,6 +26,7 @@
 #include <uxtheme.h>
 #include <diskguid.h>
 #include <setupapi.h>
+#include <sddl.h>
 
 #include "builddefs.h"
 
@@ -64,6 +65,8 @@ HWND CreatePhysicalDriveListWindow(HWND hWndParent);
 HWND CreateShadowCopyListWindow(HWND hWndParent);
 HWND CreateDosDriveWindow(HWND hWndParent);
 HWND CreateFileSystemStatisticsWindow(HWND hWndParent);
+HWND CreateSimpleHexDumpWindow(HWND hWndParent);
+HWND CreateFilterDriverWindow(HWND hWndParent);
 
 inline VOID _DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus=FALSE,COLORREF crActiveFrame=RGB(80,110,190))
 {

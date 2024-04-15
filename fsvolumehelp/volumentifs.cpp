@@ -1,6 +1,6 @@
 //***************************************************************************
 //*                                                                         *
-//*  volumeinfo.cpp                                                         *
+//*  volumentifs.cpp                                                        *
 //*                                                                         *
 //*  Author: YAMASHITA Katsuhiro                                            *
 //*                                                                         *
@@ -116,7 +116,7 @@ VOID GatherNtVolumeDeviceInformation( HANDLE Handle, VOLUME_DEVICE_INFORMATION *
 
 //---------------------------------------------------------------------------
 //
-//  GetQuataInformation()
+//  GetQuotaInformation()
 //
 //  PURPOSE:
 //
@@ -125,9 +125,9 @@ VOID GatherNtVolumeDeviceInformation( HANDLE Handle, VOLUME_DEVICE_INFORMATION *
 
 HRESULT
 WINAPI
-GetQuataInformation(
+GetQuotaInformation(
 	HANDLE Handle,
-	VOLUME_FS_QUATA_INFORMATION_LIST **QuataInfoList
+	VOLUME_FS_QUOTA_INFORMATION_LIST **QuotaInfoList
 	)
 {
 	BOOLEAN RestartScan = TRUE;
@@ -137,9 +137,11 @@ GetQuataInformation(
 	NTSTATUS Status;
 	HRESULT hr;
 
-	CValArray<QUATA_INFORMATION*> va;
+	CValArray<QUOTA_INFORMATION*> va;
 
 	pBuffer = AllocMemory( cbBufferLength );
+	if( pBuffer == NULL )
+		return E_OUTOFMEMORY;
 
 	do
 	{
@@ -151,18 +153,26 @@ GetQuataInformation(
 
 			for(;;)
 			{
-				QUATA_INFORMATION *pqi = (QUATA_INFORMATION *)AllocMemory(sizeof(QUATA_INFORMATION));
+				QUOTA_INFORMATION *pqi = (QUOTA_INFORMATION *)AllocMemory(sizeof(QUOTA_INFORMATION));
 
-				pqi->ChangeTime     = pq->ChangeTime;
-				pqi->QuotaLimit     = pq->QuotaLimit;
-				pqi->QuotaUsed      = pq->QuotaUsed;
-				pqi->QuotaThreshold = pq->QuotaThreshold;
-				pqi->SidLength      = pq->SidLength;
+				if( pqi )
+				{
+					pqi->ChangeTime     = pq->ChangeTime;
+					pqi->QuotaLimit     = pq->QuotaLimit;
+					pqi->QuotaUsed      = pq->QuotaUsed;
+					pqi->QuotaThreshold = pq->QuotaThreshold;
+					pqi->SidLength      = pq->SidLength;
 
-				pqi->Sid = AllocMemory(pq->SidLength);
-				RtlCopyMemory(pqi->Sid,&pq->Sid,pq->SidLength);
+					pqi->Sid = AllocMemory(pq->SidLength);
+					RtlCopyMemory(pqi->Sid,&pq->Sid,pq->SidLength);
 
-				va.Add( pqi );
+					va.Add( pqi );
+				}
+				else
+				{
+					Status = STATUS_NO_MEMORY;
+					break;
+				}
 
 				if( pq->NextEntryOffset == 0 )
 					break;
@@ -179,6 +189,10 @@ GetQuataInformation(
 	{
 		if( STATUS_NO_MORE_ENTRIES != Status )
 		{
+			int cItems = va.GetCount();
+			for(int i = 0; i < cItems; i++)
+				FreeMemory( va[i] );
+			FreeMemory(pBuffer);
 			return HRESULT_FROM_NT( Status );
 		}
 
@@ -188,18 +202,18 @@ GetQuataInformation(
 	int cItems = va.GetCount();
 	if( cItems > 0 )
 	{
-	VOLUME_FS_QUATA_INFORMATION_LIST *p = (VOLUME_FS_QUATA_INFORMATION_LIST *)AllocMemory( sizeof(VOLUME_FS_QUATA_INFORMATION_LIST) + (sizeof(QUATA_INFORMATION) * cItems));
+		VOLUME_FS_QUOTA_INFORMATION_LIST *pMemBlock = (VOLUME_FS_QUOTA_INFORMATION_LIST *)AllocMemory( sizeof(VOLUME_FS_QUOTA_INFORMATION_LIST) + (sizeof(QUOTA_INFORMATION) * cItems));
 
-	for(int i = 0; i < cItems; i++)
-	{
-		p->QuataUser[i] = *(va[i]);
-		FreeMemory( va[i] );
-	}
+		for(int i = 0; i < cItems; i++)
+		{
+			pMemBlock->QuataUser[i] = *(va[i]);
+			FreeMemory( va[i] );
+		}
 
-	p->ItemCount = cItems;;
+		pMemBlock->ItemCount = cItems;;
 
-	*QuataInfoList = p;
-	hr = S_OK;
+		*QuotaInfoList = pMemBlock;
+		hr = S_OK;
 	}
 	else
 	{
@@ -209,4 +223,27 @@ GetQuataInformation(
 	FreeMemory(pBuffer);
 
 	return hr;
+}
+
+//---------------------------------------------------------------------------
+//
+//  FreeQuotaInformation()
+//
+//  PURPOSE:
+//
+//---------------------------------------------------------------------------
+HRESULT
+WINAPI
+FreeQuotaInformation(
+	VOLUME_FS_QUOTA_INFORMATION_LIST *QuotaInfoList
+	)
+{
+	for(ULONG q = 0; q < QuotaInfoList->ItemCount; q++)
+	{
+		FreeMemory(QuotaInfoList->QuataUser[q].Sid);
+	}
+
+	FreeMemory(QuotaInfoList);
+
+	return S_OK;
 }

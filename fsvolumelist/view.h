@@ -12,5 +12,7 @@
 #include "page_shadowcopy.h"
 #include "page_dosdrive.h"
 #include "page_statistics.h"
+#include "page_simplehexdump.h"
+#include "page_filterdriver.h"
 
 HRESULT ViewBase_CreateObject(HINSTANCE hInstance,IViewBaseWindow **pObject);

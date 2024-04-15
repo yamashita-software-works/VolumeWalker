@@ -17,8 +17,10 @@
 #include <diskguid.h>
 #include "diskfindvolume.h"
 
+#define _IT_ITEM        0x0
 #define _IT_GAP         0x1
 #define _IT_REMAINING   0x2
+#define _IT_EXTENDED    0x3
 
 class CDiskLayoutView : public CPageWndBase
 {
@@ -28,6 +30,11 @@ class CDiskLayoutView : public CPageWndBase
 	CDiskFindVolume m_findVolume;
 	HFONT m_hFont;
 	PWSTR m_pszPhysicalDrive;
+
+	typedef struct _LAYOUTITEM {
+		UINT ItemType;
+		LARGE_INTEGER StartOffset;
+	} LAYOUTITEM;
 
 public:
 	CDiskLayoutView()
@@ -71,6 +78,27 @@ public:
 		return 0;
 	}
 
+	LRESULT OnContextMenu(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( iItem == -1 )
+			return 0;
+
+		LAYOUTITEM *pli = (LAYOUTITEM *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+		HMENU hMenu = CreatePopupMenu();
+		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
+		AppendMenu(hMenu,MF_STRING,0,0);
+		AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Sector &Dump");
+
+		POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+		ListViewEx_SimpleContextMenuHandler(NULL,m_hWndList,(HWND)wParam,hMenu,pt,0);
+
+		DestroyMenu(hMenu);
+
+		return 0;
+	}
+
 	LRESULT OnNotify(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		NMHDR *pnmhdr = (NMHDR *)lParam;
@@ -98,6 +126,8 @@ public:
 	LRESULT OnDeleteItem(NMHDR *pnmhdr)
 	{
 		NMLISTVIEW *pnmlv = (NMLISTVIEW *)pnmhdr;
+		if( pnmlv->lParam )
+			delete (LAYOUTITEM *)pnmlv->lParam;
 		return 0;
 	}
 
@@ -122,6 +152,8 @@ public:
 				return OnCreate(hWnd,uMsg,wParam,lParam);
 			case WM_DESTROY:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
+			case WM_CONTEXTMENU:
+				return OnContextMenu(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -147,7 +179,7 @@ public:
 		m_findVolume.Free();
 	}
 
-	int InsertLine(int iItem,int indent,PCWSTR psz,ULONG_PTR ItemType=0)
+	int InsertLine(int iItem,int indent,PCWSTR psz,LONGLONG Offset,ULONG ItemType=0)
 	{
 		LVITEM lvi = {0};
 		lvi.mask = LVIF_TEXT|LVIF_PARAM|LVIF_INDENT;
@@ -155,8 +187,15 @@ public:
 		lvi.iIndent = indent * 8;
 		lvi.pszText = (PWSTR)psz;
 
+#if 0
 		if( ItemType != 0 )
 			lvi.lParam = ItemType;
+#else
+		LAYOUTITEM *pli = new LAYOUTITEM;
+		pli->ItemType = ItemType;
+		pli->StartOffset.QuadPart = Offset;
+		lvi.lParam = (LPARAM)pli;
+#endif
 
 		return ListView_InsertItem(m_hWndList,&lvi);
 	}
@@ -232,7 +271,7 @@ public:
 						// |---|              Partition#1
 						//      <-->          GAP
 						//          |-------| Partition#2
-						InsertLine(iItem,0,L"",_IT_GAP);
+						InsertLine(iItem,0,L"",PreviousStartOffset,_IT_GAP);
 
 						StringCchPrintf(szText,ARRAYSIZE(szText),L"0x%I64X",PreviousStartOffset);
 						ListView_SetItemText(m_hWndList,iItem,1,szText);
@@ -264,7 +303,7 @@ public:
 
 							// |==========| Disk
 							//     |------| Partition
-							InsertLine(iItem,0,L"",_IT_GAP); // includeing gap
+							InsertLine(iItem,0,L"",PreviousStartOffset,_IT_GAP); // includeing gap
 
 							StringCchPrintf(szText,ARRAYSIZE(szText),L"0x%I64X",PreviousStartOffset);
 							ListView_SetItemText(m_hWndList,iItem,1,szText);
@@ -287,7 +326,7 @@ public:
 					LastNextOffset = (pdli->PartitionEntry[i].StartingOffset.QuadPart+pdli->PartitionEntry[i].PartitionLength.QuadPart);
 				}
 
-				iItem = InsertLine(iItem,indent,szHeader);
+				iItem = InsertLine(iItem,indent,szHeader,pdli->PartitionEntry[i].StartingOffset.QuadPart);
 
 				if( (pdli->PartitionEntry[i].Mbr.PartitionType == PARTITION_EXTENDED) || 
 				    (pdli->PartitionEntry[i].Mbr.PartitionType == PARTITION_XINT13_EXTENDED)  )
@@ -348,7 +387,10 @@ public:
 				if( (pdli->PartitionEntry[i].Mbr.PartitionType == PARTITION_EXTENDED) || 
 				    (pdli->PartitionEntry[i].Mbr.PartitionType == PARTITION_XINT13_EXTENDED)  )
 				{
-					ListViewEx_SetItemData(m_hWndList,iItem,3);
+//					ListViewEx_SetItemData(m_hWndList,iItem,3);
+					LAYOUTITEM *pli = (LAYOUTITEM *)ListViewEx_GetItemData(m_hWndList,iItem);
+					pli->ItemType = _IT_EXTENDED;
+//					ListViewEx_SetItemData(m_hWndList,iItem,(LPARAM)pli);
 				}
 			}
 		}
@@ -360,7 +402,7 @@ public:
 		if( remainder > 0 )
 		{
 			iItem = ListView_GetItemCount(m_hWndList);
-			InsertLine(iItem,0,L"",_IT_REMAINING);
+			InsertLine(iItem,0,L"",LastNextOffset,_IT_REMAINING);
 			pos = 1;
 			StringCchPrintf(szText,ARRAYSIZE(szText),L"0x%I64X",LastNextOffset);
 			ListView_SetItemText(m_hWndList,iItem,pos++,szText);
@@ -380,7 +422,7 @@ public:
 		//
 		{
 			iItem = ListView_GetItemCount(m_hWndList);
-			InsertLine(iItem,0,L"Toltal Length");
+			InsertLine(iItem,0,L"Toltal Length",-1);
 			pos = 3;
 			StringCchPrintf(szText,ARRAYSIZE(szText),L"0x%I64X",liDriveLength.QuadPart);
 			ListView_SetItemText(m_hWndList,iItem,pos++,szText);
@@ -431,7 +473,7 @@ public:
 					// |---|
 					//      <-->           GAP
 					//          |-------|
-					InsertLine(iItem,indent,L"",_IT_GAP);
+					InsertLine(iItem,indent,L"",PreviousNextOffset,_IT_GAP);
 
 					StringCchPrintf(szText,ARRAYSIZE(szText),L"0x%I64X",PreviousNextOffset);//PreviousStartOffset); BUGBUG?20231009
 					ListView_SetItemText(m_hWndList,iItem,1,szText);
@@ -487,7 +529,7 @@ public:
 
 		    DWORD PartitionNumber = pdli->PartitionEntry[i].PartitionNumber;
 			StringCchPrintf(szText,ARRAYSIZE(szText),L"Partition#%d",PartitionNumber);
-			iItem = InsertLine(iItem,indent,szText);
+			iItem = InsertLine(iItem,indent,szText,pdli->PartitionEntry[i].StartingOffset.QuadPart);
 
 			LONGLONG NextOffset = (pdli->PartitionEntry[i].StartingOffset.QuadPart+pdli->PartitionEntry[i].PartitionLength.QuadPart);
 
@@ -546,7 +588,7 @@ public:
 		if( remainder > 0 )
 		{
 			iItem = ListView_GetItemCount(m_hWndList);
-			InsertLine(iItem,0,L"",_IT_REMAINING);
+			InsertLine(iItem,0,L"",LastNextOffset,_IT_REMAINING);
 
 			StringCchPrintf(szText,ARRAYSIZE(szText),L"0x%I64X",LastNextOffset);
 			ListView_SetItemText(m_hWndList,iItem,1,szText);
@@ -566,7 +608,7 @@ public:
 		//
 		{
 			iItem = ListView_GetItemCount(m_hWndList);
-			InsertLine(iItem,0,L"Toltal Length");
+			InsertLine(iItem,0,L"Toltal Length",-1);
 			int pos = 3;
 			StringCchPrintf(szText,ARRAYSIZE(szText),L"0x%I64X",liDriveLength.QuadPart);
 			ListView_SetItemText(m_hWndList,iItem,pos++,szText);
@@ -587,12 +629,14 @@ public:
 
 		if( pcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT )
 		{
-			if( pcd->nmcd.lItemlParam == 3 )
+			LAYOUTITEM *pli = (LAYOUTITEM *)pcd->nmcd.lItemlParam;
+
+			if( pli->ItemType == _IT_EXTENDED )
 			{
 				return CDRF_DODEFAULT;
 			}
 
-			if( pcd->nmcd.lItemlParam != 0 )
+			if( pli->ItemType != 0 )
 			{
 				pcd->clrTextBk = RGB(246,246,246);
 				pcd->clrText = RGB(152,152,152);
@@ -754,6 +798,7 @@ public:
 		switch( CmdId )
 		{
 			case ID_EDIT_COPY:
+			case ID_HEXDUMP:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
@@ -769,6 +814,9 @@ public:
 		{
 			case ID_EDIT_COPY:
 				OnCmdEditCopy();
+				break;
+			case ID_HEXDUMP:
+				OnCmdHexDump();
 				break;
 			case ID_VIEW_REFRESH:
 				OnCmdRefresh();
@@ -786,6 +834,36 @@ public:
 		else
 		{
 			SetClipboardTextFromListView(m_hWndList,SCTEXT_UNICODE);
+		}
+	}
+
+	void OnCmdHexDump()
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+
+		ASSERT( iItem != -1 );
+
+		LAYOUTITEM *pli = (LAYOUTITEM *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+		{
+			if( pli )
+			{
+				if( 0 )
+				{
+					SIZE_T cch = wcslen(m_pszPhysicalDrive) + 1;
+					PWSTR psz = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
+					StringCchCopy(psz,cch,m_pszPhysicalDrive);
+					PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_SIMPLEHEXDUMP,1),(LPARAM)psz);
+				}
+				else
+				{
+					SELECT_OFFSET_ITEM sel = {0};
+					sel.hdr.pszName = sel.hdr.pszPath = m_pszPhysicalDrive;
+					sel.liStartOffset = pli->StartOffset;
+//					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,VOLUME_CONSOLE_SIMPLEHEXDUMP,(LPARAM)m_pszPhysicalDrive);
+					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_SIMPLEHEXDUMP,2),(LPARAM)&sel);
+				}
+			}
 		}
 	}
 

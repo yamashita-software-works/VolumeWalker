@@ -16,6 +16,7 @@
 //
 #include "string_def.h"
 #include "ntobjecthelp.h"
+#include "ntvolumehelp.h"
 
 #define _STR_NA  L"---"
 
@@ -35,6 +36,8 @@ enum {
 	ID_GROUP_PHYSICALDRIVE,
 	ID_GROUP_FILESYSTEM_ATTRIBUTES,
 	ID_GROUP_NAME,
+	ID_GROUP_CONTROL,
+	ID_GROUP_QUOTA,
 };
 
 typedef struct _VOLBASICINFOITEM
@@ -64,6 +67,7 @@ class CVolumeBasicInfoView : public CPageWndBase
 	PWSTR m_pszNtDeviceName;
 	PWSTR m_pszVolumeGuid;
 	PWSTR m_pszDrive;
+	VOLUME_FS_QUOTA_INFORMATION_LIST *m_QuotaInfoList;
 
 	HFONT m_hFont;
 
@@ -75,12 +79,17 @@ public:
 		m_pszNtDeviceName = NULL;
 		m_pszVolumeGuid = NULL;
 		m_pszDrive = NULL;
+		m_QuotaInfoList = NULL;
 	}
 
 	~CVolumeBasicInfoView()
 	{
 		if( m_pvdi != NULL )
 			DestroyVolumeInformationBuffer(m_pvdi);
+
+		if( m_QuotaInfoList )
+			FreeQuotaInformation(m_QuotaInfoList);
+
 		_SafeMemFree(m_pszNtDeviceName);
 		_SafeMemFree(m_pszVolumeGuid);
 		_SafeMemFree(m_pszDrive);
@@ -670,6 +679,8 @@ public:
 			{ ID_GROUP_FS_REFS,               L"ReFS"  },
 			{ ID_GROUP_FILESYSTEM_ATTRIBUTES, L"File System Attributes" },
 			{ ID_GROUP_MEDIATYPES,            L"Media Types" },
+			{ ID_GROUP_CONTROL,               L"System Control" },
+			{ ID_GROUP_QUOTA,                 L"Quota" },
 		};
 		int cGroupItem = ARRAYSIZE(Group);
 
@@ -914,6 +925,12 @@ public:
 		if( pvdi->pMediaTypes )
 			FillMediaTypes(pvdi->pMediaTypes);
 
+		if( pvdi->State.ControlInformation )
+			FillControlInformation(&pvdi->Control);
+
+		if( m_QuotaInfoList )
+			FillQuotaInformation();
+
 		//
 		// Adjust column width.
 		//
@@ -951,15 +968,24 @@ public:
 			return E_OUTOFMEMORY;
 		}
 
-		ULONG OpenFlags = 0;
-		if( IsUserAnAdmin() )
-			OpenFlags = OPEN_VOLUME_READ_DATA;
-
 		PVOID InformaionBuffer = NULL;
-		CreateVolumeInformationBuffer(m_pszNtDeviceName,0,OpenFlags,(void **)&InformaionBuffer);
+		CreateVolumeInformationBuffer(m_pszNtDeviceName,0,0,(void **)&InformaionBuffer);
 		if( InformaionBuffer == NULL )
 		{
 			return E_FAIL;
+		}
+
+		HANDLE Handle;
+		if( m_QuotaInfoList )
+		{
+			FreeQuotaInformation(m_QuotaInfoList);
+			m_QuotaInfoList = NULL;
+		}
+			
+		if( OpenVolume(m_pszNtDeviceName,OPEN_READ_DATA,&Handle) == STATUS_SUCCESS )
+		{
+			GetQuotaInformation(Handle,&m_QuotaInfoList);
+			CloseHandle(Handle);
 		}
 
 		WCHAR szVolumeGuid[64];
@@ -990,12 +1016,11 @@ public:
 			}
 		}
 
+		if( szVolumeGuid[0] != 0 )
+			m_pszVolumeGuid = _MemAllocString(szVolumeGuid);
 
-	if( szVolumeGuid[0] != 0 )
-		m_pszVolumeGuid = _MemAllocString(szVolumeGuid);
-
-	if( szDrives[0] != 0 )
-		m_pszDrive = _MemAllocString(szDrives);
+		if( szDrives[0] != 0 )
+			m_pszDrive = _MemAllocString(szDrives);
 
 		return FillItems((VOLUME_DEVICE_INFORMATION*)InformaionBuffer);
 	}
@@ -1313,6 +1338,159 @@ public:
 				i++;
 			}
 		}
+	}
+
+	VOID FillControlInformation(VOLUME_FS_CONTROL_INFORMATION *pCtrlInfo)
+	{
+		LVITEM lvi = {0};
+
+		int iItem = ListView_GetItemCount(m_hWndList);
+
+		const int iIndent = 1;
+
+		InsertItemFormat(iIndent,ID_GROUP_CONTROL,L"Flags",L"0x%08X",pCtrlInfo->FileSystemControlFlags);
+
+		static struct FlagNameString {
+			ULONG Flag;
+			PCWSTR Name;
+		} fs[] = {
+			// FILE_VC_QUOTA_NONE
+			_DEF_FLAG_STRING(FILE_VC_QUOTA_TRACK),
+			_DEF_FLAG_STRING(FILE_VC_QUOTA_ENFORCE),
+			_DEF_FLAG_STRING(FILE_VC_CONTENT_INDEX_DISABLED),
+			_DEF_FLAG_STRING(FILE_VC_LOG_QUOTA_THRESHOLD),
+			_DEF_FLAG_STRING(FILE_VC_LOG_QUOTA_LIMIT),
+			_DEF_FLAG_STRING(FILE_VC_LOG_VOLUME_THRESHOLD),
+			_DEF_FLAG_STRING(FILE_VC_LOG_VOLUME_LIMIT),
+			_DEF_FLAG_STRING(FILE_VC_QUOTAS_INCOMPLETE),
+			_DEF_FLAG_STRING(FILE_VC_QUOTAS_REBUILDING),
+		};
+		WCHAR szTitle[32];
+		int i;
+		for(i = 0; i < _countof(fs); i++)
+		{
+			if( fs[i].Flag & pCtrlInfo->FileSystemControlFlags )
+			{
+				StringCchPrintf(szTitle,_countof(szTitle),L"0x%08X",fs[i].Flag);
+				InsertItemString(iIndent+1,szTitle,fs[i].Name,ID_GROUP_CONTROL);
+			}
+		}
+	}
+
+	VOID FillQuotaInformation()
+	{
+		ULONG i;
+		const int iIndent = 1;
+		WCHAR sz[1024];
+		WCHAR *Name;
+		WCHAR *Domain;
+
+		for(i = 0; i < m_QuotaInfoList->ItemCount; i++)
+		{
+			if( GetAccountNameFromSid(m_QuotaInfoList->QuataUser[i].Sid,&Name,&Domain) )
+			{
+				StringCchPrintf(sz,ARRAYSIZE(sz),L"%s\\%s",Domain,Name);
+				_SafeMemFree(Name);
+				_SafeMemFree(Domain);
+			}
+			else
+			{
+				if( GetLastError() == ERROR_NONE_MAPPED )
+				{
+					StringCchPrintf(sz,ARRAYSIZE(sz),L"(None Mapped)");
+				}
+				else
+				{
+					StringCchPrintf(sz,ARRAYSIZE(sz),L"ERROR: %u",GetLastError());
+				}
+			}
+
+			InsertItemString(iIndent,L"User",sz,ID_GROUP_QUOTA);
+
+			PWSTR psz;
+			if( ConvertSidToStringSid(m_QuotaInfoList->QuataUser[i].Sid, &psz) )
+			{
+				InsertItemString(iIndent,L"SID",psz,ID_GROUP_QUOTA);
+				LocalFree(psz);
+			}
+
+			QUOTA_INFORMATION &qi = m_QuotaInfoList->QuataUser[i];
+	
+			WCHAR szDateTime[64];
+			_GetDateTimeStringEx(qi.ChangeTime.QuadPart,szDateTime,64,NULL,NULL,FALSE);
+			InsertItemString(iIndent,L"Change Time",szDateTime,ID_GROUP_QUOTA);
+
+			InsertQuotaValue(iIndent,L"Quota Limit",qi.QuotaLimit);
+			InsertQuotaValue(iIndent,L"Quota Threshold",qi.QuotaThreshold);
+			InsertQuotaValue(iIndent,L"Quota Used",qi.QuotaUsed);
+
+			InsertItemString(iIndent,L"",L"",ID_GROUP_QUOTA);
+		}
+	}
+
+	BOOL GetAccountNameFromSid(PSID pSid,PWSTR *RetuernName,PWSTR *RetuernDomain)
+	{
+		DWORD dwError = 0;
+		SID_NAME_USE eUse;
+
+		WCHAR *Name = NULL;
+		WCHAR *Domain = NULL;
+
+		DWORD cchName = 0;
+		DWORD cchDomain = 0;
+
+		cchName = 0;
+		cchDomain = 0;
+
+		do
+		{
+			if( !LookupAccountSid(NULL,pSid,Name,&cchName,Domain,&cchDomain,&eUse) )
+			{
+				dwError = GetLastError();
+				if( dwError == ERROR_INSUFFICIENT_BUFFER )
+				{
+					_SafeMemFree(Name);
+					_SafeMemFree(Domain);
+
+					Name = _MemAllocStringBuffer( cchName );
+					Domain = _MemAllocStringBuffer( cchDomain );
+				}
+			}
+			else
+			{
+				dwError = ERROR_SUCCESS;
+			}
+		} while( dwError == ERROR_INSUFFICIENT_BUFFER );
+
+		if( dwError != ERROR_SUCCESS )
+		{
+			_SafeMemFree(Name);
+			_SafeMemFree(Domain);
+		}
+
+		*RetuernName = Name;
+		*RetuernDomain = Domain;
+
+		SetLastError(dwError);
+
+		return (dwError == ERROR_SUCCESS);
+	}
+
+	void InsertQuotaValue(int iIndent,PCWSTR pszTitle,LARGE_INTEGER& li)
+	{
+		WCHAR szBuffer[MAX_PATH];
+		WCHAR szSize[64];
+
+		if( li.QuadPart == -1 )
+		{
+			StringCchPrintf(szBuffer,ARRAYSIZE(szBuffer),L"0x%I64X",li.QuadPart);
+		}
+		else
+		{
+			_CommaFormatString(li.QuadPart,szSize);
+			StringCchPrintf(szBuffer,ARRAYSIZE(szBuffer),L"0x%I64X (%s)",li.QuadPart,szSize);
+		}
+		InsertItemString(iIndent,pszTitle,szBuffer,ID_GROUP_QUOTA);
 	}
 
 	virtual HRESULT InvokeCommand(UINT CmdId)

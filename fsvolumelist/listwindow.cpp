@@ -123,6 +123,8 @@ public:
 		switch(uMsg)
 	    {
 			case WM_PRETRANSLATEMESSAGE:
+				if( m_pView )
+					m_pView->PreTranslateMessage((MSG*)lParam);
 				return 0;
 		    case WM_CREATE:
 				return OnCreate(hWnd,uMsg,wParam,lParam);
@@ -168,9 +170,7 @@ public:
 
 	VOID OnUpdateInformationView(SELECT_ITEM* pVolume)
 	{
-		SELECT_ITEM sel = {0};
-		sel = *pVolume;
-		m_pView->UpdateData(&sel);
+		m_pView->UpdateData(pVolume);
 	}
 
 	VOID InitData(PCWSTR pszParam)
@@ -237,4 +237,14 @@ HWND CreateDosDriveWindow(HWND hWndParent)
 HWND CreateFileSystemStatisticsWindow(HWND hWndParent)
 {
 	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_FILESYSTEMSTATISTICS);
+}
+
+HWND CreateSimpleHexDumpWindow(HWND hWndParent)
+{
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_SIMPLEHEXDUMP);
+}
+
+HWND CreateFilterDriverWindow(HWND hWndParent)
+{
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_FILTERDRIVER);
 }

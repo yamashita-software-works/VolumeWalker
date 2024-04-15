@@ -210,6 +210,8 @@ public:
 		AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Open &Information");
 		AppendMenu(hMenu,MF_STRING,ID_FILESYSTEMSTATISTICS,L"Open File System &Statistics");
 		AppendMenu(hMenu,MF_STRING,0,0);
+		AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
+		AppendMenu(hMenu,MF_STRING,0,0);
 		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
 		SetMenuDefaultItem(hMenu,ID_VOLUMEINFORMATION,FALSE);
 
@@ -1090,12 +1092,35 @@ public:
 		}
 	}
 
+	VOID OpenHexDumpView(int iItem,BOOL bAsync)
+	{
+		if( iItem != -1 )
+		{
+			CVolumeItem *pItem = (CVolumeItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+			if( pItem && pItem->VolumeDevice )
+			{
+				if( bAsync )
+				{
+					SIZE_T cch = wcslen(pItem->VolumeDevice) + 1;
+					PWSTR psz = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
+					StringCchCopy(psz,cch,pItem->VolumeDevice);
+					PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_SIMPLEHEXDUMP,1),(LPARAM)psz);
+				}
+				else
+				{
+					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,VOLUME_CONSOLE_SIMPLEHEXDUMP,(LPARAM)pItem->VolumeDevice);
+				}
+			}
+		}
+	}
+
 	virtual HRESULT QueryCmdState(UINT CmdId,UINT *State)
 	{
 		switch( CmdId )
 		{
 			case ID_VOLUMEINFORMATION:
 			case ID_FILESYSTEMSTATISTICS:
+			case ID_HEXDUMP:
 			case ID_EDIT_COPY:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
@@ -1121,6 +1146,9 @@ public:
 				break;
 			case ID_FILESYSTEMSTATISTICS:
 				OpenStatisticsView( ListViewEx_GetCurSel(m_hWndList), FALSE );
+				break;
+			case ID_HEXDUMP:
+				OpenHexDumpView( ListViewEx_GetCurSel(m_hWndList), FALSE );
 				break;
 		}
 		return S_OK;

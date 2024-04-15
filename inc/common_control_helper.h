@@ -116,17 +116,12 @@ inline int ListViewEx_SubItemHitTest(HWND hwndLV,POINT pt, UINT* pFlags)
 	return hti.iSubItem;
 }
 
-inline BOOL ListViewEx_SetItemState(HWND hwndLV,int iItem,UINT state,UINT mask)
-{
-	LVITEM lvi;
-	lvi.stateMask = mask;
-	lvi.state = state;
-	return (BOOL)SendMessage(hwndLV,LVM_SETITEMSTATE,(WPARAM)(iItem),(LPARAM)&lvi);
-}
-
 inline BOOL ListViewEx_ClearSelectAll(HWND hwndLV,BOOL bClearFocus=FALSE)
 {
-	return ListViewEx_SetItemState(hwndLV,-1,0,LVIS_SELECTED|(bClearFocus ? LVNI_FOCUSED : 0));
+	LVITEM lvi;
+	lvi.stateMask = 0;
+	lvi.state = (LVIS_SELECTED|(bClearFocus ? LVNI_FOCUSED : 0));
+	return (BOOL)SendMessage(hwndLV,LVM_SETITEMSTATE,(WPARAM)(-1),(LPARAM)&lvi);
 }
 
 inline BOOL ListViewEx_AdjustWidthAllColumns(HWND hwndLV,int cx)

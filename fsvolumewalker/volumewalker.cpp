@@ -126,6 +126,7 @@ static MDICHILDFRAMETABLE table[]= {
 	{VOLUME_CONSOLE_STORAGEDEVICE,     0},
 	{VOLUME_CONSOLE_MOUNTEDDEVICE,     0},
 	{VOLUME_CONSOLE_DOSDRIVELIST,      0},
+	{VOLUME_CONSOLE_FILTERDRIVER,      0},
 };
 
 int ClearWindowHandle(UINT_PTR ConsoleTypeId,HWND hwnd)
@@ -207,14 +208,15 @@ HWND FindSameWindowTitle(UINT ConsoleType,PCWSTR pszName)
 //  PURPOSE: Open MDI child window.
 //
 //----------------------------------------------------------------------------
-HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszPath,BOOL bMaximize=FALSE)
+HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszPath,UINT ParamType,BOOL bMaximize)
 {
 	HWND hwndChildFrame = NULL;
 
 	if( ConsoleTypeId == VOLUME_CONSOLE_DISKLAYOUT || 
 		ConsoleTypeId == VOLUME_CONSOLE_VOLUMEINFORMAION || 
 		ConsoleTypeId == VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION ||
-		ConsoleTypeId == VOLUME_CONSOLE_FILESYSTEMSTATISTICS )
+		ConsoleTypeId == VOLUME_CONSOLE_FILESYSTEMSTATISTICS ||
+		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP )
 	{
 		hwndChildFrame = FindSameWindowTitle(ConsoleTypeId,pszPath);
 	}
@@ -252,6 +254,12 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszPath,BOOL bMaximize=FAL
 
 	if( ConsoleTypeId == VOLUME_CONSOLE_SHADOWCOPYLIST )
 		mcp.hIcon = GetDeviceClassIcon(DEVICE_ICON_VOLUMESNAPSHOT,NULL);
+	else if( ConsoleTypeId == VOLUME_CONSOLE_FILTERDRIVER ) {
+		HINSTANCE hmod = LoadLibrary(L"imageres.dll");
+		mcp.hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
+		FreeLibrary(hmod);
+	} else if( ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP )
+		mcp.hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(IDI_BINDUMP),IMAGE_ICON,16,16,LR_DEFAULTSIZE);
 	else
 		mcp.hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
 
@@ -265,6 +273,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszPath,BOOL bMaximize=FAL
 		{VOLUME_CONSOLE_STORAGEDEVICE,      L"Storage Devices"},
 		{VOLUME_CONSOLE_MOUNTEDDEVICE,      L"Mounted Devices"},
 		{VOLUME_CONSOLE_DOSDRIVELIST,       L"Dos Drives"},
+		{VOLUME_CONSOLE_FILTERDRIVER,       L"Minifilter Driver"},
 	};
 
 	PCWSTR pszTitle = L"";
@@ -314,34 +323,71 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszPath,BOOL bMaximize=FAL
 
 			VOLUME_CONSOLE_CREATE_PARAM param = {0};
 			param.pszReserved = (PWSTR)mcp.pszInitialPath;
-			pd->hWndView = CreateVolumeConsoleWindow(hwndMDIChild,ConsoleTypeId,&param);
 
-			RECT rc;
-			GetClientRect(hwndMDIChild,&rc);
+			if( VOLUME_CONSOLE_SIMPLEHEXDUMP == ConsoleTypeId )
+			{
+				pd->hWndView = CreateVolumeConsoleWindow(hwndMDIChild,ConsoleTypeId,&param);
 
-			SetWindowPos(pd->hWndView,NULL,0,0,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOREDRAW|SWP_NOACTIVATE|SWP_HIDEWINDOW);
+				{ // Initialize Layout
+					RECT rc;
+					GetClientRect(hwndMDIChild,&rc);
+					SetWindowPos(pd->hWndView,NULL,0,0,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOREDRAW|SWP_NOACTIVATE|SWP_HIDEWINDOW);
+					SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_INIT_LAYOUT,(LPARAM)&rc);
+				}
 
-			SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_INIT_LAYOUT,(LPARAM)&rc);
+				SELECT_OFFSET_ITEM *SelParam = (SELECT_OFFSET_ITEM *)pszPath;
 
-			SELECT_ITEM sel = {0};
+				SELECT_OFFSET_ITEM sel = {0};
+				sel.hdr.mask = SI_MASK_PATH|SI_MASK_NAME|SI_MASK_VIEWTYPE|SI_MASK_START_OFFSET;
+				sel.hdr.ViewType = ConsoleTypeId;
+				if( ParamType == 2 )
+				{
+					sel.hdr.pszName = SelParam->hdr.pszName;
+					sel.hdr.pszPath = SelParam->hdr.pszPath;
+					sel.liStartOffset = SelParam->liStartOffset;
+				}
+				else
+				{
+					sel.hdr.pszName = (PWSTR)pszPath;
+					sel.hdr.pszPath = (PWSTR)pszPath;
+					sel.liStartOffset.QuadPart = 0;
+				}
+
+				SendMessage(pd->hWndView,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
+
+				SetWindowText(hwndMDIChild,sel.hdr.pszName);
+			}
+			else
+			{
+				pd->hWndView = CreateVolumeConsoleWindow(hwndMDIChild,ConsoleTypeId,&param);
+
+				{ // Initialize Layout
+					RECT rc;
+					GetClientRect(hwndMDIChild,&rc);
+					SetWindowPos(pd->hWndView,NULL,0,0,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOREDRAW|SWP_NOACTIVATE|SWP_HIDEWINDOW);
+					SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_INIT_LAYOUT,(LPARAM)&rc);
+				}
+
+				SELECT_ITEM sel = {0};
 				if( VOLUME_CONSOLE_VOLUMEINFORMAION == ConsoleTypeId || 
 					VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION == ConsoleTypeId ||
 					VOLUME_CONSOLE_DISKLAYOUT == ConsoleTypeId ||
 					VOLUME_CONSOLE_FILESYSTEMSTATISTICS == ConsoleTypeId )
-			{
-				sel.pszName = (PWSTR)pszPath;
-				sel.pszPath = (PWSTR)pszPath;
-				sel.ViewType = ConsoleTypeId;
+				{
+					sel.pszName  = (PWSTR)pszPath;
+					sel.pszPath  = (PWSTR)pszPath;
+					sel.ViewType = ConsoleTypeId;
+				}
+
+				SendMessage(pd->hWndView,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
+
+				if( pszPath )
+					SetWindowText(hwndMDIChild,pszPath);
+				else
+					SetWindowText(hwndMDIChild,pszTitle);
 			}
 
-			SendMessage(pd->hWndView,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
-
 			ShowWindow(pd->hWndView,SW_SHOW);
-
-			if( pszPath )
-				SetWindowText(hwndMDIChild,pszPath);
-			else
-				SetWindowText(hwndMDIChild,pszTitle);
 
 			SendMessage(hWndMDIClient,WM_MDIREFRESHMENU,0,0);
 			DrawMenuBar(hWnd);
@@ -351,9 +397,9 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszPath,BOOL bMaximize=FAL
 	return hwndMDIChild;
 }
 
-VOID OpenConsole(HWND hWnd,UINT ConsoleTypeId,PCWSTR psz=NULL)
+VOID OpenConsole(HWND hWnd,UINT ConsoleTypeId,PCWSTR Param=NULL,UINT ParamType=0)
 {
-	HWND hwndChild = OpenMDIChild(hWnd,ConsoleTypeId,psz);
+	HWND hwndChild = OpenMDIChild(hWnd,ConsoleTypeId,Param,ParamType,FALSE);
 	if( hwndChild )
 	{
 		MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndChild,GWLP_USERDATA);
@@ -566,7 +612,7 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 		c = args.ConsoleTypeId.GetSize();
 		for(i = 0; i < c; i++)
 		{
-			hwndMDIChild = OpenMDIChild(hWnd,args.ConsoleTypeId[i],NULL,args.Maximize ? ((i == (c-1)) ? TRUE : FALSE) : FALSE );
+			hwndMDIChild = OpenMDIChild(hWnd,args.ConsoleTypeId[i],NULL,0,args.Maximize ? ((i == (c-1)) ? TRUE : FALSE) : FALSE );
 			if( hwndMDIChild && i == 0 )
 			{
 				//
@@ -629,6 +675,7 @@ INT CALLBACK QueryCmdState(UINT CmdId,PVOID,LPARAM)
 		case ID_PHYSICALDRIVELIST:
 		case ID_VOLUMESHADOWCOPY:
 		case ID_MSDOSDRIVES:
+		case ID_FILTERDRIVER:
 		case ID_ABOUT:
 		case ID_EXIT:
 			return UPDUI_ENABLED;
@@ -700,6 +747,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				case ID_MSDOSDRIVES:
 					OpenConsole(hWnd,VOLUME_CONSOLE_DOSDRIVELIST);
 					break;
+				case ID_FILTERDRIVER:
+					OpenConsole(hWnd,VOLUME_CONSOLE_FILTERDRIVER);
+					break;
 				case ID_FILE_CLOSE:
 					CloseConsole();
 					break;
@@ -764,14 +814,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		case WM_OPEM_MDI_CHILDFRAME:
 		{
+			if( lParam == 0 )
+				return 0;
 			UINT ConsoleTypeId = (UINT)LOWORD(wParam);
-			UINT Async = (UINT)HIWORD(wParam);
+			UINT CallType = (UINT)HIWORD(wParam);
 			PWSTR psz = (PWSTR)lParam;
-			if( psz )
+			switch( CallType )
 			{
-				OpenConsole(hWnd,ConsoleTypeId,psz);
-				if( Async )
+				case 0:
+					OpenConsole(hWnd,ConsoleTypeId,psz,CallType);
+					break;
+				case 1:
+					OpenConsole(hWnd,ConsoleTypeId,psz,CallType);
 					CoTaskMemFree(psz);
+					break;
+				case 2:
+					OpenConsole(hWnd,ConsoleTypeId,(PCWSTR)lParam,CallType);
+					break;
 			}
 			return 0;
 		}

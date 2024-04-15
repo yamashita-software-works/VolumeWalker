@@ -40,6 +40,19 @@ typedef struct _SELECT_ITEM
 	};
 } SELECT_ITEM;
 
+#define SI_MASK_PATH     0x1
+#define SI_MASK_NAME     0x2
+#define SI_MASK_CURDIR   0x4
+#define SI_MASK_VIEWTYPE 0x8
+
+typedef struct _SELECT_OFFSET_ITEM
+{
+	SELECT_ITEM hdr;
+	LARGE_INTEGER liStartOffset;
+} SELECT_OFFSET_ITEM;
+
+#define SI_MASK_START_OFFSET  0x8000
+
 //
 // WM_QUERY_CMDSTATE
 //

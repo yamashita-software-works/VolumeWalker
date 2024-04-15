@@ -177,6 +177,16 @@ public:
 				pNew = GetOrAllocWndObject<CFileSystemStatisticsPage>(nView);
 				break;
 			}
+			case VOLUME_CONSOLE_SIMPLEHEXDUMP:
+			{
+				pNew = GetOrAllocWndObject<CSimpleHexDumpPage>(nView);
+				break;
+			}
+			case VOLUME_CONSOLE_FILTERDRIVER:
+			{
+				pNew = GetOrAllocWndObject<CFilterDriverPage>(nView);
+				break;
+			}
 			default:
 				return NULL;
 		}
@@ -334,6 +344,12 @@ public:
 			case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 				_SelectPage( SelItem );
 				break;
+			case VOLUME_CONSOLE_SIMPLEHEXDUMP:
+				_SelectPage( SelItem );
+				break;
+			case VOLUME_CONSOLE_FILTERDRIVER:
+				_SelectPage( SelItem );
+				break;
 			default:
 				return E_FAIL;
 		}
@@ -360,6 +376,11 @@ public:
 	}
 
 	virtual HRESULT GetState(int,ULONG *pul)
+	{
+		return E_NOTIMPL;
+	}
+
+	virtual HRESULT PreTranslateMessage(MSG *msg)
 	{
 		return E_NOTIMPL;
 	}
