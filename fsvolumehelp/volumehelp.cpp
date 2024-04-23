@@ -1546,6 +1546,41 @@ BOOL GetDiskDriveLayoutEx(HANDLE hDisk,PDRIVE_LAYOUT_INFORMATION_EX *DriveLayout
 	return ((*DriveLayoutBuffer) != NULL);
 }
 
+//---------------------------------------------------------------------------
+//
+//  GetVolumeUsnJornalDataInformation()
+//
+//  PURPOSE:
+//
+//---------------------------------------------------------------------------
+EXTERN_C
+HRESULT
+NTAPI
+GetVolumeUsnJornalDataInformation(
+	HANDLE Handle,
+	__in VOLUME_FS_USN_JOURNAL_DATA *QuataInfoList,
+	__inout ULONG *pcbQuataInfoList
+	)
+{
+	DWORD cbBytesReturned;
+	DWORD cbBuffer;
+
+	cbBuffer = *pcbQuataInfoList;
+
+	DeviceIoControl(Handle,
+				FSCTL_QUERY_USN_JOURNAL, 
+				NULL,
+				0,
+				QuataInfoList,
+				cbBuffer,
+				&cbBytesReturned,
+				NULL);
+
+	*pcbQuataInfoList = cbBytesReturned;
+
+	return HRESULT_FROM_WIN32( GetLastError() );
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 LPWSTR WINAPI _FormatByteSize(LONGLONG qdw, __out_ecount(cchBuf) LPWSTR pszBuf, UINT cchBuf)
@@ -1701,7 +1736,7 @@ CreateVolumeInformationBuffer(
 		if( Status != STATUS_SUCCESS )
 		{
 			// No file system volume, ex) RAW drive 
-			Status = TryOpenVolume(&hVolume,pszVolumeName);
+			Status = TryOpenVolume(&hRootDirectory,pszVolumeName);
 		}
 
 		if( hRootDirectory != INVALID_HANDLE_VALUE )

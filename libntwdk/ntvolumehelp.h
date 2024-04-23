@@ -166,3 +166,21 @@ typedef struct _VOLUME_FS_SECTOR_SIZE_INFORMATION
 #define SSINFO_FLAGS_BYTE_ADDRESSABLE               0x00000010
 #define SSINFO_OFFSET_UNKNOWN (0xffffffff)
 #endif
+
+//
+// USN Journal Information Structure
+//
+typedef struct {
+	DWORDLONG UsnJournalID;
+	USN       FirstUsn;
+	USN       NextUsn;
+	USN       LowestValidUsn;
+	USN       MaxUsn;
+	DWORDLONG MaximumSize;
+	DWORDLONG AllocationDelta;
+	USHORT    MinSupportedMajorVersion;
+	USHORT    MaxSupportedMajorVersion;
+	ULONG     Flags;
+	DWORDLONG RangeTrackChunkSize;
+	LONGLONG  RangeTrackFileSizeThreshold;
+} VOLUME_FS_USN_JOURNAL_DATA, *PVOLUME_FS_USN_JOURNAL_DATA;

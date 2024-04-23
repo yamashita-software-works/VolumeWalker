@@ -38,6 +38,7 @@ enum {
 	ID_GROUP_NAME,
 	ID_GROUP_CONTROL,
 	ID_GROUP_QUOTA,
+	ID_GROUP_USN_JOURNAL_DATA,
 };
 
 typedef struct _VOLBASICINFOITEM
@@ -68,6 +69,7 @@ class CVolumeBasicInfoView : public CPageWndBase
 	PWSTR m_pszVolumeGuid;
 	PWSTR m_pszDrive;
 	VOLUME_FS_QUOTA_INFORMATION_LIST *m_QuotaInfoList;
+	VOLUME_FS_USN_JOURNAL_DATA m_UsnJournalData;
 
 	HFONT m_hFont;
 
@@ -80,6 +82,7 @@ public:
 		m_pszVolumeGuid = NULL;
 		m_pszDrive = NULL;
 		m_QuotaInfoList = NULL;
+		ZeroMemory(&m_UsnJournalData,sizeof(VOLUME_FS_USN_JOURNAL_DATA));
 	}
 
 	~CVolumeBasicInfoView()
@@ -681,6 +684,7 @@ public:
 			{ ID_GROUP_MEDIATYPES,            L"Media Types" },
 			{ ID_GROUP_CONTROL,               L"System Control" },
 			{ ID_GROUP_QUOTA,                 L"Quota" },
+			{ ID_GROUP_USN_JOURNAL_DATA,      L"USN Journal Data" },
 		};
 		int cGroupItem = ARRAYSIZE(Group);
 
@@ -931,6 +935,9 @@ public:
 		if( m_QuotaInfoList )
 			FillQuotaInformation();
 
+		if( m_UsnJournalData.UsnJournalID != 0 )
+			FillUsnJournalDataInformation();
+
 		//
 		// Adjust column width.
 		//
@@ -984,7 +991,15 @@ public:
 			
 		if( OpenVolume(m_pszNtDeviceName,OPEN_READ_DATA,&Handle) == STATUS_SUCCESS )
 		{
+			// Open with FILE_READ_DATA flag
+
+			// Quota
 			GetQuotaInformation(Handle,&m_QuotaInfoList);
+
+			// Usn Journal Data
+			ULONG cb = sizeof(m_UsnJournalData);
+			GetVolumeUsnJornalDataInformation(Handle,&m_UsnJournalData,&cb);
+
 			CloseHandle(Handle);
 		}
 
@@ -1387,6 +1402,9 @@ public:
 
 		for(i = 0; i < m_QuotaInfoList->ItemCount; i++)
 		{
+			if( i > 0 )
+				InsertItemString(iIndent,L"",L"",ID_GROUP_QUOTA);
+
 			if( GetAccountNameFromSid(m_QuotaInfoList->QuataUser[i].Sid,&Name,&Domain) )
 			{
 				StringCchPrintf(sz,ARRAYSIZE(sz),L"%s\\%s",Domain,Name);
@@ -1423,9 +1441,37 @@ public:
 			InsertQuotaValue(iIndent,L"Quota Limit",qi.QuotaLimit);
 			InsertQuotaValue(iIndent,L"Quota Threshold",qi.QuotaThreshold);
 			InsertQuotaValue(iIndent,L"Quota Used",qi.QuotaUsed);
-
-			InsertItemString(iIndent,L"",L"",ID_GROUP_QUOTA);
 		}
+	}
+
+	VOID FillUsnJournalDataInformation()
+	{
+		const int iIndent = 1;
+
+		WCHAR szBuf[256];		
+
+		InsertItemFormat(iIndent,ID_GROUP_USN_JOURNAL_DATA,L"Journal ID",L"0x%I64X",m_UsnJournalData.UsnJournalID);
+		InsertItemFormat(iIndent,ID_GROUP_USN_JOURNAL_DATA,L"First USN",L"0x%I64X",m_UsnJournalData.FirstUsn);
+		InsertItemFormat(iIndent,ID_GROUP_USN_JOURNAL_DATA,L"Next USN",L"0x%I64X",m_UsnJournalData.NextUsn);
+		InsertItemFormat(iIndent,ID_GROUP_USN_JOURNAL_DATA,L"Lowest Valid USN",L"0x%I64X",m_UsnJournalData.LowestValidUsn);
+		InsertItemFormat(iIndent,ID_GROUP_USN_JOURNAL_DATA,L"Max USN",L"0x%I64X",m_UsnJournalData.MaxUsn);
+
+#if 1
+		_CommaFormatString(m_UsnJournalData.MaximumSize,szBuf);
+#else
+		StrFormatByteSizeW(m_UsnJournalData.MaximumSize,szBuf,ARRAYSIZE(szBuf));
+#endif
+		InsertItemFormat(iIndent,ID_GROUP_USN_JOURNAL_DATA,L"Maximum Size",L"0x%I64X (%s)",m_UsnJournalData.MaximumSize,szBuf);
+
+#if 1
+		_CommaFormatString(m_UsnJournalData.AllocationDelta,szBuf);
+#else
+		StrFormatByteSizeW(m_UsnJournalData.AllocationDelta,szBuf,ARRAYSIZE(szBuf));
+#endif
+		InsertItemFormat(iIndent,ID_GROUP_USN_JOURNAL_DATA,L"Allocation Delta",L"0x%I64X (%s)",m_UsnJournalData.AllocationDelta,szBuf);
+
+		InsertItemFormat(iIndent,ID_GROUP_USN_JOURNAL_DATA,L"Min Supported Major Version",L"%u",m_UsnJournalData.MinSupportedMajorVersion);
+		InsertItemFormat(iIndent,ID_GROUP_USN_JOURNAL_DATA,L"Max Supported Major Version",L"%u",m_UsnJournalData.MaxSupportedMajorVersion);
 	}
 
 	BOOL GetAccountNameFromSid(PSID pSid,PWSTR *RetuernName,PWSTR *RetuernDomain)

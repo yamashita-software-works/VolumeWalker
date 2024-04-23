@@ -421,6 +421,9 @@ DestroyVolumeInformationBuffer(
     PVOID InformaionBuffer
     );
 
+//
+// Statistics
+//
 HRESULT
 WINAPI
 GetStatisticsData(
@@ -465,6 +468,18 @@ CalcStatisticsDiffNtfsEx(
 	PVOID pDiff, 
 	PVOID pData1, 
 	PVOID pData2
+	);
+
+//
+// Usn Change Journal Information
+//
+EXTERN_C
+HRESULT
+NTAPI
+GetVolumeUsnJornalDataInformation(
+	HANDLE Handle,
+	__in VOLUME_FS_USN_JOURNAL_DATA *QuataInfoList,
+	__inout ULONG *pcbQuataInfoList
 	);
 
 #ifdef __cplusplus

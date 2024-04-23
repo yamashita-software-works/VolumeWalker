@@ -66,19 +66,16 @@ struct CPhysicalDriveInformation
     PVOID Alloc(ULONG cb)
     {
 		return _MemAlloc(cb);
-//      return HeapAlloc(GetProcessHeap(),HEAP_ZERO_MEMORY,cb);
     }
 
     PVOID Shrink(PVOID pv,ULONG cb)
     {
 		return _MemReAlloc(pv,cb);
-//      return HeapReAlloc(GetProcessHeap(),0, pv, cb);
     }
 
     VOID Free(PVOID pv)
     {
 		_MemFree(pv);
-//		HeapFree(GetProcessHeap(),0,pv);
     }
 
     // Physical Disk APIs

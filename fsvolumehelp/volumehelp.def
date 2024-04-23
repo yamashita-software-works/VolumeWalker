@@ -25,6 +25,7 @@ EXPORTS
 	QueryDiskPerformance
 	GetQuotaInformation
 	FreeQuotaInformation
+	GetVolumeUsnJornalDataInformation
 
 	;
 	; Utility

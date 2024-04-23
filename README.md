@@ -34,7 +34,7 @@ MDI Win32アプリケーションのひな形を用いて、[FSWorkbench](https:
 - MS-DOS Drives   
 ドライブの一覧を表示します。
 
-以下のウィンドウは Volumes ウィンドウから項目を選択しダブルクリックまたはメニューから開きます。
+以下のウィンドウは Volumes, MS-DOS Drives ウィンドウから項目を選択しダブルクリックまたはメニューから開きます。
 
 - Volume Information   
 選択されたボリュームの詳細情報を表示します。

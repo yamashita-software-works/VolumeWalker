@@ -108,7 +108,6 @@ SOURCES = \
 #----------------------------------------------------------
 IGNORE_LINKLIB_ABUSE=1
 
-#DLLDEF=$(TARGETNAME).def
 DLLDEF=volumehelp.def
 
 !if $(AMD64)
@@ -120,13 +119,9 @@ _WIN7_SDK_LIB_PATH=C:\WinSDK\7.1\Lib
 _LIB_PATH=..\lib
 
 !if $(AMD64)
-
 _LIBNTWDK=$(_LIB_PATH)\x64\lib$(DDKBUILDENV)
-
 !else
-
 _LIBNTWDK=$(_LIB_PATH)\x86\lib$(DDKBUILDENV)
-
 !endif
 
 LINKLIBS=\
