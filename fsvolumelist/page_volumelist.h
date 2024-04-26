@@ -279,20 +279,20 @@ public:
 
 			LRESULT RetFlag = 0;
 
+			if( pParam->VolInfoBuffer->VirtualDiskVolume )
+			{
+				pcd->clrText = _COLOR_TEXT_VIRTUALDISK;
+				RetFlag = CDRF_NEWFONT;
+			} 
+
 			if( pParam->VolInfoBuffer->DirtyBit != (CHAR)-1 )
 			{
 				if( pParam->VolInfoBuffer->DirtyBit != 0 )
 				{
-					int iSel =(int)SendMessage(m_hWnd, LVM_GETNEXTITEM, (WPARAM)-1, MAKELPARAM(LVNI_ALL | LVNI_SELECTED, 0));
-					if(iSel == pcd->nmcd.dwItemSpec)
-						pcd->clrText = RGB(220,110,0);
-					else
-						pcd->clrTextBk = RGB(255,170,0);
-					int iHot =(int)SendMessage(m_hWnd, LVM_GETHOTITEM, 0, 0);
-					if( iHot == pcd->nmcd.dwItemSpec )
-						pcd->clrText = RGB(220,110,0);
-					if( (CDIS_HOT|CDIS_NEARHOT|CDIS_OTHERSIDEHOT) & pcd->nmcd.uItemState )
-						pcd->clrText =  RGB(220,110,0);
+					pcd->clrTextBk = _COLOR_BKGD_DIRTY_VOLUME;
+
+					if( CDIS_SELECTED & pcd->nmcd.uItemState )
+						pcd->clrText = _COLOR_TEXT_DIRTY_VOLUME;
 
 					RetFlag = CDRF_NEWFONT;
 				}

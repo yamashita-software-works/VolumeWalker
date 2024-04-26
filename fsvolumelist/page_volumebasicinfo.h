@@ -39,6 +39,7 @@ enum {
 	ID_GROUP_CONTROL,
 	ID_GROUP_QUOTA,
 	ID_GROUP_USN_JOURNAL_DATA,
+	ID_GROUP_VIRTUAL_DISK,
 };
 
 typedef struct _VOLBASICINFOITEM
@@ -685,6 +686,7 @@ public:
 			{ ID_GROUP_CONTROL,               L"System Control" },
 			{ ID_GROUP_QUOTA,                 L"Quota" },
 			{ ID_GROUP_USN_JOURNAL_DATA,      L"USN Journal Data" },
+			{ ID_GROUP_VIRTUAL_DISK,          L"Virtual Disk" },
 		};
 		int cGroupItem = ARRAYSIZE(Group);
 
@@ -938,6 +940,9 @@ public:
 		if( m_UsnJournalData.UsnJournalID != 0 )
 			FillUsnJournalDataInformation();
 
+		if( pvdi->VirtualDiskVolume )
+			FillVirtualDiskInformation();
+
 		//
 		// Adjust column width.
 		//
@@ -961,10 +966,6 @@ public:
 		PWSTR pszVolumeName = _MemAllocString(pSel->pszPath);
 		if( pszVolumeName != NULL )
 		{
-			ULONG Type;
-			Type = GetPathType(pszVolumeName);
-			//PATHTYPE_NT_DEVICE
-
 			_SafeMemFree(m_pszNtDeviceName);
 			m_pszNtDeviceName = _MemAllocString(pszVolumeName);
 
@@ -1472,6 +1473,143 @@ public:
 
 		InsertItemFormat(iIndent,ID_GROUP_USN_JOURNAL_DATA,L"Min Supported Major Version",L"%u",m_UsnJournalData.MinSupportedMajorVersion);
 		InsertItemFormat(iIndent,ID_GROUP_USN_JOURNAL_DATA,L"Max Supported Major Version",L"%u",m_UsnJournalData.MaxSupportedMajorVersion);
+	}
+
+	VOID FillVirtualDiskInformation()
+	{
+		STORAGE_DEPENDENCY_INFO *psdi = (STORAGE_DEPENDENCY_INFO *)this->m_pvdi->VirtualHardDiskInformation;
+		if( psdi->Version == STORAGE_DEPENDENCY_INFO_VERSION_1 )
+			FillVirtualDiskInformationType1();
+		else if( psdi->Version == STORAGE_DEPENDENCY_INFO_VERSION_2 )
+			FillVirtualDiskInformationType2();
+	}
+
+	VOID FillVirtualDiskInformationType2()
+	{
+		STORAGE_DEPENDENCY_INFO *psdi = (STORAGE_DEPENDENCY_INFO *)this->m_pvdi->VirtualHardDiskInformation;
+
+		STORAGE_DEPENDENCY_INFO_TYPE_2 *psdi2;
+
+		WCHAR szGuid[64];
+		WCHAR sz[64];
+		const int iIndent = 1;
+		ULONG i;
+		PWSTR psz;
+		int gid = ID_GROUP_VIRTUAL_DISK;
+
+		for( i = 0; i < psdi->NumberEntries; i++ )
+		{
+			psdi2 = &psdi->Version2Entries[i];
+
+			if( i > 0 )
+				InsertItemFormat(iIndent,gid,L"",L"");
+
+			switch( psdi2->VirtualStorageType.DeviceId )
+			{
+				case VIRTUAL_STORAGE_TYPE_DEVICE_ISO:  psz = L"ISO";  break;
+				case VIRTUAL_STORAGE_TYPE_DEVICE_VHD:  psz = L"VHD";  break;
+				case VIRTUAL_STORAGE_TYPE_DEVICE_VHDX: psz = L"VHDX"; break;
+				default:                               psz = NULL;    break;
+			}
+
+			if( psz )
+				InsertItemFormat(iIndent,gid,L"Storage Type",L"%s", psz);
+			else
+				InsertItemFormat(iIndent,gid,L"Storage Type",L"Unknown (%u)",psdi2->VirtualStorageType.DeviceId);
+
+			InsertItemFormat(iIndent,gid,L"Dependency Device Name",L"%s", 
+					psdi2->DependencyDeviceName);
+
+			InsertItemFormat(iIndent,gid,L"Dependent Volume Name",L"%s",
+					psdi2->DependentVolumeName);
+
+			InsertItemFormat(iIndent,gid,L"Host Volume Name",L"%s", 
+					psdi2->HostVolumeName);
+
+			InsertItemFormat(iIndent,gid,L"Virtual Disk File Name",L"%s",
+					PathFindFileName(psdi2->DependentVolumeRelativePath));
+
+			InsertItemFormat(iIndent,gid,L"Dependent Volume Relative Path",L"%s",
+					psdi2->DependentVolumeRelativePath);
+
+			StringFromGUID(&psdi2->VirtualStorageType.VendorId,szGuid,_countof(szGuid));
+			InsertItemFormat(iIndent,gid,L"Vendor Id",L"%s",szGuid);
+
+			InsertItemFormat(iIndent,gid,L"Ancestor Level",L"%u", 
+					psdi2->AncestorLevel);
+
+			InsertItemFormat(iIndent,gid,L"Provider Specific Flags",L"0x%08X",
+					psdi2->ProviderSpecificFlags);
+
+			InsertItemFormat(iIndent,gid,L"Dependency Type Flags",L"0x%08X", 
+					psdi2->DependencyTypeFlags);
+
+			DWORD dw;
+			DWORD dwMask = 0x1;
+			for(dw = 0; dw < 32; dw++)
+			{
+				if( psdi2->DependencyTypeFlags & dwMask )
+				{
+					InsertItemFormat(iIndent,gid,L"",L"%s",
+							GetDependentDiskFlagString(dwMask,sz,_countof(sz)));
+				}
+				dwMask <<= 1;
+			}
+		}
+	}
+
+	VOID FillVirtualDiskInformationType1()
+	{
+		const int iIndent = 1;
+		int gid = ID_GROUP_VIRTUAL_DISK;
+		WCHAR szGuid[64];
+		WCHAR sz[64];
+
+		STORAGE_DEPENDENCY_INFO *psdi = (STORAGE_DEPENDENCY_INFO *)this->m_pvdi->VirtualHardDiskInformation;
+		ULONG l;
+
+		for(l = 0; l < psdi->NumberEntries; l++)
+		{
+			STORAGE_DEPENDENCY_INFO_TYPE_1 *psdi1 = &psdi->Version1Entries[l];
+
+			if( l > 0 )
+				InsertItemFormat(iIndent,gid,L"",L"");
+
+			PWSTR psz;
+			switch( psdi1->VirtualStorageType.DeviceId )
+			{
+				case VIRTUAL_STORAGE_TYPE_DEVICE_ISO:  psz = L"ISO";  break;
+				case VIRTUAL_STORAGE_TYPE_DEVICE_VHD:  psz = L"VHD";  break;
+				case VIRTUAL_STORAGE_TYPE_DEVICE_VHDX: psz = L"VHDX"; break;
+				default:                               psz = NULL;    break;
+			}
+
+			if( psz )
+				InsertItemFormat(iIndent,gid,L"Storage Type",L"%s", psz);
+			else
+				InsertItemFormat(iIndent,gid,L"Storage Type",L"Unknown (%u)",psdi1->VirtualStorageType.DeviceId);
+
+			StringFromGUID(&psdi1->VirtualStorageType.VendorId,szGuid,_countof(szGuid));
+			InsertItemFormat(iIndent,gid,L"Vendor Id",L"%s",szGuid);
+
+			InsertItemFormat(iIndent,gid,L"Provider SPecific Flags",L"0x%08X",
+					psdi1->ProviderSpecificFlags);
+
+			InsertItemFormat(iIndent,gid,L"Dependency Type Flags",L"0x%08X", 
+					psdi1->DependencyTypeFlags);
+
+			DWORD dw;
+			DWORD dwMask = 0x1;
+			for(dw = 0; dw < 32; dw++)
+			{
+				if( psdi1->DependencyTypeFlags & dwMask )
+				{
+					InsertItemFormat(iIndent,gid,L"",L"%s",
+							GetDependentDiskFlagString(dwMask,sz,_countof(sz)));
+				}
+				dwMask <<= 1;
+			}
+		}
 	}
 
 	BOOL GetAccountNameFromSid(PSID pSid,PWSTR *RetuernName,PWSTR *RetuernDomain)

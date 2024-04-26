@@ -79,3 +79,8 @@ HFONT GetIconFont();
 HICON GetShellStockIcon(SHSTOCKICONID StockIconId);
 
 #define DELAY_OPEN_TIMER (120) // 120ms todo:
+
+#define _COLOR_BKGD_DIRTY_VOLUME    RGB(255,220,0)
+#define _COLOR_TEXT_DIRTY_VOLUME    RGB(180,0,0)
+#define _COLOR_TEXT_VIRTUALDISK     RGB(0,32,180)
+

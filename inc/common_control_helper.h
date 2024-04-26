@@ -118,9 +118,9 @@ inline int ListViewEx_SubItemHitTest(HWND hwndLV,POINT pt, UINT* pFlags)
 
 inline BOOL ListViewEx_ClearSelectAll(HWND hwndLV,BOOL bClearFocus=FALSE)
 {
-	LVITEM lvi;
-	lvi.stateMask = 0;
-	lvi.state = (LVIS_SELECTED|(bClearFocus ? LVNI_FOCUSED : 0));
+	LVITEM lvi = {};
+	lvi.stateMask = (LVIS_SELECTED|(bClearFocus ? LVNI_FOCUSED : 0));
+	lvi.state = 0;
 	return (BOOL)SendMessage(hwndLV,LVM_SETITEMSTATE,(WPARAM)(-1),(LPARAM)&lvi);
 }
 

@@ -370,7 +370,7 @@ public:
 		LVCOLUMN lvc = {0};
 
 		static COLUMN columns_filelist[] = {
-			{ COLUMN_Name,           L"Name",                  0, 240, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_Name,           L"Name",                  0, 240, LVCFMT_LEFT },
 			{ COLUMN_Identifier,     L"Volume Identifier",     1, 280, LVCFMT_LEFT },
 		};
 

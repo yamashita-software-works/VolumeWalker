@@ -56,11 +56,14 @@ NTSTATUS NTAPI AllocateUnicodeStringCb(UNICODE_STRING *pus,PCWSTR String,ULONG c
 NTSTATUS CombineUnicodeStringPath(UNICODE_STRING *CombinedPath,UNICODE_STRING *Path,UNICODE_STRING *FileName);
 NTSTATUS NTAPI FreeUnicodeString(UNICODE_STRING *pus);
 
+LONG NTAPI CompareUnicodeString(__in PUNICODE_STRING  String1,__in PUNICODE_STRING  String2,__in BOOLEAN  CaseInSensitive);
+
 NTSTATUS FindRootDirectory_U(__in UNICODE_STRING *pusFullyQualifiedPath,__out PWSTR *pRootDirectory);
 NTSTATUS GetFileNamePart_U(__in UNICODE_STRING *FilePath,__out UNICODE_STRING *FileName);
 NTSTATUS SplitPathFileName_U(__inout UNICODE_STRING *Path,__out UNICODE_STRING *FileName);
 NTSTATUS GetFileNameInformation_U(HANDLE hFile,UNICODE_STRING *pusFileName);
 
+BOOLEAN SplitRootRelativePath_U(UNICODE_STRING *pusFullPath,UNICODE_STRING *RootDirectory,UNICODE_STRING *RootRelativePath);
 BOOLEAN SplitRootRelativePath(__in PCWSTR pszFullPath,__out UNICODE_STRING *RootDirectory,__out UNICODE_STRING *RootRelativePath);
 BOOLEAN SplitVolumeRelativePath(__in PCWSTR pszFullPath,__out UNICODE_STRING *VolumeName,__out UNICODE_STRING *VolumeRelativePath);
 BOOLEAN SplitVolumeRelativePath_U(__in UNICODE_STRING *FullPath,__out UNICODE_STRING *VolumeName,__out UNICODE_STRING *VolumeRelativePath);

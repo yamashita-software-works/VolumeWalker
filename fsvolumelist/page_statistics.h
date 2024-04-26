@@ -1243,7 +1243,7 @@ typedef struct _TITLE {
 		}
 	}
 
-	HRESULT FillItems(SELECT_ITEM *pFile)
+	HRESULT FillItems(SELECT_ITEM *pSelItem)
 	{
 		HRESULT hr;
 		PBYTE Buffer=NULL;
@@ -1255,8 +1255,8 @@ typedef struct _TITLE {
 		
 		if( m_pszVolumeRoot == NULL )
 		{
-			ASSERT(pFile != NULL);
-			m_pszVolumeRoot = _MemAllocString(pFile->pszName);
+			ASSERT(pSelItem != NULL);
+			m_pszVolumeRoot = _MemAllocString(pSelItem->pszPath);
 		}
 
 		SetRedraw(m_hWndList,FALSE);

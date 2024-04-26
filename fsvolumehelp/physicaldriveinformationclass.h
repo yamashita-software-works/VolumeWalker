@@ -47,8 +47,8 @@ struct CPhysicalDriveInformation
     {
         if( pDriveLayout )
             Free(pDriveLayout);
-		_SafeMemFree(pDeviceDescriptor);
-		_SafeMemFree(pGeometry);
+		StorageMemFree(pDeviceDescriptor);
+		StorageMemFree(pGeometry);
         CloseDiskHandle();
     }
 
@@ -123,7 +123,7 @@ struct CPhysicalDriveInformation
 
         if( pDriveLayout )
         {
-            DWORD BytesReturned;;
+            DWORD BytesReturned;
             if( DeviceIoControl(hDisk,
                           IOCTL_DISK_GET_DRIVE_LAYOUT_EX,
                           NULL,0,

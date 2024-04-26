@@ -37,6 +37,22 @@ extern "C" {
 
 //////////////////////////////////////////////////////////////////////////////
 
+EXTERN_C
+ULONG
+WINAPI
+StorageMemFree(
+	PVOID ptr
+	)
+{
+	if( ptr != NULL )
+	{
+		_MemFree(ptr);
+	}
+	return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
 typedef struct _FS_VOLUME_ATTIBUTE_DESCRIPTION
 {
 	ULONG Flag;
@@ -832,7 +848,6 @@ LONG StorageGetDeviceUniqueIdentifier(HANDLE hDevice,PSTORAGE_DEVICE_UNIQUE_IDEN
 
 	if( bSuccess )
 	{
-//		STORAGE_DEVICE_UNIQUE_IDENTIFIER *psdd = (STORAGE_DEVICE_UNIQUE_IDENTIFIER *)LocalAlloc(LPTR,sdh.Size);
 		STORAGE_DEVICE_UNIQUE_IDENTIFIER *psdd = (STORAGE_DEVICE_UNIQUE_IDENTIFIER *)_MemAlloc(sdh.Size);
 		if( psdd == NULL )
 			return ERROR_NOT_ENOUGH_MEMORY;
@@ -853,7 +868,6 @@ LONG StorageGetDeviceUniqueIdentifier(HANDLE hDevice,PSTORAGE_DEVICE_UNIQUE_IDEN
 		else
 		{
 			Status = GetLastError();
-//			LocalFree((HLOCAL)psdd);
 			_MemFree(psdd);
 		}
 	}
@@ -1820,7 +1834,13 @@ CreateVolumeInformationBuffer(
 		//
 		// Virtual Disk Information
 		//
-		pVolumeInfo->VirtualDiskVolume = (CHAR)VirtualDiskIsVirtualDiskVolume(pszVolumeName,NULL);
+		PWSTR pszRootDir = CombinePath(pszVolumeName,L"\\");
+
+		if( pszRootDir )
+		{
+			pVolumeInfo->VirtualDiskVolume = (CHAR)VirtualDisk_GetDependencyInformation(pszRootDir,(PSTORAGE_DEPENDENCY_INFO *)&pVolumeInfo->VirtualHardDiskInformation);
+			FreeMemory(pszRootDir);
+		}
 
 		hr = S_OK;
 	}
@@ -1861,6 +1881,8 @@ DestroyVolumeInformationBuffer(
 	_SafeMemFree( pVolumeInfo->pDeviceDescriptor );
 	_SafeMemFree( pVolumeInfo->pMediaTypes );
 	_SafeMemFree( pVolumeInfo->pUniqueId );
+
+	LocalFree( pVolumeInfo->VirtualHardDiskInformation );
 
 	FreeMemory(pVolumeInfo->VolumeLabel);
 

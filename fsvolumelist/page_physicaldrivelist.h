@@ -246,6 +246,16 @@ public:
 
 		if( pnmlvcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT )
 		{
+			CPhysicalDriveItem *pItem = (CPhysicalDriveItem *)pnmlvcd->nmcd.lItemlParam;
+
+			if( pItem->DriveInfo && pItem->DriveInfo->pDeviceDescriptor )
+			{
+				if( pItem->DriveInfo->pDeviceDescriptor->BusType == BusTypeVirtual ||
+				    pItem->DriveInfo->pDeviceDescriptor->BusType == BusTypeFileBackedVirtual )
+				{
+					pnmlvcd->clrText = _COLOR_TEXT_VIRTUALDISK;
+				}
+			} 
 			SelectObject(pnmlvcd->nmcd.hdc,m_hFont);
 			return CDRF_NEWFONT|CDRF_NOTIFYPOSTPAINT;
 		}
@@ -694,6 +704,7 @@ public:
 				pdi->GetDriveLayout();
 				pdi->GetDeviceIdDescriptor();
 				pdi->GetDetectSectorSize();
+
 				Insert(i,pDisks->Drive[i],pdi,pszPhysicalDisk,dwDriveNumber);
 			}
 			else

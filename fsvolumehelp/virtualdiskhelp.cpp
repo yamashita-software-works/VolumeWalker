@@ -19,15 +19,14 @@
 
 //----------------------------------------------------------------------------
 //
-//  VirtualDiskGetDependencyInformation()
+//  VirtualDisk_GetDependencyInformationByHandle()
 //
 //  PURPOSE:
 //
 //----------------------------------------------------------------------------
 EXTERN_C
 DWORD
-WINAPI
-VirtualDiskGetDependencyInformation(
+VirtualDisk_GetDependencyInformationByHandle(
 	HANDLE hStorage,
 	PSTORAGE_DEPENDENCY_INFO *ppStorageInfo
 	)
@@ -35,13 +34,7 @@ VirtualDiskGetDependencyInformation(
 	ULONG SizeUsed = 0;
 	DWORD dwResult;
 
-	// GET_STORAGE_DEPENDENCY_FLAG_HOST_VOLUMES
-
-	// GET_STORAGE_DEPENDENCY_FLAG_DISK_HANDLE 
-	// The handle (hStorage) provided is to a disk, not a volume or file.
-	// 
 	GET_STORAGE_DEPENDENCY_FLAG Flag;
-
 	Flag = GET_STORAGE_DEPENDENCY_FLAG_HOST_VOLUMES;
 
 	STORAGE_DEPENDENCY_INFO sdi;
@@ -66,8 +59,10 @@ VirtualDiskGetDependencyInformation(
 
 				if( dwResult == ERROR_SUCCESS )
 				{
-					// STORAGE_DEPENDENCY_INFO_TYPE_1 *psdit1 = &pBuffer->Version1Entries[0];
-					// STORAGE_DEPENDENCY_INFO_TYPE_2 *psdit2 = &pBuffer->Version2Entries[0];
+#ifdef _DEBUG
+					STORAGE_DEPENDENCY_INFO_TYPE_1 *psdit1 = &pBuffer->Version1Entries[0];
+					STORAGE_DEPENDENCY_INFO_TYPE_2 *psdit2 = &pBuffer->Version2Entries[0];
+#endif
 					*ppStorageInfo = pBuffer;
 				}
 			}
@@ -82,44 +77,43 @@ VirtualDiskGetDependencyInformation(
 
 //----------------------------------------------------------------------------
 //
-//  VirtualDiskIsVirtualDiskVolume()
+//  VirtualDisk_GetDependencyInformation()
 //
 //  PURPOSE:
 //
 //----------------------------------------------------------------------------
 EXTERN_C
-DWORD
+BOOL
 WINAPI
-VirtualDiskIsVirtualDiskVolume(
+VirtualDisk_GetDependencyInformation(
 	PCWSTR NtDevicePath,
 	PSTORAGE_DEPENDENCY_INFO *ppsdi
 	)
 {
 	DWORD dwError = 0;
 
-	WCHAR NtVolumeRootDir[MAX_PATH];
-	StringCchCopy(NtVolumeRootDir,MAX_PATH,NtDevicePath);
-	StringCchCat(NtVolumeRootDir,MAX_PATH,L"\\");
-
 	BOOL bResult = FALSE;
 	HANDLE Handle;
-	Handle = OpenDisk(NtVolumeRootDir,0,FILE_READ_ATTRIBUTES|SYNCHRONIZE);
+	Handle = OpenDisk(NtDevicePath,0,FILE_READ_ATTRIBUTES|SYNCHRONIZE);
 
 	if( Handle != INVALID_HANDLE_VALUE )
 	{
 		PSTORAGE_DEPENDENCY_INFO psdi = NULL;
-		dwError = VirtualDiskGetDependencyInformation(Handle,&psdi);
+		dwError = VirtualDisk_GetDependencyInformationByHandle(Handle,&psdi);
 
-		if( ppsdi )
+		if( dwError == ERROR_SUCCESS )
 		{
-			*ppsdi = psdi;
+			if( ppsdi )
+			{
+				*ppsdi = psdi;
+			}
+
+			bResult = TRUE;
 		}
 
 		CloseHandle(Handle);
-	}
-	else
-	{
-		dwError = GetLastError();
+
+		SetLastError(dwError);
 	}
 
 	return bResult;

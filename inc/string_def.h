@@ -46,6 +46,7 @@
 #define diNtDeviceName                           (diGenericBase+20)
 #define diVolumeGuidName                         (diGenericBase+21)
 #define diDriveName                              (diGenericBase+22)
+#define diBusType                                (diGenericBase+23)
 
 #define diNtfsVolumeSerialNumber                 (diNtfsBase + 0)
 #define diNtfsNumberSectors                      (diNtfsBase + 1)

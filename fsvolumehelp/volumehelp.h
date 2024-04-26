@@ -204,6 +204,12 @@ StorageGetDeviceCapacity(
 	PSTORAGE_READ_CAPACITY DeviceCapacity
 	);
 
+ULONG
+WINAPI
+StorageMemFree(
+	PVOID pv
+	);
+
 //
 // pBuffer
 //	 - STORAGE_ADAPTER_DESCRIPTOR Win7
@@ -341,17 +347,21 @@ GetVolumeAttributeString(
 
 DWORD
 WINAPI
-VirtualDiskGetDependencyInformation(
+VirtualDisk_GetDependencyInformationByHandle(
     HANDLE hStorage,
-    PSTORAGE_DEPENDENCY_INFO *ppStorageInfo
+    PSTORAGE_DEPENDENCY_INFO *ppStorageDependencyInfo
     );
 
-DWORD
+BOOL
 WINAPI
-VirtualDiskIsVirtualDiskVolume(
+VirtualDisk_GetDependencyInformation(
     PCWSTR NtDevicePath,
-    PSTORAGE_DEPENDENCY_INFO *ppsdi
+    PSTORAGE_DEPENDENCY_INFO *ppStorageDependencyInfo
     );
+
+#ifndef VIRTUAL_STORAGE_TYPE_DEVICE_VHDX
+#define VIRTUAL_STORAGE_TYPE_DEVICE_VHDX  3
+#endif
 
 //
 // MS-DOS drive information helper
@@ -374,6 +384,8 @@ typedef struct _DOS_DRIVE_INFORMATION {
     PWSTR Device;
     PWSTR VolumeLabel;                    
     PWSTR FileSystemName;
+	CHAR DirtyBit;
+	BOOLEAN VirtualDiskVolume;
 } DOS_DRIVE_INFORMATION;
 
 typedef struct _DOS_DRIVE_INFORMATION_ARRAY {

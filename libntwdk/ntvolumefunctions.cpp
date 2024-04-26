@@ -787,7 +787,6 @@ FreePhysicalDriveNames(
 		FreeMemory( (void *)PhysicalDriveNames->Drive[i].DevicePath );
 	}
 
-//	HeapFree(GetProcessHeap(),0,PhysicalDriveNames);
 	FreeMemory(PhysicalDriveNames);
 
 	return 0;

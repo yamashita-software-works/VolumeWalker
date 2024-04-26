@@ -419,7 +419,7 @@ public:
 		LVCOLUMN lvc = {0};
 
 		static COLUMN columns_filelist[] = {
-			{ COLUMN_Address,   L"Address",    0, 0, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_Address,   L"Address",    0, 0, LVCFMT_LEFT },
 			{ COLUMN_DumpHex,   L"Hex",        1, 0, LVCFMT_LEFT },
 			{ COLUMN_DumpChar,  L"Character",  2, 0, LVCFMT_LEFT },
 		};
@@ -486,7 +486,7 @@ public:
 		return iItem;
 	}
 
-	HRESULT FillItems(SELECT_ITEM *)
+	HRESULT FillItems()
 	{
 		CWaitCursor wait;
 
@@ -659,20 +659,20 @@ public:
 		return m_rd.Status == 0 ? TRUE : FALSE;
 	}
 
-	virtual HRESULT UpdateData(PVOID pFile)
+	virtual HRESULT UpdateData(PVOID pSelItem)
 	{
-		ASSERT(pFile != NULL);
-		if( pFile == NULL )
+		ASSERT(pSelItem != NULL);
+		if( pSelItem == NULL )
 			return 0;
 
-		SELECT_OFFSET_ITEM *sel = (SELECT_OFFSET_ITEM*)pFile;
+		SELECT_OFFSET_ITEM *pSelOffset = (SELECT_OFFSET_ITEM*)pSelItem;
 
 		//
 		// Set up drive/volume name and read start offset.
 		//
-		StringCchCopy(m_rd.Name,ARRAYSIZE(m_rd.Name),sel->hdr.pszName);
-		m_rd.ReadOffset.QuadPart = sel->liStartOffset.QuadPart;
-		m_rd.BaseOffset.QuadPart = sel->liStartOffset.QuadPart;
+		StringCchCopy(m_rd.Name,ARRAYSIZE(m_rd.Name),pSelOffset->hdr.pszName);
+		m_rd.ReadOffset.QuadPart = pSelOffset->liStartOffset.QuadPart;
+		m_rd.BaseOffset.QuadPart = pSelOffset->liStartOffset.QuadPart;
 
 		//
 		// Allocation sector buffer and initialize sector size, extent size.
@@ -691,7 +691,7 @@ public:
 		//
 		// Reads sector from the currently set read position and fill the listview.
 		//
-		return FillItems((SELECT_ITEM*)pFile);
+		return FillItems();
 	}
 
 	void doReload()
@@ -700,7 +700,7 @@ public:
 		ASSERT(m_rd.Length != 0);
 
 		// reload current location sector
-		FillItems(NULL);
+		FillItems();
 	}
 
 	void gotoNext()
@@ -715,7 +715,7 @@ public:
 
 		UpdateToolbarButtons();
 
-		FillItems(NULL);
+		FillItems();
 	}
 
 	void gotoBack()
@@ -730,7 +730,7 @@ public:
 
 		UpdateToolbarButtons();
 
-		FillItems(NULL);
+		FillItems();
 	}
 
 	void gotoLast()
@@ -742,7 +742,7 @@ public:
 
 		UpdateToolbarButtons();
 
-		FillItems(NULL);
+		FillItems();
 	}
 
 	void gotoFirst()
@@ -754,7 +754,7 @@ public:
 
 		UpdateToolbarButtons();
 
-		FillItems(NULL);
+		FillItems();
 	}
 
 	void gotoHome()
@@ -766,7 +766,7 @@ public:
 
 		UpdateToolbarButtons();
 
-		FillItems(NULL);
+		FillItems();
 	}
 
 	void gotoSector()
@@ -819,7 +819,7 @@ public:
 
 			UpdateToolbarButtons();
 
-			FillItems(NULL);
+			FillItems();
 		}
 	}
 

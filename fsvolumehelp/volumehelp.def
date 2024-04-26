@@ -36,8 +36,9 @@ EXPORTS
 	;
 	; Virtual Disk
 	;
-	VirtualDiskGetDependencyInformation
-	VirtualDiskIsVirtualDiskVolume
+	VirtualDisk_GetDependencyInformationByHandle
+	VirtualDisk_GetDependencyInformation
+	GetDependentDiskFlagString
 
 	;
 	; Storage Device
@@ -48,14 +49,17 @@ EXPORTS
 	GetKnownHardwareProductPointer
 	FindVolumeObjectPath
 
-	StorageGetDeviceNumber
 	StorageGetDeviceIdDescriptor
-	StorageGetDeviceUniqueIdentifier
 	StorageDetectSectorSize
-	StorageMediumProductTypeDescriptor
-	StorageGetMediaTypes
-	StorageAdapterDescriptor
-	StorageDeviceIdDescriptor
+;++ reserved
+;	StorageGetDeviceNumber
+;	StorageGetDeviceUniqueIdentifier
+;	StorageMediumProductTypeDescriptor
+;	StorageGetMediaTypes
+;	StorageAdapterDescriptor
+;	StorageDeviceIdDescriptor
+;-- reserved
+	StorageMemFree
 
 	;
 	; Mounted Device

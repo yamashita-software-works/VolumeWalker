@@ -1,3 +1,24 @@
+### 0.1.7.0
+
+- Volume Informationウィンドウに "Virtual Disk"グループを追加。   
+  ボリュームやドライブが仮想ディスクの場合表示されます。   
+  ※現状Dev Driveでアタッチされたの仮想ドライブを認識できません。   
+
+- Disk Drive Informationウィンドウに "Virtual Disk"グループを追加。   
+  ドライブが仮想ディスクの場合表示されます。
+
+- Disk Drive InformationウィンドウのBasicグループにBusTypeを追加。
+
+- Volumes,MS-DOS Drives,Physical Drivesの各ウィンドウで仮想ボリューム、ドライブの項目を識別できる様にした。   
+  現在は青文字で表示されます。   
+  ※現状Dev Driveでアタッチされたの仮想ドライブを認識できません。   
+
+- Volumesウィンドウで、Dirtyビットがセットされているボリュームの配色を調整。
+
+- MS-DOS DrivesウィンドウでもDirtyビットがセットされているドライブを識別できる様にした。
+
+- SimpleHexDumpとMountedDeviceのリストカラムにあった不要なスプリットボタン属性を削除。
+
 ### 0.1.6.0
 
 - ボリューム情報に "USN Journal Data"グループを追加。   

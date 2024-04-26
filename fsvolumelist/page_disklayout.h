@@ -860,7 +860,6 @@ public:
 					SELECT_OFFSET_ITEM sel = {0};
 					sel.hdr.pszName = sel.hdr.pszPath = m_pszPhysicalDrive;
 					sel.liStartOffset = pli->StartOffset;
-//					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,VOLUME_CONSOLE_SIMPLEHEXDUMP,(LPARAM)m_pszPhysicalDrive);
 					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_SIMPLEHEXDUMP,2),(LPARAM)&sel);
 				}
 			}

@@ -84,6 +84,8 @@ typedef struct _VOLUME_DEVICE_INFORMATION
 	CHAR VirtualDiskVolume;
     CHAR RecognitionFileSystem[9];
 
+	PVOID VirtualHardDiskInformation;                      // Pointer to Virtual Hard Disk Information Buffer
+
 	union
 	{
 		struct {

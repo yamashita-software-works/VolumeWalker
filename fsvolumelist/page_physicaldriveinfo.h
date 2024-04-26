@@ -19,6 +19,9 @@
 
 #define _STR_NA  L"---"
 
+#define _INDENT_WIDTH (18)
+#define _SET_INDENT(n) (n * _INDENT_WIDTH)
+
 enum {
 	ID_GROUP_PD_BASIC = 1,
 	ID_GROUP_PD_GEOMETRY,
@@ -26,6 +29,7 @@ enum {
 	ID_GROUP_PD_MBR,
 	ID_GROUP_PD_GPT,
 	ID_GROUP_PD_PARTITION,
+	ID_GROUP_PD_VIRTUALDISK,
 };
 
 typedef struct _PHYSICALDISKINFOITEM
@@ -41,6 +45,21 @@ struct CPhysicalDiskInfoItem : public PHYSICALDISKINFOITEM
 	}
 };
 
+struct CPhysicalDiskVirtualDependInformation
+{
+	PSTORAGE_DEPENDENCY_INFO VirtualHardDiskInformation;
+
+	CPhysicalDiskVirtualDependInformation()
+	{
+		VirtualHardDiskInformation = NULL;
+	}
+
+	~CPhysicalDiskVirtualDependInformation()
+	{
+		LocalFree(VirtualHardDiskInformation);
+	}
+};
+
 typedef struct _PHYSICALDISKINFOWNDEXTRA
 {
 	PVOID Reserved;
@@ -52,6 +71,7 @@ class CPhysicalDiskInfoView : public CPageWndBase
 	HWND m_hWndList;
 
 	CPhysicalDriveInformation *m_pdi;
+	CPhysicalDiskVirtualDependInformation *m_pvi;
 
 	DWORD m_dwDriveNumber;
 
@@ -65,6 +85,7 @@ public:
 		m_hWndList = NULL;
 		m_pszPhysicalDrive = NULL;
 		m_pdi = NULL;
+		m_pvi = NULL;
 		m_dwDriveNumber = (DWORD)-1;
 		m_hFont = NULL;
 	}
@@ -284,6 +305,11 @@ public:
 					StrTrim(*pszText,L" ");
 				}
 				break;
+			case diBusType:
+				if( m_pdi->pDeviceDescriptor ) {
+					GetStorageBusTypeDescString(m_pdi->pDeviceDescriptor->BusType,*pszText,cchText);
+				}
+				break;
 		}
 
 		if( *(*pszText) == L'\0' )
@@ -433,7 +459,7 @@ public:
 			{ ID_GROUP_PD_GEOMETRY,   L"Disk Geometry" },
 			{ ID_GROUP_PD_ACCESS_ALIGNMENT_DESCRIPTOR, L"Access Alignment Descriptor" },
 			{ ID_GROUP_PD_PARTITION,  L"Partition" },
-
+			{ ID_GROUP_PD_VIRTUALDISK,L"Virtual Disk" },
 		};
 		int cGroupItem = ARRAYSIZE(Group);
 
@@ -449,7 +475,7 @@ public:
 
 		ListView_SetExtendedListViewStyle(hWndList,LVS_EX_DOUBLEBUFFER|LVS_EX_FULLROWSELECT|LVS_EX_AUTOSIZECOLUMNS|LVS_EX_HEADERINALLVIEWS|LVS_EX_JUSTIFYCOLUMNS);
 
-		HIMAGELIST himl = ImageList_Create(8,16,ILC_COLOR32,1,1);
+		HIMAGELIST himl = ImageList_Create(1,16,ILC_COLOR32,1,1);
 		ListView_SetImageList(hWndList,himl,LVSIL_SMALL);
 
 		LVCOLUMN lvc;
@@ -484,7 +510,7 @@ public:
 		lvi.mask = LVIF_TEXT|LVIF_IMAGE|LVIF_INDENT|LVIF_PARAM|LVIF_GROUPID;
 		lvi.iItem = iItem;
 		lvi.iImage = I_IMAGENONE;
-		lvi.iIndent = 1;
+		lvi.iIndent = _SET_INDENT(1);
 		lvi.lParam = (LPARAM)pItem;
 		lvi.iGroupId = iGroupId;
 		lvi.pszText = LPSTR_TEXTCALLBACK;
@@ -509,6 +535,7 @@ public:
 			diProductId,
 			diProductRevision,
 			diSerialNumber,
+			diBusType,
 		};
 		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
 		{
@@ -566,6 +593,12 @@ public:
 		return iItem;
 	}
 
+	int m_idGroup;
+	void SetGroupId(int iGroupId)
+	{
+		m_idGroup = iGroupId;
+	}
+
 	int InsertItemString(int iItem,int iIndent,PCWSTR pszName,PCWSTR pszValume)
 	{
 		if( iItem == -1 )
@@ -578,9 +611,9 @@ public:
 		lvi.mask = LVIF_TEXT|LVIF_IMAGE|LVIF_INDENT|LVIF_PARAM|LVIF_GROUPID;
 		lvi.iItem = iItem;
 		lvi.iImage = I_IMAGENONE;
-		lvi.iIndent = iIndent;
+		lvi.iIndent = _SET_INDENT(iIndent);
 		lvi.lParam = (LPARAM)pItem;
-		lvi.iGroupId = ID_GROUP_PD_PARTITION;
+		lvi.iGroupId = m_idGroup;
 		lvi.pszText = (LPWSTR)pszName;
 
 		iItem = ListView_InsertItem(m_hWndList,&lvi);
@@ -627,6 +660,8 @@ public:
 		BOOLEAN bHeaderImage = TRUE;
 
 		CDiskFindVolume m_findVolume;
+
+		SetGroupId( ID_GROUP_PD_PARTITION );
 
 		m_findVolume.Enum();
 
@@ -815,7 +850,146 @@ public:
 		m_findVolume.Free();
 	}
 
-	HRESULT FillItems(CPhysicalDriveInformation *pdi)
+	VOID Insert_VirtualDiskInfo()
+	{
+		SetGroupId( ID_GROUP_PD_VIRTUALDISK );
+
+		STORAGE_DEPENDENCY_INFO *psdi = (STORAGE_DEPENDENCY_INFO *)this->m_pvi->VirtualHardDiskInformation;
+		if( psdi->Version == STORAGE_DEPENDENCY_INFO_VERSION_1 )
+			FillVirtualDiskInformationType1();
+		else if( psdi->Version == STORAGE_DEPENDENCY_INFO_VERSION_2 )
+			FillVirtualDiskInformationType2();
+	}
+
+	VOID FillVirtualDiskInformationType2()
+	{
+		STORAGE_DEPENDENCY_INFO *psdi = (STORAGE_DEPENDENCY_INFO *)this->m_pvi->VirtualHardDiskInformation;
+
+		STORAGE_DEPENDENCY_INFO_TYPE_2 *psdi2;
+
+		WCHAR szGuid[64];
+		WCHAR sz[64];
+		const int iIndent = 1;
+		ULONG i;
+		PWSTR psz;
+		int gid = ID_GROUP_VIRTUAL_DISK;
+
+		for( i = 0; i < psdi->NumberEntries; i++ )
+		{
+			psdi2 = &psdi->Version2Entries[i];
+
+			if( i > 0 )
+				InsertItemFormat(iIndent,L"",L"");
+
+			switch( psdi2->VirtualStorageType.DeviceId )
+			{
+				case VIRTUAL_STORAGE_TYPE_DEVICE_ISO:  psz = L"ISO";  break;
+				case VIRTUAL_STORAGE_TYPE_DEVICE_VHD:  psz = L"VHD";  break;
+				case VIRTUAL_STORAGE_TYPE_DEVICE_VHDX: psz = L"VHDX"; break;
+				default:                               psz = NULL;    break;
+			}
+
+			if( psz )
+				InsertItemFormat(iIndent,L"Storage Type",L"%s", psz);
+			else
+				InsertItemFormat(iIndent,L"Storage Type",L"Unknown (%u)",psdi2->VirtualStorageType.DeviceId);
+
+			InsertItemFormat(iIndent,L"Dependency Device Name",L"%s", 
+					psdi2->DependencyDeviceName);
+
+			InsertItemFormat(iIndent,L"Dependent Volume Name",L"%s",
+					psdi2->DependentVolumeName);
+
+			InsertItemFormat(iIndent,L"Host Volume Name",L"%s", 
+					psdi2->HostVolumeName);
+
+			InsertItemFormat(iIndent,L"Virtual Disk File Name",L"%s",
+					PathFindFileName(psdi2->DependentVolumeRelativePath));
+
+			InsertItemFormat(iIndent,L"Dependent Volume Relative Path",L"%s",
+					psdi2->DependentVolumeRelativePath);
+
+			StringFromGUID(&psdi2->VirtualStorageType.VendorId,szGuid,_countof(szGuid));
+			InsertItemFormat(iIndent,L"Vendor Id",L"%s",szGuid);
+
+			InsertItemFormat(iIndent,L"Ancestor Level",L"%u", 
+					psdi2->AncestorLevel);
+
+			InsertItemFormat(iIndent,L"Provider Specific Flags",L"0x%08X",
+					psdi2->ProviderSpecificFlags);
+
+			InsertItemFormat(iIndent,L"Dependency Type Flags",L"0x%08X", 
+					psdi2->DependencyTypeFlags);
+
+			DWORD dw;
+			DWORD dwMask = 0x1;
+			for(dw = 0; dw < 32; dw++)
+			{
+				if( psdi2->DependencyTypeFlags & dwMask )
+				{
+					InsertItemFormat(iIndent,L"",L"%s",
+							GetDependentDiskFlagString(dwMask,sz,_countof(sz)));
+				}
+				dwMask <<= 1;
+			}
+		}
+	}
+
+	VOID FillVirtualDiskInformationType1()
+	{
+		const int iIndent = 1;
+		int gid = ID_GROUP_VIRTUAL_DISK;
+		WCHAR szGuid[64];
+		WCHAR sz[64];
+
+		STORAGE_DEPENDENCY_INFO *psdi = (STORAGE_DEPENDENCY_INFO *)this->m_pvi->VirtualHardDiskInformation;
+		ULONG l;
+
+		for(l = 0; l < psdi->NumberEntries; l++)
+		{
+			STORAGE_DEPENDENCY_INFO_TYPE_1 *psdi1 = &psdi->Version1Entries[l];
+
+			if( l > 0 )
+				InsertItemFormat(iIndent,L"",L"");
+
+			PWSTR psz;
+			switch( psdi1->VirtualStorageType.DeviceId )
+			{
+				case VIRTUAL_STORAGE_TYPE_DEVICE_ISO:  psz = L"ISO";  break;
+				case VIRTUAL_STORAGE_TYPE_DEVICE_VHD:  psz = L"VHD";  break;
+				case VIRTUAL_STORAGE_TYPE_DEVICE_VHDX: psz = L"VHDX"; break;
+				default:                               psz = NULL;    break;
+			}
+
+			if( psz )
+				InsertItemFormat(iIndent,L"Storage Type",L"%s", psz);
+			else
+				InsertItemFormat(iIndent,L"Storage Type",L"Unknown (%u)",psdi1->VirtualStorageType.DeviceId);
+
+			StringFromGUID(&psdi1->VirtualStorageType.VendorId,szGuid,_countof(szGuid));
+			InsertItemFormat(iIndent,L"Vendor Id",L"%s",szGuid);
+
+			InsertItemFormat(iIndent,L"Provider SPecific Flags",L"0x%08X",
+					psdi1->ProviderSpecificFlags);
+
+			InsertItemFormat(iIndent,L"Dependency Type Flags",L"0x%08X", 
+					psdi1->DependencyTypeFlags);
+
+			DWORD dw;
+			DWORD dwMask = 0x1;
+			for(dw = 0; dw < 32; dw++)
+			{
+				if( psdi1->DependencyTypeFlags & dwMask )
+				{
+					InsertItemFormat(iIndent,L"",L"%s",
+							GetDependentDiskFlagString(dwMask,sz,_countof(sz)));
+				}
+				dwMask <<= 1;
+			}
+		}
+	}
+
+	HRESULT FillItems(CPhysicalDriveInformation *pdi,CPhysicalDiskVirtualDependInformation *pvi)
 	{
 		SetRedraw(m_hWndList,FALSE);
 
@@ -830,6 +1004,10 @@ public:
 		if( m_pdi )
 			delete m_pdi;
 		m_pdi = pdi;
+
+		if( m_pvi )
+			delete m_pvi;
+		m_pvi = pvi;
 
 		//
 		// Start fill information items.
@@ -846,6 +1024,9 @@ public:
 
 		Insert_DriveLayout(pdi->pDriveLayout);
 
+		if( m_pvi )
+			Insert_VirtualDiskInfo();
+
 		//
 		// Adjust column width.
 		//
@@ -861,10 +1042,10 @@ public:
 	{
 		SELECT_ITEM *pSel = (SELECT_ITEM *)pData;
 
-		if( pSel == NULL || pSel->pszName == NULL )
+		if( pSel == NULL || pSel->pszPath == NULL )
 			return E_INVALIDARG;
 
-		PWSTR pszPhysicalDisk = _MemAllocString(pSel->pszName);
+		PWSTR pszPhysicalDisk = _MemAllocString(pSel->pszPath);
 
 		int cch = ((sizeof(L"PhysicalDrive")/sizeof(WCHAR))-1);
 		DWORD dwDriveNumber = _wtoi( &pszPhysicalDisk[cch] );
@@ -884,9 +1065,19 @@ public:
 			pdi->GetDetectSectorSize();
 		}
 
+		CPhysicalDiskVirtualDependInformation *pvi = NULL;
+		WCHAR szPhysicalDrive[MAX_PATH];
+		PSTORAGE_DEPENDENCY_INFO pInfo = NULL;
+		StringCchPrintf(szPhysicalDrive,MAX_PATH,L"\\??\\%s",pszPhysicalDisk);
+		if( VirtualDisk_GetDependencyInformation(szPhysicalDrive,&pInfo) )
+		{
+			pvi = new CPhysicalDiskVirtualDependInformation;
+			pvi->VirtualHardDiskInformation = pInfo;
+		}
+
 		_MemFree(pszPhysicalDisk);
 
-		return FillItems(pdi);
+		return FillItems(pdi,pvi);
 	}
 
 	virtual HRESULT InitLayout(const RECT *prc)

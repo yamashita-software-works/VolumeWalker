@@ -155,10 +155,7 @@ public:
 
 	VOID OnUpdateInformationView(SELECT_ITEM* pVolume)
 	{
-		SELECT_ITEM sel = {0};
-		sel.ViewType = VOLUME_CONSOLE_DISKLAYOUT;
-		sel.pszPath = (PWSTR)pVolume->pszName;
-		m_pView->UpdateData(&sel);
+		m_pView->UpdateData(pVolume);
 	}
 
 	VOID InitData(PCWSTR pszPath)

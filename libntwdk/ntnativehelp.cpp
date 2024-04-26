@@ -182,6 +182,11 @@ EXTERN_C NTSTATUS NTAPI AllocateUnicodeStringCchBuffer(UNICODE_STRING *pus,ULONG
     return AllocateUnicodeStringCbBuffer(pus,WCHAR_BYTES(cch));
 }
 
+EXTERN_C LONG NTAPI CompareUnicodeString(__in PUNICODE_STRING  String1,__in PUNICODE_STRING  String2,__in BOOLEAN  CaseInSensitive)
+{
+	return RtlCompareUnicodeString(String1,String2,CaseInSensitive);
+}
+
 //
 // String wildcard helper funcsions
 //
@@ -911,19 +916,28 @@ BOOLEAN SplitRootRelativePath_U(UNICODE_STRING *pusFullPath,UNICODE_STRING *Root
         return FALSE;
     }
 
-    *RootDirectory = usRootDirectory;
+	if( RootDirectory )
+	{
+		*RootDirectory = usRootDirectory;
+	}
 
-    int cbFullPath = pusFullPath->Length;
-    RootRelativePath->Length        = (USHORT)(cbFullPath - usRootDirectory.Length);
-    RootRelativePath->MaximumLength = (USHORT)(cbFullPath - usRootDirectory.MaximumLength);
-    RootRelativePath->Buffer        = (PWCH)&pusFullPath->Buffer[ WCHAR_LENGTH(usRootDirectory.Length) ];
-
+	if( RootRelativePath )
+	{
+	    int cbFullPath = pusFullPath->Length;
+	    RootRelativePath->Length        = (USHORT)(cbFullPath - usRootDirectory.Length);
+		RootRelativePath->MaximumLength = (USHORT)(cbFullPath - usRootDirectory.MaximumLength);
+	    RootRelativePath->Buffer        = (PWCH)&pusFullPath->Buffer[ WCHAR_LENGTH(usRootDirectory.Length) ];
+	}
 #ifdef _DEBUG
     UNICODE_STRING us1,us2;
-    RtlDuplicateUnicodeString(0x3,RootDirectory,&us1);
-    RtlDuplicateUnicodeString(0x3,RootRelativePath,&us2);
-    RtlFreeUnicodeString(&us1);
-    RtlFreeUnicodeString(&us2);
+	if( RootDirectory ) {
+		RtlDuplicateUnicodeString(0x3,RootDirectory,&us1);
+		RtlFreeUnicodeString(&us1);
+	}
+	if( RootRelativePath ) {
+		RtlDuplicateUnicodeString(0x3,RootRelativePath,&us2);
+		RtlFreeUnicodeString(&us2);
+	}
 #endif
 
     return TRUE;

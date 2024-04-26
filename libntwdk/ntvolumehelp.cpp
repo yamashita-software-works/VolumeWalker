@@ -105,7 +105,7 @@ OpenRootDirectory(
 
     if( bOpen )
     {
-        ULONG DesiredAccess = FILE_READ_ATTRIBUTES;
+        ULONG DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
         if( Flags & OPEN_READ_DATA )
             DesiredAccess |= FILE_READ_DATA;
 

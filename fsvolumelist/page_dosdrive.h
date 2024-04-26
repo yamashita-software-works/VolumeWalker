@@ -202,9 +202,6 @@ public:
 			case HDN_ENDDRAG:
 				OnHeaderEndDrag(pnmhdr);
 				return TRUE; // prevent order change
-			case HDN_FILTERBTNCLICK:
-				Sleep(0);
-				return 0;
 		}
 		return 0;
 	}
@@ -235,8 +232,28 @@ public:
 		if( pcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT )
 		{
 			CDosDriveItem *pParam = (CDosDriveItem *)pcd->nmcd.lItemlParam;
-			// todo:
-			return CDRF_NOTIFYPOSTPAINT;
+			UINT RetFlag = 0;
+
+			if( pParam->pDriveInfo->VirtualDiskVolume )
+			{
+				pcd->clrText = _COLOR_TEXT_VIRTUALDISK;
+				RetFlag = CDRF_NEWFONT;
+			} 
+
+			if( pParam->pDriveInfo->DirtyBit != (CHAR)-1 )
+			{
+				if( pParam->pDriveInfo->DirtyBit != 0 )
+				{
+					pcd->clrTextBk = _COLOR_BKGD_DIRTY_VOLUME;
+
+					if( CDIS_SELECTED & pcd->nmcd.uItemState )
+						pcd->clrText = _COLOR_TEXT_DIRTY_VOLUME;
+
+					RetFlag = CDRF_NEWFONT;
+				}
+			}
+	
+			return CDRF_NOTIFYPOSTPAINT|RetFlag;
 		}
 
 		if( pcd->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT )
@@ -781,7 +798,16 @@ public:
 		//
 		for(ULONG i = 0; i < dosDrives->Count; i++)
 		{
-			; // dosDrives->Drive[i]
+			WCHAR szDrive[8];
+			StringCchPrintf(szDrive,ARRAYSIZE(szDrive),L"\\??\\%c:",dosDrives->Drive[i].szDrive[0]);
+
+			VOLUME_DEVICE_INFORMATION *VolInfoBufferPtr = NULL;
+			if( CreateVolumeInformationBuffer(szDrive,0,0,(void**)&VolInfoBufferPtr) == S_OK )
+			{
+				dosDrives->Drive[i].DirtyBit = VolInfoBufferPtr->DirtyBit;
+				dosDrives->Drive[i].VirtualDiskVolume = VolInfoBufferPtr->VirtualDiskVolume;
+				DestroyVolumeInformationBuffer(VolInfoBufferPtr);
+			}
 		}
 
 		//

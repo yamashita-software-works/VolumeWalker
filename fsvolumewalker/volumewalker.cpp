@@ -600,10 +600,6 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 	hMainMenu = LoadMenu(_GetResourceInstance(),MAKEINTRESOURCE(IDR_MAINFRAME));
 	SetMenu(hWnd,hMainMenu);
 
-	// Show frame window
-//	ShowWindow(hWnd, nCmdShow);
-//	UpdateWindow(hWnd);
-
 	// Open initial MDI child windows
 	if( !args.WithoutOpen && args.ConsoleTypeId.GetCount() > 0 )
 	{ 
