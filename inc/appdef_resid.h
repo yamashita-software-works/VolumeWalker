@@ -15,6 +15,12 @@
 #define ID_HEXDUMP                     41012
 #define ID_FILTERDRIVER                41013
 
+#define ID_CONTENTSBROWSER             41020
+#define ID_CHANGEJOURNALBROWSER        41021
+
+#define ID_FILE_EXPORT_CHANGE_JOURNAL_RAW_DATA   41051
+#define ID_FILE_LOAD_CHANGE_JOURNAL_RAW_DATA  41052
+
 #define ID_EDIT_COPY_COUMN_FIRST       41100
 #define ID_EDIT_COPY_COUMN_LAST        41149
 #define ID_VIEW_SORT_COUMN_FIRST       41150
@@ -33,6 +39,8 @@
 #define ID_PAGEUP                      41209
 #define ID_PAGEDOWN                    41210
 #define ID_GOTO                        41211
+#define ID_UP                          41212
+#define ID_UP_DIR                      41213
 
 #endif
 

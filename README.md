@@ -39,6 +39,20 @@ MDI Win32アプリケーションのひな形を用いて、[FSWorkbench](https:
 - Volume Information   
 選択されたボリュームの詳細情報を表示します。
 
+- File System Statistics   
+選択されたボリュームのファイルシステム統計情報を表示します。
+
+- Volume Contents Browser【暫定】   
+
+  - Files【暫定】   
+選択されたボリュームに含まれるファイルをディレクトリ単位で簡易表示します。   
+ファイル名と属性情報の表示のみでファイルマネージャとしての機能はありません。
+
+  - Change Journal【暫定】   
+選択されたボリュームの変更ジャーナルの内容を表示します。   
+管理者モードで実行時（またはFILE_READ_DATAでボリューム/ドライブをオープンできた場合）のみ利用可能です。
+
+
 以下のウィンドウは Physical Drives ウィンドウから項目を選択しダブルクリックまたはメニューから開きます。
 
 - Disk Drive Information   
@@ -47,15 +61,20 @@ MDI Win32アプリケーションのひな形を用いて、[FSWorkbench](https:
 - Disk Drive Layout   
 選択された物理ドライブのパーティションレイアウトを表示します。   
 
-以下のウィンドウは Volumes, MS-DOS Drives, Physical Drives, Disk Drive Layoutウィンドウから項目を選択しダブルクリックまたはメニューから開きます。   
+以下のウィンドウは Volumes, MS-DOS Drives, Physical Drives, Disk Drive Layoutウィンドウから項目を選択しメニューから開きます。   
 
-- Sector/Cluster Dump   
-【暫定】物理ディスクをセクタ単位またはボリューム/ドライブをクラスタ単位で内容を単純表示します。管理者モードで実行時（またはFILE_READ_DATAでボリューム/ドライブをオープンできた場合）のみ利用可能です。   
+- Sector/Cluster Dump【暫定】   
+物理ディスクをセクタ単位またはボリューム/ドライブをクラスタ単位で内容を単純表示します。管理者モードで実行時（またはFILE_READ_DATAでボリューム/ドライブをオープンできた場合）のみ利用可能です。   
 
 その他のウィンドウ   
 
-- Minifilter Driver   
-【暫定】ボリュームにアタッチされているフィルタドライバの情報を表示します。管理者モードで実行時のみ利用可能です。   
+- Minifilter Driver【暫定】   
+ボリュームにアタッチされているフィルタドライバの情報を表示します。管理者モードで実行時のみ利用可能です。   
+
+   
+<br>
+   
+※【暫定】と表記されているウィンドウは暫定的な機能・実装で、将来削除されるかもしれません。
 
 <br>
 

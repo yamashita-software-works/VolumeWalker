@@ -1,5 +1,14 @@
+//****************************************************************************
 //
-//  2023.05.31 Create
+//  menu.cpp
+//
+//  Implements menu helper functions.
+//
+//  Auther: YAMASHITA Katsuhiro
+//
+//  Create: 2023.05.31
+//
+//****************************************************************************
 //
 //  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.
 //  Licensed under the MIT License.

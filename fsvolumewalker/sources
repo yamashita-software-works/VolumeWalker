@@ -90,6 +90,7 @@ INCLUDES=$(INCLUDES);..\fsvolumelist
 SOURCES = \
 	stdafx.cpp \
 	menu.cpp \
+	find.cpp \
 	mdichild.cpp \
 	volumewalker.cpp \
 	volumewalker.rc
@@ -128,6 +129,7 @@ LINKLIBS=\
 	$(CRT_LIB_PATH)\delayimp.lib \
 	$(DDK_LIB_PATH)\ntdll.lib \
 	$(_USERLIB)\fsvolumelist.lib \
+	$(_USERLIB)\fsvolumecontents.lib \
 	$(_USERLIB)\libcwh.lib \
 	$(_USERLIB)\libmisc.lib \
 	$(_USERLIB)\libntwdk.lib

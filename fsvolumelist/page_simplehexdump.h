@@ -98,6 +98,7 @@ public:
 
 	~CSimpleHexDumpPage()
 	{
+		_SafeMemFree(m_pszErrorMessage);
 	}
 
 	virtual HRESULT OnInitPage(PVOID)
@@ -384,7 +385,7 @@ public:
 				dw = (DWORD)SendMessage(m_hWndToolBar,TB_GETBUTTONSIZE,0,0);
 				rc.bottom = HIWORD(dw);
 
-				HBRUSH hbr = CreateSolidBrush(RGB(243,249,254));
+				HBRUSH hbr = CreateSolidBrush(GetSysColor(COLOR_3DFACE));
 				FillRect(hdc,&rc,hbr);
 				DeleteObject(hbr);
 				return 1;
@@ -670,7 +671,7 @@ public:
 		//
 		// Set up drive/volume name and read start offset.
 		//
-		StringCchCopy(m_rd.Name,ARRAYSIZE(m_rd.Name),pSelOffset->hdr.pszName);
+		StringCchCopy(m_rd.Name,ARRAYSIZE(m_rd.Name),pSelOffset->hdr.pszVolume);
 		m_rd.ReadOffset.QuadPart = pSelOffset->liStartOffset.QuadPart;
 		m_rd.BaseOffset.QuadPart = pSelOffset->liStartOffset.QuadPart;
 

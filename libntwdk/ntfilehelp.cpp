@@ -822,7 +822,6 @@ GetDirectoryFileInformation_U(
     if( Status == STATUS_SUCCESS && pInfoBuffer )
     {
         pInfoBuffer->EaSize          = sizeof(FS_FILE_DIRECTORY_INFORMATION);
-#if 0
         pInfoBuffer->CreationTime    = pBuffer->CreationTime;
         pInfoBuffer->LastAccessTime  = pBuffer->LastAccessTime;
         pInfoBuffer->LastWriteTime   = pBuffer->LastWriteTime;
@@ -830,9 +829,6 @@ GetDirectoryFileInformation_U(
         pInfoBuffer->EndOfFile       = pBuffer->EndOfFile;
         pInfoBuffer->AllocationSize  = pBuffer->AllocationSize;
         pInfoBuffer->FileAttributes  = pBuffer->FileAttributes;
-#else
-        memcpy(&pInfoBuffer->CreationTime,&pBuffer->FileIndex,FS_DIRINFO_COMMON_COPY_SIZE);
-#endif
         pInfoBuffer->EaSize          = pBuffer->EaSize;
         pInfoBuffer->ShortNameLength = pBuffer->ShortNameLength;
         pInfoBuffer->FileId          = pBuffer->FileId;
@@ -1526,6 +1522,35 @@ GetFileSizeByHandle(
 
 		if( pAllocationSize )
 			*pAllocationSize = fsi.AllocationSize;
+	}
+
+	return Status;
+}
+
+//----------------------------------------------------------------------------
+//
+//  GetFileId()
+//
+//  PURPOSE:
+//
+//----------------------------------------------------------------------------
+EXTERN_C
+NTSTATUS
+NTAPI
+GetFileId(
+	HANDLE hFile,
+	LARGE_INTEGER *pFildId
+	)
+{
+	NTSTATUS Status;
+	IO_STATUS_BLOCK IoStatus;
+
+	LARGE_INTEGER li;
+	Status = NtQueryInformationFile(hFile,&IoStatus,&li,sizeof(li),FileInternalInformation);
+
+	if( Status == STATUS_SUCCESS )
+	{
+		*pFildId = li;
 	}
 
 	return Status;

@@ -1042,10 +1042,10 @@ public:
 	{
 		SELECT_ITEM *pSel = (SELECT_ITEM *)pData;
 
-		if( pSel == NULL || pSel->pszPath == NULL )
+		if( pSel == NULL || pSel->pszPhysicalDrive == NULL )
 			return E_INVALIDARG;
 
-		PWSTR pszPhysicalDisk = _MemAllocString(pSel->pszPath);
+		PWSTR pszPhysicalDisk = _MemAllocString(pSel->pszPhysicalDrive);
 
 		int cch = ((sizeof(L"PhysicalDrive")/sizeof(WCHAR))-1);
 		DWORD dwDriveNumber = _wtoi( &pszPhysicalDisk[cch] );

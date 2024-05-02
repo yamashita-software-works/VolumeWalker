@@ -1256,7 +1256,7 @@ typedef struct _TITLE {
 		if( m_pszVolumeRoot == NULL )
 		{
 			ASSERT(pSelItem != NULL);
-			m_pszVolumeRoot = _MemAllocString(pSelItem->pszPath);
+			m_pszVolumeRoot = _MemAllocString(pSelItem->pszVolume);
 		}
 
 		SetRedraw(m_hWndList,FALSE);

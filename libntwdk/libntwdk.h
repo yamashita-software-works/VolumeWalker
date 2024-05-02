@@ -204,3 +204,21 @@ QueryAttributesFile(
 	PCWSTR pszFileName,
 	NT_FILE_BASIC_INFORMATION *FileBasicInfo
 	);
+
+EXTERN_C
+NTSTATUS
+NTAPI
+GetFileSizeByHandle(
+	HANDLE hFile,
+	LARGE_INTEGER *pSize,
+	LARGE_INTEGER *pAllocationSize
+	);
+
+EXTERN_C
+NTSTATUS
+NTAPI
+GetFileId(
+	HANDLE hFile,
+	LARGE_INTEGER *pFildId
+	);
+

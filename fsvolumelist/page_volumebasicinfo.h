@@ -958,12 +958,12 @@ public:
 	{
 		SELECT_ITEM *pSel = (SELECT_ITEM *)pData;
 
-		if( pSel == NULL || pSel->pszPath == NULL )
+		if( pSel == NULL || pSel->pszVolume == NULL )
 		{
 			return E_INVALIDARG;
 		}
 
-		PWSTR pszVolumeName = _MemAllocString(pSel->pszPath);
+		PWSTR pszVolumeName = _MemAllocString(pSel->pszVolume);
 		if( pszVolumeName != NULL )
 		{
 			_SafeMemFree(m_pszNtDeviceName);

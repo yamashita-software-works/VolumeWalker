@@ -212,6 +212,11 @@ public:
 		AppendMenu(hMenu,MF_STRING,0,0);
 		AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
 		AppendMenu(hMenu,MF_STRING,0,0);
+		HMENU hSubMenu = CreatePopupMenu();
+		AppendMenu(hSubMenu,MF_STRING,ID_CONTENTSBROWSER,L"&Files");
+		AppendMenu(hSubMenu,MF_STRING,ID_CHANGEJOURNALBROWSER,L"Change &Journal");
+		AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Volume Contents &Browser");
+		AppendMenu(hMenu,MF_STRING,0,0);
 		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
 		SetMenuDefaultItem(hMenu,ID_VOLUMEINFORMATION,FALSE);
 
@@ -1114,6 +1119,28 @@ public:
 		}
 	}
 
+	VOID OpenContentsBrowser(int iItem,UINT ConsoleId,BOOL bAsync)
+	{
+		if( iItem != -1 )
+		{
+			CVolumeItem *pItem = (CVolumeItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+			if( pItem && pItem->VolumeDevice )
+			{
+				if( bAsync )
+				{
+					SIZE_T cch = wcslen(pItem->VolumeDevice) + 1;
+					PWSTR psz = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
+					StringCchCopy(psz,cch,pItem->VolumeDevice);
+					PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,1),(LPARAM)psz);
+				}
+				else
+				{
+					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,ConsoleId,(LPARAM)pItem->VolumeDevice);
+				}
+			}
+		}
+	}
+
 	virtual HRESULT QueryCmdState(UINT CmdId,UINT *State)
 	{
 		switch( CmdId )
@@ -1121,6 +1148,8 @@ public:
 			case ID_VOLUMEINFORMATION:
 			case ID_FILESYSTEMSTATISTICS:
 			case ID_HEXDUMP:
+			case ID_CONTENTSBROWSER:
+			case ID_CHANGEJOURNALBROWSER:
 			case ID_EDIT_COPY:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
@@ -1149,6 +1178,12 @@ public:
 				break;
 			case ID_HEXDUMP:
 				OpenHexDumpView( ListViewEx_GetCurSel(m_hWndList), FALSE );
+				break;
+			case ID_CONTENTSBROWSER:
+				OpenContentsBrowser( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_CONTENT_FILES, FALSE );
+				break;
+			case ID_CHANGEJOURNALBROWSER:
+				OpenContentsBrowser( ListViewEx_GetCurSel(m_hWndList), VOUUME_CONSOLE_CHANGE_JOURNAL, FALSE );
 				break;
 		}
 		return S_OK;

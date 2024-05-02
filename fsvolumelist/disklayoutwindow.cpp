@@ -162,7 +162,7 @@ public:
 	{
 		SELECT_ITEM sel = {0};
 		sel.ViewType = VOLUME_CONSOLE_DISKLAYOUT;
-		sel.pszPath = (PWSTR)pszPath;
+		sel.pszPhysicalDrive = (PWSTR)pszPath;
 		m_pView->SelectView(&sel);
 		m_pView->UpdateData(&sel);
 	}

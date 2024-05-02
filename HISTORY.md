@@ -1,3 +1,19 @@
+### 0.1.8.0
+
+- Volume Contents Browserウィンドウを暫定追加。   
+ （注：限定的な実装です。将来削除されるかもしれません。）
+
+  - Files   
+    選択されたボリュームに含まれるファイルをディレクトリ単位で簡易表示します。
+  - Change Journal   
+    選択されたボリュームの変更ジャーナルを表示します。   
+    管理者モードで実行時（またはボリュームをFILE_READ_DATAでオープンできた場合）のみ表示されます。
+
+- AboutボックスにWindows Versionを追加。
+  (FSWorkbenchと類似のもの)
+
+- DiskLayoutでMBRパーティションのGAP開始位置の表示を修正。
+
 ### 0.1.7.0
 
 - Volume Informationウィンドウに "Virtual Disk"グループを追加。   

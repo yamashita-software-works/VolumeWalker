@@ -271,9 +271,9 @@ public:
 						// |---|              Partition#1
 						//      <-->          GAP
 						//          |-------| Partition#2
-						InsertLine(iItem,0,L"",PreviousStartOffset,_IT_GAP);
+						InsertLine(iItem,0,L"",PreviousNextOffset,_IT_GAP);
 
-						StringCchPrintf(szText,ARRAYSIZE(szText),L"0x%I64X",PreviousStartOffset);
+						StringCchPrintf(szText,ARRAYSIZE(szText),L"0x%I64X",PreviousNextOffset);
 						ListView_SetItemText(m_hWndList,iItem,1,szText);
 
 						StringCchPrintf(szText,ARRAYSIZE(szText),L"0x%I64X",StartOffset);
@@ -768,7 +768,7 @@ public:
 		CPhysicalDriveInformation *pdi = NULL;
 
 		_SafeMemFree(m_pszPhysicalDrive);
-		m_pszPhysicalDrive = _MemAllocString(pSel->pszPath);
+		m_pszPhysicalDrive = _MemAllocString(pSel->pszPhysicalDrive);
 
 		hr = GetData( m_pszPhysicalDrive, &pdi );
 
@@ -858,7 +858,7 @@ public:
 				else
 				{
 					SELECT_OFFSET_ITEM sel = {0};
-					sel.hdr.pszName = sel.hdr.pszPath = m_pszPhysicalDrive;
+					sel.hdr.pszPhysicalDrive = m_pszPhysicalDrive;
 					sel.liStartOffset = pli->StartOffset;
 					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_SIMPLEHEXDUMP,2),(LPARAM)&sel);
 				}

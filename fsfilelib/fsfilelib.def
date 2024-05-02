@@ -1,0 +1,33 @@
+LIBRARY "fsfilelib"
+
+EXPORTS
+	NtPathIsNtDevicePath
+	NtPathGetVolumeName	
+	NtPathGetRootDirectory
+	NtPathFileExists
+	NtPathIsRootDirectory
+	NtPathToDosPath
+	NtPathToDosPathEx
+	NtPathToGuidPath
+	NtPathTranslatePath
+	NtPathGetLongPathNameFromHandle
+
+	DosPathToNtDevicePath
+
+	ReadFileClusterInformaion_U
+	ReadFileClusterInformaion
+
+	GetNtfsSpecialFiles
+	FreeNtfsSpecialFiles
+
+	CreateJournalBuffer
+	DestroyJournalBuffer
+	GetJournalReasonAbbreviationsText
+	GetJournalReasonText
+	MakeChangeJournalDumpFile
+	MakeChangeJournalDumpFileEx
+	ReadChangeJournalDumpFile
+	SaveChangeJournalDumpFile
+
+	_StringFromGUID
+	_HasPrefix

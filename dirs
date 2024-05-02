@@ -2,6 +2,9 @@ DIRS=\
 	libcwh\
 	libmisc\
 	libntwdk\
+	fsfilelib\
 	fsvolumehelp\
 	fsvolumelist\
+	fsvolumecontents\
 	fsvolumewalker
+	

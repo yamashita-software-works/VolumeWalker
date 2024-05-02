@@ -18,10 +18,18 @@
 
 #define WM_QUERY_MESSAGE    (PRIVATE_MESSAGE_BASE+2)
 
-// WPARAM LOWORD(f)
 enum {
-	UI_INIT_LAYOUT = 1,
-	UI_NOTIFY_VOLUME_SELECTED,
+	UI_INIT_LAYOUT       =  0x1001,
+	UI_INIT_VIEW         =  0x1002,
+	UI_SELECT_ITEM       =  0x1003,
+	UI_SELECT_FILE       =  0x1004,
+	UI_SET_DIRECTORY     =  0x1005,
+	UI_CHANGE_DIRECTORY  =  0x1006,
+	UI_NOTIFY_ITEM_SELECTED     = 0x2001,
+	UI_NOTIFY_VOLUME_SELECTED   = 0x2002,
+	UI_NOTIFY_DIRECTORY_CHANGED = 0x2003,
+	UI_NOTIFY_VOLUME_CHANGED    = 0x2004,
+	UI_NOTIFY_CHANGE_TITLE      = 0x2005,
 };
 
 typedef struct _SELECT_ITEM
@@ -31,6 +39,11 @@ typedef struct _SELECT_ITEM
 	PWSTR pszPath;
 	PWSTR pszName;
 	PWSTR pszCurDir;
+	union {             // Volume, Physical Drive, Storage Device
+		PWSTR pszVolume;
+		PWSTR pszPhysicalDrive;
+		PWSTR pszStorage;
+	};
 	union {
 		UINT ViewType;  // Depends an application.
 		struct {
@@ -38,12 +51,14 @@ typedef struct _SELECT_ITEM
 			UINT Page;  // Reserved
 		};
 	};
+	FILE_ID_DESCRIPTOR FileId;
 } SELECT_ITEM;
 
 #define SI_MASK_PATH     0x1
 #define SI_MASK_NAME     0x2
 #define SI_MASK_CURDIR   0x4
 #define SI_MASK_VIEWTYPE 0x8
+#define SI_MASK_FILEID   0x10
 
 typedef struct _SELECT_OFFSET_ITEM
 {
@@ -93,3 +108,11 @@ enum {
 // lParam -
 //
 #define WM_MDI_CHILDFRAME_CLOSE   (PRIVATE_MESSAGE_BASE+13)
+
+//
+// WM_MDI_SAVECONFIGURATION
+//
+// wParam -
+// lParam -
+//
+#define WM_MDI_SAVECONFIGURATION  (PRIVATE_MESSAGE_BASE+14)

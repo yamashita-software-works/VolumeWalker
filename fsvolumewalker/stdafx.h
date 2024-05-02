@@ -21,6 +21,7 @@
 #include <shellapi.h>
 #include <shlwapi.h>
 #include <strsafe.h>
+#include <commdlg.h>
 #include <winternl.h> // WinSDK 7.1
 
 #if _MSC_VER <= 1500
@@ -42,6 +43,9 @@
 #include "..\inc\simplevalarray.h"
 #include "..\fsvolumehelp\volumehelp.h"
 #include "..\fsvolumelist\fsvolumelist.h"
+#include "..\fsvolumecontents\fsvolumecontents.h"
+#include "common_msg.h"
+
 
 #define SetRedraw(h,f)	SendMessage(h,WM_SETREDRAW,(WPARAM)f,0)
 
