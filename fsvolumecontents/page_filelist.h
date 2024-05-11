@@ -18,6 +18,7 @@
 #include "pagewbdbase.h"
 #include "common.h"
 #include "column.h"
+#include "findhandler.h"
 #include "dialogs.h"
 #include "fsfilelib.h"
 
@@ -48,7 +49,9 @@ struct CFileInfoItem : public FILEINFOITEM
 	}
 };
 
-class CFileListPage : public CPageWndBase
+class CFileListPage :
+	public CPageWndBase,
+	public CFindHandler<CFileListPage>
 {
 	HWND m_hWndList;
 
@@ -73,6 +76,7 @@ class CFileListPage : public CPageWndBase
 
 public:
 	PWSTR GetPath() const { return m_pszCurDir; }
+	HWND GetListView() const { return m_hWndList; }
 
 	LARGE_INTEGER GetFileId() const
 	{
@@ -266,7 +270,12 @@ public:
 				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
 					pnmlvcd->clrText = RGB(185,122,87);
 				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
-					pnmlvcd->clrText = RGB(120,0,100);
+					pnmlvcd->clrText = RGB(100,0,80);
+
+				if( pItem->pFI->Wof )
+				{
+					pnmlvcd->clrText = RGB(128,0,80);
+				}
 
 				return CDRF_NOTIFYPOSTPAINT;
 			}
@@ -797,7 +806,7 @@ public:
 			{ COLUMN_Name,           L"Name",                  1, 280, LVCFMT_LEFT },
 			{ COLUMN_Extension,      L"Extension",             2,  80, LVCFMT_LEFT },
 			{ COLUMN_FileId,         L"File ID",               3, 156, LVCFMT_LEFT },
-			{ COLUMN_Lcn,            L"LCN",                   4, 156, LVCFMT_RIGHT },
+			{ COLUMN_Lcn,            L"LCN",                   4, 120, LVCFMT_RIGHT },
 			{ COLUMN_FileAttributes, L"Attributes",            5, 100, LVCFMT_LEFT },
 			{ COLUMN_EndOfFile,      L"Size",                  6, 116, LVCFMT_RIGHT },
 			{ COLUMN_AllocationSize, L"Allocation Size",       7, 116, LVCFMT_RIGHT },
@@ -808,7 +817,7 @@ public:
 			{ COLUMN_EaSize,         L"EA",                   12, 100, LVCFMT_LEFT },
 			{ COLUMN_ShortName,      L"Short Name",           13, 120, LVCFMT_LEFT },
 		};
-	
+
 		m_columns.SetDefaultColumns(def_columns,ARRAYSIZE(def_columns));
 	}
 
@@ -1085,11 +1094,17 @@ public:
 			HANDLE hRootDirectory = NULL;
 			if( OpenRootDirectory(RootDirectory,0,&hRootDirectory) != STATUS_SUCCESS )
 			{
+				//
+				// The Root directory open failed. If so try open directory using
+				// full path string without splitting the volume and root relative path.
+				//
+				FreeMemory(RootRelativePath);
+				RootRelativePath = DuplicateString(m_pszCurDir); // duplicate full-path string
 				hRootDirectory = NULL;
 			}
 
 			HANDLE hCurDir;
-			if( (Status = OpenFile_W(&hCurDir,hRootDirectory,RootRelativePath,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE,0)) == 0 )
+			if( (Status = OpenFile_W(&hCurDir,hRootDirectory,RootRelativePath,FILE_READ_ATTRIBUTES|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,0)) == 0 )
 			{
 				int i,cFiles = pa->GetCount();
 
@@ -1114,16 +1129,40 @@ public:
 									if( (pFI->EndOfFile.QuadPart != fsi.EndOfFile.QuadPart) || 
 										(pFI->AllocationSize.QuadPart != fsi.AllocationSize.QuadPart) )
 									{
-										pFI->EndOfFile = fsi.EndOfFile;
+										pFI->EndOfFile      = fsi.EndOfFile;
 										pFI->AllocationSize = fsi.AllocationSize;
+									    pFI->NumberOfLinks  = fsi.NumberOfLinks;
+										pFI->DeletePending  = fsi.DeletePending;
+										pFI->Directory      = fsi.Directory;
 									}
 								}
 							}
 
-							FS_CLUSTER_INFORMATION_BASIC cluster = {0};
-							if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,NULL,ClusterInformationBasic,&cluster,sizeof(cluster)) == 0 )
+							if( pFI->AllocationSize.QuadPart != 0 )
 							{
-								pFI->FirstLCN = cluster.FirstLcn;
+								FS_CLUSTER_INFORMATION_BASIC cluster = {0};
+								if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasic,&cluster,sizeof(cluster)) == 0 )
+								{
+									pFI->FirstLCN = cluster.FirstLcn;
+								}
+							}
+							else
+							{
+								if( (pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 )
+								{
+									if( pFI->EndOfFile.QuadPart == 0 ) 
+									{
+#if 0
+										pFI->Wof = (GetWofInformation(hFile,NULL,NULL) == S_OK);
+#else
+										pFI->Wof = false;
+#endif
+									}
+									else
+									{
+										pFI->Wof = true;
+									}
+								}
 							}
 
 							CloseHandle(hFile);
@@ -1222,9 +1261,9 @@ public:
 
 	int FindFileName(PCWSTR pszName)
 	{
-		int i,c;
-		c = ListView_GetItemCount(m_hWndList);
-		for(i = 0; i < c; i++)
+		int i,cItems;
+		cItems = ListView_GetItemCount(m_hWndList);
+		for(i = 0; i < cItems; i++)
 		{
 			CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,i);
 
@@ -1512,7 +1551,7 @@ public:
 			WCHAR szVolumeName[MAX_PATH];
 			NtPathGetVolumeName(pszNewPath,szVolumeName,MAX_PATH);
 
-			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_CHANGE_TITLE,(LPARAM)szVolumeName);
+			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_TITLE,(LPARAM)szVolumeName);
 
 			CoTaskMemFree(pszNewPath);
 		}
@@ -1528,103 +1567,5 @@ public:
 		sel.pszName   = (PWSTR)NULL;
 
 		FillItems(&sel);
-	}
-
-	//////////////////////////////////////////////////////////////////////////
-	//
-	// Find Item
-	//
-
-	int m_iStartFindItem;
-	int m_iFirstMatchItem;
-	int m_iLastMatchItem;
-
-	LRESULT OnFindItem(HWND,UINT,WPARAM wParam,LPARAM lParam)
-	{
-		LPFINDREPLACE lpfr = (LPFINDREPLACE)lParam;
-		switch( LOWORD(wParam) )
-		{
-			case FIND_QUERYOPENDIALOG:
-				return 0; // 0:accept 1:prevent
-
-			case FIND_CLOSEDIALOG:
-				m_iStartFindItem = -1;
-				break;
-
-			case FIND_SEARCH:
-				m_iStartFindItem = ListViewEx_GetCurSel(m_hWndList);
-				if( m_iStartFindItem == -1 )
-					m_iStartFindItem = 0;
-				SearchItem(lpfr->lpstrFindWhat,
-						(BOOL) (lpfr->Flags & FR_DOWN), 
-						(BOOL) (lpfr->Flags & FR_MATCHCASE)); 
-				break;
-			case FIND_SEARCH_NEXT:
-			{
-				int cItems = ListView_GetItemCount(m_hWndList);
-				m_iStartFindItem = ListViewEx_GetCurSel(m_hWndList);
-				if( m_iStartFindItem == -1 )
-					m_iStartFindItem = 0;
-				else
-				{
-					m_iStartFindItem = m_iStartFindItem + ((lpfr->Flags & FR_DOWN) ? 1 : -1);
-					if( m_iStartFindItem <= 0 )
-						m_iStartFindItem = cItems-1;
-					else if( m_iStartFindItem >= cItems )
-						m_iStartFindItem = 0;
-				}
-				SearchItem(lpfr->lpstrFindWhat,
-						(BOOL) (lpfr->Flags & FR_DOWN), 
-						(BOOL) (lpfr->Flags & FR_MATCHCASE)); 
-				break;
-			}
-		}
-		return 0;
-	}
-
-	VOID SearchItem(PWSTR pszFindText,BOOL Down,BOOL MatchCase)
-	{
-		int iItem,col,cItems,cColumns;
-
-		const int cchText = MAX_PATH;
-		WCHAR szText[cchText];
-
-		cItems = ListView_GetItemCount(m_hWndList);
-		cColumns = ListViewEx_GetColumnCount(m_hWndList);
-
-		iItem = m_iStartFindItem;
-
-		for(;;)
-		{
-			for(col = 0; col < cColumns; col++)
-			{
-				ListView_GetItemText(m_hWndList,iItem,col,szText,cchText);
-
-				if( StrStrI(szText,pszFindText) != 0 )
-				{
-					ListViewEx_ClearSelectAll(m_hWndList,TRUE);
-					ListView_SetItemState(m_hWndList,iItem,LVNI_SELECTED|LVNI_FOCUSED,LVNI_SELECTED|LVNI_FOCUSED);
-					ListView_EnsureVisible(m_hWndList,iItem,FALSE);
-					goto __found;
-				}
-			}
-
-			Down ? iItem++ : iItem--;
-
-			// lap around
-			if( iItem >= cItems )
-				iItem = 0;
-			else if( iItem < 0 )
-				iItem = cItems-1;
-
-			if( iItem == m_iStartFindItem )
-			{
-				MessageBeep(-1);
-				break; // not found
-			}
-		}
-
- __found:
-		return;
 	}
 };

@@ -16,6 +16,7 @@ EXPORTS
 
 	ReadFileClusterInformaion_U
 	ReadFileClusterInformaion
+	FreeClusterInformation
 
 	GetNtfsSpecialFiles
 	FreeNtfsSpecialFiles

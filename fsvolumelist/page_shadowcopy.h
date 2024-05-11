@@ -15,8 +15,9 @@
 //  Licensed under the MIT License.
 //
 #include "dparray.h"
-#include "..\inc\common.h"
+#include "common.h"
 #include "column.h"
+#include "findhandler.h"
 #include <devguid.h>
 #include <vss.h>
 #include <vswriter.h>
@@ -62,7 +63,9 @@ public:
 	}
 };
 
-class CVolumeShadowCopyListPage : public CPageWndBase
+class CVolumeShadowCopyListPage :
+	public CPageWndBase,
+	public CFindHandler<CVolumeShadowCopyListPage>
 {
 	HWND m_hWndList;
 
@@ -78,6 +81,9 @@ class CVolumeShadowCopyListPage : public CPageWndBase
 	PWSTR m_pszErrorMessage;
 
 	CColumnList m_columns;
+
+public:
+	HWND GetListView() const { return m_hWndList; }
 
 public:
 	CVolumeShadowCopyListPage()
@@ -425,6 +431,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
+				return CFindHandler<CVolumeShadowCopyListPage>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -735,6 +743,9 @@ public:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_EDIT_FIND:
+			case ID_EDIT_FIND_NEXT:
+			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 		}

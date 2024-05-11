@@ -28,9 +28,9 @@
 //  ex)
 //  fsutil fsinfo statistics c:
 //
-#include "stdafx.h"
 #include "string_def.h"
 #include "ntobjecthelp.h"
+#include "findhandler.h"
 
 #define _ENABLE_DIFF_COLUMN         0 // reserved
 #define _ENABLE_DEBUG_INFORMATION   0 // reserved
@@ -69,7 +69,9 @@ __inline FILESYSTEM_STATISTICS *GetStatisticsPtr(PVOID pv)
 #define _DEF_STATISTICS_NTFS_EX(t,member,di)    { offsetof(NTFS_STATISTICS_EX,member), sizeof(t), di }
 #define _DEF_STATISTICS_FAT(t,member,di)        { offsetof(FAT_STATISTICS,member), sizeof(t), di }
 
-class CFileSystemStatisticsPage : public CPageWndBase
+class CFileSystemStatisticsPage :
+	public CPageWndBase,
+	public CFindHandler<CFileSystemStatisticsPage>
 {
 	HWND m_hWndList;
 
@@ -102,6 +104,9 @@ enum {
 	ID_GROUP_FAT,
 	ID_GROUP_REFS,
 };
+
+public:
+	HWND GetListView() const { return m_hWndList; }
 
 public:
 	CFileSystemStatisticsPage()
@@ -337,6 +342,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
+				return CFindHandler<CFileSystemStatisticsPage>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -1363,6 +1370,9 @@ typedef struct _TITLE {
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_EDIT_FIND:
+			case ID_EDIT_FIND_NEXT:
+			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 		}

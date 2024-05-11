@@ -85,7 +85,10 @@ public:
 	ULONG ItemTypeFlag;
 	LARGE_INTEGER FirstLCN;
 	LARGE_INTEGER ParentFileId; // todo: 128bit id not support
-
+    DWORD NumberOfLinks;
+    BOOLEAN DeletePending;
+    BOOLEAN Directory;
+	BOOLEAN Wof; // Overray File
 	CFileItem()
 	{
 		memset(this,0,sizeof(CFileItem));

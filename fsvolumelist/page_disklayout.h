@@ -16,13 +16,16 @@
 //
 #include <diskguid.h>
 #include "diskfindvolume.h"
+#include "findhandler.h"
 
 #define _IT_ITEM        0x0
 #define _IT_GAP         0x1
 #define _IT_REMAINING   0x2
 #define _IT_EXTENDED    0x3
 
-class CDiskLayoutView : public CPageWndBase
+class CDiskLayoutView :
+	public CPageWndBase,
+	public CFindHandler<CDiskLayoutView>
 {
 	HWND m_hWndList;
 	CPhysicalDriveInformation *m_PDInfo;
@@ -48,6 +51,8 @@ public:
 	~CDiskLayoutView()
 	{
 	}
+
+	HWND GetListView() const { return m_hWndList; }
 
 	LRESULT OnCreate(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
@@ -154,6 +159,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
+				return CFindHandler<CDiskLayoutView>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -802,6 +809,9 @@ public:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_EDIT_FIND:
+			case ID_EDIT_FIND_NEXT:
+			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 		}

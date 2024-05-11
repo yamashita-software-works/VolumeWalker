@@ -113,11 +113,6 @@ SOURCES = \
 #----------------------------------------------------------
 IGNORE_LINKLIB_ABUSE=1
 
-!if defined(_USE_FSLIB)
-LINKER_FLAGS=$(LINKER_FLAGS) /DELAYLOAD:"fslib.dll"
-!endif
-
-#todo:
 DLLDEF=$(TARGETNAME).def
 
 !if $(AMD64)
@@ -132,17 +127,9 @@ _LIB_PATH=..\lib
 
 _LIBNTWDK=$(_LIB_PATH)\x64\lib$(DDKBUILDENV)
 
-!if defined(_USE_FSLIB)
-_FSLIB=..\fslib\lib\x64
-!endif
-
 !else
 
 _LIBNTWDK=$(_LIB_PATH)\x86\lib$(DDKBUILDENV)
-
-!if defined(_USE_FSLIB)
-_FSLIB=..\fslib\lib\x86
-!endif
 
 !endif
 

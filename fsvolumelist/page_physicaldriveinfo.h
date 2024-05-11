@@ -16,6 +16,7 @@
 //
 #include "string_def.h"
 #include "diskfindvolume.h"
+#include "findhandler.h"
 
 #define _STR_NA  L"---"
 
@@ -66,7 +67,9 @@ typedef struct _PHYSICALDISKINFOWNDEXTRA
 	WNDPROC pfnWndProcListView;
 } PHYSICALDISKINFOWNDEXTRA;
 
-class CPhysicalDiskInfoView : public CPageWndBase
+class CPhysicalDiskInfoView :
+	public CPageWndBase,
+	public CFindHandler<CPhysicalDiskInfoView>
 {
 	HWND m_hWndList;
 
@@ -80,6 +83,8 @@ class CPhysicalDiskInfoView : public CPageWndBase
 	HFONT m_hFont;
 
 public:
+	HWND GetListView() const { return m_hWndList; }
+
 	CPhysicalDiskInfoView()
 	{
 		m_hWndList = NULL;
@@ -399,6 +404,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
+				return CFindHandler<CPhysicalDiskInfoView>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -1107,6 +1114,9 @@ public:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_EDIT_FIND:
+			case ID_EDIT_FIND_NEXT:
+			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 		}

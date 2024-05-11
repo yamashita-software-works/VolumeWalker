@@ -236,13 +236,19 @@ EXTERN_C
 LONG
 WINAPI
 ReadFileClusterInformaion( 
-	HANDLE hRoot,
-	HANDLE hFilePart, 
-	PCWSTR pszVolumeName,
-	PCWSTR pszFilePath,
+	HANDLE hVolume,
+	HANDLE hFile, 
+	PCWSTR pszVolumeRootDirectoryName,
 	FS_CLUSTER_INFORMATION_CLASS Class,
 	PVOID Data,
 	ULONG cbData
+	);
+
+EXTERN_C
+LONG
+WINAPI
+FreeClusterInformation( 
+	PVOID Buffer
 	);
 
 //////////////////////////////////////////////////////////////////////////////

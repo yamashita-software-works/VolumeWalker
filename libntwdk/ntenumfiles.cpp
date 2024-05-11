@@ -195,6 +195,10 @@ EnumFiles_W(
     HANDLE hRoot = NULL;
     if( OpenRootDirectory(pR,0,&hRoot) != STATUS_SUCCESS )
     {
+		FreeMemory(pP);
+
+		pP = DuplicateString(Path);
+
         hRoot = NULL;
     }
 

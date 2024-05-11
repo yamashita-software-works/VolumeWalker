@@ -1098,6 +1098,9 @@ PWSTR CombinePath(PCWSTR pszPath,PCWSTR pszFileName)
     WCHAR *psz;
     SIZE_T cch,cchPath;
 
+	if( pszFileName == NULL )
+		return DuplicateString(pszPath);
+
     cch = 0;
 
     cchPath = wcslen(pszPath);
@@ -1116,7 +1119,7 @@ PWSTR CombinePath(PCWSTR pszPath,PCWSTR pszFileName)
     if( psz )
     {
         StringCchCopy(psz,cch,pszPath);
-        if( *pszFileName != L'\\' )
+        if( *pszFileName != L'\\' && *pszFileName != L'\0' )
         {
             if( pszPath[cchPath-1] != L'\\' )
                 StringCchCat(psz,cch,L"\\");
@@ -1131,6 +1134,9 @@ PWSTR CombinePath_U(PCWSTR pszPath,UNICODE_STRING *pusFileName)
 {
     WCHAR *psz;
     SIZE_T cch,cchPath;
+
+	if( pusFileName == NULL )
+		return DuplicateString(pszPath);
 
     cch = 0;
 
@@ -1150,7 +1156,7 @@ PWSTR CombinePath_U(PCWSTR pszPath,UNICODE_STRING *pusFileName)
     if( psz )
     {
         StringCchCopy(psz,cch,pszPath);
-        if( pszPath[cchPath-1] != L'\\' )
+        if( pszPath[cchPath-1] != L'\\' && pusFileName->Length > 0 )
             psz[cchPath++] = L'\\';
         memcpy(&psz[cchPath],pusFileName->Buffer,pusFileName->Length);
     }
@@ -1177,7 +1183,7 @@ NTSTATUS CombineUnicodeStringPath(UNICODE_STRING *CombinedPath,UNICODE_STRING *P
     cbAlloc += Path->Length;
     cbAlloc += FileName->Length;
 
-    BOOLEAN addBackslash = (!IsLastCharacterBackslash_U(Path) && (FileName->Length > 0 && FileName->Buffer[0] != L'\\'));
+    BOOLEAN addBackslash = (Path->Length != 0 && !IsLastCharacterBackslash_U(Path) && (FileName->Length > 0 && FileName->Buffer[0] != L'\\'));
 
     if( addBackslash )
     {

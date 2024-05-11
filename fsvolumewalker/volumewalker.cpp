@@ -407,12 +407,14 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget,PVOID pOpenS
 		mcp.hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
 		FreeLibrary(hmod);
 	}
+#if 0
 	else if( ConsoleTypeId == VOUUME_CONSOLE_CHANGE_JOURNAL )
 	{
 		HINSTANCE hmod = LoadLibrary(L"shell32.dll");
 		mcp.hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(152),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
 		FreeLibrary(hmod);
 	}
+#endif
 	else if( ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP )
 		mcp.hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(IDI_BINDUMP),IMAGE_ICON,16,16,LR_DEFAULTSIZE);
 	else

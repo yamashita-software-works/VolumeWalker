@@ -17,6 +17,7 @@
 #include "string_def.h"
 #include "ntobjecthelp.h"
 #include "ntvolumehelp.h"
+#include "findhandler.h"
 
 #define _STR_NA  L"---"
 
@@ -61,7 +62,9 @@ typedef struct _VOLUMEINFOWNDEXTRA
 	WNDPROC pfnWndProcListView;
 } VOLUMEINFOWNDEXTRA;
 
-class CVolumeBasicInfoView : public CPageWndBase
+class CVolumeBasicInfoView : 
+	public CPageWndBase,
+	public CFindHandler<CVolumeBasicInfoView>
 {
 	HWND m_hWndList;
 
@@ -98,6 +101,8 @@ public:
 		_SafeMemFree(m_pszVolumeGuid);
 		_SafeMemFree(m_pszDrive);
 	}
+
+	HWND GetListView() const { return m_hWndList; }
 
 	LRESULT OnCreate(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
@@ -619,6 +624,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
+				return CFindHandler<CVolumeBasicInfoView>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -1699,6 +1706,9 @@ public:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_EDIT_FIND:
+			case ID_EDIT_FIND_NEXT:
+			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 		}

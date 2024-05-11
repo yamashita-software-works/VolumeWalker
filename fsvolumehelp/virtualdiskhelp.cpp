@@ -26,6 +26,7 @@
 //----------------------------------------------------------------------------
 EXTERN_C
 DWORD
+WINAPI
 VirtualDisk_GetDependencyInformationByHandle(
 	HANDLE hStorage,
 	PSTORAGE_DEPENDENCY_INFO *ppStorageInfo

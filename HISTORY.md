@@ -1,3 +1,11 @@
+### 0.1.9.0
+
+- 全ウィンドウに簡易的なウィンドウ内テキスト単純検索機能を追加。
+
+- Contenrt Browser-Fileを調整・更新。
+
+- Contenrt Browser-Change Jouranlを調整・更新。
+
 ### 0.1.8.0
 
 - Volume Contents Browserウィンドウを暫定追加。   

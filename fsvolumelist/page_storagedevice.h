@@ -15,8 +15,9 @@
 //  Licensed under the MIT License.
 //
 #include "dparray.h"
-#include "..\inc\common.h"
+#include "common.h"
 #include "column.h"
+#include "findhandler.h"
 #include <devguid.h>
 
 struct CStorageDeviceItem
@@ -51,7 +52,9 @@ enum {
 	ID_GROUP_VOLUME,
 };
 
-class CStorageDevicePage : public CPageWndBase
+class CStorageDevicePage : 
+	public CPageWndBase,
+	public CFindHandler<CStorageDevicePage>
 {
 	HWND m_hWndList;
 
@@ -69,6 +72,9 @@ class CStorageDevicePage : public CPageWndBase
 #endif
 
 	CColumnList m_columns;
+
+public:
+	HWND GetListView() const { return m_hWndList; }
 
 public:
 	CStorageDevicePage()
@@ -392,6 +398,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
+				return CFindHandler<CStorageDevicePage>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -689,6 +697,9 @@ public:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_EDIT_FIND:
+			case ID_EDIT_FIND_NEXT:
+			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 		}

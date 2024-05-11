@@ -15,8 +15,9 @@
 //  Licensed under the MIT License.
 //
 #include "dparray.h"
-#include "..\inc\common.h"
+#include "common.h"
 #include "column.h"
+#include "findhandler.h"
 #include <devguid.h>
 
 struct CMountedDeviceItem
@@ -39,7 +40,9 @@ public:
 
 //////////////////////////////////////////////////////////////////////////////
 
-class CMountedDevicePage : public CPageWndBase
+class CMountedDevicePage : 
+	public CPageWndBase,
+	public CFindHandler<CMountedDevicePage>
 {
 	HWND m_hWndList;
 
@@ -73,6 +76,8 @@ public:
 		if( m_comp_proc )
 			delete[] m_comp_proc;
 	}
+
+	HWND GetListView() const { return m_hWndList; }
 
 	virtual HRESULT OnInitPage(PVOID)
 	{
@@ -353,6 +358,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
+				return CFindHandler<CMountedDevicePage>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -597,6 +604,9 @@ public:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_EDIT_FIND:
+			case ID_EDIT_FIND_NEXT:
+			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 		}

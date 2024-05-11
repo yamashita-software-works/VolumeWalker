@@ -20,9 +20,7 @@ static
 BOOL
 _GetPhysicalLocation(
 	HANDLE hVolume,
-	LONGLONG /*Lcn*/,
 	LONGLONG LcnOffset,
-	DWORD /*dwBytesPerCluster*/,
 	VOLUME_PHYSICAL_OFFSETS **pResult
 	)
 {
@@ -36,7 +34,7 @@ _GetPhysicalLocation(
 	DWORD cbPhysicalDriveOffsets = sizeof(VOLUME_PHYSICAL_OFFSETS);
 	DWORD cbBytesReturned = 0;
 
-	do
+	for(;;)
 	{
 		pPhysicalDriveOffsets = (VOLUME_PHYSICAL_OFFSETS *)_MemAllocZero(cbPhysicalDriveOffsets);
 		if( pPhysicalDriveOffsets == NULL )
@@ -67,8 +65,9 @@ _GetPhysicalLocation(
 
 			return FALSE;
 		}
+
+		break;
 	}
-	while(0);
 
 	*pResult = pPhysicalDriveOffsets;
 
@@ -80,7 +79,6 @@ BOOL
 _GetClustersInformation(
 	HANDLE hVolume,
 	HANDLE hFile,
-	PCWSTR pszPath,
 	DWORD dwFlags,
 	DWORD dwBytesPerCluster,
 	DWORD dwBytesPerSector,
@@ -184,8 +182,7 @@ _GetClustersInformation(
 								LcnOffset += (rpb.FileAreaOffset.QuadPart * dwBytesPerSector);
 
 								if( !_GetPhysicalLocation(hVolume,
-										0,LcnOffset,
-										dwBytesPerCluster,
+										LcnOffset,
 										(VOLUME_PHYSICAL_OFFSETS **)&pClusters->Extents[pClusters->ExtentCount+i].PhysicalOffsets))
 								{
 									dwErrorCode = GetLastError();
@@ -226,59 +223,55 @@ EXTERN_C
 LONG
 WINAPI
 ReadFileClusterInformaion_U( 
-	HANDLE /*hRoot*/,
-	HANDLE hFilePart, 
-	UNICODE_STRING *pVolumeName,
-	PCWSTR pszFilePath,
+	HANDLE /*hVolume*/,  // unuse reserved
+	HANDLE hFile, 
+	UNICODE_STRING *VolumeRootDirectoryName,
 	FS_CLUSTER_INFORMATION_CLASS Class,
 	PVOID Data,
 	ULONG cbData
 	)
 {
-	UNICODE_STRING VolumeRoot;
+	UNICODE_STRING usVolumeRoot;
 	HANDLE hVolume;
+	HANDLE hVolumeRoot;
 	NTSTATUS Status;
 
 	DWORD dwBytesPerCluster = 0;
 	DWORD dwBytesPerSector = 0;
-	if( pVolumeName == NULL )
-		SplitRootRelativePath(pszFilePath,&VolumeRoot,NULL);
-	else
-		VolumeRoot = *pVolumeName;
+
+	SplitRootRelativePath(VolumeRootDirectoryName->Buffer,&usVolumeRoot,NULL);
 
 #ifdef _DEBUG
-	PWSTR psz = AllocateSzFromUnicodeString(&VolumeRoot);
+	PWSTR psz = AllocateSzFromUnicodeString(&usVolumeRoot);
 	FreeMemory(psz);
 #endif
 
-	if( (Status = OpenFile_U(&hVolume,NULL,&VolumeRoot,
-				FILE_READ_ATTRIBUTES,
-				FILE_SHARE_READ|FILE_SHARE_WRITE,
-				0)) == STATUS_SUCCESS )
+	if( (Status = OpenFile_U(&hVolumeRoot,NULL,&usVolumeRoot,
+					FILE_READ_ATTRIBUTES,
+					FILE_SHARE_READ|FILE_SHARE_WRITE,
+					0)) != STATUS_SUCCESS )
+	{
+		//
+		// could not open the volume, try open use the path.
+		//
+		usVolumeRoot = *VolumeRootDirectoryName;
+
+		Status = OpenFile_U(&hVolumeRoot,NULL,&usVolumeRoot,
+					FILE_READ_ATTRIBUTES,
+					FILE_SHARE_READ|FILE_SHARE_WRITE,
+					0);
+	}
+
+	if( Status == STATUS_SUCCESS )
 	{
 		VOLUME_FS_SIZE_INFORMATION *SizeInfo;
-		GetVolumeFsInformation(hVolume,VOLFS_SIZE_INFORMATION,(void **)&SizeInfo);
+		if( GetVolumeFsInformation(hVolumeRoot,VOLFS_SIZE_INFORMATION,(void **)&SizeInfo) == STATUS_SUCCESS )
+		{
 			dwBytesPerCluster = SizeInfo->SectorsPerAllocationUnit * SizeInfo->BytesPerSector;
 			dwBytesPerSector  = SizeInfo->BytesPerSector;
-		FreeMemory(SizeInfo);
-		CloseHandle(hVolume);
-	}
-
-	//
-	// Open file
-	//
-	HANDLE hFile = NULL;
-
-	if( hFilePart == NULL )
-	{
-		Status = OpenFile_W(&hFile,NULL,pszFilePath,
-						GENERIC_READ,
-						FILE_SHARE_READ|FILE_SHARE_WRITE,
-						0);
-	}
-	else
-	{
-		hFile = hFilePart;
+			FreeMemory(SizeInfo);
+		}
+		CloseHandle(hVolumeRoot);
 	}
 
 	//
@@ -286,32 +279,40 @@ ReadFileClusterInformaion_U(
 	//
 	if( hFile != NULL )
 	{
-		FS_CLUSTER_INFORMATION *pClusters = NULL;
-
-		if( pVolumeName == NULL )
-			RtlInitUnicodeString(&VolumeRoot,pszFilePath);
-		else
-			RtlInitUnicodeString(&VolumeRoot,pVolumeName->Buffer);
-
-		GetVolumeName_U(&VolumeRoot);
-
 		hVolume = NULL;
 
-		if( IsUserAnAdmin() )
+		FS_CLUSTER_INFORMATION *pClusters = NULL;
+
+		UNICODE_STRING usVolumeDevice;
+		usVolumeDevice = usVolumeRoot;
+		GetVolumeName_U(&usVolumeDevice);
+
+		for(ULONG fOption = FILE_NON_DIRECTORY_FILE;;)
 		{
-			// Cluster read
-			Status = OpenFile_U(&hVolume,NULL,&VolumeRoot,
-						GENERIC_READ|SYNCHRONIZE,
-						FILE_SHARE_READ|FILE_SHARE_WRITE,
-						FILE_SYNCHRONOUS_IO_ALERT|FILE_NON_DIRECTORY_FILE|FILE_NO_INTERMEDIATE_BUFFERING);
-		}
-		else
-		{
-			// Get Lcn only
-			Status = OpenFile_U(&hVolume,NULL,&VolumeRoot,
-						FILE_READ_ATTRIBUTES|SYNCHRONIZE,
-						FILE_SHARE_READ|FILE_SHARE_WRITE,
-						FILE_SYNCHRONOUS_IO_ALERT|FILE_NON_DIRECTORY_FILE|FILE_NO_INTERMEDIATE_BUFFERING);
+			if( IsUserAnAdmin() )
+			{
+				// Cluster read
+				Status = OpenFile_U(&hVolume,NULL,&usVolumeDevice,
+							GENERIC_READ|SYNCHRONIZE,
+							FILE_SHARE_READ|FILE_SHARE_WRITE,
+							fOption|FILE_SYNCHRONOUS_IO_ALERT|FILE_NO_INTERMEDIATE_BUFFERING);
+			}
+			else
+			{
+				// Get Lcn only
+				Status = OpenFile_U(&hVolume,NULL,&usVolumeDevice,
+							FILE_READ_ATTRIBUTES|SYNCHRONIZE,
+							FILE_SHARE_READ|FILE_SHARE_WRITE,
+							fOption|FILE_SYNCHRONOUS_IO_ALERT|FILE_NO_INTERMEDIATE_BUFFERING);
+			}
+
+			if( Status == STATUS_FILE_IS_A_DIRECTORY )
+			{
+				fOption &= ~FILE_NON_DIRECTORY_FILE;
+				continue;
+			}
+
+			break;
 		}
 
 		if( Status == 0 )
@@ -319,7 +320,6 @@ ReadFileClusterInformaion_U(
 			if(!_GetClustersInformation(
 							hVolume, 
 							hFile, 
-							pszFilePath, 
 							(Class == ClusterInformationAll) ? 0x1 : 0x0,
 							dwBytesPerCluster,
 							dwBytesPerSector,
@@ -334,9 +334,6 @@ ReadFileClusterInformaion_U(
 					Status = ERROR_NO_MORE_ITEMS;
 			}
 		}
-
-		if( hFilePart == NULL )
-			CloseHandle(hFile);
 
 		if( hVolume != NULL )
 			CloseHandle(hVolume);
@@ -369,20 +366,19 @@ EXTERN_C
 LONG
 WINAPI
 ReadFileClusterInformaion( 
-	HANDLE hRoot,
-	HANDLE hFilePart, 
-	PCWSTR pszVolumeName,
-	PCWSTR pszFilePath,
+	HANDLE hVolume, // unuse reserved
+	HANDLE hFile, 
+	PCWSTR pszVolumeRootDirectoryName,
 	FS_CLUSTER_INFORMATION_CLASS Class,
 	PVOID Data,
 	ULONG cbData
 	)
 {
-	UNICODE_STRING usVolumeName;
-	RtlInitUnicodeString(&usVolumeName,pszVolumeName);
+	UNICODE_STRING usVolumeRootDirectoryName;
+	RtlInitUnicodeString(&usVolumeRootDirectoryName,pszVolumeRootDirectoryName);
 
-	return ReadFileClusterInformaion_U(hRoot,hFilePart,&usVolumeName,
-			pszFilePath,Class,Data,cbData);
+	return ReadFileClusterInformaion_U(hVolume,hFile,&usVolumeRootDirectoryName,
+			Class,Data,cbData);
 }
 
 EXTERN_C

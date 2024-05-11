@@ -17,6 +17,7 @@
 #include "dparray.h"
 #include "common.h"
 #include "column.h"
+#include "findhandler.h"
 #include <devguid.h>
 
 #define TE_OPEN_MDI_CHILD_FRAME  (1)
@@ -62,15 +63,17 @@ public:
 
 //////////////////////////////////////////////////////////////////////////////
 
-class CVolumeListPage : public CPageWndBase
+class CVolumeListPage : 
+	public CPageWndBase,
+	public CFindHandler<CVolumeListPage>
 {
+	HWND m_hWndList;
+
 	enum {
 		ID_GROUP_DISK=1,
 		ID_GROUP_CDROM,
 		ID_GROUP_FLOPPY
 	};
-
-	HWND m_hWndList;
 
 	COLUMN_HANDLER_DEF<CVolumeListPage> *m_disp_proc;
 	COMPARE_HANDLER_PROC_DEF<CVolumeListPage,CVolumeItem>* m_comp_proc;
@@ -107,6 +110,8 @@ public:
 		if( m_comp_proc )
 			delete[] m_comp_proc;
 	}
+
+	HWND GetListView() const { return m_hWndList; }
 
 	virtual HRESULT OnInitPage(PVOID)
 	{
@@ -207,6 +212,9 @@ public:
 		CVolumeItem *pItem = (CVolumeItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 
 		HMENU hMenu = CreatePopupMenu();
+#if 0 // reserved
+		SendMessage(GetParent(m_hWnd),PM_MAKECONTEXTMENU,(WPARAM)hMenu,0);
+#else
 		AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Open &Information");
 		AppendMenu(hMenu,MF_STRING,ID_FILESYSTEMSTATISTICS,L"Open File System &Statistics");
 		AppendMenu(hMenu,MF_STRING,0,0);
@@ -219,7 +227,7 @@ public:
 		AppendMenu(hMenu,MF_STRING,0,0);
 		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
 		SetMenuDefaultItem(hMenu,ID_VOLUMEINFORMATION,FALSE);
-
+#endif
 		POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 		ListViewEx_SimpleContextMenuHandler(NULL,m_hWndList,(HWND)wParam,hMenu,pt,0);
 
@@ -650,6 +658,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
+				return OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -1154,6 +1164,9 @@ public:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_EDIT_FIND:
+			case ID_EDIT_FIND_NEXT:
+			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 		}

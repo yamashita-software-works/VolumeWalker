@@ -16,6 +16,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <commctrl.h>
+#include <commdlg.h>
 #include <shellapi.h>
 #include <shlwapi.h>
 #include <shlobj.h>
@@ -41,6 +42,7 @@
 #include "libmisc.h"
 #include "common.h"
 #include "common_control_helper.h"
+#include "common_msg.h"
 #include "simplestack.h"
 #include "common_resid.h"
 #include "appdef_resid.h"

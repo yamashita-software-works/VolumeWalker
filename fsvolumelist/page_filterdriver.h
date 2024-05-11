@@ -17,6 +17,7 @@
 #include "dparray.h"
 #include "common.h"
 #include "column.h"
+#include "findhandler.h"
 #include "flthelp.h"
 
 #define _ENABLE_GROUP_ICON    0
@@ -87,7 +88,9 @@ public:
 typedef FLT_MINIFILTERDIVER_INFORMATION CFltMiniFilterItem;
 #endif
 
-class CFilterDriverPage : public CPageWndBase
+class CFilterDriverPage :
+	public CPageWndBase,
+	public CFindHandler<CFilterDriverPage>
 {
 	HWND m_hWndList;
 
@@ -109,6 +112,9 @@ class CFilterDriverPage : public CPageWndBase
 	CColumnList m_columns;
 
 	PWSTR m_pszErrorMessage;
+
+public:
+	HWND GetListView() const { return m_hWndList; }
 
 public:
 	CFilterDriverPage()
@@ -508,6 +514,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
+				return CFindHandler<CFilterDriverPage>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -864,6 +872,9 @@ public:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_EDIT_FIND:
+			case ID_EDIT_FIND_NEXT:
+			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 		}

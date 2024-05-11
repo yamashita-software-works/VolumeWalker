@@ -569,7 +569,8 @@ NTSTATUS GetFileAttributes_U( HANDLE RootHandle, UNICODE_STRING *FilePath, ULONG
         InitializeObjectAttributes(&ObjectAttributes,FilePath,0,RootHandle,NULL);
 
         Status = NtOpenFile(&Handle,FILE_READ_ATTRIBUTES,
-                        &ObjectAttributes,&IoStatus,FILE_SHARE_READ|FILE_SHARE_WRITE,0);
+                        &ObjectAttributes,&IoStatus,FILE_SHARE_READ|FILE_SHARE_WRITE,
+						FILE_OPEN_REPARSE_POINT);
     }
 
     if( Status == STATUS_SUCCESS )

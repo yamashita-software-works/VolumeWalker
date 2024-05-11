@@ -15,8 +15,9 @@
 //  Licensed under the MIT License.
 //
 #include "dparray.h"
-#include "..\inc\common.h"
+#include "common.h"
 #include "column.h"
+#include "findhandler.h"
 #include "simplevalarray.h"
 #include <devguid.h>
 
@@ -46,7 +47,9 @@ public:
 
 //////////////////////////////////////////////////////////////////////////////
 
-class CDosDriveListPage : public CPageWndBase
+class CDosDriveListPage : 
+	public CPageWndBase,
+	public CFindHandler<CDosDriveListPage>
 {
 	HWND m_hWndList;
 
@@ -63,6 +66,9 @@ class CDosDriveListPage : public CPageWndBase
 	UINT  m_MeterStyle;
 
 	CColumnList m_columns;
+
+public:
+	HWND GetListView() const { return m_hWndList; }
 
 public:
 	CDosDriveListPage()
@@ -639,6 +645,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
+				return CFindHandler<CDosDriveListPage>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -1121,6 +1129,9 @@ public:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_EDIT_FIND:
+			case ID_EDIT_FIND_NEXT:
+			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 		}

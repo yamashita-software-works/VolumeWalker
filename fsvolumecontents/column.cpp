@@ -51,8 +51,6 @@ static COLUMN_NAME column_name_map[] = {
 	{ COLUMN_Reason,         L"Reason",                0},
 	{ COLUMN_Frn,            L"FRN",                   0},
 	{ COLUMN_ParentFrn,      L"Parent FRN",            0},
-	{ COLUMN_Path,           L"Path",                  0},
-
 };
 
 static UINT NameToId(PCWSTR pszName)

@@ -15,8 +15,9 @@
 //  Licensed under the MIT License.
 //
 #include "dparray.h"
-#include "..\inc\common.h"
+#include "common.h"
 #include "column.h"
+#include "findhandler.h"
 #include <devguid.h>
 #include "simpletoolbar.h"
 #include "dialogs.h"
@@ -38,7 +39,9 @@ public:
 
 //////////////////////////////////////////////////////////////////////////////
 
-class CSimpleHexDumpPage : public CPageWndBase
+class CSimpleHexDumpPage :
+	public CPageWndBase,
+	public CFindHandler<CSimpleHexDumpPage>
 {
 	HWND m_hWndList;
 
@@ -82,6 +85,9 @@ class CSimpleHexDumpPage : public CPageWndBase
 	RETRIEVAL_POINTER_BASE m_rpb;
 
 	LARGE_INTEGER m_liFileAreaOffsetByte;
+
+public:
+	HWND GetListView() const { return m_hWndList; }
 
 public:
 	CSimpleHexDumpPage()
@@ -390,6 +396,8 @@ public:
 				DeleteObject(hbr);
 				return 1;
 			}
+			case PM_FINDITEM:
+				return CFindHandler<CSimpleHexDumpPage>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -875,6 +883,9 @@ public:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_EDIT_FIND:
+			case ID_EDIT_FIND_NEXT:
+			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 		}

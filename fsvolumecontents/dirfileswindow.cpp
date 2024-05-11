@@ -40,9 +40,6 @@ public:
 	{
 		CreateFileListBaseObject(GETINSTANCE(m_hWnd),&m_pView);
 		m_pView->Create(hWnd);
-
-		SetWindowIcon(GetParent(hWnd),SIID_FOLDEROPEN);
-
 		return 0;
 	}
 
@@ -133,9 +130,6 @@ public:
 			case UI_NOTIFY_ITEM_SELECTED:
 				OnItemSelected( (SELECT_ITEM*)lParam );
 				break;
-			case UI_NOTIFY_CHANGE_TITLE:
-				SetWindowText(GetParent(hWnd),(LPCWSTR)lParam);
-				break;
 		}
 		return 0;
 	}
@@ -152,6 +146,13 @@ public:
 				return OnSelectFile(m_hWnd,0,0,lParam);
 			case UI_INIT_VIEW:
 				return OnInitView(m_hWnd,0,0,lParam);
+			case UI_SET_TITLE:
+				SetWindowText(GetParent(hWnd),(LPCWSTR)lParam);
+				break;
+			case UI_SET_ICON:
+				DestroyIcon((HICON)SendMessage(GetParent(m_hWnd),WM_GETICON,ICON_SMALL,0));
+				SendMessage(GetParent(hWnd),WM_SETICON,(WPARAM)ICON_SMALL,lParam);
+				break;
 		}
 		return 0;
 	}

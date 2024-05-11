@@ -149,6 +149,10 @@ public:
 				return OnControlMessage(hWnd,uMsg,wParam,lParam);
 			case WM_NOTIFY_MESSAGE:
 				return OnNotifyMessage(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
+				if( m_pView )
+					return SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam); // forward to current view
+				return 0;
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}

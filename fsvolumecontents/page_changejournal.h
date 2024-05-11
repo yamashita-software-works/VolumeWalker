@@ -18,6 +18,7 @@
 #include "pagewbdbase.h"
 #include "common.h"
 #include "column.h"
+#include "findhandler.h"
 #include "fsfilelib.h"
 #include "changejournalhelp.h"
 #include "ntwin32helper.h"
@@ -40,7 +41,9 @@ struct CChangeJournalItem
 	}
 };
 
-class CChangeJournalListPage : public CPageWndBase
+class CChangeJournalListPage :
+	public CPageWndBase,
+	public CFindHandler<CChangeJournalListPage>
 {
 	HWND m_hWndList;
 
@@ -64,6 +67,9 @@ class CChangeJournalListPage : public CPageWndBase
 
 	PWSTR m_pszVolumeName;
 	PWSTR m_pszRawFileName;
+
+public:
+	HWND GetListView() const { return m_hWndList; }
 
 public:
 	CChangeJournalListPage()
@@ -679,6 +685,11 @@ public:
 
 	virtual HRESULT UpdateData(PVOID pFile)
 	{
+		SHSTOCKICONINFO sii = {0};
+		sii.cbSize = sizeof(sii);
+		SHGetStockIconInfo(SIID_DRIVEFIXED,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
+		SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_ICON,(LPARAM)sii.hIcon);
+
 		return FillItems(((SELECT_ITEM*)pFile)->pszPath,NULL);
 	}
 
@@ -1000,7 +1011,7 @@ public:
 				of.lpstrFile    = (LPWSTR)szFile;
 				of.nMaxFile     = (DWORD)sizeof(szFile);
 				of.lpstrTitle   = (LPWSTR)L"Export Change Journal Raw Dump Data";
-				of.Flags        = OFN_HIDEREADONLY|OFN_PATHMUSTEXIST;
+				of.Flags        = OFN_OVERWRITEPROMPT;
 				of.lpstrDefExt  = (LPWSTR)L"cjdump";
 
 				if (GetSaveFileName(&of))
@@ -1038,7 +1049,12 @@ public:
 
 					DoSort(m_Sort.CurrentSubItem,0);
 
-					SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_CHANGE_TITLE,(LPARAM)PathFindFileName(m_pszRawFileName));
+					SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_TITLE,(LPARAM)PathFindFileName(m_pszRawFileName));
+
+					HINSTANCE hmod = LoadLibrary(L"shell32.dll");
+					HICON hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(152),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
+					FreeLibrary(hmod);
+					SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_ICON,(LPARAM)hIcon);
 				}
 				break;
 			}
@@ -1064,103 +1080,5 @@ public:
 	{
 		FillItems(m_pszVolumeName,m_pszRawFileName);
 		DoSort(m_Sort.CurrentSubItem,0);
-	}
-
-	//////////////////////////////////////////////////////////////////////////
-	//
-	// Find Item
-	//
-
-	int m_iStartFindItem;
-	int m_iFirstMatchItem;
-	int m_iLastMatchItem;
-
-	LRESULT OnFindItem(HWND,UINT,WPARAM wParam,LPARAM lParam)
-	{
-		LPFINDREPLACE lpfr = (LPFINDREPLACE)lParam;
-		switch( LOWORD(wParam) )
-		{
-			case FIND_QUERYOPENDIALOG:
-				return 0; // 0:accept 1:prevent
-
-			case FIND_CLOSEDIALOG:
-				m_iStartFindItem = -1;
-				break;
-
-			case FIND_SEARCH:
-				m_iStartFindItem = ListViewEx_GetCurSel(m_hWndList);
-				if( m_iStartFindItem == -1 )
-					m_iStartFindItem = 0;
-				SearchItem(lpfr->lpstrFindWhat,
-						(BOOL) (lpfr->Flags & FR_DOWN), 
-						(BOOL) (lpfr->Flags & FR_MATCHCASE)); 
-				break;
-			case FIND_SEARCH_NEXT:
-			{
-				int cItems = ListView_GetItemCount(m_hWndList);
-				m_iStartFindItem = ListViewEx_GetCurSel(m_hWndList);
-				if( m_iStartFindItem == -1 )
-					m_iStartFindItem = 0;
-				else
-				{
-					m_iStartFindItem = m_iStartFindItem + ((lpfr->Flags & FR_DOWN) ? 1 : -1);
-					if( m_iStartFindItem <= 0 )
-						m_iStartFindItem = cItems-1;
-					else if( m_iStartFindItem >= cItems )
-						m_iStartFindItem = 0;
-				}
-				SearchItem(lpfr->lpstrFindWhat,
-						(BOOL) (lpfr->Flags & FR_DOWN), 
-						(BOOL) (lpfr->Flags & FR_MATCHCASE)); 
-				break;
-			}
-		}
-		return 0;
-	}
-
-	VOID SearchItem(PWSTR pszFindText,BOOL Down,BOOL MatchCase)
-	{
-		int iItem,col,cItems,cColumns;
-
-		const int cchText = MAX_PATH;
-		WCHAR szText[cchText];
-
-		cItems = ListView_GetItemCount(m_hWndList);
-		cColumns = ListViewEx_GetColumnCount(m_hWndList);
-
-		iItem = m_iStartFindItem;
-
-		for(;;)
-		{
-			for(col = 0; col < cColumns; col++)
-			{
-				ListView_GetItemText(m_hWndList,iItem,col,szText,cchText);
-
-				if( StrStrI(szText,pszFindText) != 0 )
-				{
-					ListViewEx_ClearSelectAll(m_hWndList,TRUE);
-					ListView_SetItemState(m_hWndList,iItem,LVNI_SELECTED|LVNI_FOCUSED,LVNI_SELECTED|LVNI_FOCUSED);
-					ListView_EnsureVisible(m_hWndList,iItem,FALSE);
-					goto __found;
-				}
-			}
-
-			Down ? iItem++ : iItem--;
-
-			// lap around
-			if( iItem >= cItems )
-				iItem = 0;
-			else if( iItem < 0 )
-				iItem = cItems-1;
-
-			if( iItem == m_iStartFindItem )
-			{
-				MessageBeep(MB_ICONSTOP);
-				break; // not found
-			}
-		}
-
- __found:
-		return;
 	}
 };
