@@ -137,6 +137,8 @@ public:
 		{
 			case UI_SET_DIRECTORY:
 				return OnSetDirectory(m_hWnd,0,0,lParam);
+			case UI_SET_FILEPATH:
+				return OnSetFilePath(m_hWnd,0,0,lParam);
 			case UI_INIT_VIEW:
 				return OnInitView(m_hWnd,0,0,lParam);
 			case UI_SET_TITLE:
@@ -152,6 +154,15 @@ public:
 
 	LRESULT OnQueryMessage(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
+		switch( LOWORD(wParam) )
+		{
+			case 0:
+				break; // todo: avoid C4065
+			default:
+				if( m_pView )
+					SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam);
+				break;
+		}
 		return 0;
 	}
 
@@ -232,9 +243,34 @@ public:
 		{
 			SELECT_ITEM sel = {0};
 			sel.ViewType  = VOUUME_CONSOLE_CHANGE_JOURNAL;
-			sel.pszCurDir = (PWSTR)pszPath;
+			sel.pszCurDir = (PWSTR)NULL;
 			sel.pszPath   = (PWSTR)pszPath;
 			sel.pszName   = (PWSTR)NULL;
+			m_pView->SelectView(&sel); // call enum in this call
+		}
+
+		FreeMemory(pszPath);
+
+		return 0;
+	}
+
+	LRESULT OnSetFilePath(HWND /*hWnd*/,UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam)
+	{
+		PCWSTR pszFilePath = (PCWSTR)lParam;
+
+		PWSTR pszPath;
+		if( IsNtDevicePath(pszFilePath) )
+			pszPath = DuplicateString(pszFilePath);
+		else
+			pszPath = DosPathNameToNtPathName(pszFilePath);
+
+		if( PathFileExists_W(pszPath,NULL) )
+		{
+			SELECT_ITEM sel = {0};
+			sel.ViewType  = VOUUME_CONSOLE_CHANGE_JOURNAL;
+			sel.pszCurDir = (PWSTR)NULL;
+			sel.pszPath   = (PWSTR)NULL;
+			sel.pszName   = (PWSTR)pszFilePath;
 			m_pView->SelectView(&sel); // call enum in this call
 		}
 

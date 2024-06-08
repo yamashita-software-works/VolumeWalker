@@ -1,5 +1,12 @@
-//
-//  2023.03.01 Create
+//****************************************************************************
+//*                                                                          *
+//*  mdichild.cpp                                                            *
+//*                                                                          *
+//*  Author: YAMASHITA Katsuhiro                                             *
+//*                                                                          *
+//*  Create: 2023-03-01                                                      *
+//*                                                                          *
+//****************************************************************************
 //
 //  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.
 //  Licensed under the MIT License.
@@ -127,6 +134,12 @@ LRESULT CALLBACK MDIChildWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 						break;
 				}
 			}
+			break;
+		}
+		case WM_NCACTIVATE:
+		{
+			MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hWnd,GWLP_USERDATA);
+			SendMessage(pd->hWndView,WM_NCACTIVATE,wParam,lParam);
 			break;
 		}
 	}

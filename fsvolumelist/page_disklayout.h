@@ -855,24 +855,9 @@ public:
 
 		LAYOUTITEM *pli = (LAYOUTITEM *)ListViewEx_GetItemData(m_hWndList,iItem);
 
+		if( pli )
 		{
-			if( pli )
-			{
-				if( 0 )
-				{
-					SIZE_T cch = wcslen(m_pszPhysicalDrive) + 1;
-					PWSTR psz = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
-					StringCchCopy(psz,cch,m_pszPhysicalDrive);
-					PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_SIMPLEHEXDUMP,1),(LPARAM)psz);
-				}
-				else
-				{
-					SELECT_OFFSET_ITEM sel = {0};
-					sel.hdr.pszPhysicalDrive = m_pszPhysicalDrive;
-					sel.liStartOffset = pli->StartOffset;
-					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_SIMPLEHEXDUMP,2),(LPARAM)&sel);
-				}
-			}
+			OpenConsole_SendMessage(VOLUME_CONSOLE_SIMPLEHEXDUMP,m_pszPhysicalDrive,pli->StartOffset.QuadPart);
 		}
 	}
 

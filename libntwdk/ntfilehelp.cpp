@@ -224,7 +224,7 @@ SplitRootPath_W(
         *RelativePathLength = cchRelativePath;
     }
 
-    if( *RootDirectory == NULL || *RelativePath == NULL )
+    if( (RootDirectory && *RootDirectory == NULL) || (RelativePath && *RelativePath == NULL) )
     {
         FreeMemory(*RootDirectory);
         FreeMemory(*RelativePath);
@@ -570,7 +570,7 @@ NTSTATUS GetFileAttributes_U( HANDLE RootHandle, UNICODE_STRING *FilePath, ULONG
 
         Status = NtOpenFile(&Handle,FILE_READ_ATTRIBUTES,
                         &ObjectAttributes,&IoStatus,FILE_SHARE_READ|FILE_SHARE_WRITE,
-						FILE_OPEN_REPARSE_POINT);
+                        FILE_OPEN_REPARSE_POINT);
     }
 
     if( Status == STATUS_SUCCESS )
@@ -657,6 +657,28 @@ NTSTATUS GetFileDateTime( HANDLE RootHandle, PCWSTR FilePath, FILE_BASIC_INFORMA
 
 //----------------------------------------------------------------------------
 //
+//  GetFileDateTime_W()
+//
+//----------------------------------------------------------------------------
+NTSTATUS NTAPI GetFileDateTime_W(HANDLE RootHandle, PCWSTR FilePath, FS_FILE_DATE_TIME *pfdt)
+{
+    NTSTATUS Status;
+    FILE_BASIC_INFORMATION fbi;
+    UNICODE_STRING usPath;
+    RtlInitUnicodeString(&usPath,FilePath);
+    Status = GetFileDateTime_U(RootHandle, &usPath, &fbi);
+    if( Status == STATUS_SUCCESS )
+    {
+        pfdt->CreationTime   = fbi.CreationTime;
+        pfdt->LastAccessTime = fbi.LastAccessTime;
+        pfdt->LastWriteTime  = fbi.LastWriteTime;
+        pfdt->ChangeTime     = fbi.ChangeTime;
+    }
+    return Status;
+}
+
+//----------------------------------------------------------------------------
+//
 //  SetFileDateTime_U()
 //
 //----------------------------------------------------------------------------
@@ -706,34 +728,49 @@ NTSTATUS SetFileDateTime( HANDLE RootHandle, PCWSTR FilePath, FILE_BASIC_INFORMA
 
 //----------------------------------------------------------------------------
 //
+//  SetFileDateTime_W()
+//
+//----------------------------------------------------------------------------
+NTSTATUS NTAPI SetFileDateTime_W(HANDLE RootHandle, PCWSTR FilePath, FS_FILE_DATE_TIME *pfdt)
+{
+    FILE_BASIC_INFORMATION fbi = {0};
+    fbi.LastWriteTime = pfdt->LastWriteTime;
+    fbi.CreationTime = pfdt->CreationTime;
+    fbi.LastAccessTime = pfdt->LastAccessTime;
+    fbi.ChangeTime = pfdt->ChangeTime;
+    return SetFileDateTime( RootHandle, FilePath, &fbi );
+}
+
+//----------------------------------------------------------------------------
+//
 //  GetFileNameInformation_U()
 //
 //----------------------------------------------------------------------------
 NTSTATUS GetFileNameInformation_U(HANDLE hFile,UNICODE_STRING *pusFileName)
 {
-	NTSTATUS Status;
-	ULONG cbNameBuffer = sizeof(FILE_NAME_INFORMATION)+(sizeof(WCHAR)*UNICODE_STRING_MAX_CHARS);
+    NTSTATUS Status;
+    ULONG cbNameBuffer = sizeof(FILE_NAME_INFORMATION)+(sizeof(WCHAR)*UNICODE_STRING_MAX_CHARS);
 
-	FILE_NAME_INFORMATION *pName = (FILE_NAME_INFORMATION *)AllocMemory(cbNameBuffer);
-	if( pName == NULL )
-	{
-		return STATUS_NO_MEMORY;
-	}
+    FILE_NAME_INFORMATION *pName = (FILE_NAME_INFORMATION *)AllocMemory(cbNameBuffer);
+    if( pName == NULL )
+    {
+        return STATUS_NO_MEMORY;
+    }
 
-	IO_STATUS_BLOCK IoStatus;
-	Status = NtQueryInformationFile(hFile,&IoStatus,pName,cbNameBuffer,FileNameInformation);
-	if( Status == STATUS_SUCCESS )
-	{
-		AllocateUnicodeStringCbBuffer(pusFileName,pName->FileNameLength+sizeof(WCHAR));
-		memcpy(pusFileName->Buffer,pName->FileName,pName->FileNameLength);
-		pusFileName->Length = (USHORT)pName->FileNameLength;
-		pusFileName->MaximumLength = (USHORT)pusFileName->Length + sizeof(WCHAR);
-	}
-	else
-	{
-		_SetLastStatusDos(Status);
-	}
-	return Status;
+    IO_STATUS_BLOCK IoStatus;
+    Status = NtQueryInformationFile(hFile,&IoStatus,pName,cbNameBuffer,FileNameInformation);
+    if( Status == STATUS_SUCCESS )
+    {
+        AllocateUnicodeStringCbBuffer(pusFileName,pName->FileNameLength+sizeof(WCHAR));
+        memcpy(pusFileName->Buffer,pName->FileName,pName->FileNameLength);
+        pusFileName->Length = (USHORT)pName->FileNameLength;
+        pusFileName->MaximumLength = (USHORT)pusFileName->Length + sizeof(WCHAR);
+    }
+    else
+    {
+        _SetLastStatusDos(Status);
+    }
+    return Status;
 }
 
 //----------------------------------------------------------------------------
@@ -917,7 +954,7 @@ MakeSureDirectoryPathExists_W(
 
             if( !PathFileExists_UEx(hParentDir,&token_u,NULL) )
             {
-                Status = CreateDirectory(hParentDir,token,NULL);
+                Status = CreateDirectory_W(hParentDir,token,NULL);
                 if( Status != STATUS_SUCCESS && Status != STATUS_OBJECT_NAME_COLLISION )
                     break;
             }
@@ -1077,13 +1114,14 @@ MoveDirectoryEntry(
 
     UNICODE_STRING SourceDirectory;
     UNICODE_STRING DestinationDirectory;
-    UNICODE_STRING FileName;
+    UNICODE_STRING FileNameFrom;
+    UNICODE_STRING FileNameTo;
 
     RtlInitUnicodeString(&SourceDirectory,pszSourceFilePath);
-    SplitPathFileName_U(&SourceDirectory,&FileName);
+    SplitPathFileName_U(&SourceDirectory,&FileNameFrom);
 
     RtlInitUnicodeString(&DestinationDirectory,pszDestinationFilePath);
-    SplitPathFileName_U(&DestinationDirectory,NULL);
+    SplitPathFileName_U(&DestinationDirectory,&FileNameTo);
 
 #ifdef _DEBUG
     UNICODE_STRING us1,us2;
@@ -1115,7 +1153,7 @@ MoveDirectoryEntry(
             __leave;
         }
 
-        Status = RenameDirectoryEntry(hSrcDir,FileName.Buffer,hDstDir,FileName.Buffer,ReplaceIfExists);
+        Status = RenameDirectoryEntry(hSrcDir,FileNameFrom.Buffer,hDstDir,FileNameTo.Buffer,ReplaceIfExists);
 
     }
     __finally
@@ -1457,41 +1495,41 @@ EXTERN_C
 NTSTATUS
 NTAPI
 SetFileBasicInformation(
-	HANDLE hFile,
-	NT_FILE_BASIC_INFORMATION *pfbi
-	)
+    HANDLE hFile,
+    NT_FILE_BASIC_INFORMATION *pfbi
+    )
 {
-	NTSTATUS Status;
-	IO_STATUS_BLOCK IoStatus={0};
-	Status = NtSetInformationFile(hFile,&IoStatus,pfbi,sizeof(FILE_BASIC_INFORMATION),FileBasicInformation);
-	return Status;
+    NTSTATUS Status;
+    IO_STATUS_BLOCK IoStatus={0};
+    Status = NtSetInformationFile(hFile,&IoStatus,pfbi,sizeof(FILE_BASIC_INFORMATION),FileBasicInformation);
+    return Status;
 }
 
 EXTERN_C
 NTSTATUS
 NTAPI
 QueryAttributesFile(
-	HANDLE hRoot,
-	PCWSTR pszFileName,
-	NT_FILE_BASIC_INFORMATION *FileBasicInfo
-	)
+    HANDLE hRoot,
+    PCWSTR pszFileName,
+    NT_FILE_BASIC_INFORMATION *FileBasicInfo
+    )
 {
-	NTSTATUS Status;
-	OBJECT_ATTRIBUTES ObjectAttributes;
-	FILE_BASIC_INFORMATION fbi = {0};
-	UNICODE_STRING usFileName;
+    NTSTATUS Status;
+    OBJECT_ATTRIBUTES ObjectAttributes;
+    FILE_BASIC_INFORMATION fbi = {0};
+    UNICODE_STRING usFileName;
 
-	RtlInitUnicodeString(&usFileName,pszFileName);
+    RtlInitUnicodeString(&usFileName,pszFileName);
 
-	InitializeObjectAttributes(&ObjectAttributes,&usFileName,0,hRoot,NULL);
+    InitializeObjectAttributes(&ObjectAttributes,&usFileName,0,hRoot,NULL);
 
-	Status = NtQueryAttributesFile(&ObjectAttributes,&fbi);
-	if( Status == STATUS_SUCCESS )
-	{
-		if( FileBasicInfo )
-			memcpy(FileBasicInfo,&fbi,sizeof(NT_FILE_BASIC_INFORMATION));
-	}
-	return Status;
+    Status = NtQueryAttributesFile(&ObjectAttributes,&fbi);
+    if( Status == STATUS_SUCCESS )
+    {
+        if( FileBasicInfo )
+            memcpy(FileBasicInfo,&fbi,sizeof(NT_FILE_BASIC_INFORMATION));
+    }
+    return Status;
 }
 
 //----------------------------------------------------------------------------
@@ -1505,27 +1543,27 @@ EXTERN_C
 NTSTATUS
 NTAPI
 GetFileSizeByHandle(
-	HANDLE hFile,
-	LARGE_INTEGER *pSize,
-	LARGE_INTEGER *pAllocationSize
-	)
+    HANDLE hFile,
+    LARGE_INTEGER *pSize,
+    LARGE_INTEGER *pAllocationSize
+    )
 {
-	NTSTATUS Status;
-	IO_STATUS_BLOCK IoStatus;
+    NTSTATUS Status;
+    IO_STATUS_BLOCK IoStatus;
 
-	FILE_STANDARD_INFORMATION fsi;
-	Status = NtQueryInformationFile(hFile,&IoStatus,&fsi,sizeof(fsi),FileStandardInformation);
+    FILE_STANDARD_INFORMATION fsi;
+    Status = NtQueryInformationFile(hFile,&IoStatus,&fsi,sizeof(fsi),FileStandardInformation);
 
-	if( Status == STATUS_SUCCESS )
-	{
-		if( pSize )
-			*pSize = fsi.EndOfFile;
+    if( Status == STATUS_SUCCESS )
+    {
+        if( pSize )
+            *pSize = fsi.EndOfFile;
 
-		if( pAllocationSize )
-			*pAllocationSize = fsi.AllocationSize;
-	}
+        if( pAllocationSize )
+            *pAllocationSize = fsi.AllocationSize;
+    }
 
-	return Status;
+    return Status;
 }
 
 //----------------------------------------------------------------------------
@@ -1539,20 +1577,20 @@ EXTERN_C
 NTSTATUS
 NTAPI
 GetFileId(
-	HANDLE hFile,
-	LARGE_INTEGER *pFildId
-	)
+    HANDLE hFile,
+    LARGE_INTEGER *pFildId
+    )
 {
-	NTSTATUS Status;
-	IO_STATUS_BLOCK IoStatus;
+    NTSTATUS Status;
+    IO_STATUS_BLOCK IoStatus;
 
-	LARGE_INTEGER li;
-	Status = NtQueryInformationFile(hFile,&IoStatus,&li,sizeof(li),FileInternalInformation);
+    LARGE_INTEGER li;
+    Status = NtQueryInformationFile(hFile,&IoStatus,&li,sizeof(li),FileInternalInformation);
 
-	if( Status == STATUS_SUCCESS )
-	{
-		*pFildId = li;
-	}
+    if( Status == STATUS_SUCCESS )
+    {
+        *pFildId = li;
+    }
 
-	return Status;
+    return Status;
 }

@@ -104,6 +104,20 @@ public:
 		return 0;
 	}
 
+	LRESULT OnQueryMessage(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		switch( LOWORD(wParam) )
+		{
+			case 0:
+				break; // todo: avoid C4065
+			default:
+				if( m_pView )
+					SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam);
+				break;
+		}
+		return 0;
+	}
+
 	LRESULT OnQueryCmdState(HWND,UINT,WPARAM wParam,LPARAM lParam)
 	{
 		if( m_hWndCtrlFocus == m_pView->GetHWND() )
@@ -142,6 +156,8 @@ public:
 				return OnNotifyMessage(hWnd,uMsg,wParam,lParam);
 			case WM_CONTROL_MESSAGE:
 				return OnControlMessage(hWnd,uMsg,wParam,lParam);
+			case WM_QUERY_MESSAGE:
+				return OnQueryMessage(hWnd,uMsg,wParam,lParam);
 			case WM_QUERY_CMDSTATE:
 				return OnQueryCmdState(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:

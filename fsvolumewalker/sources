@@ -91,6 +91,7 @@ SOURCES = \
 	stdafx.cpp \
 	menu.cpp \
 	find.cpp \
+	inifile.cpp \
 	mdichild.cpp \
 	volumewalker.cpp \
 	volumewalker.rc

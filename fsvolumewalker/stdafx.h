@@ -34,8 +34,9 @@
 #include "mem.h"
 #include "libmisc.h"
 #include "menu.h"
-#include "..\libntwdk\libntwdk.h"
-#include "..\libntwdk\ntvolumenames.h"
+#include "libntwdk.h"
+#include "ntvolumenames.h"
+#include "ntobjecthelp.h"
 #include "..\libmisc\libmisc.h"
 #include "..\inc\common.h"
 #include "..\inc\common_resid.h"
@@ -67,5 +68,3 @@ inline HICON SetFrameIcon(HWND hWnd,HICON hIcon)
 {
 	return (HICON)SendMessage(hWnd,WM_SETICON,ICON_SMALL,(LPARAM)hIcon);
 }
-
-

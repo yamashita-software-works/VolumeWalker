@@ -24,10 +24,10 @@ BEGIN
         BEGIN
             VALUE "FileDescription", "NT Volume List Dll\0"
             VALUE "FileVersion", VERSION_STRING
-            VALUE "InternalName", "fsvolumelist\0"
+            VALUE "InternalName", "volumelist\0"
             VALUE "LegalCopyright", COMMON_LEGALCOPYRIGHT
             VALUE "OriginalFilename", "fsvolumelist.dll\0"
-            VALUE "ProductName", "fsvolumelist\0"
+            VALUE "ProductName", COMMON_PRODUCTNAME
             VALUE "ProductVersion", PRODUCT_VER_STRING
 			VALUE "CompanyName", COMMON_COMPANYNAME
         END

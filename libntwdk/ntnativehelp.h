@@ -61,6 +61,7 @@ LONG NTAPI CompareUnicodeString(__in PUNICODE_STRING  String1,__in PUNICODE_STRI
 NTSTATUS FindRootDirectory_U(__in UNICODE_STRING *pusFullyQualifiedPath,__out PWSTR *pRootDirectory);
 NTSTATUS GetFileNamePart_U(__in UNICODE_STRING *FilePath,__out UNICODE_STRING *FileName);
 NTSTATUS SplitPathFileName_U(__inout UNICODE_STRING *Path,__out UNICODE_STRING *FileName);
+NTSTATUS SplitPathFileName_W(PCWSTR pszPath,UNICODE_STRING *Path,UNICODE_STRING *FileName);
 NTSTATUS GetFileNameInformation_U(HANDLE hFile,UNICODE_STRING *pusFileName);
 
 BOOLEAN SplitRootRelativePath_U(UNICODE_STRING *pusFullPath,UNICODE_STRING *RootDirectory,UNICODE_STRING *RootRelativePath);
@@ -107,11 +108,15 @@ NTSTATUS GetFileAttributes_W(HANDLE RootHandle, PCWSTR FilePath,  ULONG *pulFile
 #ifdef _NTIFS_
 NTSTATUS GetFileDateTime_U(HANDLE RootHandle, UNICODE_STRING *FilePath, FILE_BASIC_INFORMATION *pbi);
 NTSTATUS GetFileDateTime(HANDLE RootHandle, PCWSTR FilePath, FILE_BASIC_INFORMATION *pfbi);
+NTSTATUS SetFileDateTime_U( HANDLE RootHandle, UNICODE_STRING *FilePath, FILE_BASIC_INFORMATION *pbi );
+NTSTATUS SetFileDateTime( HANDLE RootHandle, PCWSTR FilePath, FILE_BASIC_INFORMATION *pfbi );
 #endif
-
 VOID NTAPI _SetLastStatusDos(NTSTATUS ntStatus);
 VOID NTAPI _SetLastWin32Error(ULONG Win32ErrorCode);
 VOID NTAPI _SetLastNtStatus(NTSTATUS ntStatus);
+
+ULONG NTAPI SetLastErrorNtStatusToWin32(NTSTATUS ntStatus);
+ULONG NTAPI NtStatusToDosError(NTSTATUS ntStatus);
 
 BOOLEAN _UStrMatchI(const WCHAR *ptn,const WCHAR *str,const WCHAR *end);
 BOOLEAN _UStrMatch(const WCHAR *ptn,const WCHAR *str,const WCHAR *end);
@@ -296,6 +301,35 @@ NTAPI
 GUIDFromString(
     __in LPCWSTR lpszGuid,
     __out GUID* Guid
+    );
+
+EXTERN_C
+BOOL
+NTAPI
+StringToIntegerW(
+    IN PCWSTR String,
+    IN ULONG  Base  OPTIONAL,
+    OUT PULONG  Value
+    );
+
+EXTERN_C
+INT
+NTAPI
+IntegerToStringCchW(
+    IN ULONG Value,
+    IN ULONG Base  OPTIONAL,
+    IN OUT PWSTR StringBuffer,
+    IN ULONG StringBufferLength
+    );
+
+EXTERN_C
+INT
+NTAPI
+IntegerToStringCbW(
+    IN ULONG Value,
+    IN ULONG Base  OPTIONAL,
+    IN OUT PWSTR StringBuffer,
+    IN ULONG StringBufferBytes
     );
 
 #define LPWSTR_GLOBALROOTPREFIX      L"\\??\\GlobalRoot"
@@ -483,8 +517,34 @@ NTAPI
 GetSystemBootTime(
     __inout_opt LARGE_INTEGER *BootTime,
     __inout_opt LARGE_INTEGER *BootLocalTime,
-	__inout_opt LARGE_INTEGER *ElapsedTime
-	);
+    __inout_opt LARGE_INTEGER *ElapsedTime
+    );
+
+typedef struct _FS_FILE_DATE_TIME
+{
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+} FS_FILE_DATE_TIME;
+
+EXTERN_C
+NTSTATUS
+NTAPI
+GetFileDateTime_W(
+    __in HANDLE RootHandle,
+    __in PCWSTR FilePath,
+    __inout FS_FILE_DATE_TIME *pfdt
+    );
+
+EXTERN_C
+NTSTATUS
+NTAPI
+SetFileDateTime_W(
+    __in HANDLE RootHandle,
+    __in PCWSTR FilePath,
+    __in FS_FILE_DATE_TIME *pfdt
+    );
 
 #ifdef __cplusplus
 }

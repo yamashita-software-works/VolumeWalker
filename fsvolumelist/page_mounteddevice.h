@@ -522,7 +522,7 @@ public:
 
 	int comp_identifier(CMountedDeviceItem *pItem1,CMountedDeviceItem *pItem2, const void *p)
 	{
-		return 0;
+		return StrCmp(pItem1->VolumeIdentifier,pItem2->VolumeIdentifier);
 	}
 
 	void init_compare_proc_def_table()

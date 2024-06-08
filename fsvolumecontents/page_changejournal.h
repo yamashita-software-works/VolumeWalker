@@ -378,9 +378,7 @@ public:
 	LRESULT OnDisp_Reason(UINT id,NMLVDISPINFO *pnmlvdi)
 	{
 		CChangeJournalItem *pItem = &m_pItemList[ pnmlvdi->item.iItem ];
-
 		GetJournalReasonAbbreviationsText(_UsnGetItem_Reason(pItem->UsnRecord),pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,0);
-
 		return 0;
 	}
 
@@ -487,6 +485,19 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case WM_QUERY_MESSAGE:
+			{
+				if( LOWORD(wParam) == WQ_GETVOLUMEPATH && lParam != 0 ) 
+				{
+					if( m_pszRawFileName )
+					{
+						WQ_PARAM *pParam = (WQ_PARAM *)lParam;
+						StringCchCopy(pParam->VolumePath,pParam->dwLength,m_pszRawFileName);
+						return (LRESULT)wcslen(m_pszRawFileName);
+					}
+				}
+				break;
+			}
 			case PM_FINDITEM:
 				return OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
@@ -667,7 +678,13 @@ public:
 			ListView_SetItemCount(m_hWndList,cRecords);
 
 			for(int col_index = 0; col_index <= 6; col_index++)
-				ListView_SetColumnWidth(m_hWndList,col_index,LVSCW_AUTOSIZE_USEHEADER);
+			{
+				int id = (int)ListViewEx_GetHeaderItemData(m_hWndList,col_index);
+				if( id == COLUMN_FileAttributes || id == COLUMN_Reason )
+					ListView_SetColumnWidth(m_hWndList,col_index,LVSCW_AUTOSIZE_USEHEADER);
+				else
+					ListView_SetColumnWidth(m_hWndList,col_index,LVSCW_AUTOSIZE);
+			}
 		}
 		else
 		{
@@ -683,14 +700,48 @@ public:
 		return S_OK;
 	}
 
-	virtual HRESULT UpdateData(PVOID pFile)
+	virtual HRESULT UpdateData(PVOID pFile) /* SELECT_ITEM *pFile */
 	{
-		SHSTOCKICONINFO sii = {0};
-		sii.cbSize = sizeof(sii);
-		SHGetStockIconInfo(SIID_DRIVEFIXED,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
-		SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_ICON,(LPARAM)sii.hIcon);
+		SELECT_ITEM *pSelItem = (SELECT_ITEM *)pFile;
 
-		return FillItems(((SELECT_ITEM*)pFile)->pszPath,NULL);
+		if( pSelItem == NULL )
+			return E_INVALIDARG;
+
+		HRESULT hr = E_FAIL;
+
+		if( pSelItem->pszPath == NULL && pSelItem->pszName != NULL )
+		{
+			//
+			// Reads the change journal raw file.
+			//
+			_SafeMemFree(m_pszRawFileName);
+			m_pszRawFileName = _MemAllocString(pSelItem->pszName);
+
+			hr = FillItems(NULL,m_pszRawFileName);
+
+			DoSort(m_Sort.CurrentSubItem,0);
+
+			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_TITLE,(LPARAM)PathFindFileName(m_pszRawFileName));
+
+			HINSTANCE hmod = LoadLibrary(L"shell32.dll");
+			HICON hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(152),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
+			FreeLibrary(hmod);
+			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_ICON,(LPARAM)hIcon);
+		}
+		else if( pSelItem->pszPath != NULL )
+		{
+			//
+			// Reads the change journal for the specified volume.
+			//
+			SHSTOCKICONINFO sii = {0};
+			sii.cbSize = sizeof(sii);
+			SHGetStockIconInfo(SIID_DRIVEFIXED,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
+			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_ICON,(LPARAM)sii.hIcon);
+
+			hr = FillItems(((SELECT_ITEM*)pFile)->pszPath,NULL);
+		}
+
+		return hr;
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -1023,7 +1074,7 @@ public:
 			case ID_FILE_LOAD_CHANGE_JOURNAL_RAW_DATA:
 			{
                OPENFILENAME of;
-               WCHAR szFile[120];
+               WCHAR szFile[MAX_PATH];
 
 			   memset( &of, 0, sizeof(OPENFILENAME) );
 
@@ -1035,26 +1086,16 @@ public:
 				of.lpstrFilter  = (LPWSTR)L"journal dump file\0*.cjdump\0Binary File\0*.bin\0All File\0*.*\0\0";
 				of.nFilterIndex = 0;
 				of.lpstrFile    = (LPWSTR)szFile;
-				of.nMaxFile     = (DWORD)256;
+				of.nMaxFile     = (DWORD)MAX_PATH;
 				of.lpstrTitle   = (LPWSTR)L"Open Change Jornal Joined Raw Dump File";
 				of.Flags        = OFN_HIDEREADONLY|OFN_FILEMUSTEXIST;
 				of.lpstrDefExt  = (LPWSTR)L"cjdump";
 
 				if( GetOpenFileName( &of ) )
 				{
-					_SafeMemFree(m_pszRawFileName);
-					m_pszRawFileName = _MemAllocString(szFile);
-
-					FillItems(NULL,m_pszRawFileName);
-
-					DoSort(m_Sort.CurrentSubItem,0);
-
-					SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_TITLE,(LPARAM)PathFindFileName(m_pszRawFileName));
-
-					HINSTANCE hmod = LoadLibrary(L"shell32.dll");
-					HICON hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(152),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
-					FreeLibrary(hmod);
-					SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_ICON,(LPARAM)hIcon);
+					SELECT_ITEM sel = {0};
+					sel.pszName = szFile;
+					UpdateData(&sel);
 				}
 				break;
 			}

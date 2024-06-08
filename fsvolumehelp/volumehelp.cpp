@@ -28,13 +28,6 @@ using namespace STGCTL;
 extern "C" {
 #endif
 
-#ifndef FILE_SUPPORTS_USN_JOURNAL
-#define FILE_SUPPORTS_USN_JOURNAL           0x02000000  // winnt
-#endif
-#ifndef FILE_SUPPORTS_INTEGRITY_STREAMS
-#define FILE_SUPPORTS_INTEGRITY_STREAMS     0x04000000  // winnt
-#endif
-
 //////////////////////////////////////////////////////////////////////////////
 
 EXTERN_C

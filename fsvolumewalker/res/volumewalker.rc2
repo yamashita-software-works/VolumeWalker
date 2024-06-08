@@ -43,7 +43,7 @@ BEGIN
         BEGIN
             VALUE "FileDescription", "NT VolumeWalker\0"
             VALUE "FileVersion", VERSION_STRING
-            VALUE "InternalName", "fsvolumewalker\0"
+            VALUE "InternalName", "volumewalker\0"
             VALUE "LegalCopyright", COMMON_LEGALCOPYRIGHT
             VALUE "OriginalFilename", "fsvolumewalker.exe\0"
             VALUE "ProductName", COMMON_PRODUCTNAME

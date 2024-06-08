@@ -27,6 +27,9 @@ public:
 	PWSTR VolumeNameStrings;
 	PWSTR InstanceId;
 	FILETIME InstallDate;
+	FILETIME FirstInstallDate;
+	FILETIME LastArrivalDate;
+	FILETIME LastRemovalDate;
 
 	CStorageDeviceItem()
 	{
@@ -285,16 +288,36 @@ public:
 		return 0;
 	}
 
-	LRESULT OnDisp_CreationTime(UINT,NMLVDISPINFO *pnmlvdi)
+	LRESULT OnDisp_DateTime(UINT id,NMLVDISPINFO *pnmlvdi)
 	{
 		CStorageDeviceItem *pItem = (CStorageDeviceItem *)pnmlvdi->item.lParam;
 
-		LARGE_INTEGER liDate;
-		liDate.HighPart = pItem->InstallDate.dwHighDateTime;
-		liDate.LowPart  = pItem->InstallDate.dwLowDateTime;
+		LARGE_INTEGER liDate = {0};
 
-		_GetDateTimeStringEx2(liDate.QuadPart,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,NULL,NULL,0,1);
+		switch( id )
+		{
+			case COLUMN_InstallDate:
+				liDate.HighPart = pItem->InstallDate.dwHighDateTime;
+				liDate.LowPart  = pItem->InstallDate.dwLowDateTime;
+				break;
+			case COLUMN_FirstInstallDate:
+				liDate.HighPart = pItem->FirstInstallDate.dwHighDateTime;
+				liDate.LowPart  = pItem->FirstInstallDate.dwLowDateTime;
+				break;
+			case COLUMN_LastArrivalDate:
+				liDate.HighPart = pItem->LastArrivalDate.dwHighDateTime;
+				liDate.LowPart  = pItem->LastArrivalDate.dwLowDateTime;
+				break;
+			case COLUMN_LastRemovalDate:
+				liDate.HighPart = pItem->LastRemovalDate.dwHighDateTime;
+				liDate.LowPart  = pItem->LastRemovalDate.dwLowDateTime;
+				break;
+		}
 
+		if( liDate.HighPart != 0 && liDate.LowPart != 0 )
+			_GetDateTimeStringEx2(liDate.QuadPart,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,NULL,NULL,0,1);
+		else
+			pnmlvdi->item.pszText = L"-";
 		return 0;
 	}
 
@@ -309,9 +332,12 @@ public:
 	{
 		static COLUMN_HANDLER_DEF<CStorageDevicePage> ch[] =
 		{
-			COL_HANDLER_MAP_DEF(COLUMN_Name,           &CStorageDevicePage::OnDisp_Name),
-			COL_HANDLER_MAP_DEF(COLUMN_CreationTime,   &CStorageDevicePage::OnDisp_CreationTime),
-			COL_HANDLER_MAP_DEF(COLUMN_DeviceId,       &CStorageDevicePage::OnDisp_DeviceId),
+			COL_HANDLER_MAP_DEF(COLUMN_Name,            &CStorageDevicePage::OnDisp_Name),
+			COL_HANDLER_MAP_DEF(COLUMN_InstallDate,     &CStorageDevicePage::OnDisp_DateTime),
+			COL_HANDLER_MAP_DEF(COLUMN_FirstInstallDate,&CStorageDevicePage::OnDisp_DateTime),
+			COL_HANDLER_MAP_DEF(COLUMN_LastArrivalDate, &CStorageDevicePage::OnDisp_DateTime),
+			COL_HANDLER_MAP_DEF(COLUMN_LastRemovalDate, &CStorageDevicePage::OnDisp_DateTime),
+			COL_HANDLER_MAP_DEF(COLUMN_DeviceId,        &CStorageDevicePage::OnDisp_DeviceId),
 		};
 
 		m_disp_proc = new COLUMN_HANDLER_DEF<CStorageDevicePage>[COLUMN_MaxItem];
@@ -465,9 +491,14 @@ public:
 		LVCOLUMN lvc = {0};
 
 		static COLUMN columns_filelist[] = {
-			{ COLUMN_Name,           L"Name",                  0, 280, LVCFMT_LEFT },
-			{ COLUMN_CreationTime,   L"Install Date",          1, 100, LVCFMT_LEFT },
-			{ COLUMN_DeviceId,       L"Device Instance Id",    2, 100, LVCFMT_LEFT },
+			{ COLUMN_Name,             L"Name",                  0, 280, LVCFMT_LEFT },
+			{ COLUMN_InstallDate,      L"Install Date",          0, 100, LVCFMT_LEFT },
+#if 0
+			{ COLUMN_FirstInstallDate, L"First Install Date",    0, 100, LVCFMT_LEFT },
+#endif
+			{ COLUMN_LastArrivalDate,  L"Last Arrival Date",     0, 100, LVCFMT_LEFT },
+			{ COLUMN_LastRemovalDate,  L"Last Removal Date",     0, 100, LVCFMT_LEFT },
+			{ COLUMN_DeviceId,         L"Device Instance Id",    0, 100, LVCFMT_LEFT },
 		};
 
 		m_columns.SetDefaultColumns(columns_filelist,ARRAYSIZE(columns_filelist));
@@ -481,7 +512,7 @@ public:
 			lvc.fmt     = pcol->fmt;
 			lvc.cx      = pcol->cx;
 			lvc.pszText = pcol->Name;
-			lvc.iOrder  = pcol->iOrder;
+			lvc.iOrder  = i;
 			int index = ListView_InsertColumn(hWndList,lvc.iOrder,&lvc);
 
 			ListViewEx_SetHeaderItemData( hWndList, index, pcol->id );
@@ -529,8 +560,11 @@ public:
 			else
 				pItem->FriendlyName = _MemAllocString( L"" );
 
-		pItem->InstallDate  = pProductInfo->InstallDate;
 		pItem->InstanceId = _MemAllocString( pProductInfo->InstanceId );
+		pItem->InstallDate = pProductInfo->InstallDate;
+		pItem->FirstInstallDate = pProductInfo->FirstInstallDate;
+		pItem->LastArrivalDate = pProductInfo->LastArrivalDate;
+		pItem->LastRemovalDate = pProductInfo->LastRemovalDate;
 
 		LVITEM lvi = {0};
 		lvi.mask    = LVIF_TEXT|LVIF_IMAGE|LVIF_PARAM|LVIF_GROUPID;
@@ -580,7 +614,7 @@ public:
 
 			FreeKnownHardwareProducts(hHardwareProduct);
 		}
-#if 0
+#if 1
 		if( GetKnownHardwareProducts(&hHardwareProduct,&GUID_DEVCLASS_VOLUME,0) )
 		{
 			EnumItems(hHardwareProduct,ID_GROUP_VOLUME);
@@ -618,12 +652,7 @@ public:
 
 	int comp_name(CStorageDeviceItem *pItem1,CStorageDeviceItem *pItem2, const void *p)
 	{
-		return StrCmp(pItem1->FriendlyName,pItem2->FriendlyName);
-	}
-
-	int comp_datetime(CStorageDeviceItem *pItem1,CStorageDeviceItem *pItem2, const void *p)
-	{
-		return CompareFileTime(&pItem1->InstallDate,&pItem2->InstallDate);
+		return StrCmpLogicalW(pItem1->FriendlyName,pItem2->FriendlyName);
 	}
 
 	int comp_deviceid(CStorageDeviceItem *pItem1,CStorageDeviceItem *pItem2, const void *p)
@@ -631,14 +660,37 @@ public:
 		return StrCmp(pItem1->InstanceId,pItem2->InstanceId);
 	}
 
+	int comp_installdate(CStorageDeviceItem *pItem1,CStorageDeviceItem *pItem2, const void *p)
+	{
+		return CompareFileTime(&pItem1->InstallDate,&pItem2->InstallDate);
+	}
+
+	int comp_firstinstalldate(CStorageDeviceItem *pItem1,CStorageDeviceItem *pItem2, const void *p)
+	{
+		return CompareFileTime(&pItem1->FirstInstallDate,&pItem2->FirstInstallDate);
+	}
+
+	int comp_lastarrivaldate(CStorageDeviceItem *pItem1,CStorageDeviceItem *pItem2, const void *p)
+	{
+		return CompareFileTime(&pItem1->LastArrivalDate,&pItem2->LastArrivalDate);
+	}
+
+	int comp_lastremovaldate(CStorageDeviceItem *pItem1,CStorageDeviceItem *pItem2, const void *p)
+	{
+		return CompareFileTime(&pItem1->LastRemovalDate,&pItem2->LastRemovalDate);
+	}
+
 	void init_compare_proc_def_table()
 	{
 		static COMPARE_HANDLER_PROC_DEF<CStorageDevicePage,CStorageDeviceItem> comp_proc[] = 
 		{
 			{0,NULL},
-			{COLUMN_Name,         &CStorageDevicePage::comp_name},
-			{COLUMN_CreationTime, &CStorageDevicePage::comp_datetime},
-			{COLUMN_DeviceId,     &CStorageDevicePage::comp_deviceid},
+			{COLUMN_Name,             &CStorageDevicePage::comp_name},
+			{COLUMN_DeviceId,         &CStorageDevicePage::comp_deviceid},
+			{COLUMN_InstallDate,      &CStorageDevicePage::comp_installdate},
+			{COLUMN_FirstInstallDate, &CStorageDevicePage::comp_firstinstalldate},
+			{COLUMN_LastArrivalDate,  &CStorageDevicePage::comp_lastarrivaldate},
+			{COLUMN_LastRemovalDate,  &CStorageDevicePage::comp_lastremovaldate},
 		};
 
 		m_comp_proc = new COMPARE_HANDLER_PROC_DEF<CStorageDevicePage,CStorageDeviceItem>[COLUMN_MaxItem];

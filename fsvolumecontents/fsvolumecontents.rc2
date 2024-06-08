@@ -22,12 +22,12 @@ BEGIN
     BEGIN
         BLOCK "000004B0"
         BEGIN
-            VALUE "FileDescription", "Volume Contents Browser\0"
+            VALUE "FileDescription", "NT Volume Contents Browser\0"
             VALUE "FileVersion", VERSION_STRING
-            VALUE "InternalName", "volumecontentsbrowser\0"
+            VALUE "InternalName", "volumecontents\0"
             VALUE "LegalCopyright", COMMON_LEGALCOPYRIGHT
             VALUE "OriginalFilename", "fsvolumecontents.dll\0"
-            VALUE "ProductName", "fsvolumecontents\0"
+            VALUE "ProductName", COMMON_PRODUCTNAME
             VALUE "ProductVersion", PRODUCT_VER_STRING
 			VALUE "CompanyName", COMMON_COMPANYNAME
         END

@@ -21,7 +21,9 @@
 #include "simplevalarray.h"
 #include <devguid.h>
 
+#if 0
 #define TE_OPEN_MDI_CHILD_FRAME  (1)
+#endif
 
 struct CDosDriveItem
 {
@@ -159,6 +161,19 @@ public:
 		UpdateLayout(cx,cy);
 		return 0;
 	}
+
+#if 0
+	LRESULT OnTimer(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		KillTimer(m_hWnd,TE_OPEN_MDI_CHILD_FRAME);
+
+		OpenInformationView(
+				ListViewEx_GetCurSel(m_hWndList),
+				VOLUME_CONSOLE_VOLUMEINFORMAION);
+
+		return 0;
+	}
+#endif
 
 	LRESULT OnContextMenu(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
@@ -413,9 +428,25 @@ public:
 
 	LRESULT OnItemActivate(NMHDR *pnmhdr)
 	{
+#if 1
 		NMITEMACTIVATE *pnmia = (NMITEMACTIVATE *)pnmhdr;
-		OpenInformationView((int)pnmia->iItem,
-			(pnmia->ptAction.x == -1 && pnmia->ptAction.y == -1) ? FALSE : TRUE );
+		OpenInformationView((int)pnmia->iItem,VOLUME_CONSOLE_VOLUMEINFORMAION);
+#else
+		// Reason of using SetTimer:
+		// (Only case of mouse click open)
+		//
+		// 1. The LVN_ITEMACTIVATE in occurs after WM_LBUTTONDOWN->WM_LBUTTONDBLCLK
+		//    before WM_LBUTTONUP.
+		// 2. During LVN_ITEMACTIVATE processing, create new MDI child frame 
+		//    and to activate.
+		// 3. When LVN_ITEMACTIVATE returns, at that time the active window has changed.
+		// 4. It then receives WM_LBUTTONUP. But this message sending to 
+		//    the newly created window instead of the previous window.
+		// 5. At this moment may case result in unexpected selection operations 
+		//    on the new window (e.g. Group header click select).
+
+		SetTimer(m_hWnd,TE_OPEN_MDI_CHILD_FRAME,DELAY_OPEN_TIMER,NULL);
+#endif
 		return 0;
 	}
 
@@ -643,6 +674,10 @@ public:
 				return OnCreate(hWnd,uMsg,wParam,lParam);
 			case WM_DESTROY:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
+#if 0
+			case WM_TIMER:
+				return OnTimer(hWnd,uMsg,wParam,lParam);
+#endif
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
@@ -1028,90 +1063,14 @@ public:
 	// Commaand Handling
 	//
 
-	VOID OpenInformationView(int iItem,BOOL bAsync)
+	VOID OpenInformationView(int iItem,UINT ConsoleId)
 	{
 		if( iItem != -1 )
 		{
 			CDosDriveItem *pItem = (CDosDriveItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 			if( pItem && pItem->pDriveInfo )
 			{
-				if( bAsync )
-				{
-					SIZE_T cch = wcslen(pItem->pDriveInfo->Device) + 1;
-					PWSTR psz = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
-					StringCchCopy(psz,cch,pItem->pDriveInfo->Device);
-					PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_VOLUMEINFORMAION,1),(LPARAM)psz);
-				}
-				else
-				{
-					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,VOLUME_CONSOLE_VOLUMEINFORMAION,(LPARAM)pItem->pDriveInfo->Device);
-				}
-			}
-		}
-	}
-
-	VOID OpenStatisticsView(int iItem,BOOL bAsync)
-	{
-		if( iItem != -1 )
-		{
-			CDosDriveItem *pItem = (CDosDriveItem *)ListViewEx_GetItemData(m_hWndList,iItem);
-			if( pItem && pItem->pDriveInfo )
-			{
-				if( bAsync )
-				{
-					SIZE_T cch = wcslen(pItem->pDriveInfo->Device) + 1;
-					PWSTR psz = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
-					StringCchCopy(psz,cch,pItem->pDriveInfo->Device);
-					PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_FILESYSTEMSTATISTICS,1),(LPARAM)psz);
-				}
-				else
-				{
-					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,VOLUME_CONSOLE_FILESYSTEMSTATISTICS,(LPARAM)pItem->pDriveInfo->Device);
-				}
-			}
-		}
-	}
-
-	VOID OpenHexDumpView(int iItem,BOOL bAsync)
-	{
-		if( iItem != -1 )
-		{
-			CDosDriveItem *pItem = (CDosDriveItem *)ListViewEx_GetItemData(m_hWndList,iItem);
-			if( pItem && pItem->pDriveInfo )
-			{
-				if( bAsync )
-				{
-					SIZE_T cch = wcslen(pItem->pDriveInfo->Device) + 1;
-					PWSTR psz = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
-					StringCchCopy(psz,cch,pItem->pDriveInfo->Device);
-					PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_SIMPLEHEXDUMP,1),(LPARAM)psz);
-				}
-				else
-				{
-					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,VOLUME_CONSOLE_SIMPLEHEXDUMP,(LPARAM)pItem->pDriveInfo->Device);
-				}
-			}
-		}
-	}
-
-	VOID OpenContentsBrowser(int iItem,UINT ConsoleId,BOOL bAsync)
-	{
-		if( iItem != -1 )
-		{
-			CDosDriveItem *pItem = (CDosDriveItem *)ListViewEx_GetItemData(m_hWndList,iItem);
-			if( pItem && pItem->szDrive )
-			{
-				if( bAsync )
-				{
-					SIZE_T cch = wcslen(pItem->szDrive) + 1;
-					PWSTR psz = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
-					StringCchCopy(psz,cch,pItem->szDrive);
-					PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,1),(LPARAM)psz);
-				}
-				else
-				{
-					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,ConsoleId,(LPARAM)pItem->szDrive);
-				}
+				OpenConsole_SendMessage(ConsoleId,pItem->pDriveInfo->Device);
 			}
 		}
 	}
@@ -1149,19 +1108,19 @@ public:
 				OnCmdRefresh();
 				break;
 			case ID_VOLUMEINFORMATION:
-				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), FALSE );
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_VOLUMEINFORMAION );
 				break;
 			case ID_FILESYSTEMSTATISTICS:
-				OpenStatisticsView( ListViewEx_GetCurSel(m_hWndList), FALSE );
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_FILESYSTEMSTATISTICS );
 				break;
 			case ID_HEXDUMP:
-				OpenHexDumpView( ListViewEx_GetCurSel(m_hWndList), FALSE );
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );
 				break;
 			case ID_CONTENTSBROWSER:
-				OpenContentsBrowser( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_CONTENT_FILES, FALSE );
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_CONTENT_FILES );
 				break;
 			case ID_CHANGEJOURNALBROWSER:
-				OpenContentsBrowser( ListViewEx_GetCurSel(m_hWndList), VOUUME_CONSOLE_CHANGE_JOURNAL, FALSE );
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOUUME_CONSOLE_CHANGE_JOURNAL );
 				break;
 		}
 		return S_OK;

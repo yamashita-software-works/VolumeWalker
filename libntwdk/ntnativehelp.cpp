@@ -53,6 +53,28 @@ _SetLastStatusDos(
     RtlSetLastWin32Error( RtlNtStatusToDosError(ntStatus) );
 }
 
+EXTERN_C
+ULONG
+NTAPI
+SetLastErrorNtStatusToWin32(
+    NTSTATUS ntStatus
+    )
+{
+    ULONG dosError = RtlNtStatusToDosError(ntStatus);
+    RtlSetLastWin32Error( dosError );
+    return dosError;
+}
+
+EXTERN_C
+ULONG
+NTAPI
+NtStatusToDosError(
+    NTSTATUS ntStatus
+    )
+{
+    return RtlNtStatusToDosError(ntStatus);
+}
+
 HANDLE _GetProcessHeap()
 {
     HANDLE HeapHandle;
@@ -184,7 +206,7 @@ EXTERN_C NTSTATUS NTAPI AllocateUnicodeStringCchBuffer(UNICODE_STRING *pus,ULONG
 
 EXTERN_C LONG NTAPI CompareUnicodeString(__in PUNICODE_STRING  String1,__in PUNICODE_STRING  String2,__in BOOLEAN  CaseInSensitive)
 {
-	return RtlCompareUnicodeString(String1,String2,CaseInSensitive);
+    return RtlCompareUnicodeString(String1,String2,CaseInSensitive);
 }
 
 //
@@ -420,7 +442,7 @@ BOOLEAN IsRelativePath_U(UNICODE_STRING *pusPath)
         return FALSE;
     if( pusPath->Length >= 3 && (_DOS_DRIVE_CHAR(pusPath->Buffer[0]) && pusPath->Buffer[1] == L':' && pusPath->Buffer[2] == L'\\') )
         return FALSE;
-	if( HasPrefix_U(L"\\Device\\",pusPath) )
+    if( HasPrefix_U(L"\\Device\\",pusPath) )
         return FALSE;
     if( HasPrefix_U(L"\\??\\",pusPath) )
         return FALSE; 
@@ -853,6 +875,23 @@ NTSTATUS GetFileNamePart_U(__in UNICODE_STRING *FilePath,__out UNICODE_STRING *F
     return Status;
 }
 
+NTSTATUS SplitPathFileName_W(PCWSTR pszPath,UNICODE_STRING *Path,UNICODE_STRING *FileName)
+{
+    UNICODE_STRING usPath = {0};
+    UNICODE_STRING usFileName = {0};
+
+    // todo:
+    // We have limited up to 32767 characters.
+    RtlInitUnicodeString(&usPath,pszPath);
+
+    SplitPathFileName_U(&usPath,&usFileName);
+
+    *Path =	usPath;
+    *FileName = usFileName;
+
+    return 0;
+}
+
 NTSTATUS SplitPathFileName_U(__inout UNICODE_STRING *Path,__out UNICODE_STRING *FileName)
 {
     NTSTATUS Status;
@@ -916,28 +955,28 @@ BOOLEAN SplitRootRelativePath_U(UNICODE_STRING *pusFullPath,UNICODE_STRING *Root
         return FALSE;
     }
 
-	if( RootDirectory )
-	{
-		*RootDirectory = usRootDirectory;
-	}
+    if( RootDirectory )
+    {
+        *RootDirectory = usRootDirectory;
+    }
 
-	if( RootRelativePath )
-	{
-	    int cbFullPath = pusFullPath->Length;
-	    RootRelativePath->Length        = (USHORT)(cbFullPath - usRootDirectory.Length);
-		RootRelativePath->MaximumLength = (USHORT)(cbFullPath - usRootDirectory.MaximumLength);
-	    RootRelativePath->Buffer        = (PWCH)&pusFullPath->Buffer[ WCHAR_LENGTH(usRootDirectory.Length) ];
-	}
+    if( RootRelativePath )
+    {
+        int cbFullPath = pusFullPath->Length;
+        RootRelativePath->Length        = (USHORT)(cbFullPath - usRootDirectory.Length);
+        RootRelativePath->MaximumLength = (USHORT)(cbFullPath - usRootDirectory.MaximumLength);
+        RootRelativePath->Buffer        = (PWCH)&pusFullPath->Buffer[ WCHAR_LENGTH(usRootDirectory.Length) ];
+    }
 #ifdef _DEBUG
     UNICODE_STRING us1,us2;
-	if( RootDirectory ) {
-		RtlDuplicateUnicodeString(0x3,RootDirectory,&us1);
-		RtlFreeUnicodeString(&us1);
-	}
-	if( RootRelativePath ) {
-		RtlDuplicateUnicodeString(0x3,RootRelativePath,&us2);
-		RtlFreeUnicodeString(&us2);
-	}
+    if( RootDirectory ) {
+        RtlDuplicateUnicodeString(0x3,RootDirectory,&us1);
+        RtlFreeUnicodeString(&us1);
+    }
+    if( RootRelativePath ) {
+        RtlDuplicateUnicodeString(0x3,RootRelativePath,&us2);
+        RtlFreeUnicodeString(&us2);
+    }
 #endif
 
     return TRUE;
@@ -1098,8 +1137,8 @@ PWSTR CombinePath(PCWSTR pszPath,PCWSTR pszFileName)
     WCHAR *psz;
     SIZE_T cch,cchPath;
 
-	if( pszFileName == NULL )
-		return DuplicateString(pszPath);
+    if( pszFileName == NULL )
+        return DuplicateString(pszPath);
 
     cch = 0;
 
@@ -1135,8 +1174,8 @@ PWSTR CombinePath_U(PCWSTR pszPath,UNICODE_STRING *pusFileName)
     WCHAR *psz;
     SIZE_T cch,cchPath;
 
-	if( pusFileName == NULL )
-		return DuplicateString(pszPath);
+    if( pusFileName == NULL )
+        return DuplicateString(pszPath);
 
     cch = 0;
 
@@ -1267,6 +1306,75 @@ GUIDFromString(
     RtlInitUnicodeString(&GuidString,lpszGuid);
 
     return RtlGUIDFromString(&GuidString,Guid);
+}
+
+EXTERN_C
+BOOL
+NTAPI
+StringToIntegerW(
+    IN PCWSTR String,
+    IN ULONG Base  OPTIONAL,
+    OUT PULONG Value
+    )
+{
+    UNICODE_STRING usString;
+    NTSTATUS Status;
+
+    RtlInitUnicodeString(&usString,String);
+
+    Status = RtlUnicodeStringToInteger(&usString,Base,Value);
+
+    _SetLastStatusDos( Status );
+
+    return (Status == STATUS_SUCCESS);
+}
+
+EXTERN_C
+INT
+NTAPI
+IntegerToStringCchW(
+    IN ULONG Value,
+    IN ULONG Base  OPTIONAL,
+    IN OUT PWSTR StringBuffer,
+    IN ULONG StringBufferLength
+    )
+{
+    UNICODE_STRING usString;
+    NTSTATUS Status;
+
+    usString.Length = 0;
+    usString.MaximumLength = (USHORT)StringBufferLength * sizeof(WCHAR);
+    usString.Buffer = StringBuffer;
+ 
+    Status = RtlIntegerToUnicodeString(Value,Base,&usString);
+
+    _SetLastStatusDos( Status );
+
+    return (usString.Length / sizeof(WCHAR));
+}
+
+EXTERN_C
+INT
+NTAPI
+IntegerToStringCbW(
+    IN ULONG Value,
+    IN ULONG Base  OPTIONAL,
+    IN OUT PWSTR StringBuffer,
+    IN ULONG StringBufferBytes
+    )
+{
+    UNICODE_STRING usString;
+    NTSTATUS Status;
+
+    usString.Length = 0;
+    usString.MaximumLength = (USHORT)StringBufferBytes;
+    usString.Buffer = StringBuffer;
+ 
+    Status = RtlIntegerToUnicodeString(Value,Base,&usString);
+
+    _SetLastStatusDos( Status );
+
+    return usString.Length;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1401,12 +1509,12 @@ EXTERN_C
 NTSTATUS
 NTAPI
 GetSystemBootTime(
-	__inout_opt LARGE_INTEGER *BootTime,
+    __inout_opt LARGE_INTEGER *BootTime,
     __inout_opt LARGE_INTEGER *BootLocalTime,
-	__inout_opt LARGE_INTEGER *ElapsedTime
-	)
+    __inout_opt LARGE_INTEGER *ElapsedTime
+    )
 {
-	SYSTEM_TIME_OF_DAY_INFORMATION TimeInformation;
+    SYSTEM_TIME_OF_DAY_INFORMATION TimeInformation;
     NTSTATUS Status;
  
     Status = NtQuerySystemInformation(SystemTimeOfDayInformation,
@@ -1416,22 +1524,22 @@ GetSystemBootTime(
     if (!NT_SUCCESS(Status))
         return Status;
 
-	if( BootTime )
-	{
-		BootTime->QuadPart = TimeInformation.BootTime.QuadPart;
-	}
+    if( BootTime )
+    {
+        BootTime->QuadPart = TimeInformation.BootTime.QuadPart;
+    }
  
-	if( BootLocalTime )
-	{
-	    BootLocalTime->QuadPart = TimeInformation.BootTime.QuadPart
+    if( BootLocalTime )
+    {
+        BootLocalTime->QuadPart = TimeInformation.BootTime.QuadPart
                           - TimeInformation.TimeZoneBias.QuadPart;
-	}
+    }
 
-	if( ElapsedTime )
-	{
-		ElapsedTime->QuadPart = TimeInformation.CurrentTime.QuadPart
+    if( ElapsedTime )
+    {
+        ElapsedTime->QuadPart = TimeInformation.CurrentTime.QuadPart
                           - TimeInformation.BootTime.QuadPart;
-	}
+    }
 
-	return Status;
+    return Status;
 }

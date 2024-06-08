@@ -54,6 +54,10 @@ enum {
 	COLUMN_FilterAltitude,
 	COLUMN_FilterVolumeName,
 	COLUMN_FilterFrameId,
+	COLUMN_InstallDate,
+	COLUMN_FirstInstallDate,
+	COLUMN_LastArrivalDate,
+	COLUMN_LastRemovalDate,
 	COLUMN_MaxItem,
 	COLUMN_MaxCount=COLUMN_MaxItem,
 };

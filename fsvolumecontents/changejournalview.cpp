@@ -111,11 +111,16 @@ public:
 				if( m_pPage )
 					return SendMessage(m_pPage->GetHwnd(),uMsg,wParam,lParam); // forward to current view
 				break;
-			// Forward Parent Window
+			// Forward to Parent Window
 			case WM_CONTROL_MESSAGE:
 				return SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,wParam,lParam);
 			case WM_NOTIFY_MESSAGE:
 				return SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,wParam,lParam);
+			// Forward to Current Page Window
+			case WM_QUERY_MESSAGE:
+				if( m_pPage )
+					return SendMessage(m_pPage->GetHwnd(),uMsg,wParam,lParam); // forward to current view
+				break;
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -283,7 +288,7 @@ public:
 				break;
 		}
 
-		if( Path->pszPath )
+		if( Path->pszPath ||  Path->pszName )
 		{
 			UpdateData(Path);
 		}

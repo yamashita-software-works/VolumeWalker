@@ -396,6 +396,25 @@ public:
 				DeleteObject(hbr);
 				return 1;
 			}
+			case WM_QUERY_MESSAGE:
+			{
+				if( lParam != 0 )
+				{
+					WQ_PARAM *pParam = (WQ_PARAM *)lParam;
+
+					if( wParam == WQ_GETVOLUMEPATH && lParam != 0 )
+					{
+						StringCchCopy(pParam->VolumePath,pParam->dwLength,m_rd.Name);
+						return (LRESULT)TRUE;
+					}
+					else if( wParam == WQ_GETSTARTOFFSET && lParam != 0 )
+					{
+						pParam->liValue.QuadPart = m_rd.BaseOffset.QuadPart;
+						return (LRESULT)TRUE;
+					}
+				}
+				break;
+			}
 			case PM_FINDITEM:
 				return CFindHandler<CSimpleHexDumpPage>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}

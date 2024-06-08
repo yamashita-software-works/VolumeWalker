@@ -24,6 +24,13 @@
 #include <devpkey.h>
 #include <devguid.h>
 
+#ifndef DEVPKEY_Device_LastArrivalDate
+DEFINE_DEVPROPKEY(DEVPKEY_Device_LastArrivalDate, 0x83da6326, 0x97a6, 0x4088, 0x94, 0x53, 0xa1, 0x92, 0x3f, 0x57, 0x3b, 0x29, 102); // DEVPROP_TYPE_FILETIME
+#endif
+#ifndef DEVPKEY_Device_LastRemovalDate
+DEFINE_DEVPROPKEY(DEVPKEY_Device_LastRemovalDate, 0x83da6326, 0x97a6, 0x4088, 0x94, 0x53, 0xa1, 0x92, 0x3f, 0x57, 0x3b, 0x29, 103); // DEVPROP_TYPE_FILETIME
+#endif
+
 static HMACHINE m_hMachine = NULL; // reserved
 
 static
@@ -846,6 +853,18 @@ GetKnownHardwareProducts(
 			_GetProperty(hDevInfo,&DevInfoData,
 								DEVPKEY_Device_FirstInstallDate,0,
 								&pItem->FirstInstallDate,DEVPROP_TYPE_FILETIME);
+
+			// Last Arrival Date
+			//
+			_GetProperty(hDevInfo,&DevInfoData,
+								DEVPKEY_Device_LastArrivalDate,0,
+								&pItem->LastArrivalDate,DEVPROP_TYPE_FILETIME);
+
+			// Last Removal Date
+			//
+			_GetProperty(hDevInfo,&DevInfoData,
+								DEVPKEY_Device_LastRemovalDate,0,
+								&pItem->LastRemovalDate,DEVPROP_TYPE_FILETIME);
 
 			// RemovalRelations
 			//

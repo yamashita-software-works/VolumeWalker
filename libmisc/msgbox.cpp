@@ -53,7 +53,11 @@ static LRESULT CALLBACK MessageBoxFilter(int code,WPARAM wParam,LPARAM lParam)
 		CWPRETSTRUCT *pmsg = (CWPRETSTRUCT *)lParam;
 		if( pmsg->message == WM_INITDIALOG )
 		{
-			_CenterWindow(pmsg->hwnd,GetWindow(pmsg->hwnd,GW_OWNER));
+			HWND hwndOwner = g_hwndOwner;
+			if( hwndOwner == NULL )
+				hwndOwner = GetWindow(pmsg->hwnd,GW_OWNER);
+
+			_CenterWindow(pmsg->hwnd,hwndOwner);
 
 			if( g_disableButton != 0 )
 			{

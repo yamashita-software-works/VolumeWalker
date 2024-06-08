@@ -115,6 +115,8 @@ typedef struct _FS_HARDWARE_PRODUCT
 	ULONG DevNodeStatus;
 	FILETIME InstallDate;
 	FILETIME FirstInstallDate;
+	FILETIME LastArrivalDate;
+	FILETIME LastRemovalDate;
 	PWSTR RemovalRelations;
 	PWSTR PysicalDeviceObjectName;
 } FS_HARDWARE_PRODUCT;

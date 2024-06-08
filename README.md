@@ -1,6 +1,9 @@
-# FSVolumeWalker
+# VolumeWalker
  
 Version 0.1 Preview
+
+
+**Build 0.1.10.0 からソフトウェア名称を FSVolumeWalker から VolumeWalker に変更しました。**
 
 ボリュームの情報を表示します。
 
@@ -8,7 +11,7 @@ Windows APIやIOCTL,FSCTLで取得できるボリュームやドライブの情�
 MDI Win32アプリケーションのひな形を用いて、[FSWorkbench](https://github.com/yamashita-software-works/FSWorkbench) 
 など過去に作成したソフトウェアから、ボリュームやディスクストレージ関係のコードを抜粋し整理・再構築したアーカイブまたはサンプルアプリケーション的な位置づけです。
 
-![FSVolumeWalker](img/image-win10.png "FSVolumeWalker")
+![VolumeWalker](img/image-win10.png "VolumeWalker")
 
 <br>
 

@@ -260,12 +260,16 @@ public:
 				return OnCreate(hWnd,uMsg,wParam,lParam);
 			case WM_DESTROY:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
-			// Forward Parent Window
+			// Forward to Parent Window
 			case WM_CONTROL_MESSAGE:
 				return SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,wParam,lParam);
 			case WM_NOTIFY_MESSAGE:
 				return SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,wParam,lParam);
-			// Forward Page Window
+			// Forward to Current Page Window
+			case WM_QUERY_MESSAGE:
+				if( m_pPage )
+					return SendMessage(m_pPage->GetHwnd(),uMsg,wParam,lParam); // forward to current view
+				break;
 			case PM_FINDITEM:
 				if( m_pPage )
 					return SendMessage(m_pPage->GetHwnd(),uMsg,wParam,lParam); // forward to current view

@@ -566,12 +566,17 @@ _OpenByExplorerEx(
     }
     else
     {
-        HINSTANCE h;
-        h = ShellExecute(hWnd,_T("open"),pszPath,NULL,pszCurrentDirectory,SW_SHOW);
-        if( (INT_PTR)h <= 32 )
-            bSuccess = FALSE;
-        else
-            bSuccess = TRUE;
+		LPITEMIDLIST pidl = ILCreateFromPath(pszPath);
+        SHELLEXECUTEINFO sei = {0};
+        sei.cbSize = sizeof(sei);
+        sei.fMask = SEE_MASK_IDLIST;
+		sei.lpIDList = pidl;
+        sei.lpDirectory = pszCurrentDirectory;
+        sei.lpParameters = NULL;
+        sei.lpVerb = L"open";
+        sei.nShow  = SW_SHOWNORMAL;
+        bSuccess = ShellExecuteEx( &sei );
+		ILFree(pidl);
     }
     return bSuccess;
 }

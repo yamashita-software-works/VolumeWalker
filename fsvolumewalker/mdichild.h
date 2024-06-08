@@ -14,6 +14,7 @@ typedef struct _MDICHILDWNDDATA
 	HWND hWndView;
 	HWND hWndFocus;
 	UINT_PTR wndId;
+	GUID wndGuid;
 } MDICHILDWNDDATA;
 
 typedef struct _MDICHILDFRAMEINIT

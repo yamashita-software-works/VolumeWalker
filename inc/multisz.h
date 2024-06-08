@@ -91,7 +91,7 @@ public:
 		return cchMax;
 	}
 
-	inline LPCTSTR GetTop()
+	LPCTSTR GetTop()
 	{
 		return m_pszTop;
 	}
@@ -100,6 +100,16 @@ public:
 	{
 		*ppsz += (_tcslen(*ppsz) + 1);
 		return **ppsz != _T('\0') ? TRUE : FALSE;
+	}
+
+	PCTSTR GetNext(PCTSTR psz)
+	{
+		PCTSTR p = psz + _tcslen(psz);
+		if( *p == _T('\0') && *(p + 1) == _T('\0') )
+			return (p + 1); // point to multi string teminate null.
+		if( *p == _T('\0') )
+			return (p + 1); // point to next string top.
+		return NULL;        // not possible.
 	}
 
 	operator LPCTSTR() const

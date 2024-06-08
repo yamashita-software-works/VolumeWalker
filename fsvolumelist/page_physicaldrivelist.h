@@ -165,7 +165,7 @@ public:
 		UpdateLayout(cx,cy);
 		return 0;
 	}
-
+#if 0
 	LRESULT OnTimer(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		KillTimer(m_hWnd,TE_OPEN_MDI_CHILD_FRAME);
@@ -176,7 +176,7 @@ public:
 
 		return 0;
 	}
-
+#endif
 	LRESULT OnContextMenu(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		int iItem = ListViewEx_GetCurSel(m_hWndList);
@@ -376,10 +376,10 @@ public:
 	LRESULT OnItemActivate(NMHDR *pnmhdr)
 	{
 		NMITEMACTIVATE *pnmia = (NMITEMACTIVATE *)pnmhdr;
-#if 0
-		CPhysicalDriveItem *pItem = (CPhysicalDriveItem *)ListViewEx_GetItemData(m_hWndList,pnmia->iItem);
-
-		SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION,(LPARAM)pItem->DriveName);
+#if 1
+		OpenInformationView(
+				(int)pnmia->iItem,
+				VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION);
 #else
 		// Reason of using SetTimer:
 		// (Only case of mouse click open)
@@ -569,8 +569,10 @@ public:
 				return OnCreate(hWnd,uMsg,wParam,lParam);
 			case WM_DESTROY:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
+#if 0
 			case WM_TIMER:
 				return OnTimer(hWnd,uMsg,wParam,lParam);
+#endif
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
@@ -937,7 +939,7 @@ public:
 		{
 			CPhysicalDriveItem *pItem = (CPhysicalDriveItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 			if( pItem && pItem->DriveName )
-				SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,ConsoleId,(LPARAM)pItem->DriveName);
+				OpenConsole_SendMessage(ConsoleId,pItem->DriveName);
 		}
 	}
 

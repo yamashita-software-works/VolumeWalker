@@ -484,3 +484,21 @@ DrawFocusFrame(
 	BOOL bDrawFocus,
 	COLORREF crActiveFrame
 	);
+
+// Make GUID string without brackets
+inline VOID GUIDStringRemoveBrackets(WCHAR *pszGuid) { 
+	memmove(pszGuid,&pszGuid[1],sizeof(WCHAR)*36);
+	pszGuid[36] = L'\0';
+}
+
+// Task allocator helper
+inline PWSTR _CoTaskMemStrDup(PCWSTR psz) {
+	SIZE_T cch = wcslen(psz) + 1;
+	PWSTR pszNew = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
+	if( pszNew )
+		wcscpy_s(pszNew,cch,psz);
+	return pszNew;
+}
+
+#define _CoTaskSafeMemFree(p) if(p) { CoTaskMemFree(p); p = NULL; }
+

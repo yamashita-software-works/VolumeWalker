@@ -22,12 +22,12 @@ BEGIN
     BEGIN
         BLOCK "000004B0"
         BEGIN
-            VALUE "FileDescription", "Volume Help Library\0"
+            VALUE "FileDescription", "NT Volume Help Library\0"
             VALUE "FileVersion", VERSION_STRING
             VALUE "InternalName", "volumehelp\0"
             VALUE "LegalCopyright", COMMON_LEGALCOPYRIGHT
-            VALUE "OriginalFilename", "volumehelp.dll\0"
-            VALUE "ProductName", "volumehelp\0"
+            VALUE "OriginalFilename", "fsvolumehelp.dll\0"
+            VALUE "ProductName", COMMON_PRODUCTNAME
             VALUE "ProductVersion", PRODUCT_VER_STRING
         END
     END

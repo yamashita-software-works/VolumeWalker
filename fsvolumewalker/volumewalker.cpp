@@ -8,7 +8,7 @@
 //*                                                                         *
 //*  2022.04.02 Create SDI frame ver.                                       *
 //*  2022.12.24 Create MDI frame ver.                                       *
-//*  2023.02.24 Create MDI based mainframe.                                 *
+//*  2023.02.24 Create MDI based new mainframe.                             *
 //*                                                                         *
 //***************************************************************************
 //
@@ -20,35 +20,37 @@
 #include "mdichild.h"
 #include "resource.h"
 #include "find.h"
-
-static HINSTANCE hInst = NULL;
-HWND hWndMain = NULL;
-HWND hWndMDIClient = NULL;
-HWND hWndActiveMDIChild = NULL;
-static WCHAR *pszTitle       = L"FSVolumeWalker";
-static WCHAR *pszWindowClass = L"FSVolumeWalkerMDIFrameWindowClass";
-static HMENU hMainMenu = NULL;
-static HMENU hMdiMenu = NULL;
+#include "inifile.h"
 
 #define _SINGLETON_CONTENTS_BROWSER_WINDOW 1
 
-VOID WINAPI _DoMessage(HWND h)
-{
-	MSG msg;
-	while( PeekMessage(&msg,h,0,0,PM_REMOVE) )
-	{
-		DispatchMessage(&msg);
-	}
-}
+static HINSTANCE g_hInst = NULL;
+static HWND g_hWndMain = NULL;
+static HWND g_hWndMDIClient = NULL;
+static HWND g_hWndActiveMDIChild = NULL;
+static WCHAR *g_pszMainFrameTitle = L"VolumeWalker";
+static WCHAR *g_pszWindowClass    = L"VolumeWalkerMDIFrameWindowClass";
+static HMENU g_hMainMenu = NULL;
+static HMENU g_hMdiMenu = NULL;
+static LCID g_lcid = LOCALE_USER_DEFAULT;
+static LANGID g_langId = LANG_USER_DEFAULT;
+#ifdef _DEBUG
+static PCWSTR g_pszIniFileName = L"";  // for debug only
+#else
+static PCWSTR g_pszIniFileName = L"";
+#endif
+static BOOL g_bEnableWorkspaceLayout = FALSE;
+
+#define _LAYOUT_FILENAME L"layout.ini"
 
 HINSTANCE _GetResourceInstance()
 {
-	return hInst;
+	return g_hInst;
 }
 
 HWND _GetMainWnd()
 {
-	return hWndMain;
+	return g_hWndMain;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -185,8 +187,48 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	return (INT_PTR)FALSE;
 }
 
+HRESULT InitLanguage(LPWSTR pszLangIdOrName)
+{
+	ULONG lang = wcstoul(pszLangIdOrName,NULL,0);
+	g_langId = MAKELANGID(lang,SUBLANG_DEFAULT);
+	SetThreadUILanguage(g_langId);
+	g_lcid = MAKELCID(MAKELANGID(g_langId,SUBLANG_DEFAULT),SORT_DEFAULT);
+	SetThreadLocale(g_lcid);
+	return S_OK;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
+/*++
+
+   Consoles
+
+    Single Instance Console:
+
+      - VOLUME_CONSOLE_HOME (Reserved)
+      - VOLUME_CONSOLE_VOLUMELIST
+      - VOLUME_CONSOLE_PHYSICALDRIVELIST
+      - VOLUME_CONSOLE_SHADOWCOPYLIST
+      - VOLUME_CONSOLE_STORAGEDEVICE
+      - VOLUME_CONSOLE_MOUNTEDDEVICE
+      - VOLUME_CONSOLE_DOSDRIVELIST
+      - VOLUME_CONSOLE_FILTERDRIVER
+
+    These consoles allow create instances per volume.
+
+      - VOLUME_CONSOLE_VOLUMEINFORMAION
+      - VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION
+      - VOLUME_CONSOLE_DISKLAYOUT
+      - VOLUME_CONSOLE_FILESYSTEMSTATISTICS
+      - VOLUME_CONSOLE_SIMPLEHEXDUMP
+
+    Single Instance Console:
+    However, this may not be the case in the future.
+
+      - VOLUME_CONSOLE_CONTENT_FILES
+      - VOUUME_CONSOLE_CHANGE_JOURNAL
+
+--*/
 // stl::map<> is the preferred using.
 typedef struct {
 	UINT ConsoleId;
@@ -255,7 +297,7 @@ HWND GetOpenedWindowHandle(UINT_PTR ConsoleTypeId)
 HWND FindSameWindowTitle(UINT ConsoleType,PCWSTR pszName)
 {
 	HWND hwnd;
-	hwnd = GetWindow(hWndMDIClient,GW_CHILD);
+	hwnd = GetWindow(g_hWndMDIClient,GW_CHILD);
 	if( hwnd )
 	{
 		WCHAR szTitle[MAX_PATH];
@@ -277,149 +319,62 @@ HWND FindSameWindowTitle(UINT ConsoleType,PCWSTR pszName)
 	return NULL;
 }
 
-VOID SendUIInitLayout(HWND hwndMDIChild,HWND hWndView)
+VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *OptionParameter)
 {
-	RECT rc;
-	GetClientRect(hwndMDIChild,&rc);
-	SetWindowPos(hWndView,NULL,0,0,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOREDRAW|SWP_NOACTIVATE|SWP_HIDEWINDOW);
-	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_INIT_LAYOUT,(LPARAM)&rc);
+	GUID Guid = {0};
+
+	switch( ConsoleId )
+	{
+		case VOLUME_CONSOLE_HOME:
+		case VOLUME_CONSOLE_VOLUMELIST:
+		case VOLUME_CONSOLE_PHYSICALDRIVELIST:
+		case VOLUME_CONSOLE_SHADOWCOPYLIST:
+		case VOLUME_CONSOLE_STORAGEDEVICE:
+		case VOLUME_CONSOLE_MOUNTEDDEVICE:
+		case VOLUME_CONSOLE_DOSDRIVELIST:
+		case VOLUME_CONSOLE_FILTERDRIVER:
+			Guid.Data1 = (ULONG)ConsoleId;
+			break;
+		case VOLUME_CONSOLE_CONTENT_FILES:
+		case VOUUME_CONSOLE_CHANGE_JOURNAL:
+			Guid.Data1 = (ULONG)ConsoleId;
+			Guid.Data2 = 0x1;
+			break;
+		case VOLUME_CONSOLE_VOLUMEINFORMAION:
+		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
+		case VOLUME_CONSOLE_DISKLAYOUT:
+		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
+		case VOLUME_CONSOLE_SIMPLEHEXDUMP:
+		{
+			Guid.Data1 = (ULONG)ConsoleId;
+			GetSystemTimeAsFileTime( (LPFILETIME)Guid.Data4 );
+			break;
+		}
+	}
+
+	*pwndGuid = Guid;
 }
 
-VOID SetContentsBrowserPath(HWND hwndMDIChild,HWND hWndView,PCWSTR pszPath,BOOL bInitLayout)
+BOOL IsVolumeNameRequiredConsole(LPGUID pwndGuid,UINT ConsoleId)
 {
-	if( bInitLayout ) 
-		SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_INIT_VIEW,(LPARAM)0);
+	GUID Guid = {0};
 
-	WCHAR szVolumeRootOrPath[MAX_PATH];
-	StringCchPrintf(szVolumeRootOrPath,MAX_PATH,L"%s\\",pszPath);
-	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_SET_DIRECTORY,(LPARAM)szVolumeRootOrPath);
-
-	if( pszPath )
-		SetWindowText(hwndMDIChild,pszPath);
-	else
-		SetWindowText(hwndMDIChild,pszTitle);
+	switch( ConsoleId )
+	{
+		case VOLUME_CONSOLE_CONTENT_FILES:
+		case VOUUME_CONSOLE_CHANGE_JOURNAL:
+		case VOLUME_CONSOLE_VOLUMEINFORMAION:
+		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
+		case VOLUME_CONSOLE_DISKLAYOUT:
+		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
+		case VOLUME_CONSOLE_SIMPLEHEXDUMP:
+			return TRUE;
+	}
+	return FALSE;
 }
 
-VOID SendHexDumpInformation(HWND hwndMDIChild,SELECT_OFFSET_ITEM *OpenSelItem,PCWSTR pszOpenTarget)
+PCWSTR GetConsoleTitle(UINT ConsoleTypeId)
 {
-	MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndMDIChild,GWLP_USERDATA);
-	{
-		//
-		// Hex dump: Set data source, offset, and home offset.
-		//
-		SELECT_OFFSET_ITEM sel = {0};
-		sel.hdr.mask = SI_MASK_PATH|SI_MASK_NAME|SI_MASK_VIEWTYPE|SI_MASK_START_OFFSET;
-		sel.hdr.ViewType = VOLUME_CONSOLE_SIMPLEHEXDUMP;
-
-		if( OpenSelItem )
-		{
-			sel.hdr.pszStorage = OpenSelItem->hdr.pszStorage;
-			sel.liStartOffset  = OpenSelItem->liStartOffset;
-		}
-		else
-		{
-			sel.hdr.pszStorage = (PWSTR)pszOpenTarget;
-			sel.liStartOffset.QuadPart = 0;
-		}
-
-		SendMessage(pd->hWndView,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
-
-		SetWindowText(hwndMDIChild,sel.hdr.pszStorage);
-	}
-}
-
-//----------------------------------------------------------------------------
-//
-//  OpenMDIChild()
-//
-//  PURPOSE: Open MDI child window.
-//
-//----------------------------------------------------------------------------
-HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget,PVOID pOpenSelItem,BOOL bMaximize)
-{
-	HWND hwndChildFrame = NULL;
-
-	if( ConsoleTypeId == VOLUME_CONSOLE_DISKLAYOUT || 
-		ConsoleTypeId == VOLUME_CONSOLE_VOLUMEINFORMAION || 
-		ConsoleTypeId == VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION ||
-		ConsoleTypeId == VOLUME_CONSOLE_FILESYSTEMSTATISTICS ||
-#if _SINGLETON_CONTENTS_BROWSER_WINDOW
-		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP )
-#else
-		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP ||
-		ConsoleTypeId == VOLUME_CONSOLE_CONTENT_FILES ||
-		ConsoleTypeId == VOUUME_CONSOLE_CHANGE_JOURNAL )
-#endif
-
-	{
-		hwndChildFrame = FindSameWindowTitle(ConsoleTypeId,
-							(pOpenSelItem != NULL) ? ((SELECT_ITEM*)pOpenSelItem)->pszVolume : pszOpenTarget);
-	}
-	else
-	{
-		hwndChildFrame = GetOpenedWindowHandle(ConsoleTypeId);
-	}
-
-	if( hwndChildFrame != NULL )
-	{
-		BOOL bMaximized;
-		MDIGetActive(hWndMDIClient,&bMaximized);
-
-		if( bMaximized )
-		{
-			SetRedraw(hWndMDIClient,FALSE);
-		}
-
-		SendMessage(hWndMDIClient,WM_MDIACTIVATE,(WPARAM)hwndChildFrame,0);
-
-		if( VOLUME_CONSOLE_CONTENT_FILES == ConsoleTypeId || VOUUME_CONSOLE_CHANGE_JOURNAL == ConsoleTypeId )
-		{
-			MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndChildFrame,GWLP_USERDATA);
-			{
-				SetContentsBrowserPath(hwndChildFrame,pd->hWndView,pszOpenTarget,FALSE);
-			}
-		}
-		else if( VOLUME_CONSOLE_SIMPLEHEXDUMP == ConsoleTypeId && pOpenSelItem )
-		{
-			SendHexDumpInformation(hwndChildFrame,(SELECT_OFFSET_ITEM *)pOpenSelItem,pszOpenTarget);
-		}
-
-		if( bMaximized )
-		{
-			SetRedraw(hWndMDIClient,TRUE);
-			RedrawWindow(hwndChildFrame,0,0,RDW_UPDATENOW|RDW_INVALIDATE|RDW_ALLCHILDREN);
-		}
-
-		return hwndChildFrame;
-	}
-
-	MDICREATEPARAM mcp;
-	if( pszOpenTarget )
-		mcp.pszInitialPath = pszOpenTarget;
-	else
-		mcp.pszInitialPath = NULL;
-
-	if( ConsoleTypeId == VOLUME_CONSOLE_SHADOWCOPYLIST )
-		mcp.hIcon = GetDeviceClassIcon(DEVICE_ICON_VOLUMESNAPSHOT,NULL);
-	else if( ConsoleTypeId == VOLUME_CONSOLE_FILTERDRIVER )
-	{
-		HINSTANCE hmod = LoadLibrary(L"imageres.dll");
-		mcp.hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
-		FreeLibrary(hmod);
-	}
-#if 0
-	else if( ConsoleTypeId == VOUUME_CONSOLE_CHANGE_JOURNAL )
-	{
-		HINSTANCE hmod = LoadLibrary(L"shell32.dll");
-		mcp.hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(152),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
-		FreeLibrary(hmod);
-	}
-#endif
-	else if( ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP )
-		mcp.hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(IDI_BINDUMP),IMAGE_ICON,16,16,LR_DEFAULTSIZE);
-	else
-		mcp.hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
-
 	static struct {
 		UINT ConsoleId;
 		PCWSTR Title;
@@ -446,6 +401,230 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget,PVOID pOpenS
 		}
 	}
 
+	return pszTitle;
+}
+
+HICON GetConsoleIcon(UINT ConsoleTypeId)
+{
+	HICON hIcon = NULL;
+	if( ConsoleTypeId == VOLUME_CONSOLE_SHADOWCOPYLIST )
+	{
+		hIcon = GetDeviceClassIcon(DEVICE_ICON_VOLUMESNAPSHOT,NULL);
+	}
+	else if( ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP )
+	{
+		hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(IDI_BINDUMP),IMAGE_ICON,16,16,LR_DEFAULTSIZE);
+	}
+	else if( ConsoleTypeId == VOLUME_CONSOLE_FILTERDRIVER )
+	{
+		HINSTANCE hmod = LoadLibrary(L"imageres.dll");
+		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
+		FreeLibrary(hmod);
+	}
+	else
+	{
+		hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
+	}
+	return hIcon;
+}
+
+void InitConfigFile()
+{
+	PWSTR pszConfogFileName = _MemAllocStringBuffer( MAX_PATH );
+	GetModuleFileName(NULL,pszConfogFileName,MAX_PATH);
+	PathRenameExtension(pszConfogFileName,L".ini");
+	_SetConfigFileName(pszConfogFileName);
+	_SafeMemFree(pszConfogFileName);
+}
+
+void InitIniFile()
+{
+	PWSTR pszIniFileName;
+	if( PathFileExists(g_pszIniFileName) )
+	{
+		pszIniFileName = _MemAllocString(g_pszIniFileName);
+	}
+	else
+	{
+		pszIniFileName = _MemAllocStringBuffer( MAX_PATH );
+		GetModuleFileName(NULL,pszIniFileName,MAX_PATH);
+		PathRemoveFileSpec(pszIniFileName);
+		PathCombine(pszIniFileName,pszIniFileName,_LAYOUT_FILENAME);
+	}
+	_SetIniFileName(pszIniFileName);
+	_SafeMemFree(pszIniFileName);
+}
+
+VOID SendUIInitLayout(HWND hwndMDIChild,HWND hWndView)
+{
+	RECT rc;
+	GetClientRect(hwndMDIChild,&rc);
+	SetWindowPos(hWndView,NULL,0,0,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOREDRAW|SWP_NOACTIVATE|SWP_HIDEWINDOW);
+	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_INIT_LAYOUT,(LPARAM)&rc);
+}
+
+VOID SendContentsBrowserChangeJournalVolumeOrFileName(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam,BOOL bInitView)
+{
+	if( bInitView ) 
+		SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_INIT_VIEW,(LPARAM)0);
+
+	ASSERT( pOpenParam != NULL );
+	ASSERT( pOpenParam->Path != NULL );
+
+	if( PathFileExists(pOpenParam->Path) && !PathIsDirectory(pOpenParam->Path) )
+	{
+		SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_SET_FILEPATH,(LPARAM)pOpenParam->Path);
+	}
+	else
+	{
+		WCHAR szVolumeRootOrPath[MAX_PATH];
+		StringCchPrintf(szVolumeRootOrPath,MAX_PATH,L"%s\\",pOpenParam->Path);
+		SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_SET_DIRECTORY,(LPARAM)szVolumeRootOrPath);
+	}
+
+	SetWindowText(hwndMDIChild,pOpenParam->Path);
+}
+
+VOID SendContentsBrowserFileListPath(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam,BOOL bInitView)
+{
+	if( bInitView ) 
+		SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_INIT_VIEW,(LPARAM)0);
+
+	ASSERT( pOpenParam != NULL );
+	ASSERT( pOpenParam->Path != NULL );
+
+	WCHAR szVolumeRootOrPath[MAX_PATH];
+	StringCchPrintf(szVolumeRootOrPath,MAX_PATH,L"%s\\",pOpenParam->Path);
+	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_SET_DIRECTORY,(LPARAM)szVolumeRootOrPath);
+
+	SetWindowText(hwndMDIChild,pOpenParam->Path);
+}
+
+VOID SendHexDumpInformation(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CHILDFRAME_STARTOFFSET *OpenSelItem)
+{
+	//
+	// Hex dump: Set data source, offset, and home offset.
+	//
+	SELECT_OFFSET_ITEM sel = {0};
+	sel.hdr.mask = SI_MASK_PATH|SI_MASK_NAME|SI_MASK_VIEWTYPE|SI_MASK_START_OFFSET;
+	sel.hdr.ViewType   = VOLUME_CONSOLE_SIMPLEHEXDUMP;
+	sel.hdr.pszStorage = OpenSelItem->hdr.Path;
+	sel.liStartOffset  = OpenSelItem->StartOffset;
+
+	SendMessage(hWndView,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
+
+	SetWindowText(hwndMDIChild,sel.hdr.pszStorage);
+}
+
+VOID SendSelectVolumeOrPhysicalDisk(HWND hwndMDIChild,HWND hWndView,UINT ConsoleTypeId,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam)
+{
+	SELECT_ITEM sel = {0};
+	switch( ConsoleTypeId )
+	{
+		case VOLUME_CONSOLE_VOLUMEINFORMAION:
+		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
+		{
+			sel.pszVolume = pOpenParam->Path;
+			sel.ViewType = ConsoleTypeId;
+			break;
+		}
+		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
+		case VOLUME_CONSOLE_DISKLAYOUT:
+		{
+			sel.pszPhysicalDrive = pOpenParam->Path;
+			sel.ViewType = ConsoleTypeId;
+			break;
+		}
+	}
+
+	SendMessage(hWndView,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
+
+	if( pOpenParam && pOpenParam->Path )
+	{
+		SetWindowText(hwndMDIChild,pOpenParam->Path);
+	}
+	else
+	{
+		PCWSTR pszTitle = GetConsoleTitle(ConsoleTypeId);
+		SetWindowText(hwndMDIChild,pszTitle);
+	}
+}
+
+//----------------------------------------------------------------------------
+//
+//  OpenMDIChild()
+//
+//  PURPOSE: Open MDI child window.
+//
+//----------------------------------------------------------------------------
+HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam,BOOL bMaximize,MDICHILDFRAMEINIT *pmdiInit)
+{
+	HWND hwndChildFrame = NULL;
+
+	if( ConsoleTypeId == VOLUME_CONSOLE_DISKLAYOUT || 
+		ConsoleTypeId == VOLUME_CONSOLE_VOLUMEINFORMAION || 
+		ConsoleTypeId == VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION ||
+		ConsoleTypeId == VOLUME_CONSOLE_FILESYSTEMSTATISTICS ||
+#if _SINGLETON_CONTENTS_BROWSER_WINDOW
+		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP )
+#else
+		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP ||
+		ConsoleTypeId == VOLUME_CONSOLE_CONTENT_FILES ||
+		ConsoleTypeId == VOUUME_CONSOLE_CHANGE_JOURNAL )
+#endif
+
+	{
+		hwndChildFrame = FindSameWindowTitle(ConsoleTypeId,(pOpenParam != NULL) ? pOpenParam->Path : NULL);
+	}
+	else
+	{
+		hwndChildFrame = GetOpenedWindowHandle(ConsoleTypeId);
+	}
+
+	if( hwndChildFrame != NULL )
+	{
+		MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndChildFrame,GWLP_USERDATA);
+
+		BOOL bMaximized;
+		MDIGetActive(g_hWndMDIClient,&bMaximized);
+
+		if( bMaximized )
+		{
+			SetRedraw(g_hWndMDIClient,FALSE);
+		}
+
+		SendMessage(g_hWndMDIClient,WM_MDIACTIVATE,(WPARAM)hwndChildFrame,0);
+
+		if( VOUUME_CONSOLE_CHANGE_JOURNAL == ConsoleTypeId )
+		{
+			SendContentsBrowserChangeJournalVolumeOrFileName(hwndChildFrame,pd->hWndView,pOpenParam,FALSE);
+		}
+		if( VOLUME_CONSOLE_CONTENT_FILES == ConsoleTypeId )
+		{
+			SendContentsBrowserFileListPath(hwndChildFrame,pd->hWndView,pOpenParam,FALSE);
+		}
+		else if( VOLUME_CONSOLE_SIMPLEHEXDUMP == ConsoleTypeId && pOpenParam )
+		{
+			SendHexDumpInformation(hwndChildFrame,pd->hWndView,(OPEN_MDI_CHILDFRAME_STARTOFFSET*)pOpenParam);
+		}
+
+		if( bMaximized )
+		{
+			SetRedraw(g_hWndMDIClient,TRUE);
+			RedrawWindow(hwndChildFrame,0,0,RDW_UPDATENOW|RDW_INVALIDATE|RDW_ALLCHILDREN);
+		}
+
+		return hwndChildFrame;
+	}
+
+	MDICREATEPARAM mcp;
+	if( pOpenParam )
+		mcp.pszInitialPath = pOpenParam->Path;
+	else
+		mcp.pszInitialPath = NULL;
+
+	mcp.hIcon = GetConsoleIcon(ConsoleTypeId);
+
 	MDICHILDFRAMEINIT mcinit = { {CW_USEDEFAULT,CW_USEDEFAULT},{CW_USEDEFAULT,CW_USEDEFAULT}, 0 }; // reserved
 
 	BOOL bVisible = IsWindowVisible(hWnd);
@@ -456,7 +635,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget,PVOID pOpenS
 	//
 	// Open MDI child frame window
 	//
-	HWND hwndMDIChild = CreateMDIChildFrame(hWndMDIClient,NULL,&mcinit,(LPARAM)&mcp,bMaximize);
+	HWND hwndMDIChild = CreateMDIChildFrame(g_hWndMDIClient,NULL,pmdiInit,(LPARAM)&mcp,bMaximize);
 
 	if( bVisible )
 	{
@@ -469,16 +648,18 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget,PVOID pOpenS
 		if( bVisible )
 			SetWindowPos(hwndMDIChild,0,0,0,0,0,SWP_SHOWWINDOW|SWP_NOZORDER|SWP_NOMOVE|SWP_NOSIZE|SWP_FRAMECHANGED|SWP_DRAWFRAME);
 
-		if( hMdiMenu == NULL )
-			hMdiMenu = LoadMenu(_GetResourceInstance(),MAKEINTRESOURCE(IDR_MDICHILDFRAME));
+		if( g_hMdiMenu == NULL )
+			g_hMdiMenu = LoadMenu(_GetResourceInstance(),MAKEINTRESOURCE(IDR_MDICHILDFRAME));
 
-		SendMessage(hWndMDIClient,WM_MDISETMENU,(WPARAM)hMdiMenu,0);
+		SendMessage(g_hWndMDIClient,WM_MDISETMENU,(WPARAM)g_hMdiMenu,0);
 		DrawMenuBar(hWnd);
 
 		MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndMDIChild,GWLP_USERDATA);
 		{
 			SetWindowHandle(ConsoleTypeId,hwndMDIChild);
+
 			pd->wndId = ConsoleTypeId;
+			pd->wndGuid = *pwndGuid;
 
 			VOLUME_CONSOLE_CREATE_PARAM param = {0};
 			param.pszReserved = (PWSTR)mcp.pszInitialPath;
@@ -489,15 +670,23 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget,PVOID pOpenS
 
 				SendUIInitLayout(hwndMDIChild,pd->hWndView);
 
-				SendHexDumpInformation(hwndMDIChild,(SELECT_OFFSET_ITEM *)pOpenSelItem,pszOpenTarget);
+				SendHexDumpInformation(hwndMDIChild,pd->hWndView,(OPEN_MDI_CHILDFRAME_STARTOFFSET *)pOpenParam);
 			}
-			else if( VOLUME_CONSOLE_CONTENT_FILES == ConsoleTypeId || VOUUME_CONSOLE_CHANGE_JOURNAL == ConsoleTypeId )
+			else if( VOUUME_CONSOLE_CHANGE_JOURNAL == ConsoleTypeId )
 			{
 				pd->hWndView = CreateVolumeContentsBrowserWindow(hwndMDIChild,ConsoleTypeId);
 
 				SendUIInitLayout(hwndMDIChild,pd->hWndView);
 
-				SetContentsBrowserPath(hwndMDIChild,pd->hWndView,pszOpenTarget,TRUE);
+				SendContentsBrowserChangeJournalVolumeOrFileName(hwndMDIChild,pd->hWndView,pOpenParam,TRUE);
+			}
+			else if( VOLUME_CONSOLE_CONTENT_FILES == ConsoleTypeId )
+			{
+				pd->hWndView = CreateVolumeContentsBrowserWindow(hwndMDIChild,ConsoleTypeId);
+
+				SendUIInitLayout(hwndMDIChild,pd->hWndView);
+
+				SendContentsBrowserFileListPath(hwndMDIChild,pd->hWndView,pOpenParam,TRUE);
 			}
 			else
 			{
@@ -505,36 +694,12 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget,PVOID pOpenS
 
 				SendUIInitLayout(hwndMDIChild,pd->hWndView);
 
-				SELECT_ITEM sel = {0};
-				switch( ConsoleTypeId )
-				{
-					case VOLUME_CONSOLE_VOLUMEINFORMAION:
-					case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
-					{
-						sel.pszVolume = (PWSTR)pszOpenTarget;
-						sel.ViewType = ConsoleTypeId;
-						break;
-					}
-					case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
-					case VOLUME_CONSOLE_DISKLAYOUT:
-					{
-						sel.pszPhysicalDrive = (PWSTR)pszOpenTarget;
-						sel.ViewType = ConsoleTypeId;
-						break;
-					}
-				}
-
-				SendMessage(pd->hWndView,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
-
-				if( pszOpenTarget )
-					SetWindowText(hwndMDIChild,pszOpenTarget);
-				else
-					SetWindowText(hwndMDIChild,pszTitle);
+				SendSelectVolumeOrPhysicalDisk(hwndMDIChild,pd->hWndView,ConsoleTypeId,pOpenParam);
 			}
 
 			ShowWindow(pd->hWndView,SW_SHOW);
 
-			SendMessage(hWndMDIClient,WM_MDIREFRESHMENU,0,0);
+			SendMessage(g_hWndMDIClient,WM_MDIREFRESHMENU,0,0);
 			DrawMenuBar(hWnd);
 		}
 	}
@@ -542,23 +707,33 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget,PVOID pOpenS
 	return hwndMDIChild;
 }
 
-VOID OpenConsole(HWND hWnd,UINT ConsoleTypeId,PCWSTR Param=NULL,UINT ParamType=0)
+HWND OpenConsole(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid=NULL,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam=NULL,BOOL bMaximize=FALSE)
 {
-	HWND hwndChild = OpenMDIChild(hWnd,ConsoleTypeId,
-				(PCWSTR)((ParamType != 2) ? Param : NULL),
-				(PVOID)((ParamType == 2) ? Param : NULL),
-				FALSE);
-	if( hwndChild )
+	GUID wndGuid = {0};
+
+	if( pwndGuid == NULL || IsEqualGUID(GUID_NULL,*pwndGuid) )
 	{
-		MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndChild,GWLP_USERDATA);
+		// assign new window GUID
+		MakeConsoleGUID(&wndGuid,ConsoleTypeId,pOpenParam);
+	}
+
+	HWND hwndMDIChildFrame = OpenMDIChild(
+								hWnd,ConsoleTypeId,&wndGuid,pOpenParam,
+								bMaximize,NULL);
+
+	if( hwndMDIChildFrame )
+	{
+		MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndMDIChildFrame,GWLP_USERDATA);
 		SetFocus(pd->hWndView);
 	}
+
+	return hwndMDIChildFrame;
 }
 
 VOID CloseConsole(HWND hwndMDIChildFrame=NULL)
 {
-	SendMessage(hWndMDIClient, WM_MDIDESTROY,
-		(WPARAM)(hwndMDIChildFrame ? hwndMDIChildFrame :MDIGetActive(hWndMDIClient)),
+	SendMessage(g_hWndMDIClient, WM_MDIDESTROY,
+		(WPARAM)(hwndMDIChildFrame ? hwndMDIChildFrame :MDIGetActive(g_hWndMDIClient)),
 		0L); 
 }
 
@@ -572,15 +747,19 @@ VOID CloseConsole(HWND hwndMDIChildFrame=NULL)
 VOID ShowHelp(HWND hWnd)
 {
 	PCWSTR pszHelpText = 
-			L"Command Line Option:\n"
+			L"Command Line Syntax\n"
+			L"\n"
+			L"Options: [/v | /pd | /sd | /md | /d | [/f]] | [/we]\n"
+			L"\n"
 			L"/v : Open Volume List.\n"
 			L"/pd : Open Physical Drive List.\n"
 			L"/sd : Open Storage Device List.\n"
 			L"/md : Open Mounted Device List.\n"
 			L"/d : Open MS-DOS Drive List.\n"
 			L"\n"
-			L"/f : Open maximized in the MDI client area.";
-
+			L"/f : Open maximized in the MDI client area.\n"
+			L"\n"
+			L"/we : Enable workspace, save/load window layout.";
 	MessageBox(hWnd,pszHelpText,L"Command Line Help",MB_OK|MB_ICONINFORMATION);
 }
 
@@ -595,14 +774,18 @@ typedef struct _ARGPARAM {
 	CValArray<UINT> ConsoleTypeId;
 	INT Maximize;
 	INT WithoutOpen;
+	INT EnableWorkspaceLayout;
 	INT Help;
+	WCHAR szLangIdOrName[LOCALE_NAME_MAX_LENGTH];
 
 	_ARGPARAM()
 	{
 		Maximize = FALSE;
 		WithoutOpen = FALSE;
+		EnableWorkspaceLayout = FALSE;
 		Help = FALSE;
 		ConsoleBit = 0;
+		ZeroMemory(szLangIdOrName,sizeof(szLangIdOrName));
 	}
 
 	ULONG ConsoleBit;
@@ -663,20 +846,47 @@ BOOL ParseCommandLine(ARGPARAM &args)
 					if( !args.addOpenConsole( VOLUME_CONSOLE_DOSDRIVELIST ) )
 						return FALSE;
 				}
+				else if( _wcsicmp(pArg,L"we") == 0 )
+				{
+					args.EnableWorkspaceLayout = TRUE;
+				}
 				else if( _wcsicmp(pArg,L"n") == 0 )
+				{
 					args.WithoutOpen = TRUE; // no mdi child open
+				}
 				else if( _wcsicmp(pArg,L"f") == 0 )
-					args.Maximize = TRUE;    // maximize
+				{
+					args.Maximize = TRUE;    // Open with maximize MDI child frame
+				}
+				else if( _wcsicmp(pArg,L"langid") == 0 )
+				{
+					if( (i + 1) < __argc )
+					{
+						StringCchCopy(args.szLangIdOrName,ARRAYSIZE(args.szLangIdOrName),__wargv[++i]);
+					}
+					else
+					{
+						return FALSE;
+					}
+				}
 				else if( _wcsicmp(pArg,L"?") == 0 )
+				{
 					args.Help = TRUE;        // command line help
+				}
 				else
+				{
 					return FALSE;
+				}
 			}
 		}
 	}
 
-	if( !args.WithoutOpen && args.ConsoleTypeId.GetCount() == 0 )
+	if( !args.WithoutOpen && 
+		(args.ConsoleTypeId.GetCount() == 0) && 
+		(!args.EnableWorkspaceLayout || (args.EnableWorkspaceLayout && !HasValidIniFile())) )
+	{
 		args.ConsoleTypeId.Add( VOLUME_CONSOLE_VOLUMELIST );
+	}
 
 	return TRUE;
 }
@@ -704,7 +914,7 @@ ATOM RegisterMDIFrameClass(HINSTANCE hInstance)
 	wcex.hCursor	   = LoadCursor(NULL, IDC_ARROW);
 	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
 	wcex.lpszMenuName  = NULL;
-	wcex.lpszClassName = pszWindowClass;
+	wcex.lpszClassName = g_pszWindowClass;
 	wcex.hIconSm	   = (HICON)LoadImage(wcex.hInstance, MAKEINTRESOURCE(IDI_MAIN),IMAGE_ICON,16,16,LR_DEFAULTSIZE);
 
 	return RegisterClassEx(&wcex);
@@ -719,10 +929,12 @@ ATOM RegisterMDIFrameClass(HINSTANCE hInstance)
 //----------------------------------------------------------------------------
 HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
+	g_hInst = hInstance;
+
 	ARGPARAM args;
 	if( !ParseCommandLine(args) )
 	{
-		MessageBox(NULL,L"Invalid Parameter.",pszTitle,MB_OK|MB_ICONSTOP);
+		MessageBox(NULL,L"Invalid Parameter.",g_pszMainFrameTitle,MB_OK|MB_ICONSTOP);
 		return 0;
 	}
 
@@ -732,11 +944,11 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 		return 0;
 	}
 
+	if( args.szLangIdOrName[0] )
+		InitLanguage(args.szLangIdOrName);
+
 	HWND hWnd;
-
-	hInst = hInstance;
-
-	hWnd = CreateWindow(pszWindowClass, pszTitle, WS_OVERLAPPEDWINDOW,
+	hWnd = CreateWindow(g_pszWindowClass, g_pszMainFrameTitle, WS_OVERLAPPEDWINDOW,
 				  CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
 
 	if (!hWnd)
@@ -745,33 +957,96 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 	}
 
 	// Load MainFrame menu
-	hMainMenu = LoadMenu(_GetResourceInstance(),MAKEINTRESOURCE(IDR_MAINFRAME));
-	SetMenu(hWnd,hMainMenu);
+	g_hMainMenu = LoadMenu(_GetResourceInstance(),MAKEINTRESOURCE(IDR_MAINFRAME));
+	SetMenu(hWnd,g_hMainMenu);
 
 	// Open initial MDI child windows
-	if( !args.WithoutOpen && args.ConsoleTypeId.GetCount() > 0 )
-	{ 
-		HWND hwndMDIChild;
-		int i,c;
-		c = args.ConsoleTypeId.GetSize();
-		for(i = 0; i < c; i++)
-		{
-			hwndMDIChild = OpenMDIChild(hWnd,args.ConsoleTypeId[i],NULL,NULL,args.Maximize ? ((i == (c-1)) ? TRUE : FALSE) : FALSE );
-			if( hwndMDIChild && i == 0 )
+	if( !args.WithoutOpen )
+	{
+		if( args.ConsoleTypeId.GetCount() > 0 )
+		{ 
+			HWND hwndMDIChild;
+			int i,c;
+			c = args.ConsoleTypeId.GetSize();
+			for(i = 0; i < c; i++)
 			{
-				//
-				// Measures to avoid the phenomenon where the top edge of the window remains black when running on Windows 7 Basic.
-				//
-				SetWindowPos(hwndMDIChild,0,0,0,0,0,SWP_SHOWWINDOW|SWP_NOZORDER|SWP_NOMOVE|SWP_NOSIZE|SWP_FRAMECHANGED|SWP_DRAWFRAME);
+				hwndMDIChild = OpenConsole(hWnd,args.ConsoleTypeId[i],NULL,NULL,args.Maximize ? ((i == (c-1)) ? TRUE : FALSE) : FALSE );
+
+				if( hwndMDIChild && i == 0 )
+				{
+					//
+					// Measures to avoid the phenomenon where the top edge of the window remains black when running on Windows 7 Basic.
+					//
+					SetWindowPos(hwndMDIChild,0,0,0,0,0,SWP_SHOWWINDOW|SWP_NOZORDER|SWP_NOMOVE|SWP_NOSIZE|SWP_FRAMECHANGED|SWP_DRAWFRAME);
+				}
+			}
+		}
+		else
+		{
+			//
+			// Load mainframe window configuration
+			//
+			LoadMainFrameConfig(hWnd,&nCmdShow);
+
+			//
+			// Load MDI child windows layout
+			//
+			HRESULT hr;
+			MDICHILDFRAMEINIT_DIRFILES *pFrames = NULL;
+			DWORD dwFrames;
+	
+			hr = LoadLayout(hWnd,g_hWndMDIClient,&pFrames,&dwFrames);
+			if( hr == S_OK )
+			{
+				union {
+					OPEN_MDI_CHILDFRAME_PARAM Param;
+					OPEN_MDI_CHILDFRAME_STARTOFFSET Offset;
+				} Open = {0};
+
+				HWND hwndMDIChild = NULL;
+				for(int i = ((int)dwFrames-1); i >= 0; i--)
+				{
+					if( IsVolumeNameRequiredConsole(&pFrames[i].Guid,(UINT)pFrames[i].Guid.Data1) && pFrames[i].Path == NULL )
+						continue;
+
+					Open.Param.Path = pFrames[i].Path;
+					Open.Offset.StartOffset.QuadPart = pFrames[i].liStartOffset.QuadPart;
+
+					hwndMDIChild = OpenMDIChild(hWnd,
+							(UINT)pFrames[i].Guid.Data1, // todo:
+							&pFrames[i].Guid,
+							(OPEN_MDI_CHILDFRAME_PARAM *)&Open,
+							pFrames[i].hdr.show == SW_MAXIMIZE ? TRUE : FALSE,
+							&pFrames[i].hdr);
+
+					if( hwndMDIChild )
+					{
+						ShowWindow(hwndMDIChild,pFrames[i].hdr.show);
+
+						//
+						// Measures to avoid the phenomenon where the top edge of the window
+						// remains black when running on Windows 7 Basic.
+						//
+						SetWindowPos(hwndMDIChild,0,0,0,0,0,SWP_NOZORDER|SWP_NOMOVE|SWP_NOSIZE|SWP_FRAMECHANGED|SWP_DRAWFRAME);
+					}
+				}
+				FreeLayout(pFrames,dwFrames);
 			}
 		}
 	}
 
-	// Save active focus mdi child window.
-	hWndActiveMDIChild = MDIGetActive(hWndMDIClient);
+	g_bEnableWorkspaceLayout = args.EnableWorkspaceLayout; // todo:
 
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
+
+	// Save active focus mdi child window.
+	g_hWndActiveMDIChild = MDIGetActive(g_hWndMDIClient);
+	if( g_hWndActiveMDIChild )
+	{
+		MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(g_hWndActiveMDIChild,GWLP_USERDATA);
+		SetFocus( pd->hWndView );
+	}
 
 	return hWnd;
 }
@@ -785,10 +1060,12 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 //----------------------------------------------------------------------------
 VOID ExitInstance()
 {
-	if( hMainMenu )
-		DestroyMenu(hMainMenu);
-	if( hMdiMenu )
-		DestroyMenu(hMdiMenu);
+	if( g_hMainMenu )
+		DestroyMenu(g_hMainMenu);
+	if( g_hMdiMenu )
+		DestroyMenu(g_hMdiMenu);
+
+	_SetIniFileName(NULL);
 }
 
 //----------------------------------------------------------------------------
@@ -800,7 +1077,7 @@ VOID ExitInstance()
 //----------------------------------------------------------------------------
 INT CALLBACK QueryCmdState(UINT CmdId,PVOID,LPARAM)
 {
-	HWND hwndMDIChild = MDIGetActive(hWndMDIClient);
+	HWND hwndMDIChild = MDIGetActive(g_hWndMDIClient);
 	if( hwndMDIChild )
 	{
 		MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndMDIChild,GWLP_USERDATA);
@@ -848,12 +1125,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_CREATE: 
 		{
-			hWndMDIClient = CreateMDIClient(hWnd);
+			g_hWndMDIClient = CreateMDIClient(hWnd);
 			FindText_Initialize();
 			break; 
 		} 
 		case WM_DESTROY:
 		{
+			//
+			// Save configuration main frame and each MDI MDI child/view/page window.
+			//
+			if( g_bEnableWorkspaceLayout )
+			{
+				SaveMainFrameConfig(hWnd,g_hWndMDIClient);
+			}
+
 			PostQuitMessage(0);
 			break;
 		}
@@ -864,7 +1149,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			// it should not pass the message to the DefWindowProc function.
 			int cx = GET_X_LPARAM(lParam);
 			int cy = GET_Y_LPARAM(lParam);
-			SetWindowPos(hWndMDIClient,NULL,0,0,cx,cy,SWP_NOZORDER);
+			SetWindowPos(g_hWndMDIClient,NULL,0,0,cx,cy,SWP_NOZORDER);
 			break;
 		}
 		case WM_COMMAND:
@@ -899,19 +1184,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					CloseConsole();
 					break;
 				case ID_WINDOW_CASCADE:
-					SendMessage(hWndMDIClient,WM_MDICASCADE,MDITILE_SKIPDISABLED|MDITILE_ZORDER,0);
+					SendMessage(g_hWndMDIClient,WM_MDICASCADE,MDITILE_SKIPDISABLED|MDITILE_ZORDER,0);
 					break;
 				case ID_WINDOW_TILE_HORZ:
-					SendMessage(hWndMDIClient,WM_MDITILE,MDITILE_SKIPDISABLED|MDITILE_HORIZONTAL,0);
+					SendMessage(g_hWndMDIClient,WM_MDITILE,MDITILE_SKIPDISABLED|MDITILE_HORIZONTAL,0);
 					break;
 				case ID_WINDOW_TILE_VERT:
-					SendMessage(hWndMDIClient,WM_MDITILE,MDITILE_SKIPDISABLED|MDITILE_VERTICAL,0);
+					SendMessage(g_hWndMDIClient,WM_MDITILE,MDITILE_SKIPDISABLED|MDITILE_VERTICAL,0);
 					break;
 				case ID_EDIT_FIND:
 				case ID_EDIT_FIND_NEXT:
 				case ID_EDIT_FIND_PREVIOUS:
 				{
-					HWND hwndMDIChild = MDIGetActive(hWndMDIClient);
+					HWND hwndMDIChild = MDIGetActive(g_hWndMDIClient);
 					if( hwndMDIChild )
 					{
 						MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndMDIChild,GWLP_USERDATA);
@@ -920,7 +1205,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 				}
 				case ID_ABOUT:
-					DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+					DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 					break;
 				case ID_EXIT:
 					DestroyWindow(hWnd);
@@ -928,7 +1213,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				default:
 				{
 					// Forward command to the active MDI child window.
-					HWND hwndMDIChild = MDIGetActive(hWndMDIClient);
+					HWND hwndMDIChild = MDIGetActive(g_hWndMDIClient);
 					if( hwndMDIChild )
 					{
 						MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndMDIChild,GWLP_USERDATA);
@@ -941,16 +1226,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		case WM_MDIACTIVATE:
 		{
-			hWndActiveMDIChild = (HWND)lParam;
+			g_hWndActiveMDIChild = (HWND)lParam;
 
-			if( hWndActiveMDIChild == NULL )
+			if( g_hWndActiveMDIChild == NULL )
 			{
-				SendMessage(hWndMDIClient,WM_MDISETMENU,(WPARAM)hMainMenu,0);
+				SendMessage(g_hWndMDIClient,WM_MDISETMENU,(WPARAM)g_hMainMenu,0);
 				DrawMenuBar(hWnd);
 			}
 			else
 			{
-				SendMessage(hWndMDIClient,WM_MDISETMENU,(WPARAM)hMdiMenu,0);
+				SendMessage(g_hWndMDIClient,WM_MDISETMENU,(WPARAM)g_hMdiMenu,0);
 				DrawMenuBar(hWnd);
 			}
 			break;
@@ -971,22 +1256,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		case WM_OPEM_MDI_CHILDFRAME:
 		{
+			//
+			// Open new child frame window
+			//
 			if( lParam == 0 )
 				return 0;
 			UINT ConsoleTypeId = (UINT)LOWORD(wParam);
 			UINT CallType = (UINT)HIWORD(wParam);
-			PWSTR psz = (PWSTR)lParam;
+			OPEN_MDI_CHILDFRAME_PARAM *opp = (OPEN_MDI_CHILDFRAME_PARAM*)lParam;
 			switch( CallType )
 			{
 				case 0:
-					OpenConsole(hWnd,ConsoleTypeId,psz,CallType);
+					OpenConsole(hWnd,ConsoleTypeId,NULL,opp);
 					break;
 				case 1:
-					OpenConsole(hWnd,ConsoleTypeId,psz,CallType);
-					CoTaskMemFree(psz);
+					OpenConsole(hWnd,ConsoleTypeId,NULL,opp);
+					CoTaskMemFree(opp);
 					break;
 				case 2:
-					OpenConsole(hWnd,ConsoleTypeId,(PCWSTR)lParam,CallType);
+					OpenConsole(hWnd,ConsoleTypeId,NULL,opp);
 					break;
 			}
 			return 0;
@@ -1001,9 +1289,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			return 0;
 		}
+		case PM_MAKECONTEXTMENU:
+		{
+			// Not used feature in this application. must returns zero.
+			return 0;
+		}
 		default:
 		{
-			HWND hwndChildFrame = MDIGetActive(hWndMDIClient);
+			HWND hwndChildFrame = MDIGetActive(g_hWndMDIClient);
 			if( hwndChildFrame )
 			{
 				MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndChildFrame,GWLP_USERDATA);
@@ -1014,7 +1307,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 	}
 
-	return DefFrameProc(hWnd, hWndMDIClient, message, wParam, lParam);
+	return DefFrameProc(hWnd, g_hWndMDIClient, message, wParam, lParam);
 }
 
 //----------------------------------------------------------------------------
@@ -1039,9 +1332,11 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	RegisterMDIFrameClass(hInstance);
 	RegisterMDIChildFrameClass(hInstance);
 
+	InitIniFile();
+
 	InitializeLibMisc(hInstance,GetUserDefaultUILanguage());
 
-	if( (hWndMain = InitInstance (hInstance, nCmdShow)) == NULL )
+	if( (g_hWndMain = InitInstance (hInstance, nCmdShow)) == NULL )
 	{
 		return FALSE;
 	}
@@ -1051,7 +1346,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	MSG msg;
 	INT ret;
-	MSG msgDelay = {0};
+	MSG msgDblClk = {0};
 
 	while ((ret = GetMessage(&msg, (HWND) NULL, 0, 0)) != 0)
 	{
@@ -1061,42 +1356,40 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	    }
 		else 
 	    { 
-
 #if 1
-		// This code is follows reason:
-		//
-		// 1. Receives a notify message LVN_ITEMACTIVATE to the MDI child window 
-		//    when occurs  WM_LBUTTONDOWN->WM_LBUTTONDBLCLK on the ListVew contorol.
-		//    (WM_LBUTTONUP is not notified yet.)
-		// 2. During LVN_ITEMACTIVATE processing, create new MDI child frame 
-		//    and to activate.
-		// 3. When LVN_ITEMACTIVATE returns, at that time the active window has changed.
-		// 4. It then receives WM_LBUTTONUP. But this message sending to 
-		//    the newly created window instead of the previous window.
-		// 5. At this moment may case result in unexpected selection operations 
-		//    on the new window (e.g. Group header click select).
-
-			if( (WM_MOUSEFIRST <= msg.message && msg.message <= WM_MOUSELAST) && (msg.message != WM_MOUSEMOVE) )
+			// This code is follows reason:
+			//
+			// 1. Receives a notify message LVN_ITEMACTIVATE the MDI child window 
+			//    when occurs  WM_LBUTTONDOWN->WM_LBUTTONDBLCLK on the ListVew contorol.
+			//    (WM_LBUTTONUP is not notified yet)
+			// 2. During LVN_ITEMACTIVATE processing, create new MDI child frame 
+			//    and to activate.
+			// 3. When LVN_ITEMACTIVATE returns, at that time the active window has changed.
+			// 4. It then receives WM_LBUTTONUP. But this message sending to 
+			//    the newly created window instead of the previous window.
+			// 5. At this moment may case result in unexpected selection operations 
+			//    on the new window (e.g. Group header click select).
+			if( msg.message == WM_LBUTTONDBLCLK  )
 			{
-				if( msg.message == WM_LBUTTONUP && msgDelay.hwnd != NULL )
-				{
-					SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,msgDelay.wParam,msgDelay.lParam);
-					ZeroMemory(&msgDelay,sizeof(msgDelay));
-				}
+				msgDblClk.hwnd = msg.hwnd;
 			}
-			else if( msg.message == WM_OPEM_MDI_CHILDFRAME ) // post message mode
+			else if( msg.message == WM_LBUTTONUP && msgDblClk.hwnd )
 			{
-				msgDelay.hwnd = msg.hwnd;
-				msgDelay.lParam = msg.lParam;
-				msgDelay.wParam = msg.wParam;
-				continue;
+				if( msgDblClk.hwnd != msg.hwnd )
+				{
+#ifdef _DEBUG
+					Beep(1500,100);
+#endif
+					msgDblClk.hwnd = NULL;
+					continue;
+				}
+				msgDblClk.hwnd = NULL;
 			}
 #endif
-
-			if( hWndActiveMDIChild )
+			if( g_hWndActiveMDIChild )
 			{
 				// Forward message to active view on MDI child window.
-				MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hWndActiveMDIChild,GWLP_USERDATA);
+				MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(g_hWndActiveMDIChild,GWLP_USERDATA);
 
 				if( pd && IsWindow(pd->hWndView) && SendMessage(pd->hWndView,WM_PRETRANSLATEMESSAGE,0,(LPARAM)&msg) != 0 )
 					continue;
@@ -1112,12 +1405,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 				continue;
 			}
 
-		    if (!TranslateMDISysAccel(hWndMDIClient, &msg) && 
-			    !TranslateAccelerator(hWndMain, hAccelTable, &msg))
+		    if (!TranslateMDISysAccel(g_hWndMDIClient, &msg) && 
+			    !TranslateAccelerator(g_hWndMain, hAccelTable, &msg))
 	        { 
-				if( hWndActiveMDIChild )
+				if( g_hWndActiveMDIChild )
 				{
-					if( IsDialogMessage(hWndActiveMDIChild,&msg) )
+					if( IsDialogMessage(g_hWndActiveMDIChild,&msg) )
 						continue;
 				}
 		        TranslateMessage(&msg); 

@@ -27,16 +27,20 @@ enum {
 	UI_CHANGE_DIRECTORY  =  0x1006,
 	UI_SET_TITLE         =  0x1007,
 	UI_SET_ICON          =  0x1008,
+	UI_SET_FILEPATH      =  0x1009,
 	UI_NOTIFY_ITEM_SELECTED     = 0x2001,
 	UI_NOTIFY_VOLUME_SELECTED   = 0x2002,
 	UI_NOTIFY_DIRECTORY_CHANGED = 0x2003,
 	UI_NOTIFY_VOLUME_CHANGED    = 0x2004,
 };
 
+//
+// UI_SELECT_ITEM
+//
 typedef struct _SELECT_ITEM
 {
 	UINT mask;          // Reserved
-	UINT Flags;         // Reserved
+	UINT Flags;
 	PWSTR pszPath;
 	PWSTR pszName;
 	PWSTR pszCurDir;

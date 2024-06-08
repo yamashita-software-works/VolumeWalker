@@ -405,6 +405,14 @@ typedef struct {
 
 #endif
 
+#ifndef FILE_SUPPORTS_USN_JOURNAL
+#define FILE_SUPPORTS_USN_JOURNAL           0x02000000
+#endif
+
+#ifndef FILE_SUPPORTS_INTEGRITY_STREAMS
+#define FILE_SUPPORTS_INTEGRITY_STREAMS     0x04000000
+#endif
+
 #ifndef FILE_DAX_VOLUME
 #define FILE_DAX_VOLUME                     0x20000000
 #endif

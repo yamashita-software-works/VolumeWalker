@@ -56,6 +56,7 @@
 #include "..\fsvolumehelp\physicaldriveinformationclass.h"
 #include "..\fsvolumehelp\volumedevinfostruct.h"
 #include "..\fsvolumehelp\storagedevice.h"
+#include "volumeconsoleid.h"
 
 HWND CreateVolumeInformationWindow(HWND hWnd);
 HWND CreateDiskLayoutWindow(HWND hWnd);
@@ -86,3 +87,54 @@ HICON GetShellStockIcon(SHSTOCKICONID StockIconId);
 #define _COLOR_TEXT_DIRTY_VOLUME    RGB(180,0,0)
 #define _COLOR_TEXT_VIRTUALDISK     RGB(0,32,180)
 
+inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz,LONGLONG StartOffset)
+{
+	if( 1 )
+	{
+		SIZE_T cch = (wcslen(psz) + 1);
+		OPEN_MDI_CHILDFRAME_STARTOFFSET *popen_mdi = (OPEN_MDI_CHILDFRAME_STARTOFFSET *)CoTaskMemAlloc( sizeof(OPEN_MDI_CHILDFRAME_STARTOFFSET) + (cch * sizeof(WCHAR)) );
+		popen_mdi->hdr.flags = 0;
+		popen_mdi->hdr.hwndFrom = 0;
+		popen_mdi->hdr.Path = (PWSTR)(((UINT_PTR)popen_mdi)+sizeof(OPEN_MDI_CHILDFRAME_STARTOFFSET));
+		popen_mdi->StartOffset.QuadPart = StartOffset;
+		StringCchCopy(popen_mdi->hdr.Path,cch,psz);
+		PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,1),(LPARAM)popen_mdi);
+	}
+	else
+	{
+		OPEN_MDI_CHILDFRAME_STARTOFFSET open_mdi = {0};
+		open_mdi.hdr.flags    = 0; // resserved
+		open_mdi.hdr.hwndFrom = 0; // resserved
+		open_mdi.hdr.Path     = (PWSTR)psz;
+		SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,0),(LPARAM)&open_mdi);
+	}
+}
+
+inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz)
+{
+	if( ConsoleId == VOLUME_CONSOLE_SIMPLEHEXDUMP )
+	{
+		OpenConsole_SendMessage(ConsoleId,psz,0);
+	}
+	else
+	{	
+		if( 1 )
+		{
+			SIZE_T cch = (wcslen(psz) + 1);
+			OPEN_MDI_CHILDFRAME_PARAM *popen_mdi = (OPEN_MDI_CHILDFRAME_PARAM *)CoTaskMemAlloc( sizeof(OPEN_MDI_CHILDFRAME_PARAM) + (cch * sizeof(WCHAR)) );
+			popen_mdi->flags = 0;
+			popen_mdi->hwndFrom = 0;
+			popen_mdi->Path = (PWSTR)(((UINT_PTR)popen_mdi)+sizeof(OPEN_MDI_CHILDFRAME_PARAM));
+			StringCchCopy(popen_mdi->Path,cch,psz);
+			PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,1),(LPARAM)popen_mdi);
+		}
+		else
+		{
+			OPEN_MDI_CHILDFRAME_PARAM open_mdi = {0};
+			open_mdi.flags    = 0; // resserved
+			open_mdi.hwndFrom = 0; // resserved
+			open_mdi.Path     = (PWSTR)psz;
+			SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,0),(LPARAM)&open_mdi);
+		}
+	}
+}

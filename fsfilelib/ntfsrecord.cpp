@@ -870,8 +870,6 @@ GetNtfsSpecialFiles(
 	FS_NTFS_SPECIAL_FILE_LIST *NtfsFileList
 	)
 {
-	CNtfsSpecialFileItemList *pspfl = new CNtfsSpecialFileItemList;
-
 	IO_STATUS_BLOCK IoStatusBlock = {0};
 
 	NTFS_FILE_RECORD_INPUT_BUFFER ntfsInRecord = {0};
@@ -900,8 +898,11 @@ GetNtfsSpecialFiles(
 
 	if( Status != NO_ERROR )
 	{
+		_SafeMemFree(pntfsOutRecord);
 		return Status;
 	}
+
+	CNtfsSpecialFileItemList *pspfl = new CNtfsSpecialFileItemList;
 
 	// The MFT contains file record segments; 
 	// the first 16 of these are reserved for special files, such as the following:
@@ -971,7 +972,8 @@ GetNtfsSpecialFiles(
 			pntfsOutRecord,cbOutputBuffer,
 			&cbBytesReturned,
 			NULL);
-			Status = GetLastError();
+
+		Status = GetLastError();
 
 		if( Status == NO_ERROR )
 		{
@@ -987,7 +989,7 @@ GetNtfsSpecialFiles(
 	NtfsFileList->pItemList = pspfl->GetData();
 	NtfsFileList->Handle = (HANDLE)pspfl;
 
-	return 0;
+	return Status;
 }
 
 //----------------------------------------------------------------------------
