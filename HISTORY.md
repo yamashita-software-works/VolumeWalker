@@ -1,3 +1,9 @@
+### 0.1.11.0
+
+- Volume Information,Disk Drive Information ウィンドウで、ウィンドウ内テキスト検索をした時に、一致したテキストが含まれる行を降順（または昇順）に正しく選択しない不具合を修正。
+
+- Volume Informationのグループ名 'Generic' を 'General' に変更。
+
 ### 0.1.10.0
 
 - ソフトウェアの名称をVolumeWalkerに変更しました。

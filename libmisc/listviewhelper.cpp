@@ -66,12 +66,6 @@ ListViewEx_SimpleContextMenuHandler(
 
 			MapWindowPoints(hWndList,NULL,&pt,1);
 
-			UINT Flags;
-			if( uFlags == 0 )
-				Flags = TPM_LEFTALIGN|TPM_TOPALIGN|TPM_NONOTIFY;
-			else
-				Flags = uFlags;
-
 			// Handle to the window that owns the shortcut menu.
 			// This window receives all messages from the menu.
 			// The window does not receive a WM_COMMAND message from the menu until the function returns. 
@@ -82,7 +76,7 @@ ListViewEx_SimpleContextMenuHandler(
 			if( hWnd == NULL )
 				hWnd = GetActiveWindow();
 
-			Result = TrackPopupMenuEx(hMenu,Flags,pt.x,pt.y,hWnd,NULL);
+			Result = TrackPopupMenuEx(hMenu,uFlags,pt.x,pt.y,hWnd,NULL);
 		}
 	}
 	else
@@ -180,7 +174,6 @@ DrawListViewColumnMeter(
 		//
 		// draw fill meter style
 		//
-		COLORREF crText = RGB(60,72,74);
 		COLORREF crMeter = RGB(80,120,220);
 		HBRUSH hbr = CreateSolidBrush( crMeter );
 
@@ -192,8 +185,8 @@ DrawListViewColumnMeter(
 		HBITMAP hbmpOld2 = (HBITMAP)::SelectObject(hdcMem2,hbmp2);
 
 		RECT box;
-		box.left = 0;
-		box.top = 0;
+		box.left   = 0;
+		box.top    = 0;
 		box.right  = _RECT_WIDTH(rcMeter);
 		box.bottom = _RECT_HIGHT(rcMeter);
 

@@ -339,7 +339,12 @@ _TraverseDirectoryImpl(
         return Status;
     }
 
-    if( (Status = callbackStartDirectory(NtPath,pTDP)) != STATUS_SUCCESS )
+    Status = callbackStartDirectory(NtPath,pTDP);
+
+    if( Status == STATUS_TD_SKIP || Status == STATUS_TD_DIRECTORY_HIERARCHY_TOO_DEEP )
+        return STATUS_SUCCESS;
+
+    if( Status  != STATUS_SUCCESS )
         return Status;
 
     // open directory

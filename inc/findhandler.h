@@ -36,7 +36,7 @@ protected:
 				m_iStartFindItem = ListViewEx_GetCurSel(hWndList);
 				if( m_iStartFindItem == -1 )
 					m_iStartFindItem = 0;
-				SearchItem(lpfr->lpstrFindWhat,
+				SearchItem(m_iStartFindItem,lpfr->lpstrFindWhat,
 						(BOOL) (lpfr->Flags & FR_DOWN), 
 						(BOOL) (lpfr->Flags & FR_MATCHCASE)); 
 				break;
@@ -48,13 +48,27 @@ protected:
 					m_iStartFindItem = 0;
 				else
 				{
+#if 0
 					m_iStartFindItem = m_iStartFindItem + ((lpfr->Flags & FR_DOWN) ? 1 : -1);
+
 					if( m_iStartFindItem <= 0 )
 						m_iStartFindItem = cItems-1;
 					else if( m_iStartFindItem >= cItems )
 						m_iStartFindItem = 0;
+#else
+					m_iStartFindItem = ListView_GetNextItem(hWndList,m_iStartFindItem,
+						LVNI_VISIBLEORDER|((lpfr->Flags & FR_DOWN) ? 0 : LVNI_PREVIOUS) );
+
+					if( m_iStartFindItem == -1 )
+					{
+						if( !(lpfr->Flags & FR_DOWN) )
+							m_iStartFindItem = cItems-1;
+						else if( lpfr->Flags & FR_DOWN )
+							m_iStartFindItem = 0;
+					}
+#endif
 				}
-				SearchItem(lpfr->lpstrFindWhat,
+				SearchItem(m_iStartFindItem,lpfr->lpstrFindWhat,
 						(BOOL) (lpfr->Flags & FR_DOWN), 
 						(BOOL) (lpfr->Flags & FR_MATCHCASE)); 
 				break;
@@ -63,7 +77,7 @@ protected:
 		return 0;
 	}
 private:
-	VOID SearchItem(PWSTR pszFindText,BOOL Down,BOOL MatchCase)
+	int SearchItem(int iFindStartItem,PWSTR pszFindText,BOOL Down,BOOL MatchCase)
 	{
 		T *p = static_cast<T*>(this);
 		HWND hWndList = p->GetListView();
@@ -76,7 +90,7 @@ private:
 		cItems = ListView_GetItemCount(hWndList);
 		cColumns = ListViewEx_GetColumnCount(hWndList);
 
-		iItem = m_iStartFindItem;
+		iItem = iFindStartItem;
 
 		for(;;)
 		{
@@ -101,14 +115,15 @@ private:
 			else if( iItem < 0 )
 				iItem = cItems-1;
 
-			if( iItem == m_iStartFindItem )
+			if( iItem == iFindStartItem )
 			{
 				MessageBeep(MB_ICONSTOP);
+				iItem = -1;
 				break; // not found
 			}
 		}
 
  __found:
-		return;
+		return iItem;
 	}
 };

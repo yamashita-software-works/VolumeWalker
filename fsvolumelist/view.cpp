@@ -206,7 +206,7 @@ public:
 		CPageWndBase* pNew = NULL;
 		BOOL bCreate = FALSE;
 
-		int nView = SelItem->View;
+		int nView = SelItem->ViewType;
 
 		ASSERT( nView >= 0 );
 		ASSERT( nView < VOLUME_CONSOLE_MAX_ID );

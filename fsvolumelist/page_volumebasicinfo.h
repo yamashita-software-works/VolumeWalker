@@ -682,7 +682,7 @@ public:
 		GROUP_ITEM Group[] = {
 			{ ID_GROUP_NAME,                  L"Name" },
 			{ ID_GROUP_SIZE,                  L"Size"  },
-			{ ID_GROUP_GENERIC,               L"Generic" },
+			{ ID_GROUP_GENERIC,               L"General" },
 			{ ID_GROUP_PHYSICALDRIVE,         L"Physcial Drives" },
 			{ ID_GROUP_FS_NTFS,               L"NTFS"  },
 			{ ID_GROUP_FS_FAT,                L"FAT"  },
@@ -766,9 +766,9 @@ public:
 		};
 		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
 		{
-			iItem = Insert(m_hWndList,iGroupId,iItem,uInfoId[i]);
+			iItem = Insert(m_hWndList,iGroupId,iItem+i,uInfoId[i]);
 		}
-		return iItem;
+		return ++iItem;
 	}
 
 	INT Insert_SizeInfo(int iItem,VOLUME_DEVICE_INFORMATION *pvdi)
@@ -786,9 +786,9 @@ public:
 		};
 		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
 		{
-			iItem = Insert(m_hWndList,iGroupId,iItem,uInfoId[i]);
+			iItem = Insert(m_hWndList,iGroupId,iItem+i,uInfoId[i]);
 		}
-		return iItem;
+		return ++iItem;
 	}
 
 	INT Insert_BasicInfo(int iItem,VOLUME_DEVICE_INFORMATION *pvdi)
@@ -809,9 +809,9 @@ public:
 		};
 		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
 		{
-			iItem = Insert(m_hWndList,iGroupId,iItem,uInfoId[i]);
+			iItem = Insert(m_hWndList,iGroupId,iItem+i,uInfoId[i]);
 		}
-		return iItem;
+		return ++iItem;
 	}
 
 	INT Insert_NTFSInfo(int iItem,VOLUME_DEVICE_INFORMATION *pvdi)
@@ -836,9 +836,9 @@ public:
 		};
 		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
 		{
-			iItem = Insert(m_hWndList,iGroupId,iItem,uInfoId[i]);
+			iItem = Insert(m_hWndList,iGroupId,iItem+i,uInfoId[i]);
 		}
-		return iItem;
+		return ++iItem;
 	}
 
 	INT Insert_UDFInfo(int iItem,VOLUME_DEVICE_INFORMATION *pvdi)
@@ -859,9 +859,9 @@ public:
 		};
 		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
 		{
-			iItem = Insert(m_hWndList,iGroupId,iItem,uInfoId[i]);
+			iItem = Insert(m_hWndList,iGroupId,iItem+i,uInfoId[i]);
 		}
-		return iItem;
+		return ++iItem;
 	}
 
 	INT Insert_ReFSInfo(int iItem,VOLUME_DEVICE_INFORMATION *pvdi)
@@ -886,9 +886,9 @@ public:
 		};
 		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
 		{
-			iItem = Insert(m_hWndList,iGroupId,iItem,uInfoId[i]);
+			iItem = Insert(m_hWndList,iGroupId,iItem+i,uInfoId[i]);
 		}
-		return iItem;
+		return ++iItem;
 	}
 
 	HRESULT FillItems(VOLUME_DEVICE_INFORMATION *pvdi)
@@ -912,43 +912,81 @@ public:
 		//
 		// Start fill information items.
 		//
+		UINT idGroupOrder[] = {
+			ID_GROUP_GENERIC,
+			ID_GROUP_SIZE,
+			ID_GROUP_MEDIATYPES,
+			ID_GROUP_FS_NTFS,
+			ID_GROUP_FS_FAT,
+			ID_GROUP_FS_UDF,
+			ID_GROUP_FS_REFS,
+			ID_GROUP_PHYSICALDRIVE,
+			ID_GROUP_FILESYSTEM_ATTRIBUTES,
+			ID_GROUP_NAME,
+			ID_GROUP_CONTROL,
+			ID_GROUP_QUOTA,
+			ID_GROUP_USN_JOURNAL_DATA,
+			ID_GROUP_VIRTUAL_DISK,
+		};
+
 		int iItem = 0;
 
-		iItem = Insert_NameInfo(iItem,pvdi);
-		iItem = Insert_SizeInfo(iItem,pvdi);
-		iItem = Insert_BasicInfo(iItem,pvdi);
-
-		if( _wcsicmp(pvdi->FileSystemName,L"NTFS") == 0 )
-			iItem = Insert_NTFSInfo(iItem,pvdi);
-
-		if( _wcsicmp(pvdi->FileSystemName,L"UDF") == 0 && pvdi->State.UdfData )
-			iItem = Insert_UDFInfo(iItem,pvdi);
-
-		if( _wcsicmp(pvdi->FileSystemName,L"ReFS") == 0 && pvdi->State.RefsData )
-			iItem = Insert_ReFSInfo(iItem,pvdi);
-
-		FillDeviceCharacteristics(pvdi->Characteristics);
-
-		if( pvdi->State.AttributeInformation )
-			FillFileSystemeAttributes(pvdi->FileSystemAttributes);
-
-		if( pvdi->pVolumeDiskExtents )
-			FillExtentInformation(pvdi->pVolumeDiskExtents);
-
-		if( pvdi->pMediaTypes )
-			FillMediaTypes(pvdi->pMediaTypes);
-
-		if( pvdi->State.ControlInformation )
-			FillControlInformation(&pvdi->Control);
-
-		if( m_QuotaInfoList )
-			FillQuotaInformation();
-
-		if( m_UsnJournalData.UsnJournalID != 0 )
-			FillUsnJournalDataInformation();
-
-		if( pvdi->VirtualDiskVolume )
-			FillVirtualDiskInformation();
+		for(int i = 0; i < _countof(idGroupOrder); i++)
+		{
+			switch( idGroupOrder[i] )
+			{
+				case ID_GROUP_NAME:
+					iItem = Insert_NameInfo(iItem,pvdi);
+					break;
+				case ID_GROUP_SIZE:
+					iItem = Insert_SizeInfo(iItem,pvdi);
+					break;
+				case ID_GROUP_GENERIC:
+					iItem = Insert_BasicInfo(iItem,pvdi);
+					FillDeviceCharacteristics(pvdi->Characteristics);
+					break;
+				case ID_GROUP_PHYSICALDRIVE:
+					if( pvdi->pVolumeDiskExtents )
+						FillExtentInformation(pvdi->pVolumeDiskExtents);
+					break;
+				case ID_GROUP_FS_NTFS:
+					if( _wcsicmp(pvdi->FileSystemName,L"NTFS") == 0 )
+						iItem = Insert_NTFSInfo(-1,pvdi);
+					break;
+				case ID_GROUP_FS_UDF:
+					if( _wcsicmp(pvdi->FileSystemName,L"UDF") == 0 && pvdi->State.UdfData )
+						iItem = Insert_UDFInfo(-1,pvdi);
+					break;
+				case ID_GROUP_FS_REFS:
+					if( _wcsicmp(pvdi->FileSystemName,L"ReFS") == 0 && pvdi->State.RefsData )
+						iItem = Insert_ReFSInfo(-1,pvdi);
+					break;
+				case ID_GROUP_FILESYSTEM_ATTRIBUTES:
+					if( pvdi->State.AttributeInformation )
+						FillFileSystemeAttributes(pvdi->FileSystemAttributes);
+					break;
+				case ID_GROUP_MEDIATYPES:
+					if( pvdi->pMediaTypes )
+						FillMediaTypes(pvdi->pMediaTypes);
+					break;
+				case ID_GROUP_CONTROL:
+					if( pvdi->State.ControlInformation )
+						FillControlInformation(&pvdi->Control);
+					break;
+				case ID_GROUP_QUOTA:
+					if( m_QuotaInfoList )
+						FillQuotaInformation();
+					break;
+				case ID_GROUP_USN_JOURNAL_DATA:
+					if( m_UsnJournalData.UsnJournalID != 0 )
+						FillUsnJournalDataInformation();
+					break;
+				case ID_GROUP_VIRTUAL_DISK:
+					if( pvdi->VirtualDiskVolume )
+						FillVirtualDiskInformation();
+					break;
+			}
+		}
 
 		//
 		// Adjust column width.
@@ -1170,6 +1208,7 @@ public:
 		WCHAR szBuffer[MAX_PATH];
 		WCHAR szText[64];
 		LVITEM lvi = {0};
+		lvi.iGroupId = ID_GROUP_PHYSICALDRIVE;
 
 		DWORD i;
 		LONGLONG cb;
@@ -1187,7 +1226,6 @@ public:
 			StringCchPrintf(szBuffer,MAX_PATH,L"Extent #%u",i + 1);
 			lvi.iItem = iItem++;
 			lvi.iIndent = _SET_INDENT(1);
-			lvi.iGroupId = ID_GROUP_PHYSICALDRIVE;
 			lvi.pszText = szBuffer;
 			iItem = ListView_InsertItem(m_hWndList,&lvi);
 
@@ -1202,7 +1240,6 @@ public:
 			StringCchPrintf(szBuffer,MAX_PATH,L"Starting Offset");
 			lvi.iItem = iItem;
 			lvi.iIndent = _SET_INDENT(2);
-			lvi.iGroupId = ID_GROUP_PHYSICALDRIVE;
 			iItem = ListView_InsertItem(m_hWndList,&lvi);
 
 			cb = pVolumeDiskExtents->Extents[i].StartingOffset.QuadPart;
@@ -1218,7 +1255,6 @@ public:
 			StringCchPrintf(szBuffer,MAX_PATH,L"Extent Length");
 			lvi.iItem = iItem;
 			lvi.iIndent = _SET_INDENT(2);
-			lvi.iGroupId = ID_GROUP_PHYSICALDRIVE;
 			iItem = ListView_InsertItem(m_hWndList,&lvi);
 
 			cb = pVolumeDiskExtents->Extents[i].ExtentLength.QuadPart;
@@ -1235,6 +1271,8 @@ public:
 		WCHAR sz[MAX_PATH];
 		LVITEM lvi = {0};
 
+		lvi.iGroupId = ID_GROUP_GENERIC;
+
 		int iItem = ListView_GetItemCount(m_hWndList);
 
 		// Attribute Bit
@@ -1244,7 +1282,6 @@ public:
 		lvi.iImage = 0;
 		lvi.iItem = iItem;
 		lvi.iIndent = _SET_INDENT(1);
-		lvi.iGroupId = ID_GROUP_GENERIC;
 		ListView_InsertItem(m_hWndList,&lvi);
 
 		if( dwCharacteristics != 0 )
@@ -1281,7 +1318,6 @@ public:
 					lvi.iImage = 0;
 					lvi.iItem = iItem;
 					lvi.iIndent = _SET_INDENT(2);
-					lvi.iGroupId = ID_GROUP_GENERIC;
 					ListView_InsertItem(m_hWndList,&lvi);
 
 					ListView_SetItemText(m_hWndList,iItem,1,sz);
@@ -1296,6 +1332,7 @@ public:
 	{
 		WCHAR sz[MAX_PATH];
 		LVITEM lvi = {0};
+		lvi.iGroupId = ID_GROUP_FILESYSTEM_ATTRIBUTES;
 
 		int iItem = ListView_GetItemCount(m_hWndList);
 
@@ -1306,7 +1343,6 @@ public:
 		lvi.iImage = 0;
 		lvi.iItem = iItem;
 		lvi.iIndent = _SET_INDENT(1);
-		lvi.iGroupId = ID_GROUP_FILESYSTEM_ATTRIBUTES;
 		ListView_InsertItem(m_hWndList,&lvi);
 
 		StringCchPrintf(sz,MAX_PATH,L"0x%08X",dwFileSystemAttributes);
@@ -1331,7 +1367,6 @@ public:
 					lvi.iImage = 0;
 					lvi.iItem = iItem;
 					lvi.iIndent = _SET_INDENT(2);
-					lvi.iGroupId = ID_GROUP_FILESYSTEM_ATTRIBUTES;
 					ListView_InsertItem(m_hWndList,&lvi);
 
 					GetVolumeAttributeString(i,sz,MAX_PATH);

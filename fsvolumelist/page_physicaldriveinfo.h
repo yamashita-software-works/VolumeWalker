@@ -27,6 +27,7 @@ enum {
 	ID_GROUP_PD_BASIC = 1,
 	ID_GROUP_PD_GEOMETRY,
 	ID_GROUP_PD_ACCESS_ALIGNMENT_DESCRIPTOR,
+	ID_GROUP_PD_MBR_GPT,	
 	ID_GROUP_PD_MBR,
 	ID_GROUP_PD_GPT,
 	ID_GROUP_PD_PARTITION,
@@ -460,9 +461,8 @@ public:
 	void InitGroup()
 	{
 		GROUP_ITEM Group[] = {
-			{ ID_GROUP_PD_BASIC,      L"Basic"  },
-			{ ID_GROUP_PD_MBR,        L"MBR"  },
-			{ ID_GROUP_PD_GPT,        L"GPT"  },
+			{ ID_GROUP_PD_BASIC,      L"Basic" },
+			{ ID_GROUP_PD_MBR_GPT,    L"" }, // MBR|GPT
 			{ ID_GROUP_PD_GEOMETRY,   L"Disk Geometry" },
 			{ ID_GROUP_PD_ACCESS_ALIGNMENT_DESCRIPTOR, L"Access Alignment Descriptor" },
 			{ ID_GROUP_PD_PARTITION,  L"Partition" },
@@ -474,6 +474,15 @@ public:
 		{
 			InsertGroup(m_hWndList,Group[i].idGroup,Group[i].Text);
 		}
+	}
+
+	VOID SetGroupHeaderText(PCWSTR pszText)
+	{
+		LVGROUP lvg = {0};
+		lvg.cbSize = sizeof(lvg);
+		lvg.mask = LVGF_HEADER;
+		lvg.pszHeader = (PWSTR)pszText;
+		ListView_SetGroupInfo(m_hWndList,ID_GROUP_PD_MBR_GPT,&lvg);
 	}
 
 	HRESULT InitList(HWND hWndList)
@@ -546,25 +555,32 @@ public:
 		};
 		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
 		{
-			iItem = Insert(m_hWndList,iGroupId,iItem,uInfoId[i]);
+			iItem = Insert(m_hWndList,iGroupId,iItem+i,uInfoId[i]);
 		}
+		return ++iItem;
+	}
 
+	INT Insert_MBR_GPT_Info(int iItem)
+	{
 		if( m_pdi->m_dwDriveLayoutStatus == ERROR_SUCCESS )
 		{
 			if( m_pdi->pDriveLayout->PartitionStyle == PARTITION_STYLE_MBR )
 			{
-				iItem = Insert(m_hWndList,ID_GROUP_PD_MBR,iItem,diMBRSignature);
+				SetGroupHeaderText(L"MBR");
+
+				iItem = Insert(m_hWndList,ID_GROUP_PD_MBR_GPT,-1,diMBRSignature);
 			}
 			else if( m_pdi->pDriveLayout->PartitionStyle == PARTITION_STYLE_GPT ) 
 			{
-				iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTDiskId);
-				iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTStartingUsableOffset);
-				iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTUsableLength);
-				iItem = Insert(m_hWndList,ID_GROUP_PD_GPT,iItem,diGPTMaxPartitionCount);
+				SetGroupHeaderText(L"GPT");
+
+				iItem = Insert(m_hWndList,ID_GROUP_PD_MBR_GPT,-1,diGPTDiskId);
+				iItem = Insert(m_hWndList,ID_GROUP_PD_MBR_GPT,-1,diGPTStartingUsableOffset);
+				iItem = Insert(m_hWndList,ID_GROUP_PD_MBR_GPT,-1,diGPTUsableLength);
+				iItem = Insert(m_hWndList,ID_GROUP_PD_MBR_GPT,-1,diGPTMaxPartitionCount);
 			}
 		}
-
-		return iItem;
+		return ++iItem;
 	}
 
 	INT Insert_DiskGeometry(int iItem)
@@ -578,9 +594,9 @@ public:
 		};
 		for(int i = 0; i < ARRAYSIZE(uId); i++)
 		{
-			iItem = Insert(m_hWndList,ID_GROUP_PD_GEOMETRY,iItem,uId[i]);
+			iItem = Insert(m_hWndList,ID_GROUP_PD_GEOMETRY,iItem+i,uId[i]);
 		}
-		return iItem;
+		return ++iItem;
 	}
 
 	INT Insert_AccessAlignmentDescriptor(int iItem,CPhysicalDriveInformation *)
@@ -595,9 +611,9 @@ public:
 		};
 		for(int i = 0; i < ARRAYSIZE(uId); i++)
 		{
-			iItem = Insert(m_hWndList,ID_GROUP_PD_ACCESS_ALIGNMENT_DESCRIPTOR,iItem,uId[i]);
+			iItem = Insert(m_hWndList,ID_GROUP_PD_ACCESS_ALIGNMENT_DESCRIPTOR,iItem+i,uId[i]);
 		}
-		return iItem;
+		return ++iItem;
 	}
 
 	int m_idGroup;
@@ -1019,20 +1035,44 @@ public:
 		//
 		// Start fill information items.
 		//
+		UINT idGroupOrder[] = {
+			ID_GROUP_PD_BASIC,
+			ID_GROUP_PD_GEOMETRY,
+			ID_GROUP_PD_MBR_GPT,
+			ID_GROUP_PD_ACCESS_ALIGNMENT_DESCRIPTOR,
+			ID_GROUP_PD_PARTITION,
+			ID_GROUP_PD_VIRTUALDISK,
+		};
+
 		int iItem = 0;
 
-		iItem = Insert_BasicInfo(iItem);
-
-		if( m_pdi->pGeometry )
-			iItem = Insert_DiskGeometry(iItem);
-
-		if( m_pdi->IsValidAlignment() )
-			iItem = Insert_AccessAlignmentDescriptor(iItem,pdi);
-
-		Insert_DriveLayout(pdi->pDriveLayout);
-
-		if( m_pvi )
-			Insert_VirtualDiskInfo();
+		for(int i = 0; i < _countof(idGroupOrder); i++)
+		{
+			switch( idGroupOrder[i] )
+			{
+				case ID_GROUP_PD_BASIC:
+					iItem = Insert_BasicInfo(iItem);
+					break;
+				case ID_GROUP_PD_MBR_GPT:
+					iItem = Insert_MBR_GPT_Info(iItem);
+					break;
+				case ID_GROUP_PD_GEOMETRY:
+					if( m_pdi->pGeometry )
+						iItem = Insert_DiskGeometry(iItem);
+					break;
+				case ID_GROUP_PD_ACCESS_ALIGNMENT_DESCRIPTOR:
+					if( m_pdi->IsValidAlignment() )
+						iItem = Insert_AccessAlignmentDescriptor(iItem,pdi);
+					break;
+				case ID_GROUP_PD_PARTITION:
+					Insert_DriveLayout(pdi->pDriveLayout);
+					break;
+				case ID_GROUP_PD_VIRTUALDISK:
+					if( m_pvi )
+						Insert_VirtualDiskInfo();
+					break;
+			}
+		}
 
 		//
 		// Adjust column width.

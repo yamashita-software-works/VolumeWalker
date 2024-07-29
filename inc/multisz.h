@@ -57,7 +57,11 @@ public:
 
 	PTSTR Add(PTSTR psz)
 	{
-		int cch = (int)_tcslen(psz) + 1;
+		int cch;
+		if( psz )
+			cch = (int)_tcslen(psz) + 1;
+		else
+			cch = 1; // only null
 
 		PTSTR pszTemp;
 		pszTemp = (PTSTR)_MemReAlloc(m_pszTop, (m_BufferSize + cch + 1) * sizeof(TCHAR));
@@ -66,7 +70,8 @@ public:
 
 		m_pszTop = pszTemp;
 
-		memcpy(&m_pszTop[m_BufferSize],psz,cch*sizeof(TCHAR));
+		if( psz )
+			memcpy(&m_pszTop[m_BufferSize],psz,cch*sizeof(TCHAR));
 
 		m_BufferSize += cch;
 

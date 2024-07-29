@@ -22,7 +22,7 @@ MDI Win32アプリケーションのひな形を用いて、[FSWorkbench](https:
 - Volumes   
 ボリュームの一覧を表示します。
 
-- Physcical Drives   
+- Physical Drives   
 物理ドライブの一覧を表示します。
 
 - Storage Devices   

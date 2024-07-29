@@ -102,7 +102,7 @@ public:
 
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 
-                              WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_OWNERDATA | LVS_SHAREIMAGELISTS,
+                              WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_OWNERDATA | LVS_SHAREIMAGELISTS,
                               0,0,0,0,
                               m_hWnd,
                               (HMENU)0,
