@@ -2,6 +2,15 @@
 
 #include "volumeconsoleid.h"
 
+EXTERN_C
+HRESULT
+WINAPI
+InitializeVolumeConsole(
+	DWORD dwFlags
+	);
+
+#define VOLUME_DLL_FLAG_ENABLE_DARK_MODE 0x1
+
 typedef struct _VOLUME_CONSOLE_CREATE_PARAM
 {
 	PWSTR pszReserved;

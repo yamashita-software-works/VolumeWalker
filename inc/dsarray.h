@@ -52,6 +52,11 @@ public:
 		return DSA_GetItem(m_hdsa,index,p);
 	}
 
+	BOOL SetItem(int index,T *p)
+	{
+		return DSA_SetItem(m_hdsa,index,p);
+	}
+
 	BOOL DeleteAll()
 	{
 		return DSA_DeleteAllItems(m_hdsa);
@@ -61,4 +66,9 @@ public:
 	{
 		return DSA_DeleteItem(m_hdsa,iIndex);
     }
+
+	INT InsertAt(int iIndex,T *p)
+	{
+		return DSA_InsertItem(m_hdsa,iIndex,p);
+	}
 };

@@ -20,6 +20,11 @@
 #include <devpkey.h>
 #include <devguid.h>
 
+#if _ENABLE_DARK_MODE_TEST
+#include "darkmode.h"
+#pragma comment(lib, "uxtheme.lib")
+#endif
+
 HINSTANCE hInstance = NULL;
 
 HINSTANCE _GetResourceInstance()
@@ -38,6 +43,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 			hInstance = (HINSTANCE)hModule;
 			_MemInit();
 
+#if _ENABLE_DARK_MODE_TEST
+			InitDarkMode();
+#endif
 			InitializeLibMisc(hInstance,GetUserDefaultUILanguage());
 
 			if( GetModuleHandle(L"fltlib.dll") == NULL )	
@@ -53,6 +61,25 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 			break;
 	}
 	return TRUE;
+}
+
+EXTERN_C
+HRESULT
+WINAPI
+InitializeVolumeConsole(
+	DWORD dwFlags
+	)
+{
+#if _ENABLE_DARK_MODE_TEST
+	if( dwFlags & VOLUME_DLL_FLAG_ENABLE_DARK_MODE )
+	{
+		EnableDarkMode(TRUE);
+		return S_OK;
+	}
+	return E_FAIL;
+#else
+	return E_NOTIMPL;
+#endif
 }
 
 EXTERN_C
@@ -194,4 +221,48 @@ GetDeviceClassIcon(
 	}
 
 	return hIcon;
+}
+
+static COLUMN_NAME column_name_map[] = {
+	{ COLUMN_Name,           L"Name",           0 },
+	{ COLUMN_CreationTime,   L"CreationTime",   0 }, 
+	{ COLUMN_Size,           L"Size",           0 }, 
+	{ COLUMN_Free,           L"Free",           0 }, 
+	{ COLUMN_Usage,          L"Useage",         0 }, 
+	{ COLUMN_UsageRate,      L"UsageRate",      0 }, 
+	{ COLUMN_Format,         L"Format",         0 }, 
+	{ COLUMN_Guid,           L"Guid",           0 }, 
+	{ COLUMN_Drive,          L"Drive",          0 }, 
+	{ COLUMN_VendorId,       L"VendorId",       0 }, 
+	{ COLUMN_ProductId,      L"ProductId",      0 }, 
+	{ COLUMN_PartitionStyle, L"PartitionStyle", 0 }, 
+	{ COLUMN_BusType,        L"BusType",        0 }, 
+	{ COLUMN_DeviceId,       L"DeviceId",       0 }, 
+	{ COLUMN_Identifier,     L"Identifier",     0 }, 
+	{ COLUMN_OriginalDevice, L"OriginalDevice", 0 }, 
+	{ COLUMN_OriginalVolume, L"OriginalVolume", 0 }, 
+	{ COLUMN_SnapshotId,     L"SnapshotId",     0 }, 
+	{ COLUMN_SnapshotSetId,  L"SnapshotSetId",  0 }, 
+	{ COLUMN_Attributes,     L"Attributes",     0 }, 
+	{ COLUMN_VolumeLabel,    L"VolumeLabel",    0 }, 
+	{ COLUMN_Path,           L"Path",           0 }, 
+	{ COLUMN_Type,           L"Type",           0 }, 
+};
+
+const COLUMN_NAME *GetColumnNameTable()
+{
+	return column_name_map;
+}
+
+const int GetColumnNameTableItemCount()
+{
+	return _countof(column_name_map);
+}
+
+const int GetColumnNameTableInfo(COLUMN_NAME **Names,SIZE_T *BufferSize)
+{
+	*Names = column_name_map;
+	if( BufferSize )
+		*BufferSize = GetColumnNameTableItemCount() * sizeof(COLUMN_NAME);
+	return GetColumnNameTableItemCount();
 }

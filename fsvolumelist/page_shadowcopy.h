@@ -110,7 +110,7 @@ public:
 	{
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 
-                              WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | LVS_REPORT | LVS_SHOWSELALWAYS,
+                              WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS,
                               0,0,0,0,
                               m_hWnd,
                               (HMENU)0,
@@ -125,6 +125,11 @@ public:
 		{
 			InitColumns(m_hWndList);
 		}
+
+#if _ENABLE_DARK_MODE_TEST
+		if( _IsDarkModeEnabled() )
+			InitDarkModeListView(m_hWndList);
+#endif
 
 		RECT rc;
 		GetClientRect(m_hWnd,&rc);

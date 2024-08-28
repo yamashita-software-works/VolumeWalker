@@ -17,8 +17,11 @@
 #include "dparray.h"
 #include "common.h"
 #include "column.h"
+#include "misc.h"
 #include "findhandler.h"
 #include <devguid.h>
+
+#define _ENABLE_GROUP_VIEW  0 // Reserved
 
 #define TE_OPEN_MDI_CHILD_FRAME  (1)
 
@@ -69,11 +72,15 @@ class CVolumeListPage :
 {
 	HWND m_hWndList;
 
+#if _ENABLE_GROUP_VIEW
 	enum {
 		ID_GROUP_DISK=1,
 		ID_GROUP_CDROM,
-		ID_GROUP_FLOPPY
+		ID_GROUP_FLOPPY,
+		ID_GROUP_VIRTUAL,
+		ID_GROUP_SHADOWCOPY
 	};
+#endif
 
 	COLUMN_HANDLER_DEF<CVolumeListPage> *m_disp_proc;
 	COMPARE_HANDLER_PROC_DEF<CVolumeListPage,CVolumeItem>* m_comp_proc;
@@ -117,7 +124,7 @@ public:
 	{
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 
-                              WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | LVS_REPORT | LVS_SHOWSELALWAYS,
+                              WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS,
                               0,0,0,0,
                               m_hWnd,
                               (HMENU)0,
@@ -131,12 +138,17 @@ public:
 
 		_EnableVisualThemeStyle(m_hWndList);
 
+#if _ENABLE_DARK_MODE_TEST
+		if( _IsDarkModeEnabled() )
+			InitDarkModeListView(m_hWndList);
+#endif
+
 		ListView_SetExtendedListViewStyle(m_hWndList,LVS_EX_DOUBLEBUFFER|LVS_EX_FULLROWSELECT|LVS_EX_HEADERDRAGDROP|LVS_EX_LABELTIP|LVS_EX_INFOTIP);
 
 		static COLUMN def_columns[] = {
 			{ COLUMN_Name,        L"Name",       1, 160, LVCFMT_LEFT },
 			{ COLUMN_Drive,       L"Drive",      2, 100, LVCFMT_LEFT },
-			{ COLUMN_UsageRate,   L"Usage Rate", 3, 100, LVCFMT_CENTER },
+			{ COLUMN_UsageRate,   L"Usage %",    3, 100, LVCFMT_CENTER },
 			{ COLUMN_Size,        L"Size",       4, 100, LVCFMT_RIGHT },
 			{ COLUMN_Usage,       L"Usage",      6, 100, LVCFMT_RIGHT },
 			{ COLUMN_Free,        L"Free",       7, 100, LVCFMT_RIGHT },
@@ -154,8 +166,8 @@ public:
 
 		ListViewEx_SetTrickColumnZero(m_hWndList,FALSE);
 
-#if 0
-		if( 0 )
+#if _ENABLE_GROUP_VIEW
+		if( 1 )
 		{
 			ListView_EnableGroupView(m_hWndList,TRUE);
 			InitGroup();
@@ -225,22 +237,39 @@ public:
 		CVolumeItem *pItem = (CVolumeItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 
 		HMENU hMenu = CreatePopupMenu();
-#if 0 // reserved
-		SendMessage(GetActiveWindow(),PM_MAKECONTEXTMENU,MAKEWPARAM(VOLUME_CONSOLE_VOLUMELIST,0),(LPARAM)hMenu);
-#else
-		AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Open &Information");
-		AppendMenu(hMenu,MF_STRING,ID_FILESYSTEMSTATISTICS,L"Open File System &Statistics");
-		AppendMenu(hMenu,MF_STRING,0,0);
-		AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
-		AppendMenu(hMenu,MF_STRING,0,0);
-		HMENU hSubMenu = CreatePopupMenu();
-		AppendMenu(hSubMenu,MF_STRING,ID_CONTENTSBROWSER,L"&Files");
-		AppendMenu(hSubMenu,MF_STRING,ID_CHANGEJOURNALBROWSER,L"Change &Journal");
-		AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Volume Contents &Browser");
-		AppendMenu(hMenu,MF_STRING,0,0);
-		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
-		SetMenuDefaultItem(hMenu,ID_VOLUMEINFORMATION,FALSE);
-#endif
+
+		if( SendMessage(GetActiveWindow(),PM_MAKECONTEXTMENU,MAKEWPARAM(VOLUME_CONSOLE_VOLUMELIST,0),(LPARAM)hMenu) == 0 )
+		{
+			HMENU hSubMenu;
+
+			AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Open &Information");
+			AppendMenu(hMenu,MF_STRING,ID_FILESYSTEMSTATISTICS,L"Open File System &Statistics");
+			AppendMenu(hMenu,MF_STRING,0,0);
+			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
+			AppendMenu(hMenu,MF_STRING,0,0);
+
+			hSubMenu = CreatePopupMenu();
+			{
+				AppendMenu(hSubMenu,MF_STRING,ID_CONTENTSBROWSER,L"&Files");
+				AppendMenu(hSubMenu,MF_STRING,ID_CHANGEJOURNALBROWSER,L"Change &Journal");
+			}
+			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Volume Contents &Browser");
+
+			hSubMenu = CreatePopupMenu();
+			{
+				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"&Explorer");
+				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_TERMINAL,   L"&Terminal");
+				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_POWERSHELL, L"&PowerShell");
+				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"&Command Prompt");
+				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"&Bash");
+			}
+			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Open &Location");
+
+			AppendMenu(hMenu,MF_STRING,0,0);
+			AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
+			SetMenuDefaultItem(hMenu,ID_VOLUMEINFORMATION,FALSE);
+		}
+
 		POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 		ListViewEx_SimpleContextMenuHandler(NULL,m_hWndList,(HWND)wParam,hMenu,pt,0);
 
@@ -307,7 +336,11 @@ public:
 
 			if( pParam->VolInfoBuffer->VirtualDiskVolume )
 			{
+#if _ENABLE_DARK_MODE_TEST
+				pcd->clrText = _IsDarkModeEnabled() ? RGB(153,217,234) : _COLOR_TEXT_VIRTUALDISK;
+#else
 				pcd->clrText = _COLOR_TEXT_VIRTUALDISK;
+#endif
 				RetFlag = CDRF_NEWFONT;
 			} 
 
@@ -348,7 +381,8 @@ public:
 
 				if( iUsageRateColumn != -1 )
 				{
-					DrawListViewColumnMeter(pcd->nmcd.hdc,m_hWndList,(int)pcd->nmcd.dwItemSpec,iUsageRateColumn,NULL,GetFont(),pParam->DiskUsage,0);
+					DrawListViewColumnMeter(pcd->nmcd.hdc,m_hWndList,(int)pcd->nmcd.dwItemSpec,iUsageRateColumn,NULL,GetFont(),pParam->DiskUsage,
+						_IsDarkModeEnabled() ? 2 : 0);
 				}
 			}
 
@@ -726,7 +760,7 @@ public:
 		return (int)ListView_InsertGroup(hWndList,-1,(PLVGROUP)&group);
 	}
 
-#if 0
+#if _ENABLE_GROUP_VIEW
 	typedef struct _GROUP_ITEM
 	{
 		int idGroup;
@@ -740,6 +774,8 @@ public:
 			{ ID_GROUP_DISK,   0, L"Disk Drive" },
 			{ ID_GROUP_CDROM,  0, L"CD-ROM"  },
 			{ ID_GROUP_FLOPPY, 0, L"Floppy Disk"  },
+			{ ID_GROUP_VIRTUAL, 0, L"Virtual"  },
+			{ ID_GROUP_SHADOWCOPY, 0, L"Shadow Copy"  },
 		};
 		int cGroupItem = ARRAYSIZE(Group);
 
@@ -815,7 +851,7 @@ public:
 		return TotalAllocationUnits * SectorsPerAllocationUnit * BytesPerSector;
 	}
 
-	int Insert(int iItem,const VOLUME_NAME_STRING& name,int GroupId)
+	int Insert(int iItem,const VOLUME_NAME_STRING& name,int GroupId=0)
 	{
 		VOLUME_DEVICE_INFORMATION *VolInfoBufferPtr;
 		GetData(name.NtVolumeName,&VolInfoBufferPtr);
@@ -881,12 +917,98 @@ public:
 		lvi.pszText = LPSTR_TEXTCALLBACK;
 		lvi.lParam  = (LPARAM)pItem;
 
+		if( GroupId != 0 )
+		{
+			lvi.mask |= LVIF_GROUPID;
+			lvi.iGroupId = GroupId;
+		}
+
 		iItem   = ListView_InsertItem(m_hWndList,&lvi);
 
 		delete[] DriveName;
 
 		return iItem;
 	}
+
+#if _ENABLE_INSERT_SHADOWCOPY_ITEMS
+	int InsertShadowCopy(int iItem,PCWSTR pszVolumeName,int GroupId=0)
+	{
+		VOLUME_DEVICE_INFORMATION *VolInfoBufferPtr;
+		GetData(pszVolumeName,&VolInfoBufferPtr);
+
+		const DWORD cchDriveName = 32768;
+		WCHAR *DriveName = new WCHAR[cchDriveName];
+		WCHAR GuidVolume[260];
+
+		ZeroMemory(DriveName,sizeof(WCHAR) * cchDriveName);
+
+		StringCchPrintf(GuidVolume,ARRAYSIZE(GuidVolume),L"\\\\?\\%s\\",pszVolumeName);
+		GetVolumeDrivePathsString(GuidVolume,DriveName,cchDriveName);
+
+		CVolumeItem *pItem = new CVolumeItem;
+
+		pItem->VolumeName = _MemAllocString( wcsrchr(pszVolumeName,L'\\') + 1 );
+		pItem->VolumeDevice = _MemAllocString( pszVolumeName );
+		pItem->GuidName = NULL;
+		pItem->VolInfoBuffer = VolInfoBufferPtr;
+
+		pItem->DrivePaths = _MemAllocString( DriveName );
+
+		if( IsCharAlpha(DriveName[0]) && DriveName[1] == L':' && (DriveName[2] == L'\0'||DriveName[2] == L';') )
+		{
+			if( DriveName[2] == L';' )
+				DriveName[2] = L'\0';
+			pItem->Drive = _MemAllocString( DriveName );
+		}
+		if( pItem->Drive == NULL )
+			pItem->Drive = _MemAllocString( L"" );
+
+		if( pItem->VolInfoBuffer->State.SizeInformation )
+		{
+			LONGLONG Total;
+			Total = _calcSize( pItem->VolInfoBuffer->TotalAllocationUnits.QuadPart,
+						pItem->VolInfoBuffer->SectorsPerAllocationUnit,
+						pItem->VolInfoBuffer->BytesPerSector );
+
+			LONGLONG Available;
+			Available = _calcSize( pItem->VolInfoBuffer->AvailableAllocationUnits.QuadPart,
+						pItem->VolInfoBuffer->SectorsPerAllocationUnit,
+						pItem->VolInfoBuffer->BytesPerSector);
+
+			LONGLONG Usage;
+			Usage = Total - Available;
+
+			pItem->TotalSize = Total;
+			pItem->AvailableSize = Available;
+			pItem->Usage = Usage;
+
+			if( Total != 0 )
+			{
+				double pct = (double)Usage / (double)Total;
+				pItem->DiskUsage = pct;
+			}
+		}
+
+		LVITEM lvi = {0};
+		lvi.mask    = LVIF_TEXT|LVIF_IMAGE|LVIF_PARAM;
+		lvi.iItem   = iItem;
+		lvi.iImage  = I_IMAGENONE;
+		lvi.pszText = LPSTR_TEXTCALLBACK;
+		lvi.lParam  = (LPARAM)pItem;
+
+		if( GroupId != 0 )
+		{
+			lvi.mask |= LVIF_GROUPID;
+			lvi.iGroupId = GroupId;
+		}
+
+		iItem   = ListView_InsertItem(m_hWndList,&lvi);
+
+		delete[] DriveName;
+
+		return iItem;
+	}
+#endif
 
 	//
 	// Enumerate volume items
@@ -911,6 +1033,25 @@ public:
 		}
 
 		FreeVolumeNames(pVolNames);
+
+#if _ENABLE_INSERT_SHADOWCOPY_ITEMS
+		HANDLE hHardwareProduct;
+		if( GetKnownHardwareProducts(&hHardwareProduct,&GUID_DEVCLASS_VOLUMESNAPSHOT,0) )
+		{
+			ULONG i,cItems = GetKnownHardwareProductsCount(hHardwareProduct);
+
+			const FS_HARDWARE_PRODUCT *pProductInfo;
+			for(i = 0; i < cItems; i++)
+			{
+				if( GetKnownHardwareProductPointer(hHardwareProduct,i,&pProductInfo) )
+				{
+					if( (*pProductInfo).PysicalDeviceObjectName )
+						InsertShadowCopy(i,(*pProductInfo).PysicalDeviceObjectName,0);
+				}
+			}
+			FreeKnownHardwareProducts(hHardwareProduct);
+		}
+#endif
 
 		//
 		// Sort in new list.
@@ -1108,6 +1249,19 @@ public:
 		}
 	}
 
+	VOID OpenLocation(int iItem,int Open)
+	{
+		if( iItem != -1 )
+		{
+			CVolumeItem *pItem = (CVolumeItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+			if( GetKeyState(VK_CONTROL) < 0 )
+				Open |= 0x8000;
+
+			OpenVolumeLocation(GetActiveWindow(),Open,pItem->Drive,pItem->GuidName);
+		}
+	}
+
 	virtual HRESULT QueryCmdState(UINT CmdId,UINT *State)
 	{
 		switch( CmdId )
@@ -1118,6 +1272,11 @@ public:
 			case ID_CONTENTSBROWSER:
 			case ID_CHANGEJOURNALBROWSER:
 			case ID_EDIT_COPY:
+			case ID_OPEN_LOCATION_EXPLORER:
+			case ID_OPEN_LOCATION_CMDPROMPT:
+			case ID_OPEN_LOCATION_POWERSHELL:
+			case ID_OPEN_LOCATION_TERMINAL:
+			case ID_OPEN_LOCATION_BASH:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
@@ -1154,6 +1313,21 @@ public:
 				break;
 			case ID_CHANGEJOURNALBROWSER:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOUUME_CONSOLE_CHANGE_JOURNAL );
+				break;
+			case ID_OPEN_LOCATION_EXPLORER:
+				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 0 );
+				break;
+			case ID_OPEN_LOCATION_CMDPROMPT:
+				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 1 );
+				break;
+			case ID_OPEN_LOCATION_POWERSHELL:
+				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 2 );
+				break;
+			case ID_OPEN_LOCATION_TERMINAL:
+				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 3 );
+				break;
+			case ID_OPEN_LOCATION_BASH:
+				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 4 );
 				break;
 		}
 		return S_OK;

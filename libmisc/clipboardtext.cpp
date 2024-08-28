@@ -6,7 +6,10 @@
 //*                                                                         *
 //*  AUTHOR:   YAMASHITA Katsuhiro                                          *
 //*                                                                         *
-//*  HISTORY:  2023/06/28 - Created (Origin code is ProcessWalker in 2001.) *
+//*  HISTORY:  2023/06/28 - Created                                         *
+//*                                                                         *
+//*  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.                *
+//*  Licensed under the MIT License.                                        *
 //*                                                                         *
 //***************************************************************************
 #include "stdafx.h"

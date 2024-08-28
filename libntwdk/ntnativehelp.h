@@ -105,6 +105,7 @@ PWSTR DosPathNameToNtPathName_W(PCWSTR pszDosPath);
 
 NTSTATUS GetFileAttributes_U(HANDLE RootHandle, UNICODE_STRING *FilePath, ULONG *pulFileAttributes);
 NTSTATUS GetFileAttributes_W(HANDLE RootHandle, PCWSTR FilePath,  ULONG *pulFileAttributes);
+NTSTATUS SetFileAttributes_W(HANDLE RootHandle, PCWSTR FilePath,  ULONG ulFileAttributes);
 #ifdef _NTIFS_
 NTSTATUS GetFileDateTime_U(HANDLE RootHandle, UNICODE_STRING *FilePath, FILE_BASIC_INFORMATION *pbi);
 NTSTATUS GetFileDateTime(HANDLE RootHandle, PCWSTR FilePath, FILE_BASIC_INFORMATION *pfbi);

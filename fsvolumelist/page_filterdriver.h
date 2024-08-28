@@ -174,6 +174,11 @@ public:
 
 			SetProp(hwndList,L"SortItem",&m_Sort);
 
+#if _ENABLE_DARK_MODE_TEST
+			if( _IsDarkModeEnabled() )
+				InitDarkModeListView(hwndList);
+#endif
+
 			// Save current list-view handle
 			m_hWndList = hwndList;
 		}
@@ -246,6 +251,8 @@ public:
 				return OnColumnClick(pnmhdr);
 			case LVN_GETEMPTYMARKUP:
 				return OnGetEmptyMarkup(pnmhdr);
+			case LVN_KEYDOWN:
+				return OnKeyDown(pnmhdr);
 			case NM_SETFOCUS:
 				return OnNmSetFocus(pnmhdr);
 		}
@@ -275,6 +282,32 @@ public:
 			return TRUE;
 		}
 		return FALSE;
+	}
+
+	LRESULT OnKeyDown(NMHDR *pnmhdr)
+	{
+		NMLVKEYDOWN *pnmkd = (NMLVKEYDOWN *)pnmhdr;
+
+		if( pnmkd->wVKey == VK_SPACE || pnmkd->wVKey == VK_RETURN)
+		{
+			int iGroup = (int)ListView_GetFocusedGroup(pnmkd->hdr.hwndFrom);
+			if( iGroup != -1 )
+			{
+				LVGROUP lvg = {0};
+				lvg.cbSize = sizeof(lvg);
+				lvg.mask = LVGF_GROUPID|LVGF_STATE;
+				ListView_GetGroupInfoByIndex(pnmkd->hdr.hwndFrom,iGroup,&lvg);
+
+				lvg.state = ListView_GetGroupState(pnmkd->hdr.hwndFrom,lvg.iGroupId,LVGS_COLLAPSED|LVGS_COLLAPSIBLE);
+
+				lvg.mask = LVGF_STATE;
+				lvg.state ^= LVGS_COLLAPSED;
+				lvg.stateMask = LVGS_COLLAPSED;
+				ListView_SetGroupInfo(pnmkd->hdr.hwndFrom,lvg.iGroupId,&lvg);
+			}
+		}
+		
+		return 0;
 	}
 
 	LRESULT OnColumnClick(NMHDR *pnmhdr)
@@ -881,8 +914,11 @@ public:
 			case ID_EDIT_FIND:
 			case ID_EDIT_FIND_NEXT:
 			case ID_EDIT_FIND_PREVIOUS:
+			case ID_OPEN_URL:
 				*State = UPDUI_ENABLED;
 				return S_OK;
+			case ID_VIEW_TOGGLE_GROUPVIEWMODE:
+				return S_OK; // Depends on the state of the menu item.
 		}
 		return S_FALSE;
 	}

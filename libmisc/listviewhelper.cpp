@@ -169,6 +169,87 @@ DrawListViewColumnMeter(
 		DeleteObject(hbr);
 		DeleteObject(hbrBack);
 	}
+	else if( fMeterStyle == 2 )
+	{
+		//
+		// draw fill meter style
+		//
+		COLORREF crMeter = RGB(120,190,250);
+		HBRUSH hbr = CreateSolidBrush( crMeter );
+
+		HDC hdcMem1 = CreateCompatibleDC(hdc);
+		HDC hdcMem2 = CreateCompatibleDC(hdc);
+		HBITMAP hbmp1 = CreateCompatibleBitmap(hdc,_RECT_WIDTH(rcMeter),_RECT_HIGHT(rcMeter));
+		HBITMAP hbmp2 = CreateCompatibleBitmap(hdc,_RECT_WIDTH(rcMeter),_RECT_HIGHT(rcMeter));
+		HBITMAP hbmpOld1 = (HBITMAP)::SelectObject(hdcMem1,hbmp1);
+		HBITMAP hbmpOld2 = (HBITMAP)::SelectObject(hdcMem2,hbmp2);
+
+		RECT box;
+		box.left   = 0;
+		box.top    = 0;
+		box.right  = _RECT_WIDTH(rcMeter);
+		box.bottom = _RECT_HIGHT(rcMeter);
+
+		FrameRect(hdcMem1,&box,hbr);
+		FillRect(hdcMem2,&box,hbr);
+
+		WCHAR sz[MAX_PATH];
+
+		ListView_GetItemText(hWndList,iItem,iMeterColumn,sz,_countof(sz));
+
+		RECT rcText = box;
+		rcText.right -= 2;
+
+		HFONT hFont;
+		if( hTextFont )
+			hFont = hTextFont;
+		else
+			hFont = (HFONT)SendMessage(hWndList,WM_GETFONT,0,0);
+
+		HFONT hfontOld;
+		hfontOld = (HFONT)SelectObject(hdcMem1,hFont);
+		SetTextColor(hdcMem1,RGB(255,255,255));
+		SetBkMode(hdcMem1,TRANSPARENT);
+		DrawText(hdcMem1,sz,-1,&rcText,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+		SelectObject(hdcMem1,hfontOld);
+
+		hfontOld = (HFONT)SelectObject(hdcMem2,hFont);
+		SetTextColor(hdcMem2,RGB(33,33,33));
+		SetBkMode(hdcMem2,TRANSPARENT);
+		DrawText(hdcMem2,sz,-1,&rcText,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+		SelectObject(hdcMem2,hfontOld);
+
+		//
+		// BitBit meter parts bitmap
+		//
+
+		// base
+		BitBlt(hdc,
+			rcMeter.left,
+			rcMeter.top,
+			_RECT_WIDTH(rcMeter),
+			_RECT_HIGHT(rcMeter),
+			hdcMem1,0,0,SRCCOPY);
+
+		// color level
+		rcMeter.right = rcMeter.left + (int)width;
+		BitBlt(hdc,
+			rcMeter.left,
+			rcMeter.top,
+			_RECT_WIDTH(rcMeter),
+			_RECT_HIGHT(rcMeter),
+			hdcMem2,0,0,SRCCOPY);
+
+		SelectObject(hdcMem1,hbmpOld1);
+		SelectObject(hdcMem2,hbmpOld2);
+
+		DeleteObject(hbmp1);
+		DeleteObject(hbmp2);
+
+		DeleteDC(hdcMem1);
+		DeleteDC(hdcMem2);
+		DeleteObject(hbr);
+	}
 	else
 	{
 		//

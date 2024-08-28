@@ -108,7 +108,7 @@ public:
 	{
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 
-                              WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | LVS_REPORT | LVS_SHOWSELALWAYS,
+                              WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS,
                               0,0,0,0,
                               m_hWnd,
                               (HMENU)0,
@@ -127,6 +127,11 @@ public:
 		}
 
 		ListViewEx_SetTrickColumnZero(m_hWndList,FALSE);
+
+#if _ENABLE_DARK_MODE_TEST
+		if( _IsDarkModeEnabled() )
+			InitDarkModeListView(m_hWndList);
+#endif
 
 		RECT rc;
 		GetClientRect(m_hWnd,&rc);
@@ -186,13 +191,17 @@ public:
 		CPhysicalDriveItem *pItem = (CPhysicalDriveItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 
 		HMENU hMenu = CreatePopupMenu();
-		AppendMenu(hMenu,MF_STRING,ID_PHYSICALDRIVEINFORMATION,L"Open &Information");
-		AppendMenu(hMenu,MF_STRING,ID_DRIVELAYOUT,L"Open Drive &Layout");
-		AppendMenu(hMenu,MF_STRING,0,0);
-		AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Sector &Dump");
-		AppendMenu(hMenu,MF_STRING,0,0);
-		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
-		SetMenuDefaultItem(hMenu,ID_PHYSICALDRIVEINFORMATION,FALSE);
+
+		if( SendMessage(GetActiveWindow(),PM_MAKECONTEXTMENU,MAKEWPARAM(VOLUME_CONSOLE_PHYSICALDRIVELIST,0),(LPARAM)hMenu) == 0 )
+		{
+			AppendMenu(hMenu,MF_STRING,ID_PHYSICALDRIVEINFORMATION,L"Open &Information");
+			AppendMenu(hMenu,MF_STRING,ID_DRIVELAYOUT,L"Open Drive &Layout");
+			AppendMenu(hMenu,MF_STRING,0,0);
+			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Sector &Dump");
+			AppendMenu(hMenu,MF_STRING,0,0);
+			AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
+			SetMenuDefaultItem(hMenu,ID_PHYSICALDRIVEINFORMATION,FALSE);
+		}
 
 		POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 		ListViewEx_SimpleContextMenuHandler(NULL,m_hWndList,(HWND)wParam,hMenu,pt,0);
@@ -258,7 +267,11 @@ public:
 				if( pItem->DriveInfo->pDeviceDescriptor->BusType == BusTypeVirtual ||
 				    pItem->DriveInfo->pDeviceDescriptor->BusType == BusTypeFileBackedVirtual )
 				{
+#if _ENABLE_DARK_MODE_TEST
+					pnmlvcd->clrText = _IsDarkModeEnabled() ? RGB(153,217,234) : _COLOR_TEXT_VIRTUALDISK;
+#else
 					pnmlvcd->clrText = _COLOR_TEXT_VIRTUALDISK;
+#endif
 				}
 			} 
 			SelectObject(pnmlvcd->nmcd.hdc,m_hFont);
@@ -653,10 +666,13 @@ public:
 		pItem->DriveDevice = _MemAllocString(name.DevicePath);
 		pItem->DriveNumber = dwDriveNumber;
 
-		pItem->DeviceDescriptor.VendorId = GetDeviceDescriptorString(diVendorId,info->pDeviceDescriptor);
-		pItem->DeviceDescriptor.ProductId = GetDeviceDescriptorString(diProductId,info->pDeviceDescriptor);
-		pItem->DeviceDescriptor.SerialNumber =  GetDeviceDescriptorString(diSerialNumber,info->pDeviceDescriptor);
-		pItem->DeviceDescriptor.ProductRevision = GetDeviceDescriptorString(diProductRevision,info->pDeviceDescriptor);
+		if( info->pDeviceDescriptor )
+		{
+			pItem->DeviceDescriptor.VendorId = GetDeviceDescriptorString(diVendorId,info->pDeviceDescriptor);
+			pItem->DeviceDescriptor.ProductId = GetDeviceDescriptorString(diProductId,info->pDeviceDescriptor);
+			pItem->DeviceDescriptor.SerialNumber =  GetDeviceDescriptorString(diSerialNumber,info->pDeviceDescriptor);
+			pItem->DeviceDescriptor.ProductRevision = GetDeviceDescriptorString(diProductRevision,info->pDeviceDescriptor);
+		}
 
 		WCHAR szBuf[MAX_PATH];
 		GetStorageBusTypeDescString(info->pDeviceDescriptor->BusType,szBuf,MAX_PATH);

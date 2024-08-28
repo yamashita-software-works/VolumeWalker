@@ -126,3 +126,31 @@ PWSTR GetIniFilePath();
 HFONT GetGlobalFont(HWND hWnd);
 HFONT GetIconFont();
 
+//++todo:
+enum {
+    COLUMN_None=0,
+    COLUMN_Name,            /* 1 */
+    COLUMN_LastWriteTime,   /* 2 */
+    COLUMN_CreationTime,    /* 3 */
+    COLUMN_LastAccessTime,  /* 4 */
+    COLUMN_ChangeTime,      /* 5 */
+    COLUMN_EndOfFile,       /* 6 */
+    COLUMN_AllocationSize,  /* 7 */
+    COLUMN_FileAttributes,  /* 8 */
+    COLUMN_FileNameLength,  /* 9 */
+    COLUMN_EaSize,          /* 10 */
+    COLUMN_FileIndex,       /* 11 */
+    COLUMN_FileId,          /* 12 */
+    COLUMN_ShortName,       /* 13 */
+    COLUMN_Extension,       /* 14 */
+    COLUMN_Path,            /* 15 */
+    COLUMN_Lcn,             /* 16 */
+    COLUMN_Date,            /* 17 */
+    COLUMN_Reason,          /* 18 */
+    COLUMN_Usn,             /* 19 */
+    COLUMN_Frn,             /* 20 */
+    COLUMN_ParentFrn,       /* 21 */
+    COLUMN_MaxItem,
+    COLUMN_MaxCount=COLUMN_MaxItem,
+};
+//--todo:

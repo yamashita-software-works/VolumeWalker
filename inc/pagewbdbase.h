@@ -42,4 +42,9 @@ public:
 	{
 		return E_NOTIMPL;
 	}
+
+	virtual HRESULT PreTranslateMessage(MSG *pMsg)
+	{
+		return E_NOTIMPL;
+	}
 };

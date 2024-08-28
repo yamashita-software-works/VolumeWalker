@@ -5,94 +5,94 @@
 INT
 APIENTRY
 _libmisc_initialize(
-	void
-	);
+    void
+    );
 
 INT
 APIENTRY
 _libmisc_uninitialize(
-	void
-	);
+    void
+    );
 
 VOID
 APIENTRY
 _libmisc_set_resource_handle(
-	HMODULE hModule
-	);
+    HMODULE hModule
+    );
 
 VOID
 APIENTRY
 _libmisc_set_langage_id(
-	DWORD LangId
-	);
+    DWORD LangId
+    );
 
 HMODULE
 APIENTRY
 _libmisc_get_resource_handle(
-	void
-	);
+    void
+    );
 
 DWORD
 APIENTRY
 _libmisc_get_langage_id(
-	void
-	);
+    void
+    );
 
 DWORD
 APIENTRY
 _GetOSVersion(
-	void
-	);
+    void
+    );
 
 HRESULT
 WINAPI
 InitializeLibMisc(
-	HMODULE hModule,
-	DWORD LangId
-	);
+    HMODULE hModule,
+    DWORD LangId
+    );
 
 HRESULT
 WINAPI
 UninitializeLibMisc(
-	VOID
-	);
+    VOID
+    );
 
 int
 WINAPI
 _LoadStringResource(
-	UINT uStringId,
-	PTSTR *pStringPointer
-	);
+    UINT uStringId,
+    PTSTR *pStringPointer
+    );
 
 PWSTR
 WINAPI
 _AllocLoadString(
-	LPCWSTR StringId
-	);
+    LPCWSTR StringId
+    );
 
 VOID
 WINAPI
 _EnableVisualThemeStyle(
-	HWND hWnd
-	);
+    HWND hWnd
+    );
 
 SIZE
 WINAPI
 GetLogicalPixels(
-	HWND hWnd
-	);
+    HWND hWnd
+    );
 
 INT
 WINAPI
 GetLogicalPixelsX(
-	HWND hWnd
-	);
+    HWND hWnd
+    );
 
 INT
 WINAPI
 GetLogicalPixelsY(
-	HWND hWnd
-	);
+    HWND hWnd
+    );
 
 #define DPI_SIZE_CY(n)  (int)((96.0/((double)GetLogicalPixelsY(NULL))) * (double)n)
 #define DPI_SIZE_CX(n)  (int)((96.0/((double)GetLogicalPixelsX(NULL))) * (double)n)
@@ -100,127 +100,132 @@ GetLogicalPixelsY(
 int
 WINAPI
 _DPI_Adjust_X(
-	int x
-	);
+    int x
+    );
 
 int
 WINAPI
 _DPI_Adjust_Y(
-	int y
-	);
+    int y
+    );
 
 void
 WINAPI
 _DPI_Adjust_XY(
-	int *px,
-	int *py
-	);
+    int *px,
+    int *py
+    );
 
 DWORD
 WINAPI
 _GetDesktopWorkArea(
-	HWND hwnd,
-	RECT *prc
-	);
+    HWND hwnd,
+    RECT *prc
+    );
 
 BOOL
 WINAPI
 _SetProcessDPIAware(
-	VOID
-	);
+    VOID
+    );
+
+#ifndef DPI_AWARENESS_CONTEXT_UNAWARE
+#define DPI_AWARENESS_CONTEXT_UNAWARE              ((HANDLE)-1)
+#define DPI_AWARENESS_CONTEXT_SYSTEM_AWARE         ((HANDLE)-2)
+#define DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE    ((HANDLE)-3)
+#define DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 ((HANDLE)-4)
+#define DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED    ((HANDLE)-5)
+#endif
+
+BOOL
+WINAPI
+_SetProcessDpiAwarenessContext(
+    HANDLE value /* DPI_AWARENESS_CONTEXT */
+    );
+
+HANDLE /* DPI_AWARENESS_CONTEXT */
+WINAPI
+_GetDpiAwarenessContextForProcess(
+    HANDLE hProcess
+    );
 
 BOOL
 WINAPI
 _MonGetMonitorRectFromWindow(
-	HWND hWnd,
-	RECT *prcResult,
-	ULONG Flags,
-	BOOLEAN bWorkspace
-	);
+    HWND hWnd,
+    RECT *prcResult,
+    ULONG Flags,
+    BOOLEAN bWorkspace
+    );
 
 BOOL
 WINAPI
 _CenterWindow(
-	HWND hwndChild,
-	HWND hwndParent
-	);
+    HWND hwndChild,
+    HWND hwndParent
+    );
 
 LPTSTR
 WINAPI
 _CommaFormatString(
-	ULONGLONG val,
-	LPTSTR pszOut
-	);
+    ULONGLONG val,
+    LPTSTR pszOut
+    );
 
 void
 WINAPI
 _GetDateTimeString(
-	const ULONG64 DateTime,
-	LPTSTR pszText,
-	int cchTextMax
-	);
+    const ULONG64 DateTime,
+    LPTSTR pszText,
+    int cchTextMax
+    );
 
 LPTSTR
 WINAPI
 _GetDateTimeStringFromFileTime(
-	const FILETIME *DateTime,
-	LPTSTR pszText,
-	int cchTextMax
-	);
+    const FILETIME *DateTime,
+    LPTSTR pszText,
+    int cchTextMax
+    );
 
 VOID
 WINAPI
 _GetDateTimeStringEx(
-	ULONG64 DateTime,
-	LPTSTR pszText,
-	int cchTextMax,
-	LPTSTR DateFormat,
-	LPTSTR TimeFormat,
-	BOOL bDisplayAsUTC
-	);
+    ULONG64 DateTime,
+    LPTSTR pszText,
+    int cchTextMax,
+    LPTSTR DateFormat,
+    LPTSTR TimeFormat,
+    BOOL bDisplayAsUTC
+    );
 
 VOID
 WINAPI
 _GetDateTimeStringEx2(
-	ULONG64 DateTime,
-	LPTSTR pszText,
-	int cchTextMax,
-	LPTSTR DateFormat,
-	LPTSTR TimeFormat,
-	BOOL bDisplayAsUTC,
-	BOOL bMilliseconds
-	);
+    ULONG64 DateTime,
+    LPTSTR pszText,
+    int cchTextMax,
+    LPTSTR DateFormat,
+    LPTSTR TimeFormat,
+    BOOL bDisplayAsUTC,
+    BOOL bMilliseconds
+    );
 
 VOID
 WINAPI
 _GetDateTime(
-	ULONG64 DateTime,
-	LPTSTR pszText,
-	int cchTextMax
-	);
+    ULONG64 DateTime,
+    LPTSTR pszText,
+    int cchTextMax
+    );
 
 VOID
 WINAPI
 _GetDateTimeFromFileTime(
-	FILETIME *DateTime,
-	LPTSTR pszText,
-	int cchTextMax
-	);
-
-BOOL
-WINAPI
-_OpenByExplorerEx(
-	HWND hWnd,
-	LPCTSTR pszPath,
-	LPCTSTR pszCurrentDirectory,
-	BOOL bAdmin
-	);
-
-BOOL
-WINAPI
-SHFileIconInit(
-	BOOL fRestoreCache
-	);
+    FILETIME *DateTime,
+    LPTSTR pszText,
+    int cchTextMax
+    );
 
 //
 // Clipboard Helper
@@ -232,9 +237,9 @@ SHFileIconInit(
 LONG
 WINAPI
 SetClipboardTextFromListView(
-	HWND hwndLV,
-	ULONG Flags
-	);
+    HWND hwndLV,
+    ULONG Flags
+    );
 
 #define SCTEXT_ANSI      1
 #define SCTEXT_UNICODE   0
@@ -242,10 +247,10 @@ SetClipboardTextFromListView(
 LONG
 WINAPI
 SetClipboardText(
-	HWND hwndCilpboardOwner,
-	PVOID pszCopyString,
-	ULONG CodeType
-	);
+    HWND hwndCilpboardOwner,
+    PVOID pszCopyString,
+    ULONG CodeType
+    );
 
 #define SCTEXT_FORMAT_CSV          0x00000001
 #define SCTEXT_FORMAT_TSV          0x00000002
@@ -255,10 +260,10 @@ SetClipboardText(
 LONG
 WINAPI
 SetClipboardTextFromListViewColumn(
-	HWND hwndLV,
-	UINT uFormat,
-	int iColumn
-	);
+    HWND hwndLV,
+    UINT uFormat,
+    int iColumn
+    );
 
 //
 // Win32 MessageBox Helper
@@ -266,8 +271,8 @@ SetClipboardTextFromListViewColumn(
 HRESULT
 WINAPI
 SetMessageBoxCaption(
-	PCWSTR Caption
-	);
+    PCWSTR Caption
+    );
 
 #define _MB_DISABLE_CONTINUE  0x0001
 #define _MB_DISABLE_RETRY     0x0002
@@ -277,136 +282,136 @@ SetMessageBoxCaption(
 VOID
 WINAPI
 InitMessageBoxLibMisc(
-	HINSTANCE hInst,
-	PCWSTR pszCaption
-	);
+    HINSTANCE hInst,
+    PCWSTR pszCaption
+    );
 
 int
 WINAPI
 MsgBoxEx(
-	HWND hwndOwner,
-	LPCTSTR pszText,
-	LPCTSTR pszCaption,
-	UINT flags,
-	UINT idDisableButton
-	);
+    HWND hwndOwner,
+    LPCTSTR pszText,
+    LPCTSTR pszCaption,
+    UINT flags,
+    UINT idDisableButton
+    );
 
 int
 WINAPI
 MsgBox(
-	HWND hwnd,
-	LPCTSTR pszText,
-	LPCTSTR pszCaption,
-	UINT flags
-	);
+    HWND hwnd,
+    LPCTSTR pszText,
+    LPCTSTR pszCaption,
+    UINT flags
+    );
 
 int
 WINAPI
 MsgBox(
-	HWND hwnd,
-	LPCTSTR pszText,
-	UINT flags
-	);
+    HWND hwnd,
+    LPCTSTR pszText,
+    UINT flags
+    );
 
 int
 WINAPI
 MsgBox(
-	HWND hwnd,
-	UINT idString,
-	UINT flags
-	);
+    HWND hwnd,
+    UINT idString,
+    UINT flags
+    );
 
 int
 WINAPI
 MsgBox(
-	HWND hwnd,
-	UINT idString,
-	UINT idCaption,
-	UINT flags
-	);
+    HWND hwnd,
+    UINT idString,
+    UINT idCaption,
+    UINT flags
+    );
 
 int
 WINAPI
 MsgBoxIcon(
-	HWND hwndOwner,
-	LPCTSTR pszText,
-	LPCTSTR pszCaption,
-	UINT flags,
-	UINT idDisableButton,
-	HINSTANCE hInstance,
-	LPCWSTR lpszIcon
-	);
+    HWND hwndOwner,
+    LPCTSTR pszText,
+    LPCTSTR pszCaption,
+    UINT flags,
+    UINT idDisableButton,
+    HINSTANCE hInstance,
+    LPCWSTR lpszIcon
+    );
 
 EXTERN_C
 int
 WINAPI
 _ErrorMessageBox(
-	HWND hWnd,
-	UINT_PTR idString,
-	PCWSTR pszFile,
-	ULONG Status,
-	ULONG Flags
-	);
+    HWND hWnd,
+    UINT_PTR idString,
+    PCWSTR pszFile,
+    ULONG Status,
+    ULONG Flags
+    );
 
 EXTERN_C
 int
 WINAPI
 _ErrorMessageBoxEx(
-	HWND hWnd,
-	UINT_PTR idString,
-	PCWSTR pszCaption,
-	PCWSTR pszFile,
-	ULONG Status,
-	ULONG Flags
-	);
+    HWND hWnd,
+    UINT_PTR idString,
+    PCWSTR pszCaption,
+    PCWSTR pszFile,
+    ULONG Status,
+    ULONG Flags
+    );
 
 EXTERN_C
 int
 WINAPI
 _ErrorMessageBoxEx2(
-	HWND hWnd,
-	PCWSTR pszLayout,
-	PCWSTR pszCaption,
-	PCWSTR pszMessage,
-	PCWSTR pszReserved,
-	ULONG Status,
-	ULONG FormatFlags,
-	ULONG Flags
-	);
+    HWND hWnd,
+    PCWSTR pszLayout,
+    PCWSTR pszCaption,
+    PCWSTR pszMessage,
+    PCWSTR pszReserved,
+    ULONG Status,
+    ULONG FormatFlags,
+    ULONG Flags
+    );
 
 EXTERN_C
 INT
 CDECL
 _ErrorPrintfMessageBox(
-	HWND hwndOwner,
-	LPCWSTR Title,
-	LPCWSTR LayoutString,
-	LONG code,
-	UINT uType,
-	LPCWSTR FormatMessage,
-	...
-	);
+    HWND hwndOwner,
+    LPCWSTR Title,
+    LPCWSTR LayoutString,
+    LONG code,
+    UINT uType,
+    LPCWSTR FormatMessage,
+    ...
+    );
 
 //
 // System Error Message Helper
 //
 int
 _GetSystemErrorMessage(
-	ULONG ErrorCode,
-	PWSTR *ppMessage
-	);
+    ULONG ErrorCode,
+    PWSTR *ppMessage
+    );
 
 int
 _GetSystemErrorMessageEx(
-	ULONG ErrorCode,
-	PWSTR *ppMessage,
-	DWORD dwLanguageId
-	);
+    ULONG ErrorCode,
+    PWSTR *ppMessage,
+    DWORD dwLanguageId
+    );
 
 void
 _FreeSystemErrorMessage(
-	PWSTR pMessage
-	);
+    PWSTR pMessage
+    );
 
 //
 // Placeholder Compatibility Mode Funcsion
@@ -422,8 +427,8 @@ EXTERN_C
 CHAR
 WINAPI
 SetProcessPlaceholderCompatibilityMode(
-	CHAR Mode
-	);
+    CHAR Mode
+    );
 
 //
 // RECT Helper
@@ -448,57 +453,165 @@ inline void SetRedraw(HWND h,BOOL f) { SendMessage(h,WM_SETREDRAW,(WPARAM)f,0); 
 //
 INT
 StringFindNumber(
-	PCWSTR psz
-	);
+    PCWSTR psz
+    );
 
 //
 // ListView Helper
 //
 UINT
 ListViewEx_SimpleContextMenuHandler(
-	HWND hWnd,
-	HWND hWndList,
-	HWND hwndRightClicked, // Reserved
-	HMENU hMenu,
-	POINT point,
-	UINT uFlags
-	);
+    HWND hWnd,
+    HWND hWndList,
+    HWND hwndRightClicked, // Reserved
+    HMENU hMenu,
+    POINT point,
+    UINT uFlags
+    );
 
 VOID
 DrawListViewColumnMeter(
-	HDC hdc,
-	HWND hWndList,
-	int iItem,
-	int iMeterColumn,
-	RECT *prcRect,   // Reserved
-	HFONT hTextFont, // Optional
-	double DiskUsage,
-	UINT fMeterStyle
-	);
+    HDC hdc,
+    HWND hWndList,
+    int iItem,
+    int iMeterColumn,
+    RECT *prcRect,   // Reserved
+    HFONT hTextFont, // Optional
+    double DiskUsage,
+    UINT fMeterStyle
+    );
 
 VOID
 DrawFocusFrame(
-	HWND hWnd,
-	HDC hdc,
-	RECT *prc,
-	BOOL bDrawFocus,
-	COLORREF crActiveFrame
-	);
+    HWND hWnd,
+    HDC hdc,
+    RECT *prc,
+    BOOL bDrawFocus,
+    COLORREF crActiveFrame
+    );
 
 // Make GUID string without brackets
 inline VOID GUIDStringRemoveBrackets(WCHAR *pszGuid) { 
-	memmove(pszGuid,&pszGuid[1],sizeof(WCHAR)*36);
-	pszGuid[36] = L'\0';
+    memmove(pszGuid,&pszGuid[1],sizeof(WCHAR)*36);
+    pszGuid[36] = L'\0';
 }
 
 // Task allocator helper
 inline PWSTR _CoTaskMemStrDup(PCWSTR psz) {
-	SIZE_T cch = wcslen(psz) + 1;
-	PWSTR pszNew = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
-	if( pszNew )
-		wcscpy_s(pszNew,cch,psz);
-	return pszNew;
+    SIZE_T cch = wcslen(psz) + 1;
+    PWSTR pszNew = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
+    if( pszNew )
+        wcscpy_s(pszNew,cch,psz);
+    return pszNew;
 }
 
+inline void WINAPI DoMessage(HWND hWnd=NULL) {
+    MSG msg;
+    while( PeekMessage(&msg,hWnd,0,0,PM_REMOVE) )
+    {
+        DispatchMessage(&msg);
+    }
+}
+
+inline void WINAPI DoMessageSwitchThread(HWND hWnd=NULL) {
+    MSG msg;
+    while( PeekMessage(&msg,hWnd,0,0,PM_REMOVE) )
+    {
+        SwitchToThread();
+        DispatchMessage(&msg);
+    }
+}
+
+inline void WINAPI DoMessageSleep(HWND hWnd=NULL,DWORD dwMilliseconds=0) {
+    DWORD dwResult;
+    for(;;)
+    {
+        dwResult = MsgWaitForMultipleObjects(0,NULL,FALSE,dwMilliseconds,QS_ALLEVENTS);
+
+        if( WAIT_TIMEOUT == dwResult )
+        {
+            break;			
+        }
+        else if( (int)dwResult <= (int)WAIT_OBJECT_0 )
+        {
+            MSG msg;
+            while( PeekMessage(&msg,hWnd,0,0,PM_REMOVE) )
+            {
+                DispatchMessage(&msg);
+            }
+        }
+        else if( WAIT_ABANDONED_0 == dwResult )
+        {
+            break;			
+        }
+    }
+}
+
+inline int GetTextParcent()
+{
+    //ex)
+    //100%
+    //125%
+    //150%
+    HDC hdc;
+    hdc = GetWindowDC(NULL);
+    int per = (int)(100.0 * ((double)GetDeviceCaps(hdc,LOGPIXELSX) / 96.0));
+    ReleaseDC(NULL,hdc);
+    return per;
+}
+
+//
+// Task allocator helper
+//
 #define _CoTaskSafeMemFree(p) if(p) { CoTaskMemFree(p); p = NULL; }
+
+//
+// libwin32ctrl.lib
+//
+void InitLongPathBox(HMODULE hModule);
+
+//
+// Shell Helper
+//
+BOOL
+WINAPI
+SHFileIconInit(
+    BOOL fRestoreCache
+    );
+
+EXTERN_C
+LONG
+WINAPI
+GetPathFromAppPaths(
+    PCWSTR pszName,
+    PWSTR pszPath,
+    DWORD cchPath,
+    BOOL bExpand,
+    PWSTR pszStartupDir,
+    DWORD cchStartupDir,
+    BOOL bExpandStartupDir
+    );
+
+BOOL
+WINAPI
+_OpenByExplorerEx(
+    HWND hWnd,
+    LPCTSTR pszPath,
+    LPCTSTR pszCurrentDirectory,
+    BOOL bAdmin
+    );
+
+EXTERN_C
+HRESULT
+WINAPI
+OpenTerminal(
+	HWND hwndOwner,
+	PCWSTR pszPath
+	);
+
+BOOL
+GetBashExePath(
+	LPTSTR szBashPath,
+	UINT bufSize
+	);
 

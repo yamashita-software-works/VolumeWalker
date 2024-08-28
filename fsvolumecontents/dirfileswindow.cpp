@@ -157,11 +157,6 @@ public:
 		return 0;
 	}
 
-	LRESULT OnQueryMessage(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
-	{
-		return 0;
-	}
-
 	virtual LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		switch(uMsg)
@@ -188,8 +183,6 @@ public:
 				return OnControlMessage(hWnd,uMsg,wParam,lParam);
 			case WM_NOTIFY_MESSAGE:
 				return OnNotifyMessage(hWnd,uMsg,wParam,lParam);
-			case WM_QUERY_MESSAGE:
-				return OnQueryMessage(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
 				if( m_pView )
 					return SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam); // forward to current view
@@ -246,18 +239,20 @@ public:
 		{
 			PWSTR pszPath = _MemAllocString(pFile->pszCurDir);
 			PWSTR pszName = _MemAllocString( FindFileName_W(pszPath) );
+			if( pszPath && pszName && *pszPath != L'\0' && *pszName != L'\0' )
+			{
+				RemoveFileSpec_W(pszPath);
 
-			RemoveFileSpec_W(pszPath);
+				SELECT_ITEM sel = {0};
+				sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
+				sel.pszCurDir = pszPath;
+				sel.pszPath   = pszPath;
+				sel.pszName   = pszName;
+				m_pView->SelectView(&sel);
 
-			SELECT_ITEM sel = {0};
-			sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
-			sel.pszCurDir = pszPath;
-			sel.pszPath   = pszPath;
-			sel.pszName   = pszName;
-			m_pView->SelectView(&sel);
-
-			_SafeMemFree(pszPath);
-			_SafeMemFree(pszName);
+				_SafeMemFree(pszPath);
+				_SafeMemFree(pszName);
+			}
 		}
 		else
 		{
@@ -286,8 +281,9 @@ public:
 	VOID OnUpDir()
 	{
 		LRESULT lResult;
-		WCHAR szDirPath[MAX_PATH];
-		lResult = SendMessage(m_pView->GetHWND(),PM_GETCURDIR,MAX_PATH,(LPARAM)szDirPath);
+		CStringBuffer szDirPath(32768+260);
+
+		lResult = SendMessage(m_pView->GetHWND(),PM_GETCURDIR,szDirPath.GetBufferSize(),(LPARAM)szDirPath.c_str());
 
 		if( lResult == 1 )
 		{
@@ -383,7 +379,7 @@ public:
 		else
 			pszPath = DosPathNameToNtPathName(pszDirectoryPath);
 
-		if( PathFileExists_W(pszPath,NULL) )
+		if( pszPath && PathFileExists_W(pszPath,NULL) )
 		{
 			InitData(NULL);
 

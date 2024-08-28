@@ -45,22 +45,6 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 	return TRUE;
 }
 
-EXTERN_C
-HWND
-WINAPI
-CreateVolumeContentsBrowserWindow(
-	HWND hwnd,
-	UINT ConsoleId
-	)
-{
-	if( ConsoleId == VOUUME_CONSOLE_CHANGE_JOURNAL )
-	{
-		return CreateChangeJournalWindow(hwnd);
-	}
-
-	return CreateDirectoryFilesWindow(hwnd);
-}
-
 //////////////////////////////////////////////////////////////////////////////
 
 static HIMAGELIST m_himl = NULL;
@@ -169,7 +153,7 @@ HICON SetWindowIcon(HWND hWnd,SHSTOCKICONID ssii)
 
 PWSTR GetIniFilePath()
 {
-	return L""; // todo: reserved, feacher not implement.
+	return NULL; //L""; // todo: reserved, feacher not implement.
 }
 
 HFONT GetGlobalFont(HWND hWnd)
@@ -192,4 +176,22 @@ HFONT GetIconFont()
 	SystemParametersInfo(SPI_GETICONTITLELOGFONT,sizeof(LOGFONT),&lf,0);
 	hFontIcon = CreateFontIndirect(&lf);
 	return hFontIcon;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+EXTERN_C
+HWND
+WINAPI
+CreateVolumeContentsBrowserWindow(
+	HWND hwnd,
+	UINT ConsoleId
+	)
+{
+	if( ConsoleId == VOUUME_CONSOLE_CHANGE_JOURNAL )
+	{
+		return CreateChangeJournalWindow(hwnd);
+	}
+
+	return CreateDirectoryFilesWindow(hwnd);
 }

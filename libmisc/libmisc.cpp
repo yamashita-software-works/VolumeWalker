@@ -209,6 +209,54 @@ BOOL WINAPI _SetProcessDPIAware()
     return bSuccess;
 }
 
+BOOL WINAPI _SetProcessDpiAwarenessContext(HANDLE value /* DPI_AWARENESS_CONTEXT */ )
+{
+    BOOL bSuccess = FALSE;
+
+    HINSTANCE h;
+    h = LoadLibrary( _T("USER32.dll") );
+
+    if( h )
+    {
+        BOOL (WINAPI*pfnSetProcessDpiAwarenessContext)(HANDLE);
+
+        (FARPROC&)pfnSetProcessDpiAwarenessContext = GetProcAddress( h, "SetProcessDpiAwarenessContext" );
+
+        if( pfnSetProcessDpiAwarenessContext )
+        {
+            bSuccess = pfnSetProcessDpiAwarenessContext(value);
+        }
+
+        FreeLibrary( h );
+    }
+    
+    return bSuccess;
+}
+
+HANDLE WINAPI _GetProcessDpiAwarenessContext(HANDLE hProcess)
+{
+    HANDLE handle = NULL;
+
+    HINSTANCE h;
+    h = LoadLibrary( _T("USER32.dll") );
+
+    if( h )
+    {
+        HANDLE (WINAPI*pfnGetProcessDpiAwarenessContext)(HANDLE);
+
+        (FARPROC&)pfnGetProcessDpiAwarenessContext = GetProcAddress( h, "GetProcessDpiAwarenessContext" );
+
+        if( pfnGetProcessDpiAwarenessContext )
+        {
+            handle = pfnGetProcessDpiAwarenessContext(hProcess);
+        }
+
+        FreeLibrary( h );
+    }
+    
+    return handle;
+}
+
 int WINAPI _DPI_Adjust_X(int x)
 {
     HDC hdc = GetDC(NULL);
@@ -519,70 +567,7 @@ VOID WINAPI _GetDateTimeFromFileTime(FILETIME *DateTime,LPTSTR pszText,int cchTe
 }
 
 //
-// Win32 Shell API Helper
-//
-BOOL
-WINAPI
-SHFileIconInit(
-    BOOL fRestoreCache
-    )
-{
-    BOOL bResult = FALSE;
-    static BOOL (WINAPI *pfnFileIconInit)(BOOL fRestoreCache) = NULL;
-    HMODULE hModule = LoadLibrary(L"SHELL32");
-
-    if( hModule )
-    {
-        (FARPROC&)pfnFileIconInit = GetProcAddress(hModule,(LPCSTR)660);
-        if( pfnFileIconInit )
-            bResult = pfnFileIconInit(fRestoreCache);
-        FreeLibrary(hModule);
-    }
-    return bResult;
-}
-
-BOOL
-WINAPI
-_OpenByExplorerEx(
-    HWND hWnd,
-    LPCTSTR pszPath,
-    LPCTSTR pszCurrentDirectory,
-    BOOL bAdmin
-    )
-{
-    BOOL bSuccess;
-    if( bAdmin )
-    {
-        // effective for .exe file only.
-        SHELLEXECUTEINFO sei = {0};
-        sei.cbSize = sizeof(sei);
-        sei.fMask = 0;
-        sei.lpFile = pszPath;
-        sei.lpDirectory = pszCurrentDirectory;
-        sei.lpParameters = NULL;
-        sei.lpVerb = L"runas";
-        sei.nShow  = SW_SHOWNORMAL;
-        bSuccess = ShellExecuteEx( &sei );
-    }
-    else
-    {
-		LPITEMIDLIST pidl = ILCreateFromPath(pszPath);
-        SHELLEXECUTEINFO sei = {0};
-        sei.cbSize = sizeof(sei);
-        sei.fMask = SEE_MASK_IDLIST;
-		sei.lpIDList = pidl;
-        sei.lpDirectory = pszCurrentDirectory;
-        sei.lpParameters = NULL;
-        sei.lpVerb = L"open";
-        sei.nShow  = SW_SHOWNORMAL;
-        bSuccess = ShellExecuteEx( &sei );
-		ILFree(pidl);
-    }
-    return bSuccess;
-}
-
-//
-// Placeholder Compatibility Mode Funcsion
+// Placeholder Compatibility Mode Function
 //
 EXTERN_C
 CHAR

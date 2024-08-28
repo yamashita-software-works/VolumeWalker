@@ -727,40 +727,49 @@ BOOLEAN GetVolumeName_U(UNICODE_STRING *pusFullyQualifiedPath)
 
 BOOLEAN PathFileExists_U(UNICODE_STRING *pusPath,ULONG *FileAttributes)
 {
+	NTSTATUS Status;
     OBJECT_ATTRIBUTES oa = {0};
     FILE_NETWORK_OPEN_INFORMATION fi = {0};
 
     InitializeObjectAttributes(&oa,pusPath,0,0,0);
 
-    if( NtQueryFullAttributesFile(&oa,&fi) == STATUS_SUCCESS )
+    if( (Status = NtQueryFullAttributesFile(&oa,&fi)) == STATUS_SUCCESS )
     {
         if( FileAttributes )
             *FileAttributes = fi.FileAttributes;
         return TRUE;
     }
+
+	_SetLastStatusDos( Status );
+
     return FALSE;
 }
 
 BOOLEAN PathFileExists_UEx(HANDLE hParentDir,UNICODE_STRING *pusPath,ULONG *FileAttributes)
 {
+	NTSTATUS Status;
     OBJECT_ATTRIBUTES oa = {0};
     FILE_NETWORK_OPEN_INFORMATION fi = {0};
 
     InitializeObjectAttributes(&oa,pusPath,0,hParentDir,0);
 
-    if( NtQueryFullAttributesFile(&oa,&fi) == STATUS_SUCCESS )
+    if( (Status = NtQueryFullAttributesFile(&oa,&fi)) == STATUS_SUCCESS )
     {
         if( FileAttributes )
             *FileAttributes = fi.FileAttributes;
         return TRUE;
     }
+
+	_SetLastStatusDos( Status );
+
     return FALSE;
 }
 
 BOOLEAN PathFileExists_W(PCWSTR pszPath,ULONG *FileAttributes)
 {
     SIZE_T cch = wcslen(pszPath);
-    if( cch < 32767 )
+//  if( cch < 32767 ) // STATUS_NAME_TOO_LONG
+    if( cch < 32767-24 ) // -22 NG
     {
         UNICODE_STRING usPath;
         RtlInitUnicodeString(&usPath,pszPath);
@@ -768,7 +777,7 @@ BOOLEAN PathFileExists_W(PCWSTR pszPath,ULONG *FileAttributes)
     }
     else
     {
-        BOOLEAN Result = FALSE;
+        BOOLEAN bSucceeded = FALSE;
         PWSTR pR=NULL,pP=NULL;
 
         SplitRootPath_W(pszPath,&pR,NULL,&pP,NULL);
@@ -781,12 +790,14 @@ BOOLEAN PathFileExists_W(PCWSTR pszPath,ULONG *FileAttributes)
 
         UNICODE_STRING usPath;
         RtlInitUnicodeString(&usPath,pP);
-        Result = PathFileExists_UEx(hRoot,&usPath,FileAttributes);
+        bSucceeded = PathFileExists_UEx(hRoot,&usPath,FileAttributes);
+		ULONG Win32Error = RtlGetLastWin32Error();
         NtClose(hRoot);
         FreeMemory(pR);
         FreeMemory(pP);
+		RtlSetLastWin32Error(Win32Error);
 
-        return Result;
+        return bSucceeded;
     }
 }
 

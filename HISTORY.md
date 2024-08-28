@@ -1,3 +1,37 @@
+### 0.1.12.0
+
+- VolumesとMS-DOS Drivesの\[Usage Rate\]列の名称を\[Usage %\]に変更。
+
+- MS-DOS DrivesからContents Browser - Filesを開く場合、NTデバイス名ではなくドライブ名を使用する様に変更。
+
+- MS-DOS Drivesでボリューム容量が0(CD Audioの様な)の場合、Usage%が誤って表示される不具合を修正。
+
+- VolumesとMS-DOS Drivesに Open Locationコマンドを追加。  
+  Explorer,Terminal,PowerShell,Prompt,Bashの選択を用意。
+
+- グループビューが有効のウィンドウ（Volume/Drive Information,Storage Devices,Minifilter Driver)で、グループ項目にフォーカスを置いた時にSpace,Enterキーでグループを開閉できる様にした。
+
+- SimpleHexDumpでCD Audioを読み込んだ時の挙動を修正。
+
+- SimpleHexDumpのツールバーの挙動を整理。
+
+- Contents Browser - Files
+  32767文字パス(16383階層)のディレクトリから上のディレクトリに移動した際、誤った位置に移動してしまう不具合を修正。
+
+- Contents Browser - Files
+  以下の列にドロップダウンボタンを設けて列の表示内容を変更できるようにした。   
+   \[Attributes\]   
+   \[Size\]   
+   \[Allocation Size\]   
+   \[Date\]   
+   \[Creation Time\]   
+   \[Last Access Time\]   
+   \[Change Time\]   
+
+- Contents Browser - Files のGotoコマンドで"."を入力するとタイトルバーにテキストが表示されなくなり、構成保存が有効な場合 iniファイルに不正なパスが保存されて次回起動時にエラーになることがある不具合を修正。
+
+- Contents Browser - Change Journal Viewer のコンテキストメニューが無効化のままだった不具合を修正。
+
 ### 0.1.11.0
 
 - Volume Information,Disk Drive Information ウィンドウで、ウィンドウ内テキスト検索をした時に、一致したテキストが含まれる行を降順（または昇順）に正しく選択しない不具合を修正。

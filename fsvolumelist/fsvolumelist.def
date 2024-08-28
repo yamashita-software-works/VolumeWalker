@@ -3,3 +3,4 @@ LIBRARY "fsvolumelist"
 EXPORTS
 	CreateVolumeConsoleWindow
 	GetDeviceClassIcon
+	InitializeVolumeConsole

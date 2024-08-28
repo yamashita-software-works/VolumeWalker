@@ -2,7 +2,7 @@
 //
 //  find.cpp
 //
-//  Implements the "Find" common dialogs wrapper functions.
+//  Implements the simple "Find" common dialogs wrapper functions.
 //
 //  Auther: YAMASHITA Katsuhiro
 //
@@ -30,6 +30,11 @@ VOID FindText_Initialize()
 	g_uFindMessage = RegisterWindowMessage(FINDMSGSTRING);
 }
 
+VOID FindText_Uninitialize()
+{
+	_SafeMemFree(g_pszFindText);
+}
+
 UINT_PTR
 CALLBACK
 FRHookProc(
@@ -48,12 +53,12 @@ FRHookProc(
 	return 0;
 }
 
-LRESULT OnFindText_CommandHandler(HWND hwndOwner,HWND hwndTarget,UINT CmdId)
+LRESULT OnFindText_CommandHandler(HWND hwndOwner,HWND hwndTarget,FINDACTION CmdId)
 {
 	if( hwndTarget == NULL )
 		hwndTarget = hwndOwner;
 
-	if( ID_EDIT_FIND == CmdId )
+	if( Find_Start == CmdId )
 	{
 		SendMessage(hwndTarget,PM_FINDITEM,FIND_QUERYOPENDIALOG,(LPARAM)0);
 
@@ -78,7 +83,7 @@ LRESULT OnFindText_CommandHandler(HWND hwndOwner,HWND hwndTarget,UINT CmdId)
 
 		g_hwndFindDialog = FindText(&g_fr);
 	}
-	else if( ID_EDIT_FIND_NEXT == CmdId || ID_EDIT_FIND_PREVIOUS == CmdId )
+	else if( Find_Next == CmdId || Find_Previous == CmdId )
 	{
 		if( g_pszFindText && *g_pszFindText != 0 )
 		{
@@ -90,7 +95,7 @@ LRESULT OnFindText_CommandHandler(HWND hwndOwner,HWND hwndTarget,UINT CmdId)
 			else
 			{
 				g_fr.Flags &= ~FR_DOWN;
-				g_fr.Flags |= (ID_EDIT_FIND_NEXT == CmdId) ? FR_DOWN : 0;
+				g_fr.Flags |= (Find_Next == CmdId) ? FR_DOWN : 0;
 				SendMessage(hwndTarget,PM_FINDITEM,FIND_SEARCH_NEXT,(LPARAM)&g_fr);
 			}
 		}

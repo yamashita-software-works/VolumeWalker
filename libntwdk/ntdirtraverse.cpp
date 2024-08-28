@@ -278,7 +278,7 @@ static NTSTATUS callbackFile(UNICODE_STRING& usFileName,INT InfoType,PVOID pInfo
             return Status;
         }
 
-	        return pTDP->pfnCallback(FFCBR_FINDFILE,pTDP->GetFullPath(),pTDP->RefRelativeRootPtr(),&usFileName,0,InfoType,pInfoBuffer,pTDP->CallbackContext);
+	    return pTDP->pfnCallback(FFCBR_FINDFILE,pTDP->GetFullPath(),pTDP->RefRelativeRootPtr(),&usFileName,0,InfoType,pInfoBuffer,pTDP->CallbackContext);
     }
 
     return STATUS_SUCCESS;

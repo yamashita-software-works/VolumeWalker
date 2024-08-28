@@ -3,7 +3,7 @@
 //*                                                                         *
 //*  page_changejournal.h                                                   *
 //*                                                                         *
-//*  Volume Contents - Change Journal Viewr Page                            *
+//*  Volume Contents - Change Journal Viewer Page                           *
 //*                                                                         *
 //*  Author: YAMASHITA Katsuhiro                                            *
 //*                                                                         *
@@ -1027,6 +1027,12 @@ public:
 			case ID_EDIT_FIND:
 			case ID_EDIT_FIND_NEXT:
 			case ID_EDIT_FIND_PREVIOUS:
+				*puState = UPDUI_ENABLED;
+				break;
+			case ID_FILE_EXPORT_CHANGE_JOURNAL_RAW_DATA:
+				*puState = ListView_GetItemCount(m_hWndList) != 0 ?  UPDUI_ENABLED : UPDUI_DISABLED;
+				break;
+			case ID_FILE_LOAD_CHANGE_JOURNAL_RAW_DATA:
 				*puState = UPDUI_ENABLED;
 				break;
 			default:

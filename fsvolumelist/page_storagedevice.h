@@ -53,6 +53,7 @@ enum {
 	ID_GROUP_CDROM,
 	ID_GROUP_FLOPPYDISK,
 	ID_GROUP_VOLUME,
+	ID_GROUP_VOLUMESNAPSHOT,
 };
 
 class CStorageDevicePage : 
@@ -101,7 +102,7 @@ public:
 	{
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 
-                              WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | LVS_REPORT | LVS_SHOWSELALWAYS,
+                              WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS,
                               0,0,0,0,
                               m_hWnd,
                               (HMENU)0,
@@ -125,6 +126,11 @@ public:
 
 		InitGroup();
 		ListView_EnableGroupView(m_hWndList,TRUE);
+
+#if _ENABLE_DARK_MODE_TEST
+		if( _IsDarkModeEnabled() )
+			InitDarkModeListView(m_hWndList);
+#endif
 
 		RECT rc;
 		GetClientRect(m_hWnd,&rc);
@@ -181,6 +187,8 @@ public:
 				return OnItemChanged(pnmhdr);
 			case LVN_DELETEITEM:
 				return OnDeleteItem(pnmhdr);
+			case LVN_KEYDOWN:
+				return OnKeyDown(pnmhdr);
 			case LVN_ITEMACTIVATE:
 				return OnItemActivate(pnmhdr);
 			case LVN_COLUMNCLICK:
@@ -198,6 +206,32 @@ public:
 		CStorageDeviceItem *pItem = (CStorageDeviceItem *)pnmlv->lParam;
 		delete pItem;
 
+		return 0;
+	}
+
+	LRESULT OnKeyDown(NMHDR *pnmhdr)
+	{
+		NMLVKEYDOWN *pnmkd = (NMLVKEYDOWN *)pnmhdr;
+
+		if( pnmkd->wVKey == VK_SPACE || pnmkd->wVKey == VK_RETURN)
+		{
+			int iGroup = (int)ListView_GetFocusedGroup(pnmkd->hdr.hwndFrom);
+			if( iGroup != -1 )
+			{
+				LVGROUP lvg = {0};
+				lvg.cbSize = sizeof(lvg);
+				lvg.mask = LVGF_GROUPID|LVGF_STATE;
+				ListView_GetGroupInfoByIndex(pnmkd->hdr.hwndFrom,iGroup,&lvg);
+
+				lvg.state = ListView_GetGroupState(pnmkd->hdr.hwndFrom,lvg.iGroupId,LVGS_COLLAPSED|LVGS_COLLAPSIBLE);
+
+				lvg.mask = LVGF_STATE;
+				lvg.state ^= LVGS_COLLAPSED;
+				lvg.stateMask = LVGS_COLLAPSED;
+				ListView_SetGroupInfo(pnmkd->hdr.hwndFrom,lvg.iGroupId,&lvg);
+			}
+		}
+		
 		return 0;
 	}
 
@@ -472,7 +506,8 @@ public:
 			{ ID_GROUP_DISK,      &GUID_DEVCLASS_DISKDRIVE,  L"Disk Drive" },
 			{ ID_GROUP_CDROM,     &GUID_DEVCLASS_CDROM,      L"CD-ROM"  },
 			{ ID_GROUP_FLOPPYDISK,&GUID_DEVCLASS_FLOPPYDISK, L"Floppy Disk" },
-			{ ID_GROUP_VOLUME,    &GUID_DEVCLASS_VOLUME,     L"Volume" }
+			{ ID_GROUP_VOLUME,    &GUID_DEVCLASS_VOLUME,     L"Volume" },
+			{ ID_GROUP_VOLUMESNAPSHOT,&GUID_DEVCLASS_VOLUMESNAPSHOT, L"Volume Snapshot" },
 		};
 		int cGroupItem = ARRAYSIZE(Group);
 
@@ -622,7 +657,15 @@ public:
 			FreeKnownHardwareProducts(hHardwareProduct);
 		}
 #endif
-#if 0
+#if 1
+		if( GetKnownHardwareProducts(&hHardwareProduct,&GUID_DEVCLASS_VOLUMESNAPSHOT,0) )
+		{
+			EnumItems(hHardwareProduct,ID_GROUP_VOLUMESNAPSHOT);
+
+			FreeKnownHardwareProducts(hHardwareProduct);
+		}
+#endif
+#if 1
 		if( GetKnownHardwareProducts(&hHardwareProduct,&GUID_DEVCLASS_FLOPPYDISK,0) )
 		{
 			EnumItems(hHardwareProduct,ID_GROUP_FLOPPYDISK);

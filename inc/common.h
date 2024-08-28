@@ -23,15 +23,16 @@ enum {
 	UI_INIT_VIEW         =  0x1002,
 	UI_SELECT_ITEM       =  0x1003,
 	UI_SELECT_FILE       =  0x1004,
+	UI_SET_FILEPATH      =  UI_SELECT_FILE,
 	UI_SET_DIRECTORY     =  0x1005,
 	UI_CHANGE_DIRECTORY  =  0x1006,
 	UI_SET_TITLE         =  0x1007,
 	UI_SET_ICON          =  0x1008,
-	UI_SET_FILEPATH      =  0x1009,
 	UI_NOTIFY_ITEM_SELECTED     = 0x2001,
 	UI_NOTIFY_VOLUME_SELECTED   = 0x2002,
 	UI_NOTIFY_DIRECTORY_CHANGED = 0x2003,
 	UI_NOTIFY_VOLUME_CHANGED    = 0x2004,
+	UI_QUERY_CURRENTITEMNAME    = 0x3002,
 };
 
 //
@@ -49,14 +50,10 @@ typedef struct _SELECT_ITEM
 		PWSTR pszPhysicalDrive;
 		PWSTR pszStorage;
 	};
-	union {
-		UINT ViewType;  // Depends an application.
-		struct {
-			UINT View;  // Reserved
-			UINT Page;  // Reserved
-		};
-	};
 	FILE_ID_DESCRIPTOR FileId;
+	UINT ViewType;     // Depends an application.
+	PVOID Context;     // Depends an application.
+	GUID *pGuid;       // Depends an application.
 } SELECT_ITEM;
 
 #define SI_MASK_PATH     0x1
@@ -64,6 +61,10 @@ typedef struct _SELECT_ITEM
 #define SI_MASK_CURDIR   0x4
 #define SI_MASK_VIEWTYPE 0x8
 #define SI_MASK_FILEID   0x10
+#define SI_MASK_CONTEXT  0x20
+#define SI_MASK_VOLUME   0x100
+
+#define SI_FLAG_NOT_ADD_TO_HISTORY 0x1
 
 typedef struct _SELECT_OFFSET_ITEM
 {
@@ -72,6 +73,16 @@ typedef struct _SELECT_OFFSET_ITEM
 } SELECT_OFFSET_ITEM;
 
 #define SI_MASK_START_OFFSET  0x8000
+
+//
+// UI_QUERY_CURRENTITEMNAME and more String message
+//
+typedef struct _STRING_STRUCT
+{
+	ULONG Length;        // length is cb, not cch
+	ULONG MaximumLength; // length is cb, not cch
+	PWSTR Buffer;
+} STRING_STRUCT;
 
 //
 // WM_QUERY_CMDSTATE
@@ -115,9 +126,17 @@ enum {
 #define WM_MDI_CHILDFRAME_CLOSE   (PRIVATE_MESSAGE_BASE+13)
 
 //
-// WM_MDI_SAVECONFIGURATION
+// WM_GETCONSOLEVIEWID
+//
+// wParam - Pointer to UINT, ConsoleId contained.
+// lParam - Pointer to GUID, Console Guid contained.
+//
+#define WM_GETCONSOLEVIEWID  (PRIVATE_MESSAGE_BASE+16)
+
+//
+// WM_GETCONFIGURATIONINFO
 //
 // wParam -
 // lParam -
 //
-#define WM_MDI_SAVECONFIGURATION  (PRIVATE_MESSAGE_BASE+14)
+#define WM_GETCONFIGURATIONINFO  (PRIVATE_MESSAGE_BASE+17)

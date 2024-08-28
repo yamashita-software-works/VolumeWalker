@@ -8,10 +8,6 @@ BUILD_PRODUCES=libmisc_lib
 
 NTTARGETFILES=PostBuildSteps
 
-#
-# compile
-#
-
 !if $(FREEBUILD)
 USE_MSVCRT=1
 !else
@@ -22,10 +18,6 @@ DEBUG_CRTS=1
 USE_NATIVE_EH=1
 
 INCLUDES=$(DDK_INC_PATH)
-#INCLUDES=$(INCLUDES);C:\WinDDK\7600.16385.1\inc\ddk
-#INCLUDES=$(INCLUDES);C:\WinDDK\7600.16385.1\inc\crt
-#INCLUDES=$(INCLUDES);C:\WinDDK\7600.16385.1\inc\api
-#INCLUDES=$(INCLUDES);C:\WinSDK\7.1\Include
 INCLUDES=$(INCLUDES);..\libcwh
 INCLUDES=$(INCLUDES);..\inc
 
@@ -37,5 +29,8 @@ SOURCES=\
 	clipboardtext.cpp\
 	msgbox.cpp\
 	errormsg.cpp\
-	listviewhelper.cpp
-
+	listviewhelper.cpp\
+	shellhelp.cpp\
+	column.cpp\
+	menu.cpp\
+	find.cpp

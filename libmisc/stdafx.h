@@ -32,10 +32,12 @@
 #include <shlwapi.h>
 #include <strsafe.h>
 #include <shlobj.h>
+#include <commdlg.h>
 
 #include "mem.h"
 #include "debug.h"
 #include "simplevalarray.h"
+#include "libmisc.h"
 
 namespace LIBMISC {
 extern HMODULE g_ResourceInstance;

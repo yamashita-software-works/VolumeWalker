@@ -598,9 +598,85 @@ NTSTATUS GetFileAttributes_U( HANDLE RootHandle, UNICODE_STRING *FilePath, ULONG
 //----------------------------------------------------------------------------
 NTSTATUS GetFileAttributes_W( HANDLE RootHandle, PCWSTR FilePath,  ULONG *pulFileAttributes )
 {
+#if 0
     UNICODE_STRING usFilePath;
     RtlInitUnicodeString(&usFilePath,FilePath);
     return GetFileAttributes_U(RootHandle, &usFilePath, pulFileAttributes);
+#else
+    HANDLE Handle;
+    NTSTATUS Status;
+    IO_STATUS_BLOCK IoStatus = {0};
+
+    if( pulFileAttributes == NULL || FilePath == NULL )
+        return STATUS_INVALID_PARAMETER;
+
+    if( RootHandle != NULL && FilePath == NULL )
+    {
+        Handle = RootHandle;
+        Status = STATUS_SUCCESS;
+    }
+    else
+    {
+        Status = OpenFileEx_W(&Handle,FilePath,FILE_READ_ATTRIBUTES|SYNCHRONIZE,
+                        FILE_SHARE_READ|FILE_SHARE_WRITE,
+                        FILE_OPEN_REPARSE_POINT|FILE_SYNCHRONOUS_IO_NONALERT);
+    }
+
+    if( Status == STATUS_SUCCESS )
+    {
+        FILE_BASIC_INFORMATION fbi = {0};
+
+        Status = NtQueryInformationFile(Handle,&IoStatus,&fbi,sizeof(fbi),FileBasicInformation);
+
+        if( Status == STATUS_SUCCESS && pulFileAttributes != NULL )
+        {
+            *pulFileAttributes = fbi.FileAttributes;
+        }
+
+        if( !(RootHandle != NULL && FilePath == NULL) )
+            NtClose(Handle);
+    }
+
+    return Status;
+#endif
+}
+
+//----------------------------------------------------------------------------
+//
+//  SetFileAttributes_W()
+//
+//----------------------------------------------------------------------------
+NTSTATUS SetFileAttributes_W(HANDLE RootHandle, PCWSTR FilePath,  ULONG ulFileAttributes)
+{
+    HANDLE Handle;
+    NTSTATUS Status;
+    IO_STATUS_BLOCK IoStatus = {0};
+
+    if( RootHandle != NULL && FilePath == NULL )
+    {
+        Handle = RootHandle;
+        Status = STATUS_SUCCESS;
+    }
+    else
+    {
+        Status = OpenFileEx_W(&Handle,FilePath,FILE_WRITE_ATTRIBUTES|SYNCHRONIZE,
+                        FILE_SHARE_READ|FILE_SHARE_WRITE,
+                        FILE_OPEN_REPARSE_POINT|FILE_SYNCHRONOUS_IO_NONALERT);
+    }
+
+    if( Status == STATUS_SUCCESS )
+    {
+        FILE_BASIC_INFORMATION fbi = {0};
+
+		fbi.FileAttributes = ulFileAttributes;
+
+        Status = NtSetInformationFile(Handle,&IoStatus,&fbi,sizeof(fbi),FileBasicInformation);
+
+        if( !(RootHandle != NULL && FilePath == NULL) )
+            NtClose(Handle);
+    }
+
+    return Status;
 }
 
 //----------------------------------------------------------------------------

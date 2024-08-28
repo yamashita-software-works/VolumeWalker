@@ -159,6 +159,10 @@ public:
 		InitList(m_hWndList);
 		InitGroup();
 
+#if _ENABLE_DARK_MODE_TEST
+		if( _IsDarkModeEnabled() )
+			InitDarkModeListView(m_hWndList);
+#endif
 		return 0;
 	}
 
@@ -1260,10 +1264,12 @@ typedef struct _TITLE {
 		FILESYSTEM_STATISTICS_EX *StatisticsEx=NULL;
 		SIZE_T cbStatisticsExSize= 0;
 		
-		if( m_pszVolumeRoot == NULL )
+		if( pSelItem != NULL)
 		{
-			ASSERT(pSelItem != NULL);
-			m_pszVolumeRoot = _MemAllocString(pSelItem->pszVolume);
+			_SafeMemFree( m_pszVolumeRoot );
+			{
+				m_pszVolumeRoot = _MemAllocString(pSelItem->pszVolume);
+			}
 		}
 
 		SetRedraw(m_hWndList,FALSE);
@@ -1342,6 +1348,8 @@ typedef struct _TITLE {
 		}
 		else
 		{
+			ListView_DeleteAllItems(m_hWndList);
+
 			PWSTR pMessage;
 			if( WinGetErrorMessage(hr,&pMessage) > 0 )
 			{

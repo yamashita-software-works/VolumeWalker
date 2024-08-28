@@ -53,6 +53,16 @@ HWND _GetMainWnd()
 	return g_hWndMain;
 }
 
+CONSOLE_VIEW_ID *GetMDIConsoleId(HWND hwndMDIChildFrame)
+{
+	MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndMDIChildFrame,GWLP_USERDATA);
+	ASSERT(pd != NULL);
+	ASSERT(pd->hWndView != NULL);
+	CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(pd->hWndView,_PROP_CONSOLE_VIEW_ID);
+	ASSERT(pcv != NULL);
+	return pcv;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 #include "..\build.h"
 
@@ -303,8 +313,8 @@ HWND FindSameWindowTitle(UINT ConsoleType,PCWSTR pszName)
 		WCHAR szTitle[MAX_PATH];
 		do
 		{
-			MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwnd,GWLP_USERDATA);
-			if( pd->wndId == ConsoleType )
+			CONSOLE_VIEW_ID *pcv = GetMDIConsoleId(hwnd);
+			if( pcv->wndId == ConsoleType )
 			{
 				GetWindowText(hwnd,szTitle,MAX_PATH);
 				if( _wcsicmp(szTitle,pszName) == 0 )
@@ -557,6 +567,21 @@ VOID SendSelectVolumeOrPhysicalDisk(HWND hwndMDIChild,HWND hWndView,UINT Console
 //  PURPOSE: Open MDI child window.
 //
 //----------------------------------------------------------------------------
+/*++
+  VolumeWalker Window layer
+
+  MainFrame                             -+
+   |                                     |
+   +- MDI client                         |- exe
+       |                                 |
+       +- MDI child frame               -+
+           |
+           +- Window(View host)         -+
+               |                         |
+               +- View(Page host)        |- dll
+                   |                     |
+                   +- Page              -+
+--*/
 HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam,BOOL bMaximize,MDICHILDFRAMEINIT *pmdiInit)
 {
 	HWND hwndChildFrame = NULL;
@@ -658,9 +683,6 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		{
 			SetWindowHandle(ConsoleTypeId,hwndMDIChild);
 
-			pd->wndId = ConsoleTypeId;
-			pd->wndGuid = *pwndGuid;
-
 			VOLUME_CONSOLE_CREATE_PARAM param = {0};
 			param.pszReserved = (PWSTR)mcp.pszInitialPath;
 
@@ -697,7 +719,17 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 				SendSelectVolumeOrPhysicalDisk(hwndMDIChild,pd->hWndView,ConsoleTypeId,pOpenParam);
 			}
 
-			ShowWindow(pd->hWndView,SW_SHOW);
+			ASSERT( pd->hWndView != NULL );
+
+			if( pd->hWndView )
+			{
+				CONSOLE_VIEW_ID *pcv = new CONSOLE_VIEW_ID;
+				pcv->wndId = ConsoleTypeId;
+				pcv->wndGuid = *pwndGuid;
+				SetProp(pd->hWndView,_PROP_CONSOLE_VIEW_ID,(HANDLE)pcv);
+
+				ShowWindow(pd->hWndView,SW_SHOW);
+			}
 
 			SendMessage(g_hWndMDIClient,WM_MDIREFRESHMENU,0,0);
 			DrawMenuBar(hWnd);
@@ -1075,13 +1107,13 @@ VOID ExitInstance()
 //  PURPOSE: Query command status.
 //
 //----------------------------------------------------------------------------
-INT CALLBACK QueryCmdState(UINT CmdId,PVOID,LPARAM)
+INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM Param)
 {
 	HWND hwndMDIChild = MDIGetActive(g_hWndMDIClient);
 	if( hwndMDIChild )
 	{
 		MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndMDIChild,GWLP_USERDATA);
-		UINT State = 0;
+		UINT State = MenuState;
 		if( SendMessage(pd->hWndView,WM_QUERY_CMDSTATE,MAKEWPARAM(CmdId,0),(LPARAM)&State) )
 		{
 			return State;
@@ -1200,7 +1232,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					if( hwndMDIChild )
 					{
 						MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndMDIChild,GWLP_USERDATA);
-						OnFindText_CommandHandler(hWnd,pd->hWndView,wmId);
+						OnFindText_CommandHandler(hWnd,pd->hWndView,
+								(wmId == ID_EDIT_FIND) ? Find_Start : ((wmId == ID_EDIT_FIND_NEXT) ? Find_Next : Find_Previous) );
 					}
 					break;
 				}
@@ -1285,7 +1318,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if( hwndChildFrame )
 			{
 				MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndChildFrame,GWLP_USERDATA);
-				ClearWindowHandle(pd->wndId,hwndChildFrame);
+				CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(pd->hWndView,_PROP_CONSOLE_VIEW_ID);
+
+				ClearWindowHandle(pcv->wndId,hwndChildFrame);
+
+				RemoveProp(pd->hWndView,_PROP_CONSOLE_VIEW_ID);
+
+				delete pcv;
 			}
 			return 0;
 		}

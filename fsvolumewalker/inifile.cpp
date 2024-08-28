@@ -497,11 +497,12 @@ static VOID SaveLayout(HWND hWnd,HWND hWndMDIClient)
 				mdidoc.hdr.size.cy = (rc.bottom - rc.top);
 				mdidoc.hdr.show = wndpl.showCmd;
 
-				GUID Guid = pd->wndGuid;
+				CONSOLE_VIEW_ID *pcv = _GET_CONSOLE_VIEW_ID(pd->hWndView);
+				GUID Guid = pcv->wndGuid;
 				StringFromGUID( &Guid, szSection, _countof(szSection) );
 				GUIDStringRemoveBrackets(szSection);
 
-				WriteSectionInfo(szSection,hwnd,pd->hWndView,pd->wndGuid,&mdidoc);
+				WriteSectionInfo(szSection,hwnd,pd->hWndView,pcv->wndGuid,&mdidoc);
 
 				StringCchPrintf(szEntry,ARRAYSIZE(szEntry),L"%d",iIndex);
 				WriteSectionString(_LPWSTR_SECTION_MDILAYOUT,szEntry,szSection);

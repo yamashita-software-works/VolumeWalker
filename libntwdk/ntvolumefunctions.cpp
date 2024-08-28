@@ -367,7 +367,7 @@ LookupVolumeNameByNtDeviceName(
 						// Symbolic link name
 						if( VolumeSymbolicLink )
 						{
-							wcsncpy_s(VolumeSymbolicLink,cchVolumeSymbolicLink,VolumeSymName,cchVolumeSymbolicLink-1);//_TRUNCATE);
+							wcsncpy_s(VolumeSymbolicLink,cchVolumeSymbolicLink,VolumeSymName,cchVolumeSymbolicLink-1);
 						}
 
 						Status = STATUS_SUCCESS;

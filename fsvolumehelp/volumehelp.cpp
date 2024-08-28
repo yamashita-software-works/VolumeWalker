@@ -1814,7 +1814,7 @@ CreateVolumeInformationBuffer(
 			// Dirty Bit
 			//
 			hr = IsSetDirtyBit(hVolume);
-			if( SUCCEEDED(hr) )
+			if( hr == S_OK )
 			{
 				pVolumeInfo->DirtyBit = (hr == S_OK);
 			}
@@ -1822,6 +1822,10 @@ CreateVolumeInformationBuffer(
 			{
 				pVolumeInfo->DirtyBit = -1;
 			}
+		}
+		else
+		{
+			pVolumeInfo->DirtyBit = -1;
 		}
 
 		//

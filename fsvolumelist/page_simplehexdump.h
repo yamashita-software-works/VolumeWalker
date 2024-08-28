@@ -56,6 +56,7 @@ class CSimpleHexDumpPage :
 		LARGE_INTEGER ReadOffset;
 		LARGE_INTEGER Size;
 		ULONG Length;
+		ULONG ReadLength;
 		
 		ULONG ClusterLength;
 		ULONG SectorLength;
@@ -111,7 +112,7 @@ public:
 	{
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 
-                              WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_NOSORTHEADER | LVS_SHOWSELALWAYS,
+                              WS_CHILD | WS_VISIBLE | WS_TABSTOP | LVS_REPORT | LVS_NOSORTHEADER | LVS_SHOWSELALWAYS,
                               0,0,0,0,
                               m_hWnd,
                               (HMENU)0,
@@ -126,6 +127,11 @@ public:
 		{
 			InitColumns(m_hWndList);
 		}
+
+#if _ENABLE_DARK_MODE_TEST
+		if( _IsDarkModeEnabled() )
+			InitDarkModeListView(m_hWndList);
+#endif
 
 	    TBBUTTON tbButtons[] = 
 		{
@@ -535,14 +541,17 @@ public:
 		ULONG i;
 		LPBYTE pb = m_rd.Buffer;
 
-		for(i = 0; i < (m_rd.Length / m_rd.ByteWidth); i++)
+		for(i = 0; i < (m_rd.ReadLength / m_rd.ByteWidth); i++)
 		{
 			_InsertLine(i,pb);
 
 			pb += m_rd.ByteWidth;
 		}
 
-		ListViewEx_AdjustWidthAllColumns(m_hWndList,LVSCW_AUTOSIZE);
+		if( m_rd.ReadLength != 0 )
+			ListViewEx_AdjustWidthAllColumns(m_hWndList,LVSCW_AUTOSIZE);
+		else
+			SetAppropriateColumnWidth();
 
 		int iLine = 0;
 		if( (m_rd.ReadOffset.QuadPart % m_rd.Length) != 0 )
@@ -668,12 +677,14 @@ public:
 			SetFilePointerEx(Handle,li,NULL,FILE_BEGIN);
 
 			DWORD cb = 0;
-			if( ReadFile(Handle,m_rd.Buffer,m_rd.Length,&cb,NULL) )
+			if( ReadFile(Handle,m_rd.Buffer,m_rd.Length,&cb,NULL) && cb > 0 )
 			{
+				m_rd.ReadLength = cb;
 				m_rd.Status = ERROR_SUCCESS;
 			}
 			else
 			{
+				m_rd.ReadLength = 0;
 				m_rd.Status = GetLastError();
 			}
 
@@ -996,6 +1007,12 @@ private:
 	{
 		SetToolbarButtonState(ID_BACK,(m_rd.ReadOffset.QuadPart > 0));
 		SetToolbarButtonState(ID_NEXT,(m_rd.ReadOffset.QuadPart < (m_rd.Size.QuadPart - m_rd.Length)));
+
+		SetToolbarButtonState(ID_HOME,(m_rd.Size.QuadPart > 0) && (m_rd.BaseOffset.QuadPart != m_rd.ReadOffset.QuadPart));
+
+		SetToolbarButtonState(ID_FIRST,(m_rd.Size.QuadPart > 0) && (m_rd.ReadOffset.QuadPart > 0));
+		SetToolbarButtonState(ID_LAST,(m_rd.Size.QuadPart > 0) && (m_rd.ReadOffset.QuadPart < (m_rd.Size.QuadPart - m_rd.Length)));
+		SetToolbarButtonState(ID_GOTO,m_rd.Size.QuadPart > 0);
 	}
 
 	void SetErrorState()

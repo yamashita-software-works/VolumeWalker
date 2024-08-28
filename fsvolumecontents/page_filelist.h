@@ -74,6 +74,7 @@ class CFileListPage :
 
 	BOOL m_bNtfsSpecialDirectory;
 
+	UINT m_columnShowStyleFlags[COLUMN_MaxCount];
 public:
 	PWSTR GetPath() const { return m_pszCurDir; }
 	HWND GetListView() const { return m_hWndList; }
@@ -93,8 +94,8 @@ public:
 	CFileListPage()
 	{
 		m_hWndList = NULL;
-		m_Sort.CurrentSubItem = 0;
-		m_Sort.Direction = 1;
+		m_Sort.CurrentSubItem = 0; // default: 0 column
+		m_Sort.Direction      = 1; // default: ascend order
 		m_pszCurDir = NULL;
 		m_disp_proc = NULL;
 		m_comp_proc = NULL;
@@ -102,6 +103,7 @@ public:
 		m_bNtfsSpecialDirectory = FALSE;
 		m_hFont = NULL;
 		m_hFontHeader = NULL;
+		ZeroMemory(m_columnShowStyleFlags,sizeof(m_columnShowStyleFlags));
 	}
 
 	~CFileListPage()
@@ -116,6 +118,30 @@ public:
 
 	virtual HRESULT OnInitPage(PVOID)
 	{
+		static COLUMN_NAME column_name_map[] = {
+			{ COLUMN_Name,           L"Name",                  0},
+			{ COLUMN_Extension,      L"Extension",             0},
+			{ COLUMN_FileAttributes, L"Attributes",            0},
+			{ COLUMN_EndOfFile,      L"EndOfFile",             0},
+			{ COLUMN_AllocationSize, L"AllocationSize",        0},
+			{ COLUMN_LastWriteTime,  L"LastWriteTime",         0},
+			{ COLUMN_CreationTime,   L"CreationTime",          0},
+			{ COLUMN_LastAccessTime, L"LastAccessTime",        0},
+			{ COLUMN_ChangeTime,     L"ChangeTime",            0},
+			{ COLUMN_EaSize,         L"EaSize",                0},
+			{ COLUMN_FileId,         L"FileId",                0},
+			{ COLUMN_FileIndex,      L"FileIndex",             0},
+			{ COLUMN_ShortName,      L"ShortName",             0},
+			{ COLUMN_Extension,      L"Extention",             0},
+			{ COLUMN_Path,           L"Path",                  0},
+			{ COLUMN_Usn,            L"Usn",                   0},
+			{ COLUMN_Date,           L"Date",                  0},
+			{ COLUMN_Reason,         L"Reason",                0},
+			{ COLUMN_Frn,            L"FRN",                   0},
+			{ COLUMN_ParentFrn,      L"Parent FRN",            0},
+		};
+		m_columns.SetColumnNameMap(_countof(column_name_map), column_name_map);
+
 		m_columns.SetIniFilePath( GetIniFilePath() );
 
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
@@ -136,7 +162,6 @@ public:
 
 		SendMessage(m_hWndList,WM_SETFONT,(WPARAM)m_hFont,0);
 		SendMessage(ListView_GetHeader(m_hWndList),WM_SETFONT,(WPARAM)m_hFontHeader,0);
-
 
 		InitColumnDefinitions();
 
@@ -225,8 +250,8 @@ public:
 			case HDN_ENDDRAG:
 				OnHeaderEndDrag(pnmhdr);
 				return TRUE; // prevent order change
-			case HDN_FILTERBTNCLICK:
-				return 0;
+			case LVN_COLUMNDROPDOWN:
+				return OnColumnDropDown(pnmhdr);
 		}
 		return 0;
 	}
@@ -265,17 +290,15 @@ public:
 					pnmlvcd->clrText = RGB(0,0,180);
 				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
 					pnmlvcd->clrText = RGB(0,180,60);
+				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
+					pnmlvcd->clrText = RGB(100,0,80);
 				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
 					pnmlvcd->clrText = RGB(0,200,48);
 				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
 					pnmlvcd->clrText = RGB(185,122,87);
-				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
-					pnmlvcd->clrText = RGB(100,0,80);
 
 				if( pItem->pFI->Wof )
-				{
 					pnmlvcd->clrText = RGB(128,0,80);
-				}
 
 				return CDRF_NOTIFYPOSTPAINT;
 			}
@@ -295,6 +318,8 @@ public:
 	{
 		int cColumns;
 		int i;
+
+		SetRedraw(m_hWndList,FALSE);
 	
 		int ColumnId;
 		ColumnId = (int)ListViewEx_GetHeaderItemData( m_hWndList, m_Sort.CurrentSubItem  );
@@ -305,19 +330,21 @@ public:
 	
 		// Forwarding message from ListView's header control.
 		LVCOLUMN col = {0};
-		col.mask = LVCF_ORDER;
+		col.mask   = LVCF_ORDER;
 		col.iOrder = pI->pitem->iOrder;
 		ListView_SetColumn(m_hWndList,pI->iItem,&col);
 	
 		cColumns = Header_GetItemCount( hWndHeader );
 	
 		LVCOLUMN *aOrder = new LVCOLUMN[cColumns];
-		int *aiOrder = new int[cColumns];
-		LPARAM *aCol = new LPARAM[cColumns];
+		int *aiOrder     = new int[cColumns];
+		LPARAM *aCol     = new LPARAM[cColumns];
+		LVCOLUMN *pTemp  = new LVCOLUMN[cColumns];
+
 		for(i = 0; i < cColumns; i++)
 		{
 			ZeroMemory(&aOrder[i],sizeof(LVCOLUMN));
-			aOrder[i].pszText = _MemAllocStringBuffer( MAX_PATH );
+			aOrder[i].pszText    = _MemAllocStringBuffer( MAX_PATH );
 			aOrder[i].cchTextMax = MAX_PATH;
 		}
 	
@@ -332,16 +359,12 @@ public:
 			Header_GetItem( hWndHeader,i,&hi);
 			aCol[i] = hi.lParam;
 		}
-	
-		LVCOLUMN *pTemp = new LVCOLUMN[cColumns];
-	
+		
 		for(i = 0; i < cColumns; i++)
 		{
 			pTemp[ aiOrder[i] ] = aOrder[i];
 			pTemp[ aiOrder[i] ].iSubItem = (int)aCol[i];
 		}
-	
-		SetRedraw(m_hWndList,FALSE);
 	
 		for(i = 0; i < cColumns; i++)
 		{
@@ -354,16 +377,21 @@ public:
 			hi.lParam = pTemp[i].iSubItem;
 			Header_SetItem(hWndHeader,i,&hi);
 		}
-	
+
+		// redraw all list-view items
 		SetRedraw(m_hWndList,TRUE);
-	
-		RedrawWindow(m_hWndList,NULL,NULL,RDW_UPDATENOW|RDW_INVALIDATE);
-	
+
+		int cItems = ListView_GetItemCount(m_hWndList);
+		for(i = 0; i < cItems; i++)
+		{
+			InvalidateListItem(i);
+		}
+
+		// free memory	
 		for(i = 0; i < cColumns; i++)
 		{
 			_SafeMemFree( aOrder[i].pszText );
 		}
-	
 		delete[] aOrder;
 		delete[] aiOrder;
 		delete[] aCol;
@@ -501,33 +529,146 @@ public:
 
 		CFileInfoItem *pItem = (CFileInfoItem *)pnmlv->lParam;
 
-		DoSort(pnmlv->iSubItem);
+		DoSort(pnmlv->iSubItem,TRUE);
 
 		return 0;
 	}
 
-	void DoSort(int iSubItem=-1,int iDirection=-1)
+	void DoSort(int iSubItem=-1,BOOL bToggle=FALSE)
 	{
-		HWND hwndLV = m_hWndList;
-	
-		int id = (int)ListViewEx_GetHeaderItemData(hwndLV,iSubItem);
+		int id = (int)ListViewEx_GetHeaderItemData(m_hWndList,iSubItem);
 
-		if( m_Sort.CurrentSubItem != -1 )
-			ListViewEx_SetHeaderArrow(hwndLV,m_Sort.CurrentSubItem,0);
+		if( m_Sort.CurrentSubItem != -1 ) //  previous sort column
+			ListViewEx_SetHeaderArrow(m_hWndList,m_Sort.CurrentSubItem,0); // clear previous column header mark
 
-		if( iDirection != 0 )
+		if( bToggle )
 		{
 			if( m_Sort.CurrentSubItem != iSubItem )
-				m_Sort.Direction = 1;
+				m_Sort.Direction = 1; // current column changed: new current column always ascend sort.
 			else
-				m_Sort.Direction *= iDirection;
+				m_Sort.Direction *= -1; // toggle.
 		}
 
-		SortItems(id,NULL);
+		SORT_PARAM<CFileListPage> op = {0};
+		op.pThis           = this;
+		op.id              = id;
+		op.direction       = m_Sort.Direction; // must 1 or -1, do not use 0
+		op.directory_align = 0;                // todo:
+		ListView_SortItems(m_hWndList,CompareProc,&op);
 
-		ListViewEx_SetHeaderArrow(hwndLV,iSubItem,m_Sort.Direction);
+		ListViewEx_SetHeaderArrow(m_hWndList,iSubItem,m_Sort.Direction);
 
 		m_Sort.CurrentSubItem = iSubItem;
+	}
+
+	LRESULT OnColumnDropDown(NMHDR *pnmhdr)
+	{
+		NMLISTVIEW *pnmlv = (NMLISTVIEW *)pnmhdr;
+
+		CFileInfoItem *pItem = (CFileInfoItem *)pnmlv->lParam;
+
+		HWND hwndHeader = ListView_GetHeader(pnmlv->hdr.hwndFrom);
+		RECT rc;
+		Header_GetItemRect(hwndHeader,pnmlv->iSubItem,&rc);
+		MapWindowPoints(hwndHeader,NULL,(LPPOINT)&rc,2);
+
+		HDITEM hi;
+		hi.mask = HDI_LPARAM;
+		Header_GetItem(hwndHeader,pnmlv->iSubItem,&hi);
+		int column_id = (int)hi.lParam;
+		int check_pos = -1;
+
+		HMENU hMenu = CreatePopupMenu();	
+	
+		UINT f = m_columnShowStyleFlags[ column_id ];
+
+		switch( column_id )
+		{
+			case COLUMN_FileAttributes:
+				AppendMenu(hMenu,MF_STRING,1,L"Displays by Attribute Character");
+				AppendMenu(hMenu,MF_STRING,2,L"Displays by Hex");
+				AppendMenu(hMenu,MF_STRING,3,L"Displays by Bit");
+				CheckMenuRadioItem(hMenu,1,3,(f+1),MF_BYCOMMAND);
+				break;
+			case COLUMN_EndOfFile:
+			case COLUMN_AllocationSize:
+				AppendMenu(hMenu,MF_STRING,1,L"Displays by Decimal");
+				AppendMenu(hMenu,MF_STRING,2,L"Displays by Unit");
+				AppendMenu(hMenu,MF_STRING,3,L"Displays by Hex");
+				CheckMenuRadioItem(hMenu,1,3,(f+1),MF_BYCOMMAND);
+				break;
+			case COLUMN_LastWriteTime:
+			case COLUMN_CreationTime:
+			case COLUMN_LastAccessTime:
+			case COLUMN_ChangeTime:
+				AppendMenu(hMenu,MF_STRING,1,L"Default");
+				AppendMenu(hMenu,MF_STRING,2,L"Displays by UTC");
+				AppendMenu(hMenu,MF_STRING,3,L"Displays by Hex");
+				CheckMenuRadioItem(hMenu,1,3,(f+1),MF_BYCOMMAND);
+				break;
+		}
+
+		UINT cmd;
+		cmd = TrackPopupMenu(hMenu,TPM_RETURNCMD|TPM_RIGHTALIGN|TPM_TOPALIGN,rc.right,rc.bottom,0,m_hWnd,NULL);
+
+		int iColumn;
+		switch( column_id )
+		{
+			case COLUMN_FileAttributes:
+				switch( cmd )
+				{
+					case 1:
+						m_columnShowStyleFlags[ column_id ] = 0x0;
+						break;
+					case 2:
+						m_columnShowStyleFlags[ column_id ] = 0x1;
+						break;
+					case 3:
+						m_columnShowStyleFlags[ column_id ] = 0x2;
+						break;
+				}
+				iColumn = FindSubItemById( column_id );
+				InvalidateListColumn(iColumn);
+				break;
+			case COLUMN_EndOfFile:
+			case COLUMN_AllocationSize:
+				switch( cmd )
+				{
+					case 1:
+						m_columnShowStyleFlags[ column_id ] = 0x0;
+						break;
+					case 2:
+						m_columnShowStyleFlags[ column_id ] = 0x1;
+						break;
+					case 3:
+						m_columnShowStyleFlags[ column_id ] = 0x2;
+						break;
+				}
+				iColumn = FindSubItemById( column_id );
+				InvalidateListColumn(iColumn);
+				break;
+			case COLUMN_LastWriteTime:
+			case COLUMN_CreationTime:
+			case COLUMN_LastAccessTime:
+			case COLUMN_ChangeTime:
+				switch( cmd )
+				{
+					case 1:
+						m_columnShowStyleFlags[ column_id ] = 0x0;
+						break;
+					case 2:
+						m_columnShowStyleFlags[ column_id ] = 0x1;
+						break;
+					case 3:
+						m_columnShowStyleFlags[ column_id ] = 0x2;
+						break;
+				}
+				iColumn = FindSubItemById( column_id );
+				InvalidateListColumn(iColumn);
+				break;
+		}
+
+		return 0;
 	}
 
 	LRESULT OnDisp_Name(UINT,NMLVDISPINFO *pnmlvdi)
@@ -606,7 +747,20 @@ public:
 				break;
 		}
 
-		_GetDateTimeStringEx2(dt,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,NULL,NULL,0,1);
+		UINT fmt = m_columnShowStyleFlags[ id ];
+
+		switch( fmt )
+		{
+			case 0:
+				_GetDateTimeStringEx2(dt,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,NULL,NULL,FALSE,1);
+				break;
+			case 1:
+				_GetDateTimeStringEx2(dt,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,NULL,NULL,TRUE,1);
+				break;
+			case 2:	
+				StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%016I64X",dt);
+				break;
+		}
 
 		return 0;
 	}
@@ -622,15 +776,40 @@ public:
 		else
 			cb = pItem->pFI->AllocationSize.QuadPart;
 
-		_CommaFormatString(cb,pnmlvdi->item.pszText);
-
+		UINT f = m_columnShowStyleFlags[ id ];
+		switch( f )
+		{
+			case 0:
+				_CommaFormatString(cb,pnmlvdi->item.pszText);
+				break;
+			case 1:
+				StrFormatByteSizeW(cb,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax);
+				break;
+			case 2:
+				StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",cb);
+				break;
+		}
 		return 0;
 	}
 
 	LRESULT OnDisp_Attributes(UINT id,NMLVDISPINFO *pnmlvdi)
 	{
 		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
-		GetAttributeString(pItem->pFI->FileAttributes,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax);
+		UINT f = m_columnShowStyleFlags[ id ];
+		if( f == 0 )
+			GetAttributeString(pItem->pFI->FileAttributes,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax);
+		else if( f == 1 )
+			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%08X",pItem->pFI->FileAttributes);
+		else
+		{
+//			int cch;
+//			WCHAR sz[32+1];
+//			cch = IntegerToStringCchW(pItem->pFI->FileAttributes,2,sz,_countof(sz));
+//			memcpy(pnmlvdi->item.pszText,L"................................", 33 * sizeof(WCHAR));
+//			memcpy(&pnmlvdi->item.pszText[ 32 - cch ],sz,cch * sizeof(WCHAR));
+			IntegerToStringCchW(pItem->pFI->FileAttributes,2,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax);
+		}
+
 		return 0;
 	}
 
@@ -714,6 +893,56 @@ public:
 		return (LRESULT)this->m_pszCurDir;
 	}
 
+	void InvalidateListItem(int iItem)
+	{
+		int i,cColumns;
+		cColumns = ListViewEx_GetColumnCount(m_hWndList);
+		for(i = 0; i < cColumns; i++)
+			ListView_SetItemText(m_hWndList,iItem,i,LPSTR_TEXTCALLBACK);
+	
+		LVITEM lvi={0};
+		lvi.mask      = LVIF_TEXT|LVIF_IMAGE|LVIF_STATE;
+		lvi.iItem     = iItem;
+		lvi.iImage    = I_IMAGECALLBACK;
+		lvi.state     = 0;
+		lvi.stateMask = LVIS_OVERLAYMASK;
+		lvi.pszText   = LPSTR_TEXTCALLBACK;
+	
+		ListView_SetItem(m_hWndList,&lvi);
+	
+		ListView_RedrawItems(m_hWndList,iItem,iItem);
+	}
+
+	void InvalidateListColumn(int iColumn,BOOL bImages=FALSE)
+	{
+		int i,cItems;
+	
+		cItems =  ListView_GetItemCount(m_hWndList);
+	
+		for(i = 0; i < cItems; i++)
+		{
+			ListView_SetItemText(m_hWndList,i,iColumn,LPSTR_TEXTCALLBACK);
+	
+			if( iColumn == 0)
+			{
+				LVITEM lvi={0};
+				lvi.mask = LVIF_TEXT;
+				lvi.iItem = i;
+				lvi.pszText = LPSTR_TEXTCALLBACK;
+				if( bImages )
+				{
+					lvi.mask |= LVIF_IMAGE|LVIF_STATE;
+					lvi.iImage = I_IMAGECALLBACK;
+					lvi.state = 0;
+					lvi.stateMask = LVIS_OVERLAYMASK;
+				}
+				ListView_SetItem(m_hWndList,&lvi);
+			}
+		}
+	
+		ListView_RedrawItems(m_hWndList,0,cItems-1);
+	}
+
 	virtual LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		switch(uMsg)
@@ -754,7 +983,7 @@ public:
 					0,
 					cxList,
 					cyList,
-					SWP_NOZORDER);
+					SWP_NOZORDER|SWP_NOMOVE);
 		}
 	}
 
@@ -807,13 +1036,14 @@ public:
 			{ COLUMN_Extension,      L"Extension",             2,  80, LVCFMT_LEFT },
 			{ COLUMN_FileId,         L"File ID",               3, 156, LVCFMT_LEFT },
 			{ COLUMN_Lcn,            L"LCN",                   4, 120, LVCFMT_RIGHT },
-			{ COLUMN_FileAttributes, L"Attributes",            5, 100, LVCFMT_LEFT },
-			{ COLUMN_EndOfFile,      L"Size",                  6, 116, LVCFMT_RIGHT },
-			{ COLUMN_AllocationSize, L"Allocation Size",       7, 116, LVCFMT_RIGHT },
-			{ COLUMN_LastWriteTime,  L"Date",                  8, 180, LVCFMT_LEFT },
-			{ COLUMN_CreationTime,   L"Creation Time",         9, 180, LVCFMT_LEFT },
-			{ COLUMN_LastAccessTime, L"Last Access Time",     10, 180, LVCFMT_LEFT },
-			{ COLUMN_ChangeTime,     L"Change Time",          11, 180, LVCFMT_LEFT },
+//			{ COLUMN_FileAttributes, L"Attributes",            5, 100, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_FileAttributes, L"Attributes",            5, 100, LVCFMT_RIGHT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_EndOfFile,      L"Size",                  6, 116, LVCFMT_RIGHT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_AllocationSize, L"Allocation Size",       7, 116, LVCFMT_RIGHT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_LastWriteTime,  L"Date",                  8, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_CreationTime,   L"Creation Time",         9, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_LastAccessTime, L"Last Access Time",     10, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_ChangeTime,     L"Change Time",          11, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
 			{ COLUMN_EaSize,         L"EA",                   12, 100, LVCFMT_LEFT },
 			{ COLUMN_ShortName,      L"Short Name",           13, 120, LVCFMT_LEFT },
 		};
@@ -883,9 +1113,13 @@ public:
 			pcoltbl->column[i].cx = lvc.cx;
 			pcoltbl->column[i].iOrder = lvc.iOrder;
 			pcoltbl->column[i].id = (int)ListViewEx_GetHeaderItemData(hWndList,i);
+			pcoltbl->column[i].field = m_columnShowStyleFlags[ pcoltbl->column[i].id ];
 		}
 
-		SaveColumnTable(pcoltbl,L"",L"");
+		int ColumnId;
+		ColumnId = (int)ListViewEx_GetHeaderItemData( m_hWndList, m_Sort.CurrentSubItem  );
+
+		m_columns.SaveColumnTable(pcoltbl,L"ColumnLayout",m_columns.GetIniFilePath(),ColumnId,m_Sort.Direction);
 
 		_MemFree(pcoltbl);
 
@@ -899,8 +1133,8 @@ public:
 
 		CFileInfoItem *pItem = new CFileInfoItem;
 
-		pItem->Type = 0;
-		pItem->pFI  = pFI;
+		pItem->Type  = 0;
+		pItem->pFI   = pFI;
 
 		LVITEM lvi = {0};
 		lvi.mask     = LVIF_TEXT|LVIF_IMAGE|LVIF_INDENT|LVIF_PARAM|LVIF_GROUPID;
@@ -976,7 +1210,7 @@ public:
 		memcpy(pFI->ShortName,pntfs->ShortName,pntfs->ShortNameLength);
 		pFI->ShortName[pntfs->ShortNameLength/sizeof(WCHAR)] = UNICODE_NULL;
 
-		pFI->ItemTypeFlag = _FLG_NTFS_SPECIALFILE;
+		pFI->ItemTypeFlag |= _FLG_NTFS_SPECIALFILE;
 
 		pa->Add( pFI );	
 
@@ -1183,24 +1417,20 @@ public:
 		//
 		// Insert to list-view window
 		//
-		FILELIST fl = {0};
-		fl.cItemCount = pa->GetCount();
-		fl.pFI        = pa->GetPtrPtr();
-		fl.RootPath   = pszPath;
-
-		ULONG i;
-		for(i = 0; i < fl.cItemCount; i++)
+		CFileItem **pFI = pa->GetPtrPtr();
+		int cFiles = pa->GetCount();
+		for(int i = 0; i < cFiles; i++)
 		{
 			Insert(m_hWndList,
-						fl.pFI[i]->FileAttributes & FILE_ATTRIBUTE_DIRECTORY ? ID_GROUP_DIRECTORY : ID_GROUP_FILE ,
+						pFI[i]->FileAttributes & FILE_ATTRIBUTE_DIRECTORY ? ID_GROUP_DIRECTORY : ID_GROUP_FILE,
 						i,
-						fl.pFI[i]);
+						pFI[i]);
 		}
 
 		//
 		// Sort Items
 		//
-		DoSort(m_Sort.CurrentSubItem,0);
+		DoSort(m_Sort.CurrentSubItem,FALSE);
 
 		//
 		// Delete array
@@ -1247,7 +1477,7 @@ public:
 		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
 
 		POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-		ListViewEx_SimpleContextMenuHandler(NULL,m_hWndList,(HWND)wParam,hMenu,pt,0);
+		ListViewEx_SimpleContextMenuHandler(NULL,m_hWndList,0,hMenu,pt,TPM_LEFTALIGN|TPM_TOPALIGN);
 
 		DestroyMenu(hMenu);
 
@@ -1346,10 +1576,19 @@ public:
 
 	int _comp_fileattributes(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
 	{
-		WCHAR sz1[32+1],sz2[32+1];
-		GetAttributeString(pItem1->pFI->FileAttributes,sz1,ARRAYSIZE(sz1));
-		GetAttributeString(pItem2->pFI->FileAttributes,sz2,ARRAYSIZE(sz2));
-		return wcscmp(sz1,sz2);
+		if( 0 )
+		{
+			// hex mode
+			return _COMP(pItem1->pFI->FileAttributes,pItem2->pFI->FileAttributes);
+		}
+		else
+		{
+			// attr character
+			WCHAR sz1[32+1],sz2[32+1];
+			GetAttributeString(pItem1->pFI->FileAttributes,sz1,ARRAYSIZE(sz1));
+			GetAttributeString(pItem2->pFI->FileAttributes,sz2,ARRAYSIZE(sz2));
+			return wcscmp(sz1,sz2);
+		}
 	}
 
 	int _comp_ea(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
@@ -1473,14 +1712,15 @@ public:
 		return op->pThis->CompareItem(pItem1,pItem2,op);
 	}
 
-	void SortItems(UINT id,CFileInfoItem *)
-	{
-		SORT_PARAM<CFileListPage> op = {0};
-		op.pThis = this;
-		op.id = id;
-		op.direction = m_Sort.Direction; // 1 or -1 do not use 0
-		ListView_SortItems(m_hWndList,CompareProc,&op);
-	}
+//	void SortItems(UINT id,CFileInfoItem *)
+//	{
+//		SORT_PARAM<CFileListPage> op = {0};
+//		op.pThis = this;
+//		op.id = id;
+//		op.direction = m_Sort.Direction; // 1 or -1 do not use 0
+//		op.directory_align = 1; /* todo: */
+//		ListView_SortItems(m_hWndList,CompareProc,&op);
+//	}
 
 	//////////////////////////////////////////////////////////////////////////
 	//
@@ -1536,6 +1776,18 @@ public:
 		}
 	}
 
+	void OnRefresh()
+	{
+		SELECT_ITEM sel = {0};
+
+		sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
+		sel.pszCurDir = (PWSTR)this->m_pszCurDir;
+		sel.pszPath   = (PWSTR)this->m_pszCurDir;
+		sel.pszName   = (PWSTR)NULL;
+
+		FillItems(&sel);
+	}
+
 	void OnGotoDirectory()
 	{
 		PWSTR pszNewPath;
@@ -1549,7 +1801,13 @@ public:
 			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
 
 			WCHAR szVolumeName[MAX_PATH];
-			NtPathGetVolumeName(pszNewPath,szVolumeName,MAX_PATH);
+			if( NtPathGetVolumeName(pszNewPath,szVolumeName,MAX_PATH) == 0 )
+			{
+				if( NtPathGetVolumeName(m_pszCurDir,szVolumeName,MAX_PATH) == 0 )
+				{
+					StringCchCopy(szVolumeName,MAX_PATH,L"Unknown Volume");
+				}
+			}
 
 			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_TITLE,(LPARAM)szVolumeName);
 
@@ -1557,15 +1815,4 @@ public:
 		}
 	}
 
-	void OnRefresh()
-	{
-		SELECT_ITEM sel = {0};
-
-		sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
-		sel.pszCurDir = (PWSTR)this->m_pszCurDir;
-		sel.pszPath   = (PWSTR)this->m_pszCurDir;
-		sel.pszName   = (PWSTR)NULL;
-
-		FillItems(&sel);
-	}
 };

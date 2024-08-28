@@ -59,6 +59,7 @@ LRESULT CALLBACK MDIChildWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			ZeroMemory(pd,sizeof(MDICHILDWNDDATA));
 			SetWindowLongPtr(hWnd,GWLP_USERDATA,(LONG_PTR)pd);
 
+			// We need to early icon setting that prevent icon fricker.
 			SendMessage(hWnd,WM_SETICON,ICON_SMALL,(LPARAM)pmcp->hIcon);
 
 			break;

@@ -101,9 +101,9 @@ SOURCES = \
 	physicaldrivewindow.cpp\
 	disklayoutwindow.cpp\
 	listwindow.cpp\
-	column.cpp\
 	dialogs.cpp\
 	flthelp.cpp\
+	misc.cpp\
 	fsvolumelist.rc
 
 #----------------------------------------------------------

@@ -120,6 +120,11 @@ public:
 		InitList(m_hWndList);
 		InitGroup();
 
+#if _ENABLE_DARK_MODE_TEST
+		if( _IsDarkModeEnabled() )
+			InitDarkModeListView(m_hWndList);
+#endif
+
 		return 0;
 	}
 
@@ -148,6 +153,8 @@ public:
 				return OnGetDispInfo(pnmhdr);
 			case LVN_DELETEITEM:
 				return OnDeleteItem(pnmhdr);
+			case LVN_KEYDOWN:
+				return OnKeyDown(pnmhdr);
 			case NM_SETFOCUS:
 				return OnNmSetFocus(pnmhdr);
 			case NM_CUSTOMDRAW:
@@ -180,6 +187,32 @@ public:
 	LRESULT OnNmSetFocus(NMHDR *pnmhdr)
 	{
 		SendMessage(GetParent(m_hWnd),WM_NOTIFY,0,(LPARAM)pnmhdr);
+		return 0;
+	}
+
+	LRESULT OnKeyDown(NMHDR *pnmhdr)
+	{
+		NMLVKEYDOWN *pnmkd = (NMLVKEYDOWN *)pnmhdr;
+
+		if( pnmkd->wVKey == VK_SPACE || pnmkd->wVKey == VK_RETURN)
+		{
+			int iGroup = (int)ListView_GetFocusedGroup(pnmkd->hdr.hwndFrom);
+			if( iGroup != -1 )
+			{
+				LVGROUP lvg = {0};
+				lvg.cbSize = sizeof(lvg);
+				lvg.mask = LVGF_GROUPID|LVGF_STATE;
+				ListView_GetGroupInfoByIndex(pnmkd->hdr.hwndFrom,iGroup,&lvg);
+
+				lvg.state = ListView_GetGroupState(pnmkd->hdr.hwndFrom,lvg.iGroupId,LVGS_COLLAPSED|LVGS_COLLAPSIBLE);
+
+				lvg.mask = LVGF_STATE;
+				lvg.state ^= LVGS_COLLAPSED;
+				lvg.stateMask = LVGS_COLLAPSED;
+				ListView_SetGroupInfo(pnmkd->hdr.hwndFrom,lvg.iGroupId,&lvg);
+			}
+		}
+		
 		return 0;
 	}
 
@@ -358,6 +391,15 @@ public:
 						StringCchPrintf(*pszText,cchText,L"0x%08X 0x%016I64X",
 							*(ULONG *)&pUniqueId->UniqueId[0],
 							*(LONG64 *)&pUniqueId->UniqueId[4]);
+					}
+					else if( pUniqueId->UniqueIdLength == 0x10 )
+					{
+						GUID guid;
+						memcpy(&guid,pUniqueId->UniqueId,pUniqueId->UniqueIdLength);
+						LPOLESTR pszGuid;
+						StringFromIID(guid,&pszGuid);
+						StringCchPrintf(*pszText,cchText,L"%s",pszGuid);
+						CoTaskMemFree(pszGuid);
 					}
 					else
 					{
@@ -607,6 +649,54 @@ public:
 		return 0;
 	}
 
+	LRESULT OnQueryMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		switch( LOWORD(wParam) )
+		{
+			case UI_QUERY_CURRENTITEMNAME:
+				if( lParam )
+				{
+					DWORD dwError = 0;
+					CMultiSz msz;
+					msz.Add( this->m_pszNtDeviceName );
+					msz.Add( this->m_pszVolumeGuid );
+					msz.Add( this->m_pszDrive );
+
+					STRING_STRUCT *pString = (STRING_STRUCT *)lParam;
+
+					if( pString->Length == 0 && pString->MaximumLength == 0 )
+					{
+						pString->MaximumLength = msz.GetBufferSize();
+						pString->Buffer = (PWSTR)CoTaskMemAlloc( pString->MaximumLength );
+						memcpy(pString->Buffer,msz.GetTop(),pString->MaximumLength);
+						// returns first element length
+						pString->Length = (ULONG)(wcslen(pString->Buffer) * sizeof(WCHAR));
+					}
+					else
+					{
+						if( pString->MaximumLength < msz.GetBufferSize() )
+							dwError = ERROR_INSUFFICIENT_BUFFER;
+						int cb = min(pString->MaximumLength,msz.GetBufferSize());
+						if( cb > sizeof(WCHAR) )
+						{
+							memcpy(pString->Buffer,msz.GetTop(),cb);
+							pString->Length = cb;
+						}
+						else
+						{
+							pString->Length = 0;
+						}
+					}
+
+					SetLastError( dwError );
+
+					return (LRESULT)pString->Length;
+				}
+				return 0;
+		}
+		return 0;
+	}
+
 	virtual LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		switch(uMsg)
@@ -624,6 +714,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case WM_QUERY_MESSAGE:
+				return OnQueryMessage(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
 				return CFindHandler<CVolumeBasicInfoView>::OnFindItem(hWnd,uMsg,wParam,lParam);
 		}
@@ -1034,7 +1126,9 @@ public:
 			FreeQuotaInformation(m_QuotaInfoList);
 			m_QuotaInfoList = NULL;
 		}
-			
+
+		ZeroMemory(&m_UsnJournalData,sizeof(m_UsnJournalData));
+
 		if( OpenVolume(m_pszNtDeviceName,OPEN_READ_DATA,&Handle) == STATUS_SUCCESS )
 		{
 			// Open with FILE_READ_DATA flag
@@ -1207,6 +1301,7 @@ public:
 
 		WCHAR szBuffer[MAX_PATH];
 		WCHAR szText[64];
+
 		LVITEM lvi = {0};
 		lvi.iGroupId = ID_GROUP_PHYSICALDRIVE;
 

@@ -270,6 +270,12 @@ RtlNtPathNameToDosPathName(
         }                                                \
     } while (0)
 
+EXTERN_C
+BOOLEAN
+NTAPI
+RtlSetCurrentTransaction(
+	HANDLE hTransaction
+	);
 
 //////////////////////////////////////////////////////////////////////////////
 

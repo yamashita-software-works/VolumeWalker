@@ -44,6 +44,36 @@
 #define PM_USERBASE      (PM_BASE+100)
 #define PM_PRIVATEBASE   PM_USERBASE
 
+
+//////////////////////////////////////////////////////////////////////////////
+// old compatible message
+// refer to FSFileList/FSUtilGUI document.
+//
+#define PM_SELECT_ON_FILELIST (PM_BASE+8100)
+
+//////////////////////////////////////////////////////////////////////////////
+// WM_MDI_SAVECONFIGURATION application use structure
+
+typedef struct _CONFIG_STRUCT
+{
+	PWSTR SectionName;
+	PWSTR IniFileName;
+} CONFIG_STRUCT;
+
+inline VOID FreeConfigStruct(CONFIG_STRUCT *pcs)
+{
+	if( pcs ) {
+		if( pcs->IniFileName ) {
+			CoTaskMemFree(pcs->IniFileName);
+			pcs->IniFileName = NULL;
+		}
+		if( pcs->SectionName ) {
+			CoTaskMemFree(pcs->SectionName);
+			pcs->SectionName = NULL;
+		}
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // WM_OPEM_MDI_CHILDFRAME application use structure
 
