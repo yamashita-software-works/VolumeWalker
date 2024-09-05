@@ -4,7 +4,7 @@
 //
 //  Implements menu helper functions.
 //
-//  Auther: YAMASHITA Katsuhiro
+//  Author: YAMASHITA Katsuhiro
 //
 //  Create: 2023.05.31
 //

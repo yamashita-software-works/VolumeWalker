@@ -4,7 +4,7 @@
 //
 //  Implements the change journal view base window.
 //
-//  Auther: YAMASHITA Katsuhiro
+//  Author: YAMASHITA Katsuhiro
 //
 //  Create: 2024-04-15
 //

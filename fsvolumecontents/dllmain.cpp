@@ -14,7 +14,7 @@
 //***************************************************************************
 #include "stdafx.h"
 #include "fsvolumecontents.h"
-#include "dirfileswindow.h"
+#include "fileswindow.h"
 #include "changejournalwindow.h"
 
 HINSTANCE hInstance = NULL;

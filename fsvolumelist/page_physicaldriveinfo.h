@@ -102,6 +102,8 @@ public:
 
 		if( m_pdi )
 			delete m_pdi;
+		if( m_pvi )
+			delete m_pvi;
 	}
 
 	LRESULT OnCreate(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

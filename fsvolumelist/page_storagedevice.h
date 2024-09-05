@@ -531,8 +531,8 @@ public:
 #if 0
 			{ COLUMN_FirstInstallDate, L"First Install Date",    0, 100, LVCFMT_LEFT },
 #endif
-			{ COLUMN_LastArrivalDate,  L"Last Arrival Date",     0, 100, LVCFMT_LEFT },
-			{ COLUMN_LastRemovalDate,  L"Last Removal Date",     0, 100, LVCFMT_LEFT },
+			{ COLUMN_LastArrivalDate,  L"Arrival Date",          0, 100, LVCFMT_LEFT },
+			{ COLUMN_LastRemovalDate,  L"Removal Date",          0, 100, LVCFMT_LEFT },
 			{ COLUMN_DeviceId,         L"Device Instance Id",    0, 100, LVCFMT_LEFT },
 		};
 

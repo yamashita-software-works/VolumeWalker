@@ -4,7 +4,7 @@
 //
 //  listview column manager.
 //
-//  Auther: YAMASHITA Katsuhiro
+//  Author: YAMASHITA Katsuhiro
 //
 //  Create: 2023-02-18
 //

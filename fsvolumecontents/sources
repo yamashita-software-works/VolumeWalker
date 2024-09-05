@@ -99,8 +99,8 @@ INCLUDES=$(INCLUDES);..\inc
 #----------------------------------------------------------
 SOURCES = \
 	dllmain.cpp \
-	dirfileswindow.cpp\
-	dirfilesview.cpp\
+	fileswindow.cpp\
+	filesview.cpp\
 	changejournalview.cpp\
 	changejournalwindow.cpp\
 	dialogs.cpp\

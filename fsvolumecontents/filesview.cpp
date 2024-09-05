@@ -4,7 +4,7 @@
 //
 //  Implements the file list view base window.
 //
-//  Auther: YAMASHITA Katsuhiro
+//  Author: YAMASHITA Katsuhiro
 //
 //  Create: 2023.06.29
 //
@@ -16,7 +16,7 @@
 #include "stdafx.h"
 #include "resource.h"
 #include "fsvolumecontents.h"
-#include "dirfilesview.h"
+#include "filesview.h"
 
 class CFileListBase : 
 	public CBaseWindow,

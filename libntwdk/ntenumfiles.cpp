@@ -183,12 +183,14 @@ EnumFiles_W(
     PVOID Context
     )
 {
+	HRESULT hr;
     NTSTATUS Status;
     UNICODE_STRING usRoot;
     PWSTR pR=NULL,pP=NULL;
     ULONG cchR=0,cchP=0;
 
-    SplitRootPath_W(Path,&pR,&cchR,&pP,&cchP);
+    if( (hr = SplitRootPath_W(Path,&pR,&cchR,&pP,&cchP)) != S_OK )
+		return hr;
 
     RtlInitUnicodeString(&usRoot,pR);
 

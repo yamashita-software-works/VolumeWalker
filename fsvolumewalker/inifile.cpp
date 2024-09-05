@@ -4,7 +4,7 @@
 //
 //  Implements INI file read/write functions.
 //
-//  Auther: YAMASHITA Katsuhiro
+//  Author: YAMASHITA Katsuhiro
 //
 //  Create: 2023.06.29
 //

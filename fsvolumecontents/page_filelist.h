@@ -14,10 +14,11 @@
 //  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.
 //  Licensed under the MIT License.
 //
-#include "fsvolumecontents.h"
+#include "libntwdk.h"
 #include "pagewbdbase.h"
 #include "common.h"
 #include "column.h"
+#include "history.h"
 #include "findhandler.h"
 #include "dialogs.h"
 #include "fsfilelib.h"
@@ -28,7 +29,12 @@ extern int GetImageListIndex(PCWSTR pszPath,PCWSTR pszFileName,DWORD dwFileAttri
 #define _IS_PARENT_DIR_NAME( fname ) (fname[0] == L'.' && fname[1] == L'.' && fname[2] == L'\0')
 #define _PARENT_DIRECTORY(path) (path[0]==L'.'&&path[1]==L'.'&&path[2]==L'\0')
 
-#define _FLG_NTFS_SPECIALFILE (0x1)
+#define _FLG_COSTRY_DATA_TRIED_TAKE    (0x1)
+#define _FLG_NTFS_SPECIALFILE        (0x800)
+
+#define _MAX_LEADING_READ 128
+
+#define _FILE_ACTION_RENAME           (0x10)
 
 enum {
 	ID_GROUP_DIRECTORY=1,
@@ -75,6 +81,8 @@ class CFileListPage :
 	BOOL m_bNtfsSpecialDirectory;
 
 	UINT m_columnShowStyleFlags[COLUMN_MaxCount];
+
+	CHistoryManager m_history;
 public:
 	PWSTR GetPath() const { return m_pszCurDir; }
 	HWND GetListView() const { return m_hWndList; }
@@ -134,14 +142,14 @@ public:
 			{ COLUMN_ShortName,      L"ShortName",             0},
 			{ COLUMN_Extension,      L"Extention",             0},
 			{ COLUMN_Path,           L"Path",                  0},
+			{ COLUMN_Lcn,            L"Lcn",                   0},
 			{ COLUMN_Usn,            L"Usn",                   0},
 			{ COLUMN_Date,           L"Date",                  0},
 			{ COLUMN_Reason,         L"Reason",                0},
 			{ COLUMN_Frn,            L"FRN",                   0},
 			{ COLUMN_ParentFrn,      L"Parent FRN",            0},
 		};
-		m_columns.SetColumnNameMap(_countof(column_name_map), column_name_map);
-
+		m_columns.SetColumnNameMap( _countof(column_name_map), column_name_map );
 		m_columns.SetIniFilePath( GetIniFilePath() );
 
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
@@ -184,20 +192,13 @@ public:
 		return S_OK;
 	}
 
-	virtual HRESULT OnInitLayout(const RECT *prc)
-	{
-		return E_NOTIMPL;
-	}
-
-	virtual HRESULT OnDestroyPage(PVOID)
-	{
-		return E_NOTIMPL;
-	}
-
 	LRESULT OnCreate(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		m_hFont = GetGlobalFont(hWnd);
 		m_hFontHeader = GetIconFont();
+
+		m_history.Initialize();
+
 		return 0;
 	}
 
@@ -208,6 +209,7 @@ public:
 			DeleteObject(m_hFont);
 			m_hFont = NULL;
 		}
+
 		if( m_hFontHeader )
 		{
 			DeleteObject(m_hFontHeader);
@@ -281,10 +283,13 @@ public:
 				// reservded sample.
 				CFileInfoItem *pItem = (CFileInfoItem *)pnmlvcd->nmcd.lItemlParam;
 
-				if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
+				if( (pItem->pFI->ItemTypeFlag & _FLG_COSTRY_DATA_TRIED_TAKE) == 0 )
 				{
-					pnmlvcd->clrText = RGB(128,128,128);
+					GetCostlyFileInformationData(pItem->pFI);
 				}
+
+				if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
+					pnmlvcd->clrText = RGB(128,128,128);
 
 				if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
 					pnmlvcd->clrText = RGB(0,0,180);
@@ -432,6 +437,31 @@ public:
 	LRESULT OnItemChanged(NMHDR *pnmhdr)
 	{
 		NMLISTVIEW *pnmlv = (NMLISTVIEW *)pnmhdr;
+
+		if( ((pnmlv->uOldState == 0)|| ((pnmlv->uNewState & (LVIS_SELECTED)) == (LVIS_SELECTED))) 
+			 && ((pnmlv->uNewState & (LVIS_SELECTED|LVIS_FOCUSED)) == (LVIS_SELECTED|LVIS_FOCUSED)) )
+		{
+			CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(pnmhdr->hwndFrom,pnmlv->iItem);
+
+			if( wcscmp(pItem->pFI->hdr.FileName,L"..") == 0 )
+				return 0;
+
+			PWSTR pszFullPath;
+			pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+
+			SELECT_ITEM sel = {0};
+			sel.ViewType  = VIEW_PAGE_FILELIST;
+			sel.pszPath   = pszFullPath;
+			sel.pszCurDir = DuplicateString(m_pszCurDir);
+			sel.pszName   = DuplicateString(pItem->pFI->hdr.FileName);
+
+			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_ITEM_SELECTED,(LPARAM)&sel);
+
+			FreeMemory(sel.pszCurDir);
+			FreeMemory(sel.pszName);
+			FreeMemory(pszFullPath);
+		}
+
 		return 0;
 	}
 
@@ -457,7 +487,9 @@ public:
 			sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
 			sel.pszPath   = pszGoToDir;
 			sel.pszCurDir = DuplicateString(m_pszCurDir);
-			sel.pszName   = DuplicateString(pItem->pFI->hdr.FileName);
+
+			if( wcscmp(pItem->pFI->hdr.FileName,L"..") == 0 )
+				sel.pszName   = DuplicateString(pItem->pFI->hdr.FileName);
 
 			sel.FileId.dwSize = sizeof(FILE_ID_DESCRIPTOR);
 			sel.FileId.Type = FileIdType;
@@ -500,11 +532,15 @@ public:
 					StringCchCopy(szDosPath,MAX_PATH,L"\\\\?\\");
 					StringCchCat(szDosPath,MAX_PATH,&pFile->pszPath[4]);
 				}
+				else if( NtPathToDosPath(pFile->pszPath,szDosPath,MAX_PATH) )
+				{
+					;
+				}
 				else
 				{
-					NtPathToDosPath(pFile->pszPath,szDosPath,MAX_PATH);
+					StringCchCopy(szDosPath,MAX_PATH,pFile->pszPath);
 				}
-			
+		
 				if( szDosPath[0] )
 				{
 					_OpenByExplorerEx(m_hWnd,szDosPath,NULL,FALSE);
@@ -879,6 +915,13 @@ public:
 
 		if( pdi->item.mask & LVIF_TEXT )
 		{
+			if( !(pItem->pFI->ItemTypeFlag & _FLG_COSTRY_DATA_TRIED_TAKE) )
+			{
+				GetCostlyFileInformationData( pItem->pFI );
+
+				pdi->item.mask |= LVIF_DI_SETITEM;
+			}
+
 			if( (id < COLUMN_MaxItem) && m_disp_proc[ id ].pfn )
 			{
 				return (this->*m_disp_proc[ id ].pfn)(id,pdi);
@@ -948,10 +991,7 @@ public:
 		switch(uMsg)
 		{
 			case WM_PRETRANSLATEMESSAGE:
-			{
-				MSG *pmsg = (MSG *)lParam;
 				return FALSE;
-			}
 			case WM_SETFOCUS:
 				SetFocus(m_hWndList);
 				return 0;
@@ -966,7 +1006,7 @@ public:
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
-				return OnFindItem(hWnd,uMsg,wParam,lParam);;
+				return CFindHandler<CFileListPage>::OnFindItem(hWnd,uMsg,wParam,lParam);;
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -1091,6 +1131,8 @@ public:
 
 			ListViewEx_SetHeaderItemData( hWndList, index, pcol->id );
 		}
+
+		m_columns.FreeUserDefinitionColumnTable(pcoltbl);
 
 		return TRUE;
 	}
@@ -1217,6 +1259,158 @@ public:
 		return S_OK;
 	}
 
+	void UpdateFileItemInformation(HANDLE hVolume,HANDLE hFile,CFileItem *pFI)
+	{
+		pFI->ItemTypeFlag |= _FLG_COSTRY_DATA_TRIED_TAKE;
+
+		if( pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+		{
+			FILE_STANDARD_INFO fsi = {0};
+			if( GetFileInformationByHandleEx(hFile,FileStandardInfo,&fsi,sizeof(fsi)) )
+			{
+				if( (pFI->EndOfFile.QuadPart != fsi.EndOfFile.QuadPart) || 
+					(pFI->AllocationSize.QuadPart != fsi.AllocationSize.QuadPart) )
+				{
+					pFI->EndOfFile      = fsi.EndOfFile;
+					pFI->AllocationSize = fsi.AllocationSize;
+				    pFI->NumberOfLinks  = fsi.NumberOfLinks;
+					pFI->DeletePending  = fsi.DeletePending;
+					pFI->Directory      = fsi.Directory;
+				}
+			}
+		}
+
+		PWSTR RootDirectory=NULL;
+		if( hVolume != NULL )
+			SplitRootPath_W(m_pszCurDir,&RootDirectory,NULL,NULL,NULL);
+		else
+			RootDirectory = DuplicateString(m_pszCurDir);
+
+		pFI->Wof = false;
+		pFI->FirstLCN.QuadPart = 0;
+
+		if( pFI->AllocationSize.QuadPart != 0 )
+		{
+			FS_CLUSTER_INFORMATION_BASIC cluster = {0};
+			if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasic,&cluster,sizeof(cluster)) == 0 )
+			{
+				pFI->FirstLCN = cluster.FirstLcn;
+			}
+		}
+		FreeMemory(RootDirectory);
+	}
+
+	//
+	// Get costly file information.
+	//
+	void GetCostlyFileInformationData(CFileItem *pFI)
+	{
+		NTSTATUS Status;
+
+		PWSTR RootDirectory=NULL,RootRelativePath=NULL;
+		ULONG cchRootDirectory=0,cchRootRelativePath=0;
+		SplitRootPath_W(m_pszCurDir,&RootDirectory,&cchRootDirectory,&RootRelativePath,&cchRootRelativePath);
+
+		HANDLE hRootDirectory = NULL;
+		if( OpenRootDirectory(RootDirectory,0,&hRootDirectory) != STATUS_SUCCESS )
+		{
+			//
+			// The Root directory open failed. If so try open directory using
+			// full path string without splitting the volume and root relative path.
+			//
+			FreeMemory(RootRelativePath);
+			RootRelativePath = DuplicateString(m_pszCurDir); // duplicate full-path string
+			hRootDirectory = NULL;
+		}
+
+		HANDLE hCurDir;
+		if( (Status = OpenFile_W(&hCurDir,hRootDirectory,RootRelativePath,FILE_READ_ATTRIBUTES|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE)) == 0 )
+		{
+			if( !_IS_CURDIR_NAME( pFI->hdr.FileName ) && !_IS_PARENT_DIR_NAME( pFI->hdr.FileName ) )
+			{
+				HANDLE hFile;
+				ULONG DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
+				ULONG Option = FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT|FILE_SYNCHRONOUS_IO_NONALERT;
+				if( OpenFile_W(&hFile,hCurDir,pFI->hdr.FileName,DesiredAccess,FILE_SHARE_READ|FILE_SHARE_WRITE,Option) == 0 )
+				{
+					UpdateFileItemInformation(hRootDirectory,hFile,pFI);
+
+					CloseHandle(hFile);
+				}
+			}
+			CloseHandle(hCurDir);
+		}
+
+		FreeMemory(RootRelativePath);
+		FreeMemory(RootDirectory);
+
+		if( hRootDirectory )
+			CloseHandle(hRootDirectory);
+
+		// We've already tried to get the data.
+		pFI->ItemTypeFlag |= _FLG_COSTRY_DATA_TRIED_TAKE;
+	}
+
+	void GetCostlyFilesInformationOnPtrArray(PtrArray<CFileItem*> *pa)
+	{
+		NTSTATUS Status;
+
+		PWSTR RootDirectory=NULL,RootRelativePath=NULL;
+		ULONG cchRootDirectory=0,cchRootRelativePath=0;
+		SplitRootPath_W(m_pszCurDir,&RootDirectory,&cchRootDirectory,&RootRelativePath,&cchRootRelativePath);
+
+		HANDLE hRootDirectory = NULL;
+		if( OpenRootDirectory(RootDirectory,0,&hRootDirectory) != STATUS_SUCCESS )
+		{
+			//
+			// The Root directory open failed. If so try open directory using
+			// full path string without splitting the volume and root relative path.
+			//
+			FreeMemory(RootRelativePath);
+			RootRelativePath = DuplicateString(m_pszCurDir); // duplicate full-path string
+			hRootDirectory = NULL;
+		}
+
+		HANDLE hCurDir;
+		if( (Status = OpenFile_W(&hCurDir,hRootDirectory,RootRelativePath,FILE_READ_ATTRIBUTES|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE)) == 0 )
+		{
+			int i,cFiles = pa->GetCount();
+
+			cFiles = min(cFiles,_MAX_LEADING_READ);
+
+			for(i = 0; i < cFiles; i++)
+			{
+				CFileItem *pFI = pa->Get(i);
+
+				if( !_IS_CURDIR_NAME( pFI->hdr.FileName ) && !_IS_PARENT_DIR_NAME( pFI->hdr.FileName ) )
+				{
+					HANDLE hFile;
+
+					ULONG DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
+					ULONG Option = FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT|FILE_SYNCHRONOUS_IO_NONALERT;
+
+					if( OpenFile_W(&hFile,hCurDir,pFI->hdr.FileName,DesiredAccess,FILE_SHARE_READ|FILE_SHARE_WRITE,Option) == 0 )
+					{
+						UpdateFileItemInformation(hRootDirectory,hFile,pFI);
+
+						CloseHandle(hFile);
+					}
+				}
+				else
+				{
+					pFI->ItemTypeFlag |= _FLG_COSTRY_DATA_TRIED_TAKE;
+				}
+			}
+			CloseHandle(hCurDir);
+		}
+
+		FreeMemory(RootRelativePath);
+		FreeMemory(RootDirectory);
+
+		if( hRootDirectory )
+			CloseHandle(hRootDirectory);
+	}
+
 	//
 	// Enumerate directory/file items
 	//
@@ -1287,7 +1481,6 @@ public:
 				}
 				FreeNtfsSpecialFiles(&ntfsFiles);
 
-
 				_SafeMemFree(m_pszCurDir);
 				m_pszCurDir = _MemAllocString(pszPath);
 
@@ -1299,6 +1492,9 @@ public:
 			}
 		}
 
+		if( (pSel->Flags & SI_FLAG_NOT_ADD_TO_HISTORY) == 0 )
+			m_history.Push( m_pszCurDir );
+
 		if( FAILED(hr) )
 		{
 			pa->DeleteAll();
@@ -1309,110 +1505,14 @@ public:
 		}
 
 		//
-		// Delete all items in ListView control
+		// Get information enumerated files.
+		//
+		GetCostlyFilesInformationOnPtrArray(pa);
+
+		//
+		// Delete all items on the list-view control.
 		//
 		ListView_DeleteAllItems(m_hWndList);
-
-		//
-		// Get the file information.
-		//
-		{
-			NTSTATUS Status;
-			UNICODE_STRING usRoot;
-			PWSTR RootDirectory=NULL,RootRelativePath=NULL;
-			ULONG cchRootDirectory=0,cchRootRelativePath=0;
-			SplitRootPath_W(m_pszCurDir,&RootDirectory,&cchRootDirectory,&RootRelativePath,&cchRootRelativePath);
-
-			RtlInitUnicodeString(&usRoot,RootDirectory);
-
-			HANDLE hRootDirectory = NULL;
-			if( OpenRootDirectory(RootDirectory,0,&hRootDirectory) != STATUS_SUCCESS )
-			{
-				//
-				// The Root directory open failed. If so try open directory using
-				// full path string without splitting the volume and root relative path.
-				//
-				FreeMemory(RootRelativePath);
-				RootRelativePath = DuplicateString(m_pszCurDir); // duplicate full-path string
-				hRootDirectory = NULL;
-			}
-
-			HANDLE hCurDir;
-			if( (Status = OpenFile_W(&hCurDir,hRootDirectory,RootRelativePath,FILE_READ_ATTRIBUTES|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,0)) == 0 )
-			{
-				int i,cFiles = pa->GetCount();
-
-				for(i = 0; i < cFiles; i++)
-				{
-					CFileItem *pFI = pa->Get(i);
-
-					if( !_IS_CURDIR_NAME( pFI->hdr.FileName ) && !_IS_PARENT_DIR_NAME( pFI->hdr.FileName ) )
-					{
-						HANDLE hFile;
-
-						ULONG DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
-						ULONG Option = FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT|FILE_SYNCHRONOUS_IO_NONALERT;
-
-						if( OpenFile_W(&hFile,hCurDir,pFI->hdr.FileName,DesiredAccess,FILE_SHARE_READ|FILE_SHARE_WRITE,Option) == 0 )
-						{
-							if( pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-							{
-								FILE_STANDARD_INFO fsi = {0};
-								if( GetFileInformationByHandleEx(hFile,FileStandardInfo,&fsi,sizeof(fsi)) )
-								{
-									if( (pFI->EndOfFile.QuadPart != fsi.EndOfFile.QuadPart) || 
-										(pFI->AllocationSize.QuadPart != fsi.AllocationSize.QuadPart) )
-									{
-										pFI->EndOfFile      = fsi.EndOfFile;
-										pFI->AllocationSize = fsi.AllocationSize;
-									    pFI->NumberOfLinks  = fsi.NumberOfLinks;
-										pFI->DeletePending  = fsi.DeletePending;
-										pFI->Directory      = fsi.Directory;
-									}
-								}
-							}
-
-							if( pFI->AllocationSize.QuadPart != 0 )
-							{
-								FS_CLUSTER_INFORMATION_BASIC cluster = {0};
-								if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasic,&cluster,sizeof(cluster)) == 0 )
-								{
-									pFI->FirstLCN = cluster.FirstLcn;
-								}
-							}
-							else
-							{
-								if( (pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 )
-								{
-									if( pFI->EndOfFile.QuadPart == 0 ) 
-									{
-#if 0
-										pFI->Wof = (GetWofInformation(hFile,NULL,NULL) == S_OK);
-#else
-										pFI->Wof = false;
-#endif
-									}
-									else
-									{
-										pFI->Wof = true;
-									}
-								}
-							}
-
-							CloseHandle(hFile);
-						}
-					}
-				}
-
-				CloseHandle(hCurDir);
-			}
-
-			FreeMemory(RootRelativePath);
-			FreeMemory(RootDirectory);
-
-			if( hRootDirectory )
-				CloseHandle(hRootDirectory);
-		}
 
 		//
 		// Insert to list-view window
@@ -1731,12 +1831,14 @@ public:
 	{
 		switch( uCmdId )
 		{
-			case ID_EDIT_COPY:
-				*puState = ListView_GetSelectedCount(m_hWndList) ?  UPDUI_ENABLED : UPDUI_DISABLED;
-				break;
 			case ID_EDIT_FIND:
 			case ID_EDIT_FIND_NEXT:
 			case ID_EDIT_FIND_PREVIOUS:
+				*puState = ListView_GetItemCount(m_hWndList) ?  UPDUI_ENABLED : UPDUI_DISABLED;
+				break;
+			case ID_EDIT_COPY:
+				*puState = ListView_GetSelectedCount(m_hWndList) ?  UPDUI_ENABLED : UPDUI_DISABLED;
+				break;
 				*puState = UPDUI_ENABLED;
 				break;
 			default:
@@ -1745,10 +1847,56 @@ public:
 		return S_OK;
 	}
 
+	VOID OnHistoryBackward()
+	{
+		HISTORY_ITEM item;
+		if( m_history.Back(&item) )
+		{
+			if( item.pszFileName == NULL )
+			{
+				SELECT_ITEM sel = {0};
+				sel.Flags = SI_FLAG_NOT_ADD_TO_HISTORY;
+				sel.ViewType  = VIEW_PAGE_FILELIST;
+				sel.pszPath   = item.pszPath;
+				sel.pszName   = NULL;
+				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
+			}
+			else
+			{
+				SELECT_ITEM sel = {0};
+				sel.Flags = SI_FLAG_NOT_ADD_TO_HISTORY;
+				sel.ViewType  = VIEW_PAGE_FILELIST;
+				sel.pszPath   = item.pszPath;
+				sel.pszName   = item.pszFileName;
+				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
+			}
+		}
+	}
+	
+	VOID OnHistoryForward()
+	{
+		HISTORY_ITEM item;
+		if( m_history.Forward(&item) )
+		{
+			SELECT_ITEM sel = {0};
+			sel.Flags = SI_FLAG_NOT_ADD_TO_HISTORY;
+			sel.ViewType  = VIEW_PAGE_FILELIST;
+			sel.pszPath   = item.pszPath;
+			sel.pszName   = NULL;
+			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
+		}
+	}
+
 	virtual HRESULT InvokeCommand(UINT CmdId)
 	{
 		switch( CmdId )
 		{
+			case ID_HISTORY_BACKWARD:
+				OnHistoryBackward();
+				break;
+			case ID_HISTORY_FORWARD:
+				OnHistoryForward();
+				break;
 			case ID_EDIT_COPY:
 				OnEditCopyText();
 				break;
@@ -1774,18 +1922,6 @@ public:
 		{
 			SetClipboardTextFromListView(m_hWndList,SCTEXT_UNICODE);
 		}
-	}
-
-	void OnRefresh()
-	{
-		SELECT_ITEM sel = {0};
-
-		sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
-		sel.pszCurDir = (PWSTR)this->m_pszCurDir;
-		sel.pszPath   = (PWSTR)this->m_pszCurDir;
-		sel.pszName   = (PWSTR)NULL;
-
-		FillItems(&sel);
 	}
 
 	void OnGotoDirectory()
@@ -1815,4 +1951,15 @@ public:
 		}
 	}
 
+	void OnRefresh()
+	{
+		SELECT_ITEM sel = {0};
+
+		sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
+		sel.pszCurDir = (PWSTR)this->m_pszCurDir;
+		sel.pszPath   = (PWSTR)this->m_pszCurDir;
+		sel.pszName   = (PWSTR)NULL;
+
+		FillItems(&sel);
+	}
 };

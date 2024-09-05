@@ -4,7 +4,7 @@
 //
 //  Implements the physical disk information window.
 //
-//  Auther: YAMASHITA Katsuhiro
+//  Author: YAMASHITA Katsuhiro
 //
 //  Create: 2023.08.16
 //

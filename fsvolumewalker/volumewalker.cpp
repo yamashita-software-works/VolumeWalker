@@ -2,13 +2,16 @@
 //*                                                                         *
 //*  volumewalker.cpp                                                       *
 //*                                                                         *
-//*  Implements the main procedure and main frame window                    *
+//*  PURPOSE:                                                               *
+//*    Implements the main procedure and main frame window.                 *
 //*                                                                         *
-//*  AUTHOR: YAMASHITA Katsuhiro                                            *
+//*  AUTHOR:                                                                *
+//*    YAMASHITA Katsuhiro                                                  *
 //*                                                                         *
-//*  2022.04.02 Create SDI frame ver.                                       *
-//*  2022.12.24 Create MDI frame ver.                                       *
-//*  2023.02.24 Create MDI based new mainframe.                             *
+//*  HISTORY:                                                               *
+//+    2022.04.02 SDI frame ver created.                                    *
+//*    2022.12.24 MDI frame ver with based on VC++ generated code created.  *
+//*    2023.02.24 MDI frame ver with new main frame created.                *
 //*                                                                         *
 //***************************************************************************
 //

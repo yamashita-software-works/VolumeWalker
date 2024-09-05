@@ -4,7 +4,7 @@
 //
 //  Implements the volume information window.
 //
-//  Auther: YAMASHITA Katsuhiro
+//  Author: YAMASHITA Katsuhiro
 //
 //  Create: 2023.03.31
 //

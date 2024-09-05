@@ -1,3 +1,17 @@
+### 0.1.13.0
+
+- Volume Contents Browser - Files ヒストリ機能を実験的に追加。
+
+- Volume Contents Browser - Files カラムローダーのメモリリークを修正。
+
+- Storage Devicesの以下の列タイトルを変更。
+  "Last Arrival Date"-> "Arrival Date"
+  "Last Removal Date"-> "Removal Date"
+
+- AutherをAuthorに訂正。
+
+- PhysicalDriveInfoの m_pvi がリークする不具合を修正。
+
 ### 0.1.12.0
 
 - VolumesとMS-DOS Drivesの\[Usage Rate\]列の名称を\[Usage %\]に変更。

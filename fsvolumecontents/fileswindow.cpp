@@ -4,7 +4,7 @@
 //
 //  Implements the directory files view host window.
 //
-//  Auther: YAMASHITA Katsuhiro
+//  Author: YAMASHITA Katsuhiro
 //
 //  Create: 2023.06.29
 //
@@ -16,8 +16,8 @@
 #include "stdafx.h"
 #include "resource.h"
 #include "fsvolumecontents.h"
-#include "dirfileswindow.h"
-#include "dirfilesview.h"
+#include "fileswindow.h"
+#include "filesview.h"
 
 class CDirectoryFilesWindow : public CBaseWindow
 {

@@ -1,6 +1,6 @@
 //***************************************************************************
 //*                                                                         *
-//*  clipboardtext.h                                                        *
+//*  clipboardtext.cpp                                                      *
 //*                                                                         *
 //*  PURPOSE:  Implements clipboard for text.                               *
 //*                                                                         *

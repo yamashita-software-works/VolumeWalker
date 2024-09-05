@@ -8,6 +8,9 @@
 //*                                                                         *
 //*  HISTORY:  2024/08/08                                                   *
 //*                                                                         *
+//*  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.                *
+//*  Licensed under the MIT License.                                        *
+//*                                                                         *
 //***************************************************************************
 #pragma once
 

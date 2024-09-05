@@ -4,7 +4,7 @@
 //
 //  Implements dialog procedures.
 //
-//  Auther: YAMASHITA Katsuhiro
+//  Author: YAMASHITA Katsuhiro
 //
 //  Create: 2024.04.05
 //

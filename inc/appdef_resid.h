@@ -53,6 +53,8 @@
 #define ID_GOTO                        41211
 #define ID_UP                          41212
 #define ID_UP_DIR                      41213
+#define ID_HISTORY_BACKWARD            41214
+#define ID_HISTORY_FORWARD             41215
 
 #endif
 

@@ -4,7 +4,7 @@
 //
 //  Implements the simple "Find" common dialogs wrapper functions.
 //
-//  Auther: YAMASHITA Katsuhiro
+//  Author: YAMASHITA Katsuhiro
 //
 //  Create: 2023.12.14
 //

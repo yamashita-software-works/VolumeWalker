@@ -4,7 +4,7 @@
 //
 //  Implements the common list window base.
 //
-//  Auther: YAMASHITA Katsuhiro
+//  Author: YAMASHITA Katsuhiro
 //
 //  Create: 2023.10.27
 //
