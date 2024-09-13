@@ -668,7 +668,7 @@ NTSTATUS SetFileAttributes_W(HANDLE RootHandle, PCWSTR FilePath,  ULONG ulFileAt
     {
         FILE_BASIC_INFORMATION fbi = {0};
 
-		fbi.FileAttributes = ulFileAttributes;
+        fbi.FileAttributes = ulFileAttributes;
 
         Status = NtSetInformationFile(Handle,&IoStatus,&fbi,sizeof(fbi),FileBasicInformation);
 
@@ -990,68 +990,102 @@ EXTERN_C
 NTSTATUS
 NTAPI
 MakeSureDirectoryPathExists_W(
+    HANDLE DirectoryHandle,
     PCWSTR DirPath
     )
 {
     UNICODE_STRING RootDirectory;
     UNICODE_STRING RootRelativePath;
     NTSTATUS Status;
-    PWSTR pszFullPath;
+    PWSTR pszFullPath = NULL;
+    HANDLE hRootDir = NULL;
 
-    pszFullPath = DuplicateString(DirPath);
-
-    if( pszFullPath == NULL )
+    if( DirectoryHandle != NULL )
     {
-        return STATUS_NO_MEMORY;
-    }
+        hRootDir = DirectoryHandle;
+        RootRelativePath.Buffer = (PWCH)DirPath;
 
-    if( !SplitRootRelativePath(pszFullPath,&RootDirectory,&RootRelativePath) )
+        Status = STATUS_SUCCESS;
+    }
+    else
     {
-        FreeMemory(pszFullPath);
-        return STATUS_INVALID_PARAMETER;
-    }
+        pszFullPath = DuplicateString(DirPath);
 
-    HANDLE hParentDir;
-    Status = OpenFile_U(&hParentDir,NULL,&RootDirectory,FILE_GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE);
+        if( pszFullPath == NULL )
+        {
+            return STATUS_NO_MEMORY;
+        }
+
+        if( !SplitRootRelativePath(pszFullPath,&RootDirectory,&RootRelativePath) )
+        {
+            FreeMemory(pszFullPath);
+            return STATUS_INVALID_PARAMETER;
+        }
+
+        Status = OpenFile_U(&hRootDir,NULL,&RootDirectory,FILE_GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE);
+    }
 
     if( Status == STATUS_SUCCESS )
     {
         WCHAR seps[] = L"\\";
         WCHAR *token = NULL;
         WCHAR *next_token = NULL;
-        HANDLE hCreatedDir;
+        HANDLE hCreatedDir = NULL;
+        HANDLE hParentDir = NULL;
 
-        token = wcstok_s((PWSTR)RootRelativePath.Buffer,seps,&next_token);
+		Status = NtDuplicateObject(
+					NtCurrentProcess(),
+					hRootDir, 
+					NtCurrentProcess(),
+					&hParentDir, 
+					0,
+					FALSE,
+					DUPLICATE_SAME_ACCESS);
 
-        while( token != NULL )
-        {
-            UNICODE_STRING token_u;
-            RtlInitUnicodeString(&token_u,token);
+		if( Status == STATUS_SUCCESS )
+		{
+	        token = wcstok_s((PWSTR)RootRelativePath.Buffer,seps,&next_token);
 
-            if( !PathFileExists_UEx(hParentDir,&token_u,NULL) )
-            {
-                Status = CreateDirectory_W(hParentDir,token,NULL);
-                if( Status != STATUS_SUCCESS && Status != STATUS_OBJECT_NAME_COLLISION )
-                    break;
-            }
+		    while( token != NULL )
+			{
+				UNICODE_STRING token_u;
+	            RtlInitUnicodeString(&token_u,token);
 
-            Status = OpenFile_U(&hCreatedDir,hParentDir,&token_u,
-                        FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE,
-                        FILE_DIRECTORY_FILE);
+		        if( !PathFileExists_UEx(hParentDir,&token_u,NULL) )
+			    {
+				    Status = CreateDirectory_W(hParentDir,token,NULL);
+					if( Status != STATUS_SUCCESS && Status != STATUS_OBJECT_NAME_COLLISION )
+					{
+						break;
+					}
+				}
 
-            if( Status != STATUS_SUCCESS )
-                break;
+	            Status = OpenFile_U(&hCreatedDir,hParentDir,&token_u,
+		                    FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE,
+			                FILE_DIRECTORY_FILE);
 
-            NtClose(hParentDir);
-            hParentDir = hCreatedDir;
+				if( Status != STATUS_SUCCESS )
+				{
+					break;
+				}
 
-            token = wcstok_s(NULL,seps,&next_token);
-        }
+	            NtClose(hParentDir);
+		        hParentDir = hCreatedDir;
+				hCreatedDir = NULL;
 
-        NtClose(hParentDir);
+			    token = wcstok_s(NULL,seps,&next_token);
+			}
+
+			if( hParentDir != NULL )
+				NtClose(hParentDir);
+		}
     }
 
-    FreeMemory(pszFullPath);
+    if( pszFullPath )
+        FreeMemory(pszFullPath);
+
+    if( DirectoryHandle ==  NULL )
+        NtClose(hRootDir);
 
     return Status;
 }
@@ -1669,4 +1703,94 @@ GetFileId(
     }
 
     return Status;
+}
+
+//----------------------------------------------------------------------------
+//
+//  SYSTEMTIME(Win32)/LARGE_INTEGER Time Conversion Helper Functions
+//
+//----------------------------------------------------------------------------
+EXTERN_C
+VOID
+NTAPI
+LocalSystemTimeToTimeInteger(
+    SYSTEMTIME *pst,
+    LARGE_INTEGER *pliTime
+    )
+{
+    LARGE_INTEGER liLocal;
+    TIME_FIELDS tf;
+    tf.Year         = pst->wYear;
+    tf.Month        = pst->wMonth;
+    tf.Day          = pst->wDay;
+    tf.Hour         = pst->wHour;
+    tf.Minute       = pst->wMinute;
+    tf.Second       = pst->wSecond;
+    tf.Milliseconds = pst->wMilliseconds;
+    tf.Weekday      = pst->wDayOfWeek;
+    RtlTimeFieldsToTime(&tf,&liLocal);
+    RtlLocalTimeToSystemTime(&liLocal,pliTime);
+}
+
+EXTERN_C
+VOID
+NTAPI
+TimeIntegerToLocalSystemTime(
+    LARGE_INTEGER *pnSysTime,
+    SYSTEMTIME *ps
+    )
+{
+    LARGE_INTEGER liLocal;
+    TIME_FIELDS tf;
+    RtlSystemTimeToLocalTime(pnSysTime,&liLocal);
+    RtlTimeToTimeFields(&liLocal,&tf);
+    ps->wYear         = tf.Year;
+    ps->wMonth        = tf.Month;
+    ps->wDay          = tf.Day;
+    ps->wHour         = tf.Hour;
+    ps->wMinute       = tf.Minute;
+    ps->wSecond       = tf.Second;
+    ps->wMilliseconds = tf.Milliseconds;
+    ps->wDayOfWeek    = tf.Weekday;
+
+}
+
+EXTERN_C
+VOID
+NTAPI
+SystemTimeToTimeInteger(
+    SYSTEMTIME *pst,
+    LARGE_INTEGER *pliTime
+    )
+{
+    TIME_FIELDS tf;
+    tf.Year         = pst->wYear;
+    tf.Month        = pst->wMonth;
+    tf.Day          = pst->wDay;
+    tf.Hour         = pst->wHour;
+    tf.Minute       = pst->wMinute;
+    tf.Second       = pst->wSecond;
+    tf.Milliseconds = pst->wMilliseconds;
+    tf.Weekday      = pst->wDayOfWeek;
+    RtlTimeFieldsToTime(&tf,pliTime);
+}
+
+EXTERN_C
+VOID
+NTAPI
+TimeIntegerToSystemTime(
+    LARGE_INTEGER *pnSysTime,
+    SYSTEMTIME *pst
+    )
+{
+    TIME_FIELDS tf;
+    RtlTimeToTimeFields(pnSysTime,&tf);
+    pst->wYear         = tf.Year;
+    pst->wMonth        = tf.Month;
+    pst->wDay          = tf.Day;
+    pst->wHour         = tf.Hour;
+    pst->wMinute       = tf.Minute;
+    pst->wSecond       = tf.Second;
+    pst->wMilliseconds = tf.Milliseconds;
+    pst->wDayOfWeek    = tf.Weekday;
 }

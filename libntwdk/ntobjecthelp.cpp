@@ -23,6 +23,129 @@ extern "C" {
 
 //---------------------------------------------------------------------------
 //
+//  GetNtDeviceNameAssignedDosDrive()
+//
+//  PURPOSE:
+//
+//---------------------------------------------------------------------------
+EXTERN_C
+NTSTATUS
+NTAPI
+GetNtDeviceNameAssignedDosDrive(
+    PCWSTR **DriveLetters // This pointer array is always returns 26 (A~Z) elements.
+    )
+{
+    HANDLE hObjDir;
+    LONG Status;
+    UNICODE_STRING usNtDeviceName;
+    WCHAR NtDeviceName[WIN32_MAX_PATH];
+    WCHAR DosDeviceName[WIN32_MAX_PATH];
+    int i;
+
+    PWSTR *ptr_array = (PWSTR *)AllocMemory( sizeof(PWSTR) * 26 );
+    if( ptr_array == NULL )
+        return STATUS_NO_MEMORY;
+
+    PCWSTR Name[] =
+    {
+        L"\\GLOBAL??",
+        L"\\DosDevices", // L"\\??"
+    };
+
+    for(i = 0; i < ARRAYSIZE(Name); i++)
+    {
+        Status = OpenObjectDirectory( Name[i], &hObjDir );
+
+        if( Status == STATUS_SUCCESS )
+        {
+            ULONG Index = 0;
+
+            while( QueryObjectDirectory(hObjDir,&Index,DosDeviceName,WIN32_MAX_PATH,NULL,0) == 0)
+            {
+                if( (iswalpha(DosDeviceName[0])) && (DosDeviceName[1]==L':') && (DosDeviceName[2]==L'\0') )
+                {
+                    usNtDeviceName.Length = 0;
+                    usNtDeviceName.MaximumLength = sizeof(NtDeviceName);
+                    usNtDeviceName.Buffer = NtDeviceName;
+
+                    if( QuerySymbolicLinkObject_U(hObjDir,DosDeviceName,&usNtDeviceName,FALSE) == 0 )
+                    {
+                        ptr_array[ RtlUpcaseUnicodeChar( DosDeviceName[0] ) - L'A' ] = AllocateSzFromUnicodeString( &usNtDeviceName );
+                    }
+                }
+            }
+
+            CloseObjectDirectory( hObjDir );
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if( Status == STATUS_SUCCESS )
+    {
+        /*++
+         Pointer array buffer layout:
+
+         pArray-> [0] PWSTR[0]
+                  [1] PWSTR[1]
+                  [2] PWSTR[2]
+                  ...
+                  [25] PWSTR[25]
+                  "DeviceName0\0"  <-- PWSTR[0] pointed string.
+                  "DeviceName1\0"  <-- PWSTR[1] pointed string.
+                  "DeviceName2\0"  <-- PWSTR[2] pointed string.
+                  ...
+                  "DeviceName25\0" <-- PWSTR[25] pointed string.
+        --*/
+        int i;
+        SIZE_T cch = 0;
+
+        for(i = 0; i < 26; i++)
+        {
+            if( ptr_array[i] )
+                cch += (wcslen(ptr_array[i]) + 1);
+        }
+
+        SIZE_T cb;
+        cb = (sizeof(PWSTR) * 26) +  (cch * sizeof(WCHAR));
+
+        PWSTR *pArray;
+        pArray = (PWSTR *)AllocMemory( cb );
+
+        if( pArray )
+        {
+            PWSTR pStringBuffer = (PWSTR)((ULONG_PTR)pArray + (sizeof(PWSTR) * 26));
+
+            for(i = 0; i < 26; i++)
+            {
+                if( ptr_array[i] )
+                {
+                    SIZE_T cbName = ((wcslen(ptr_array[i]) + 1) * sizeof(WCHAR));
+                    memcpy(pStringBuffer,ptr_array[i],cbName);
+                    pArray[i] = pStringBuffer;
+    
+                    (ULONG_PTR&)pStringBuffer += cbName;
+                }
+            }
+
+            *DriveLetters = (PCWSTR*)pArray;
+        }
+    }
+
+    for(int i = 0; i < 26; i++)
+    {
+        if( ptr_array[i] )
+            FreeMemory(ptr_array[i]);
+    }
+    FreeMemory(ptr_array);
+
+    return Status;
+}
+
+//---------------------------------------------------------------------------
+//
 //  EnumDosDeviceTargetNames()
 //
 //  PURPOSE:

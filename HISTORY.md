@@ -1,3 +1,23 @@
+### 0.1.14.0
+
+- MS-DOS DrivesウィンドウからOpen Locationを実行するとクラッシュする不具合を修正。
+
+- 32bit版の Volume Contents Browser - Filesウィンドウで C:\を参照できない不具合を修正。
+
+- Volume Contents Browser - Filesウィンドウの [属性]列のソートが、HexまたはBit表示モードの時適切ではない不具合を修正。
+
+- 32bit版でDisk Drive Layoutを開くとアプリケーションエラーで終了する不具合を修正。
+
+- 簡易ダンプウィンドウで、データが読み込みエラーになると、ツールバーのGotoボタンも無効化されて移動ができなくなる不具合を修正。
+
+- 簡易ダンプウィンドウで、バイトデータの0x20(空白)が[Character]列で'.'と表示されている不具合を修正。
+
+- Volume Informationウィンドウの NTFSグループ,Mft2StartLcn項目のラベル綴り誤りを修正（"Mft2StartLcnt"->"Mft2StartLcn"）。
+
+- バージョン情報ダイアログにx64またはx86の表記を追加。
+
+- その他、ソース・ライブラリ整理。
+
 ### 0.1.13.0
 
 - Volume Contents Browser - Files ヒストリ機能を実験的に追加。

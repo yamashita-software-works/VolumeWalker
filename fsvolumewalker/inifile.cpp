@@ -198,7 +198,7 @@ static BOOL GetSectionInfo(PWSTR pszSection,MDICHILDFRAMEINIT_DIRFILES *pmdidoc)
 	DWORD dwRet;
 	WCHAR buf[MAX_PATH];
 
-	dwRet = GetPrivateProfileString(pszSection,L"Window",NULL,buf,MAX_PATH,g_pszIniFile);
+	dwRet = GetPrivateProfileString(pszSection,L"Window",NULL,buf,ARRAYSIZE(buf),g_pszIniFile);
 	if( dwRet == 0 )
 	{
 		return FALSE;
@@ -208,51 +208,62 @@ static BOOL GetSectionInfo(PWSTR pszSection,MDICHILDFRAMEINIT_DIRFILES *pmdidoc)
 
 	pmdidoc->hdr.show = GetSectionInt(pszSection,L"Show",SW_SHOW);
 
-	DWORD cch = MAX_PATH;
+	if( GetPrivateProfileString(pszSection,L"Offset",NULL,buf,ARRAYSIZE(buf),g_pszIniFile) > 0 )
+	{
+		pmdidoc->liStartOffset.QuadPart = _wcstoui64(buf,NULL,16);
+	}
+
+	DWORD cch = 32768 + MAX_PATH;
 	PWSTR psz = new WCHAR[cch];
 
-	if( GetPrivateProfileString(pszSection,L"Volume",NULL,psz,cch,g_pszIniFile) > 0 )
+	if( psz != NULL )
 	{
-		pmdidoc->Path = _MemAllocString( psz );
-	}
+		if( GetPrivateProfileString(pszSection,L"Volume",NULL,psz,cch,g_pszIniFile) > 0 )
+		{
+			pmdidoc->Path = _MemAllocString( psz );
+		}
 
-	if( GetPrivateProfileString(pszSection,L"Offset",NULL,psz,cch,g_pszIniFile) > 0 )
-	{
-		pmdidoc->liStartOffset.QuadPart = _wcstoui64(psz,NULL,16);
+		delete[] psz;
 	}
-
-	delete[] psz;
 
 	return TRUE;
 }
 
 static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndView,GUID& wndGuid,MDICHILDFRAMEINIT_DIRFILES *pmdidoc)
 {
-	WCHAR sz[MAX_PATH];
+	int cch = 32768 + MAX_PATH;
+	WCHAR *sz = new WCHAR[ cch ];
 
-	StringCchPrintf(sz,ARRAYSIZE(sz),L"%d,%d,%d,%d",
+	StringCchPrintf(sz,cch,L"%d,%d,%d,%d",
 		pmdidoc->hdr.pt.x,pmdidoc->hdr.pt.y,
 		pmdidoc->hdr.size.cx,pmdidoc->hdr.size.cy);
 	WriteSectionString(pszSection,L"Window",sz);
 
-	StringCchPrintf(sz,ARRAYSIZE(sz),L"%d",pmdidoc->hdr.show);
+	StringCchPrintf(sz,cch,L"%d",pmdidoc->hdr.show);
 	WriteSectionString(pszSection,L"Show",sz);
 
 	if( wndGuid.Data4[0] != 0 || wndGuid.Data2 == 0x1 )
 	{
-		if( wndGuid.Data1 == VOLUME_CONSOLE_SIMPLEHEXDUMP )
+		switch( wndGuid.Data1 )
 		{
-			WQ_PARAM wqp = {0};
-			wqp.dwLength = ARRAYSIZE(sz);
-			wqp.VolumePath = sz;
-			SendMessage(hwndView,WM_QUERY_MESSAGE,WQ_GETVOLUMEPATH,(LPARAM)&wqp);
-		}
-		else
-		{
-			GetWindowText(hwndMDIChildFrame,sz,MAX_PATH);
+			case VOLUME_CONSOLE_SIMPLEHEXDUMP:
+			case VOLUME_CONSOLE_CONTENT_FILES:
+			{
+				WQ_PARAM wqp = {0};
+				wqp.dwLength = cch;
+				wqp.VolumePath = sz;
+				SendMessage(hwndView,WM_QUERY_MESSAGE,WQ_GETVOLUMEPATH,(LPARAM)&wqp);
+				break;
+			}
+			default:
+			{
+				GetWindowText(hwndMDIChildFrame,sz,cch);
+			}
 		}
 		WriteSectionString(pszSection,L"Volume",sz);
 	}
+
+	delete[] sz;
 
 	if( wndGuid.Data1 == VOLUME_CONSOLE_SIMPLEHEXDUMP )
 	{
@@ -260,7 +271,7 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 		wqp.dwLength = sizeof(LARGE_INTEGER);
 		wqp.liValue.QuadPart = 0;
 		SendMessage(hwndView,WM_QUERY_MESSAGE,WQ_GETSTARTOFFSET,(LPARAM)&wqp);
-		StringCchPrintf(sz,ARRAYSIZE(sz),L"0x%I64x",wqp.liValue.QuadPart);
+		StringCchPrintf(sz,cch,L"0x%I64x",wqp.liValue.QuadPart);
 		WriteSectionString(pszSection,L"Offset",sz);
 	}
 

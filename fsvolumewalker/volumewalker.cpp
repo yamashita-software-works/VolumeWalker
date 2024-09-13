@@ -152,7 +152,13 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			// version:
 			{
 				WCHAR sz[32];
-				StringCchPrintf(sz,_countof(sz),L"%u.%u.%u.%u Preview",MEJOR_VERSION,MINOR_VERSION,BUILD_NUMBER,PATCH_NUMBER);
+				StringCchPrintf(sz,_countof(sz),L"%u.%u.%u.%u (%s) Preview",MEJOR_VERSION,MINOR_VERSION,BUILD_NUMBER,PATCH_NUMBER,
+#ifdef _WIN64
+					L"x64"
+#else
+					L"x86"
+#endif
+						);
 				SetDlgItemText(hDlg,IDC_TEXT,sz);
 			}
 

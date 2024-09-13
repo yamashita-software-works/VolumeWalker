@@ -676,6 +676,13 @@ NTSTATUS FindRootDirectory_U(UNICODE_STRING *pusFullyQualifiedPath,PWSTR *pRootD
     return STATUS_OBJECT_PATH_SYNTAX_BAD; // invalid path
 }
 
+NTSTATUS FindRootDirectory_W(__in PCWSTR pszFullyQualifiedPath,__out PWSTR *pRootDirectory)
+{
+	UNICODE_STRING usPath;
+	RtlInitUnicodeString(&usPath,pszFullyQualifiedPath);
+	return FindRootDirectory_U(&usPath,pRootDirectory);
+}
+
 BOOLEAN GetRootDirectory_U(UNICODE_STRING *pusFullyQualifiedPath)
 {
     if( pusFullyQualifiedPath == NULL || pusFullyQualifiedPath->Buffer == NULL || pusFullyQualifiedPath->Length == 0 )

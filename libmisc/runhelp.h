@@ -314,8 +314,6 @@ public:
 	{
 		HRESULT hr = E_FAIL;
 
-		extern BOOL GetPowershellExePath(LPTSTR szPSPath);
-
 		WCHAR szPSPath[MAX_PATH];
 		GetPowershellExePath(szPSPath);
 
@@ -342,9 +340,6 @@ public:
 	HRESULT RunTerminal(PCWSTR pszDirPath,BOOL bAdmin)
 	{
 		HRESULT hr = E_FAIL;
-
-		extern BOOL GetPowershellExePath(LPTSTR szPSPath);
-
 
 		WCHAR szAppDataLocal[MAX_PATH];
 		SHGetFolderPath(NULL,CSIDL_LOCAL_APPDATA,NULL,SHGFP_TYPE_CURRENT,szAppDataLocal);

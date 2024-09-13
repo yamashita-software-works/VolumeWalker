@@ -325,7 +325,7 @@ public:
 #if 0
 					StringCchPrintfA(psz,cch,"%c",isprint(*pb) ? *pb : '.');
 #else
-					StringCchPrintfA(psz,cch,"%c",(0x21 <= *pb && *pb <= 0x7E) ? *pb : '.');
+					StringCchPrintfA(psz,cch,"%c",(0x20 <= *pb && *pb <= 0x7E) ? *pb : '.');
 #endif
 				}
 				MultiByteToWideChar(CP_ACP,0,buf,-1,pdi->item.pszText,pdi->item.cchTextMax);
@@ -1030,6 +1030,6 @@ private:
 		SetToolbarButtonState(ID_FIRST,FALSE);
 		SetToolbarButtonState(ID_LAST,FALSE);
 		SetToolbarButtonState(ID_HOME,FALSE);
-		SetToolbarButtonState(ID_GOTO,FALSE);
+		SetToolbarButtonState(ID_GOTO,TRUE);
 	}
 };

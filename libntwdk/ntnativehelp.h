@@ -59,6 +59,7 @@ NTSTATUS NTAPI FreeUnicodeString(UNICODE_STRING *pus);
 LONG NTAPI CompareUnicodeString(__in PUNICODE_STRING  String1,__in PUNICODE_STRING  String2,__in BOOLEAN  CaseInSensitive);
 
 NTSTATUS FindRootDirectory_U(__in UNICODE_STRING *pusFullyQualifiedPath,__out PWSTR *pRootDirectory);
+NTSTATUS FindRootDirectory_W(__in PCWSTR pszFullyQualifiedPath,__out PWSTR *pRootDirectory);
 NTSTATUS GetFileNamePart_U(__in UNICODE_STRING *FilePath,__out UNICODE_STRING *FileName);
 NTSTATUS SplitPathFileName_U(__inout UNICODE_STRING *Path,__out UNICODE_STRING *FileName);
 NTSTATUS SplitPathFileName_W(PCWSTR pszPath,UNICODE_STRING *Path,UNICODE_STRING *FileName);
@@ -447,6 +448,7 @@ EXTERN_C
 NTSTATUS
 NTAPI
 MakeSureDirectoryPathExists_W(
+    HANDLE DirectoryHandle,
     PCWSTR DirPath
     );
 

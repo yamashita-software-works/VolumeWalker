@@ -140,3 +140,23 @@ void WinFreeErrorMessage(PWSTR pMessage)
     if( pMessage )
         LocalFree(pMessage);
 }
+
+PVOID WinLocalAlloc(ULONG Flags, SIZE_T uBytes)
+{
+	return LocalAlloc(Flags,uBytes);
+}
+
+PVOID WinLocalReAlloc(PVOID pMem,SIZE_T uBytes,ULONG uFlags)
+{
+	return LocalReAlloc((HLOCAL)pMem,uBytes,uFlags);
+}
+
+PVOID WinLocalFree(PVOID pMem)
+{
+	return LocalFree((HLOCAL)pMem);
+}
+
+SIZE_T WinLocalSize(PVOID pMem)
+{
+	return LocalSize((HLOCAL)pMem);
+}

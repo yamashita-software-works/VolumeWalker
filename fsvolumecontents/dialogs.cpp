@@ -20,13 +20,15 @@
 
 /////////////////////////////////////////////////////////////////////////////////
 
+static HWND hWndBasisPos = NULL;
+
 static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
 		case WM_INITDIALOG:
 		{
-			_CenterWindow(hDlg,GetActiveWindow());
+			_CenterWindow(hDlg,hWndBasisPos);
 
 			SetWindowLongPtr(hDlg,DWLP_USER,lParam);
 
@@ -80,6 +82,8 @@ HRESULT GotoDirectoryDialog(HWND hWnd,PWSTR *ppszNewPath)
 	WCHAR *psz = new WCHAR[ _NT_PATH_FULL_LENGTH ];
 	if( psz == NULL )
 		return E_OUTOFMEMORY;
+
+	hWndBasisPos = hWnd;
 
 	if( DialogBoxParamW(_GetResourceInstance(), MAKEINTRESOURCE(IDD_GOTODIRECTORY),
 			hWnd, &GotoDirectoryDlgProc,(LPARAM)psz) == IDOK )

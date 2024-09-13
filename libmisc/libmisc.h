@@ -1,5 +1,7 @@
 #pragma once
 
+#include <commctrl.h>
+
 #include "mem.h"
 
 INT
@@ -610,8 +612,45 @@ OpenTerminal(
 	);
 
 BOOL
+WINAPI
 GetBashExePath(
 	LPTSTR szBashPath,
 	UINT bufSize
+	);
+
+BOOL
+WINAPI
+GetPowershellExePath(
+	LPTSTR szPSPath
+	);
+
+INT
+WINAPI
+GetUpDirImageIndex(
+	VOID
+	);
+
+HIMAGELIST
+WINAPI
+GetGlobalShareImageList(
+	int ImageList
+	);
+
+int
+WINAPI
+GetShellFileIconImageListIndexEx(
+	PCWSTR pszPath,
+	PCWSTR pszFileName,
+	DWORD dwFileAttributes,
+	DWORD dwFlags,
+	HICON *phIcon
+	);
+
+int
+WINAPI
+GetShellFileImageListIndex(
+	PCWSTR pszPath,
+	PCWSTR pszFileName,
+	DWORD dwFileAttributes
 	);
 

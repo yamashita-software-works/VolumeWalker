@@ -23,8 +23,6 @@
 #include "dialogs.h"
 #include "fsfilelib.h"
 
-extern int GetImageListIndex(PCWSTR pszPath,PCWSTR pszFileName,DWORD dwFileAttributes);
-
 #define _IS_CURDIR_NAME( fname ) (fname[0] == L'.' && fname[1] == L'\0')
 #define _IS_PARENT_DIR_NAME( fname ) (fname[0] == L'.' && fname[1] == L'.' && fname[2] == L'\0')
 #define _PARENT_DIRECTORY(path) (path[0]==L'.'&&path[1]==L'.'&&path[2]==L'\0')
@@ -165,7 +163,7 @@ public:
 
 		ListView_SetExtendedListViewStyle(m_hWndList,LVS_EX_DOUBLEBUFFER|LVS_EX_FULLROWSELECT|LVS_EX_HEADERDRAGDROP);
 
-		HIMAGELIST himl = GetGlobalShareImageList();
+		HIMAGELIST himl = GetGlobalShareImageList(0);
 		ListView_SetImageList(m_hWndList,himl,LVSIL_SMALL);
 
 		SendMessage(m_hWndList,WM_SETFONT,(WPARAM)m_hFont,0);
@@ -897,7 +895,7 @@ public:
 		{
 			PWSTR pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
 
-			pdi->item.iImage = GetImageListIndex(NULL,pItem->pFI->hdr.FileName,pItem->pFI->FileAttributes);
+			pdi->item.iImage = GetShellFileImageListIndex(NULL,pItem->pFI->hdr.FileName,pItem->pFI->FileAttributes);
 
 			if( pdi->item.iImage & 0xff000000 )
 			{
@@ -1447,10 +1445,6 @@ public:
 				_SafeMemFree(m_pszCurDir);
 				m_pszCurDir = _MemAllocString(szNtPath);
 			}
-			else
-			{
-				;
-			}
 
 			delete szNtPath;
 
@@ -1676,7 +1670,9 @@ public:
 
 	int _comp_fileattributes(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
 	{
-		if( 0 )
+		UINT f = m_columnShowStyleFlags[ COLUMN_FileAttributes ];
+
+		if( f != 0 )
 		{
 			// hex mode
 			return _COMP(pItem1->pFI->FileAttributes,pItem2->pFI->FileAttributes);

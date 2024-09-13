@@ -1120,12 +1120,12 @@ public:
 	{
 		if( iItem != -1 )
 		{
-			CVolumeItem *pItem = (CVolumeItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+			CDosDriveItem *pItem = (CDosDriveItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 
 			if( GetKeyState(VK_CONTROL) < 0 )
 				Open |= 0x8000;
 
-			OpenVolumeLocation(GetActiveWindow(),Open,pItem->Drive,pItem->GuidName);
+			OpenVolumeLocation(GetActiveWindow(),Open,pItem->szDrive,pItem->pszVolumeGuid);
 		}
 	}
 

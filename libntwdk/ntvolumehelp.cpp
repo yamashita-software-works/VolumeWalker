@@ -27,34 +27,34 @@ OpenVolume_U(
     )
 {
     NTSTATUS Status;
-	UNICODE_STRING usVolumeDeviceName;
-	ULONG DesiredAccess;
-	ULONG OpenOptions;
+    UNICODE_STRING usVolumeDeviceName;
+    ULONG DesiredAccess;
+    ULONG OpenOptions;
 
-	usVolumeDeviceName = *pusVolumeName;
+    usVolumeDeviceName = *pusVolumeName;
     RemoveBackslash_U(&usVolumeDeviceName);
 
 #if 0
     DesiredAccess = STANDARD_RIGHTS_READ|FILE_READ_ATTRIBUTES|SYNCHRONIZE;
-	OpenOptions = FILE_SYNCHRONOUS_IO_NONALERT|FILE_NON_DIRECTORY_FILE;
+    OpenOptions = FILE_SYNCHRONOUS_IO_NONALERT|FILE_NON_DIRECTORY_FILE;
 #else
-	DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
-	OpenOptions = FILE_SYNCHRONOUS_IO_NONALERT|FILE_NON_DIRECTORY_FILE;
+    DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
+    OpenOptions = FILE_SYNCHRONOUS_IO_NONALERT|FILE_NON_DIRECTORY_FILE;
 #endif
 
     if( Flags & OPEN_READ_DATA )
         DesiredAccess |= FILE_READ_DATA;
 
-	if( Flags & OPEN_GENERIC_READ )
+    if( Flags & OPEN_GENERIC_READ )
         DesiredAccess |= GENERIC_READ;
 
-	if( Flags & OPEN_BACKUP_INTENT )
-		OpenOptions |= FILE_OPEN_FOR_BACKUP_INTENT;
+    if( Flags & OPEN_BACKUP_INTENT )
+        OpenOptions |= FILE_OPEN_FOR_BACKUP_INTENT;
 
     Status = OpenFile_U(pHandle,NULL,&usVolumeDeviceName,
                         DesiredAccess,
                         FILE_SHARE_READ|FILE_SHARE_WRITE,
-						OpenOptions);
+                        OpenOptions);
 
     RtlSetLastWin32Error( RtlNtStatusToDosError(Status) );
 
@@ -70,9 +70,9 @@ OpenVolume(
     HANDLE *pHandle
     )
 {
-	UNICODE_STRING usVolumeName;
-	RtlInitUnicodeString(&usVolumeName,VolumeName);
-	return OpenVolume_U(&usVolumeName,Flags,pHandle);
+    UNICODE_STRING usVolumeName;
+    RtlInitUnicodeString(&usVolumeName,VolumeName);
+    return OpenVolume_U(&usVolumeName,Flags,pHandle);
 }
 
 EXTERN_C
@@ -111,7 +111,8 @@ OpenRootDirectory(
 
         Status = OpenFile_U(pHandle,NULL,&usRootDirectory,
                             DesiredAccess,
-                            FILE_SHARE_READ|FILE_SHARE_WRITE,0);
+                            FILE_SHARE_READ|FILE_SHARE_WRITE,
+                            FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT);
 
         RtlSetLastWin32Error( RtlNtStatusToDosError(Status) );
     }
@@ -173,10 +174,10 @@ PVOID AllocAndGetInformaion(HANDLE hVolume,FS_INFORMATION_CLASS InfoClass,NTSTAT
 
     pBuffer = AllocMemory(cbBuffer);
     if( pBuffer == NULL )
-	{
-		Status = STATUS_NO_MEMORY;
+    {
+        Status = STATUS_NO_MEMORY;
         return NULL;
-	}
+    }
 
     IO_STATUS_BLOCK IoStatusBlock = {0};
     do
@@ -190,10 +191,10 @@ PVOID AllocAndGetInformaion(HANDLE hVolume,FS_INFORMATION_CLASS InfoClass,NTSTAT
 
             pBuffer = AllocMemory(cbBuffer);
             if( pBuffer == NULL )
-			{
-				Status = STATUS_NO_MEMORY;
+            {
+                Status = STATUS_NO_MEMORY;
                 return NULL;
-			}
+            }
 
             continue;
         }
@@ -221,7 +222,7 @@ GetVolumeFsInformation(
     OUT PVOID *Buffer
     )
 {
-	NTSTATUS Status;
+    NTSTATUS Status;
     switch( InfoClass )
     {
         case VOLFS_VOLUME_INFORMATION:
@@ -244,11 +245,11 @@ GetVolumeFsInformation(
             *Buffer = AllocAndGetInformaion( Handle, FileFsSectorSizeInformation, Status );
             break;
         }
-		case VOLFS_CONTROL_INFORMATION:
-		{
+        case VOLFS_CONTROL_INFORMATION:
+        {
             *Buffer = AllocAndGetInformaion( Handle, FileFsControlInformation, Status );
             break;
-		}
+        }
         default:
             return STATUS_INVALID_PARAMETER;
     }

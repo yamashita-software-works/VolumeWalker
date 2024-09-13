@@ -571,6 +571,19 @@ NtQuerySystemTime(
     __in PLARGE_INTEGER SystemTime
     );
 
+EXTERN_C
+NTSTATUS
+NTAPI
+NtDuplicateObject(
+    __in HANDLE hSourceProcessHandle,
+    __in HANDLE hSourceHandle,
+    __in_opt HANDLE hTargetProcessHandle,
+    __out_opt PHANDLE pTargetHandle,
+    __in ACCESS_MASK DesiredAccess,
+    __in ULONG  Attributes,
+    __in ULONG  Options
+    );
+
 //////////////////////////////////////////////////////////////////////////////
 
 EXTERN_C
@@ -616,23 +629,6 @@ RtlSystemTimeToLocalTime(
 #define FILE_EA_TYPE_MVST               0xffde
 #define FILE_EA_TYPE_ASN1               0xffdd
 #define FILE_EA_TYPE_FAMILY_IDS         0xff01
-
-typedef struct _FILE_NOTIFY_EXTENDED_INFORMATION {
-    ULONG NextEntryOffset;
-    ULONG Action;
-    LARGE_INTEGER CreationTime;
-    LARGE_INTEGER LastModificationTime;
-    LARGE_INTEGER LastChangeTime;
-    LARGE_INTEGER LastAccessTime;
-    LARGE_INTEGER AllocatedLength;
-    LARGE_INTEGER FileSize;
-    ULONG FileAttributes;
-    ULONG ReparsePointTag;
-    LARGE_INTEGER FileId;
-    LARGE_INTEGER ParentFileId;
-    ULONG FileNameLength;
-    WCHAR FileName[1];
-} FILE_NOTIFY_EXTENDED_INFORMATION, *PFILE_NOTIFY_EXTENDED_INFORMATION;
 
 #if (NTDDI_VERSION <= NTDDI_WIN7)
 
@@ -717,6 +713,11 @@ typedef struct _FILE_ID_EXTD_BOTH_DIR_INFORMATION {
     WCHAR ShortName[12];
     WCHAR FileName[1];
 } FILE_ID_EXTD_BOTH_DIR_INFORMATION, *PFILE_ID_EXTD_BOTH_DIR_INFORMATION;
+
+//
+// Windows 10
+//
+#include "ntnotifychangedirectory.h"
 
 //////////////////////////////////////////////////////////////////////////////
 

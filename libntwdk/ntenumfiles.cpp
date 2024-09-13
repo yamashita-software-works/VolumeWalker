@@ -183,25 +183,27 @@ EnumFiles_W(
     PVOID Context
     )
 {
-	HRESULT hr;
+    HRESULT hr;
     NTSTATUS Status;
-    UNICODE_STRING usRoot;
     PWSTR pR=NULL,pP=NULL;
     ULONG cchR=0,cchP=0;
+    HANDLE hRoot = NULL;
 
     if( (hr = SplitRootPath_W(Path,&pR,&cchR,&pP,&cchP)) != S_OK )
-		return hr;
+        return hr;
 
-    RtlInitUnicodeString(&usRoot,pR);
-
-    HANDLE hRoot = NULL;
-    if( OpenRootDirectory(pR,0,&hRoot) != STATUS_SUCCESS )
+    if( cchP > 0 )
     {
-		FreeMemory(pP);
-
-		pP = DuplicateString(Path);
-
-        hRoot = NULL;
+        if( OpenRootDirectory(pR,0,&hRoot) != STATUS_SUCCESS )
+        {
+            FreeMemory(pP);
+            pP = DuplicateString(Path);
+        }
+    }
+    else
+    {
+        FreeMemory(pP);
+        pP = DuplicateString(Path);
     }
 
     INTERNAL_CALLBACK_BUFFER cb;

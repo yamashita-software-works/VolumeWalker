@@ -23,8 +23,6 @@
 #include "changejournalhelp.h"
 #include "ntwin32helper.h"
 
-extern int GetImageListIndex(PCWSTR pszPath,PCWSTR pszFileName,DWORD dwFileAttributes);
-
 struct CChangeJournalItem
 {
 	PUSN_RECORD UsnRecord;
@@ -113,7 +111,7 @@ public:
 
 		ListView_SetExtendedListViewStyle(m_hWndList,LVS_EX_DOUBLEBUFFER|LVS_EX_FULLROWSELECT);
 
-		HIMAGELIST himl = GetGlobalShareImageList();
+		HIMAGELIST himl = GetGlobalShareImageList(0);
 		ListView_SetImageList(m_hWndList,himl,LVSIL_SMALL);
 
 		SendMessage(m_hWndList,WM_SETFONT,(WPARAM)m_hFont,0);
@@ -443,7 +441,7 @@ public:
 			WCHAR szName[MAX_PATH];
 			CChangeJournalItem *pItem = &m_pItemList[ pdi->item.iItem ];
 			_UsnGetItem_GetFileName(pItem->UsnRecord,szName,MAX_PATH);
-			pdi->item.iImage = GetImageListIndex(NULL,szName,_UsnGetItem_FileAttributes(pItem->UsnRecord));
+			pdi->item.iImage = GetShellFileImageListIndex(NULL,szName,_UsnGetItem_FileAttributes(pItem->UsnRecord));
 
 			if( pdi->item.iImage & 0xff000000 )
 			{

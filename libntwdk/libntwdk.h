@@ -222,3 +222,48 @@ GetFileId(
 	LARGE_INTEGER *pFildId
 	);
 
+#ifndef _WINDOWS_
+// win32 compatible SYSTEMTIME structure
+typedef struct _SYSTEMTIME {
+  USHORT wYear;
+  USHORT wMonth;
+  USHORT wDayOfWeek;
+  USHORT wDay;
+  USHORT wHour;
+  USHORT wMinute;
+  USHORT wSecond;
+  USHORT wMilliseconds;
+}SYSTEMTIME, *PSYSTEMTIME;
+#endif
+
+EXTERN_C
+VOID
+NTAPI
+LocalSystemTimeToTimeInteger(
+	SYSTEMTIME *pst,
+	LARGE_INTEGER *pliTime
+	);
+
+EXTERN_C
+VOID
+NTAPI
+TimeIntegerToLocalSystemTime(
+	LARGE_INTEGER *pnSysTime,
+	SYSTEMTIME *ps
+	);
+
+EXTERN_C
+VOID
+NTAPI
+SystemTimeToTimeInteger(
+	SYSTEMTIME *pst,
+	LARGE_INTEGER *pliTime
+	);
+
+EXTERN_C
+VOID
+NTAPI
+TimeIntegerToSystemTime(
+	LARGE_INTEGER *pnSysTime,
+	SYSTEMTIME *pst
+	);

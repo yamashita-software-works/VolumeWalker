@@ -118,8 +118,6 @@ typedef struct _FILELIST
 	CFileItem **pFI;
 } FILELIST,*PFILELIST;
 
-HIMAGELIST GetGlobalShareImageList();
-INT GetUpDirImageIndex();
 HICON SetWindowIcon(HWND hWnd,SHSTOCKICONID ssii);
 VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus=FALSE,COLORREF crBorder=RGB(80,110,190));
 PWSTR GetIniFilePath();

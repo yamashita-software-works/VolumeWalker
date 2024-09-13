@@ -128,3 +128,10 @@ NTAPI
 FreeDosDeviceTargetNames(
 	HANDLE hspa
     );
+
+EXTERN_C
+NTSTATUS
+NTAPI
+GetNtDeviceNameAssignedDosDrive(
+    PCWSTR **DriveLetters
+    );

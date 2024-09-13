@@ -638,16 +638,19 @@ public:
 		{
 			LAYOUTITEM *pli = (LAYOUTITEM *)pcd->nmcd.lItemlParam;
 
-			if( pli->ItemType == _IT_EXTENDED )
+			if( pli ) // for 32bit BUGBUG
 			{
-				return CDRF_DODEFAULT;
-			}
+				if( pli->ItemType == _IT_EXTENDED )
+				{
+					return CDRF_DODEFAULT;
+				}
 
-			if( pli->ItemType != 0 )
-			{
-				pcd->clrTextBk = RGB(246,246,246);
-				pcd->clrText = RGB(152,152,152);
-				return CDRF_NEWFONT;
+				if( pli->ItemType != 0 )
+				{
+					pcd->clrTextBk = RGB(246,246,246);
+					pcd->clrText = RGB(152,152,152);
+					return CDRF_NEWFONT;
+				}
 			}
 		}
 

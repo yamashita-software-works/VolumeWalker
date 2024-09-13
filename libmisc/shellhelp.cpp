@@ -225,7 +225,7 @@ _OpenByExplorerEx(
     return bSuccess;
 }
 
-BOOL GetPowershellExePath(LPTSTR szPSPath)
+BOOL WINAPI GetPowershellExePath(LPTSTR szPSPath)
 {
     HKEY hkey;
     if (ERROR_SUCCESS != RegOpenKey(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\Microsoft\\PowerShell"), &hkey))
@@ -286,7 +286,7 @@ BOOL GetPowershellExePath(LPTSTR szPSPath)
     return szPSPath[0] != TEXT('\0');
 }
 
-BOOL GetBashExePath(LPTSTR szBashPath, UINT bufSize)
+BOOL WINAPI GetBashExePath(LPTSTR szBashPath, UINT bufSize)
 {
 	const TCHAR szBashFilename[] = TEXT("bash.exe");
 	UINT len;
@@ -488,4 +488,124 @@ DWORD ExecProgram(HWND hwndFrame,LPTSTR lpPath, LPTSTR lpParms, LPTSTR lpDir, BO
     SetCursor(hCursor);
 
     return ret;
+}
+
+//
+// Image List Helper
+//
+static HIMAGELIST m_himl = NULL;
+static int m_iImageUpDir = I_IMAGENONE;
+
+INT WINAPI GetUpDirImageIndex()
+{
+	return m_iImageUpDir;
+}
+
+HIMAGELIST WINAPI GetGlobalShareImageList(	int ImageList )
+{
+	if( m_himl == NULL )
+	{
+		//
+		// The image lists retrieved through this function are 
+		// global system image lists;
+		// do not call ImageList_Destroy using them.
+		//
+		Shell_GetImageLists(NULL,&m_himl);
+
+#ifdef _DEBUG
+		int cImages;
+		cImages = ImageList_GetImageCount(m_himl);
+		_TRACE("System image count=%u\n",cImages);
+#endif
+
+		int cx,cy;
+		ImageList_GetIconSize(m_himl,&cx,&cy);
+
+		HICON hIcon = (HICON)LoadImage(GetModuleHandle(L"shell32"), MAKEINTRESOURCE(46), IMAGE_ICON, cx, cy, 0);
+		m_iImageUpDir = ImageList_AddIcon(m_himl,hIcon);
+		DestroyIcon(hIcon);
+	}
+	return m_himl;
+}
+
+int
+WINAPI 
+GetShellFileIconImageListIndexEx(
+	PCWSTR pszPath, // Fully Qualified File/Directory Path
+	PCWSTR pszFileName,
+	DWORD dwFileAttributes,
+	DWORD dwFlags, /* Reserved */
+	HICON *phIcon  /* Reserved */
+	)
+{
+	SHFILEINFO sfi = {0};
+	int iImage = I_IMAGENONE;
+
+	if( pszFileName && wcscmp(pszFileName,L"..") == 0 )
+	{
+		iImage = GetUpDirImageIndex();
+	}
+	else if( pszPath )
+	{
+		PCWSTR pszDosPath = NULL;
+		if( iswalpha(pszPath[0]) && pszPath[1] == L':' )
+		{
+			pszDosPath = pszPath;
+		}
+		else if( pszPath[0] == L'\\' && pszPath[1] == L'?' && pszPath[2] == L'?' && pszPath[3] == L'\\' )
+		{
+			if( iswalpha(pszPath[4]) && pszPath[5] == L':' )
+				pszDosPath = &pszPath[4];
+			else
+				; // todo:
+		}
+			
+		if( pszDosPath )
+		{
+			UINT fOverlay = 0;
+
+			fOverlay |= SHGFI_OVERLAYINDEX;
+
+			if( SHGetFileInfo(pszDosPath,dwFileAttributes,&sfi,sizeof(sfi),SHGFI_ICON|SHGFI_SMALLICON|SHGFI_SYSICONINDEX|fOverlay) != 0 )
+			{
+				if( sfi.hIcon != NULL )
+					DestroyIcon(sfi.hIcon);
+
+				iImage = sfi.iIcon;
+			}
+		}
+	}
+
+	if( iImage == I_IMAGENONE )
+	{
+		if( *pszFileName == L'\0' ||  (pszFileName[0] == L'\\' && pszFileName[1] == L'\0') )
+		{
+			SHSTOCKICONINFO sii = {sizeof(sii)};
+			SHGetStockIconInfo(SIID_DRIVEFIXED,SHGSI_SYSICONINDEX|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
+			iImage = sii.iSysImageIndex;
+			if( sii.hIcon )
+				DestroyIcon(sii.hIcon);
+		}
+		else
+		{
+			UINT fOverlay = 0;
+			if( dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
+				fOverlay |= (SHGSI_LINKOVERLAY|SHGFI_OVERLAYINDEX);
+
+			SHGetFileInfo(PathFindFileName(pszFileName),dwFileAttributes,&sfi,sizeof(sfi),
+					SHGFI_ICON|SHGFI_SMALLICON|SHGFI_SYSICONINDEX|SHGFI_USEFILEATTRIBUTES|fOverlay);
+
+			iImage = sfi.iIcon;
+
+			if( sfi.hIcon != NULL )
+				DestroyIcon(sfi.hIcon);
+		}
+	}
+
+	return iImage;
+}
+
+int WINAPI GetShellFileImageListIndex(PCWSTR pszPath,PCWSTR pszFileName,DWORD dwFileAttributes)
+{
+	return GetShellFileIconImageListIndexEx(pszPath,pszFileName,dwFileAttributes,0,NULL);
 }
