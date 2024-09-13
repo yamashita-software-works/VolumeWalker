@@ -24,13 +24,13 @@
 
 - Volume Contents Browser - Files カラムローダーのメモリリークを修正。
 
-- Storage Devicesの以下の列タイトルを変更。
-  "Last Arrival Date"-> "Arrival Date"
-  "Last Removal Date"-> "Removal Date"
+- Storage Devicesの以下の列タイトルを変更。   
+  "Last Arrival Date"-> "Arrival Date"   
+  "Last Removal Date"-> "Removal Date"   
 
-- AutherをAuthorに訂正。
+- コメント内の誤記"Auther"を"Author"に訂正。
 
-- PhysicalDriveInfoの m_pvi がリークする不具合を修正。
+- Physical Drive Information のメモリ（m_pvi）がリークしていた不具合を修正。
 
 ### 0.1.12.0
 
