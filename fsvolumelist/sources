@@ -137,6 +137,10 @@ _FSLIB=..\fslib\lib\x86
 
 !endif
 
+LINKER_FLAGS=$(LINKER_FLAGS) \
+    /DELAYLOAD:"vssapi.dll"
+
+
 LINKLIBS=\
 	$(SDK_LIB_PATH)\kernel32.lib \
 	$(SDK_LIB_PATH)\user32.lib \

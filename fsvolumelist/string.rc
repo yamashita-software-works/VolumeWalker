@@ -39,6 +39,7 @@ BEGIN
     diProductRevision                        "Product Revision"
     diSerialNumber                           "Serial Number"
     diBusType                                "Bus Type"
+    diDeviceType                             "Device Type"
 END
 
 STRINGTABLE

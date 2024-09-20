@@ -1,6 +1,6 @@
 //****************************************************************************
 //
-//  dirfilesview.cpp
+//  filesview.cpp
 //
 //  Implements the file list view base window.
 //
@@ -131,6 +131,10 @@ public:
 				return SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,wParam,lParam);
 			case WM_NOTIFY_MESSAGE:
 				return SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,wParam,lParam);
+			case WM_QUERY_MESSAGE:
+				if( m_pPage )
+					return SendMessage(m_pPage->GetHwnd(),uMsg,wParam,lParam); // forward to current view
+				break;
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}

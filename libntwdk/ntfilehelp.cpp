@@ -1794,3 +1794,14 @@ TimeIntegerToSystemTime(
     pst->wMilliseconds = tf.Milliseconds;
     pst->wDayOfWeek    = tf.Weekday;
 }
+
+EXTERN_C
+VOID
+NTAPI
+SecondsSince1970ToTime(
+    IN ULONG ElapsedSeconds,
+    OUT PLARGE_INTEGER Time
+    )
+{
+    RtlSecondsSince1970ToTime(ElapsedSeconds,Time);
+}

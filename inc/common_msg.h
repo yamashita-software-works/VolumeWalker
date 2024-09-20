@@ -7,12 +7,32 @@
 #define PM_BASE (WM_APP+0x6600)
 
 //
+// PM_GETWORKINGDIRECTORY
+//   wParam  -
+//   lParam  -
+//   lResult -
+//
+#define PM_GETWORKINGDIRECTORY (PM_BASE+3)
+
+//
 // PM_GETCURDIR
 //   wParam  -
 //   lParam  -
 //   lResult -
 //
 #define PM_GETCURDIR (PM_BASE+4)
+
+//
+// PM_QUERYSELECTEDITEMSTATE
+//   wParam  -
+//   lParam  -
+//   lResult -
+//
+#define PM_QUERYSELECTEDITEMSTATE (PM_BASE+6)
+
+#define QSIS_SELECTED          (0x1)
+#define QSIS_MULTIITEMSELECTED (0x2)
+#define QSIS_EMPTYLIST         (0x4)
 
 //
 // PM_FINDITEM
@@ -44,6 +64,23 @@
 #define PM_USERBASE      (PM_BASE+100)
 #define PM_PRIVATEBASE   PM_USERBASE
 
+//
+// PM_GETSELECTEDFILE
+//   wParam  -
+//   lParam  -
+//   lResult -
+//
+// NOTE:
+// The FS_SELECTED_FILE.pszPath field is must free buffer memory use LocalFree().
+//
+#define PM_GETSELECTEDFILE (PM_BASE+1)
+
+typedef struct _FS_SELECTED_FILE
+{
+	ULONG FileAttributes;
+	ULONG cchPath; // Reserved.
+	PWSTR pszPath;
+} FS_SELECTED_FILE;
 
 //////////////////////////////////////////////////////////////////////////////
 // old compatible message
@@ -80,30 +117,24 @@ inline VOID FreeConfigStruct(CONFIG_STRUCT *pcs)
 typedef struct _OPEN_MDI_CHILDFRAME_PARAM
 {
 	HWND hwndFrom;
-	UINT flags;
-	UINT reserved;
+	UINT Flags;
 	PWSTR Path;
-} OPEN_MDI_CHILDFRAME_PARAM;
-
-typedef struct _OPEN_MDI_CHILDFRAME_STARTOFFSET
-{
-	OPEN_MDI_CHILDFRAME_PARAM hdr;
 	LARGE_INTEGER StartOffset;
-} OPEN_MDI_CHILDFRAME_STARTOFFSET;
+} OPEN_MDI_CHILDFRAME_PARAM;
 
 //////////////////////////////////////////////////////////////////////////////
 // WM_QUERY_MESSAGE application use sub function
 
-#define WQ_GETVOLUMEPATH     (1)
-#define WQ_GETSTARTOFFSET    (2)
+#define QMT_GETVOLUMEPATH     (1)
+#define QMT_GETSTARTOFFSET    (2)
 
-typedef struct _WQ_PARAM
+typedef struct _QM_PARAM
 {
 	DWORD dwLength;
 	union {
 		PWSTR VolumePath;
 		LARGE_INTEGER liValue;
 	};
-} WQ_PARAM;
+} QM_PARAM;
 
 #endif

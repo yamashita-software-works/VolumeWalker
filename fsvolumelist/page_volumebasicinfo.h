@@ -472,6 +472,11 @@ public:
 					*pszText = _STR_NA;
 				break;
 			}
+			case diDeviceType:
+			{
+				GetVolumeTypeString(CSTR_DEVICETYPE,m_pvdi->DeviceType,*pszText,cchText);
+				break;
+			}
 		}
 
 		if( *(*pszText) == L'\0' )
@@ -898,6 +903,7 @@ public:
 			diDeviceNumber,
 			diDirtyBit,
 			diRetrievalPointerBase,
+			diDeviceType,
 		};
 		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
 		{

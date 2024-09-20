@@ -1,6 +1,6 @@
 //****************************************************************************
 //
-//  dirfileswindow.cpp
+//  fileswindow.cpp
 //
 //  Implements the directory files view host window.
 //
@@ -134,6 +134,20 @@ public:
 		return 0;
 	}
 
+	LRESULT OnQueryMessage(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		switch( LOWORD(wParam) )
+		{
+			case 0:
+				break; // todo: avoid C4065
+			default:
+				if( m_pView )
+					SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam);
+				break;
+		}
+		return 0;
+	}
+
 	LRESULT OnControlMessage(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		switch( LOWORD(wParam) )
@@ -183,6 +197,8 @@ public:
 				return OnControlMessage(hWnd,uMsg,wParam,lParam);
 			case WM_NOTIFY_MESSAGE:
 				return OnNotifyMessage(hWnd,uMsg,wParam,lParam);
+			case WM_QUERY_MESSAGE:
+				return OnQueryMessage(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
 				if( m_pView )
 					return SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam); // forward to current view

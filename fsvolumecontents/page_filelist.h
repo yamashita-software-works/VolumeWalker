@@ -1005,6 +1005,19 @@ public:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
 				return CFindHandler<CFileListPage>::OnFindItem(hWnd,uMsg,wParam,lParam);;
+			case WM_QUERY_MESSAGE:
+			{
+				if( LOWORD(wParam) == QMT_GETVOLUMEPATH && lParam != 0 ) 
+				{
+					if( m_pszCurDir )
+					{
+						QM_PARAM *pParam = (QM_PARAM *)lParam;
+						StringCchCopy(pParam->VolumePath,pParam->dwLength,m_pszCurDir);
+						return (LRESULT)wcslen(m_pszCurDir);
+					}
+				}
+				return 0;
+			}
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -1436,17 +1449,33 @@ public:
 		if( (pSel->mask & SI_MASK_FILEID) == 0 )
 		{
 			WCHAR *szNtPath = new WCHAR[ _NT_PATH_FULL_LENGTH  ];
-			StringCchCopy(szNtPath,_NT_PATH_FULL_LENGTH ,pszPath);
-
-			hr = EnumFiles_W(szNtPath,NULL,0,&EnumCallbackProc,(PVOID)pa);
-
-			if( hr == S_OK )
+			if( szNtPath )
 			{
-				_SafeMemFree(m_pszCurDir);
-				m_pszCurDir = _MemAllocString(szNtPath);
+				StringCchCopy(szNtPath,_NT_PATH_FULL_LENGTH ,pszPath);
+
+				hr = EnumFiles_W(szNtPath,NULL,0,&EnumCallbackProc,(PVOID)pa);
+
+				if( hr == S_OK )
+				{
+					_SafeMemFree(m_pszCurDir);
+					m_pszCurDir = _MemAllocString(szNtPath);
+				}
+
+				delete szNtPath;
+			}
+			else
+			{
+				hr = E_OUTOFMEMORY;
 			}
 
-			delete szNtPath;
+			if( hr != S_OK )
+			{
+				pa->DeleteAll();
+				delete pa;
+				SetRedraw(m_hWndList,TRUE);
+				MessageBeep(MB_ICONSTOP);
+				return hr;
+			}
 
 			if( IsRootDirectory_W(m_pszCurDir) )
 			{
@@ -1484,19 +1513,18 @@ public:
 	
 				hr = S_OK;
 			}
+			else
+			{
+				pa->DeleteAll();
+				delete pa;
+				SetRedraw(m_hWndList,TRUE);
+				MessageBeep(MB_ICONSTOP);
+				return E_FAIL;
+			}
 		}
 
 		if( (pSel->Flags & SI_FLAG_NOT_ADD_TO_HISTORY) == 0 )
 			m_history.Push( m_pszCurDir );
-
-		if( FAILED(hr) )
-		{
-			pa->DeleteAll();
-			delete pa;
-			SetRedraw(m_hWndList,TRUE);
-			MessageBeep(MB_ICONSTOP);
-			return hr;
-		}
 
 		//
 		// Get information enumerated files.
@@ -1807,16 +1835,6 @@ public:
 		SORT_PARAM<CFileListPage> *op = (SORT_PARAM<CFileListPage> *)lParamSort;
 		return op->pThis->CompareItem(pItem1,pItem2,op);
 	}
-
-//	void SortItems(UINT id,CFileInfoItem *)
-//	{
-//		SORT_PARAM<CFileListPage> op = {0};
-//		op.pThis = this;
-//		op.id = id;
-//		op.direction = m_Sort.Direction; // 1 or -1 do not use 0
-//		op.directory_align = 1; /* todo: */
-//		ListView_SortItems(m_hWndList,CompareProc,&op);
-//	}
 
 	//////////////////////////////////////////////////////////////////////////
 	//

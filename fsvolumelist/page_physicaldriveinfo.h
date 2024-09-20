@@ -769,7 +769,7 @@ public:
 
 		SetGroupId( ID_GROUP_PD_PARTITION );
 
-		m_findVolume.Enum();
+		m_findVolume.Enum(TRUE);
 
 		for(i = 0; i < pdli->PartitionCount; i++)
 		{

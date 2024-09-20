@@ -20,3 +20,5 @@
 #define NTSTATUS LONG
 
 #include "mem.h"
+
+extern DWORD GetOSVersion();

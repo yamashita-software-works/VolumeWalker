@@ -47,7 +47,7 @@
 #include "..\fsvolumecontents\fsvolumecontents.h"
 #include "common_msg.h"
 #include "volumeconsoledef.h"
-
+#include "misc.h"
 
 #define SetRedraw(h,f)	SendMessage(h,WM_SETREDRAW,(WPARAM)f,0)
 

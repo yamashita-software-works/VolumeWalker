@@ -406,14 +406,14 @@ public:
 			{
 				if( lParam != 0 )
 				{
-					WQ_PARAM *pParam = (WQ_PARAM *)lParam;
+					QM_PARAM *pParam = (QM_PARAM *)lParam;
 
-					if( wParam == WQ_GETVOLUMEPATH && lParam != 0 )
+					if( wParam == QMT_GETVOLUMEPATH && lParam != 0 )
 					{
 						StringCchCopy(pParam->VolumePath,pParam->dwLength,m_rd.Name);
 						return (LRESULT)TRUE;
 					}
-					else if( wParam == WQ_GETSTARTOFFSET && lParam != 0 )
+					else if( wParam == QMT_GETSTARTOFFSET && lParam != 0 )
 					{
 						pParam->liValue.QuadPart = m_rd.BaseOffset.QuadPart;
 						return (LRESULT)TRUE;

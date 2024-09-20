@@ -1,3 +1,20 @@
+### 0.1.15.0
+
+- FDドライブが存在するPCで実行した時、ディスクが挿入されていない状態でアクセスする際に表示されるエラーメッセージを抑止。
+
+- Volume Listの列に\[Creation Time\]を追加。
+
+- Volume InformationのGeneralグループにDeviceType項目を追加。
+
+- プロセスのプレースホルダー互換性モードを開示に設定。   
+Volume Contents Browser - Filesウィンドウの表示に影響します。
+
+- AboutダイアログにWindows Product名とSystem Install Dateを追加。
+
+- 暫定的にWindows Vistaでも実行可能にした。（永続的なものではありません）
+
+- その他、ソース・ライブラリ整理。
+
 ### 0.1.14.0
 
 - MS-DOS DrivesウィンドウからOpen Locationを実行するとクラッシュする不具合を修正。

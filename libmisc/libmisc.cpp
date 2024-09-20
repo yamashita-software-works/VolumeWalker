@@ -581,7 +581,7 @@ SetProcessPlaceholderCompatibilityMode(
     (FARPROC&)pfnRtlSetProcessPlaceholderCompatibilityMode = GetProcAddress(GetModuleHandle(L"ntdll.dll"),"RtlSetProcessPlaceholderCompatibilityMode");
     if( pfnRtlSetProcessPlaceholderCompatibilityMode )
     {
-        return pfnRtlSetProcessPlaceholderCompatibilityMode(2);
+        return pfnRtlSetProcessPlaceholderCompatibilityMode(Mode);
     }
     return PHCM_ERROR_INVALID_PARAMETER;
 }
@@ -619,6 +619,7 @@ VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus,COLORREF crActiv
                 cr = crActiveFrame;
             else
                 cr = GetSysColor(COLOR_3DDKSHADOW);
+
             HPEN hpen = CreatePen(PS_SOLID,1,cr);
             SelectObject(hdc,hpen);
             SelectObject(hdc,GetStockObject(NULL_BRUSH));
@@ -628,6 +629,7 @@ VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus,COLORREF crActiv
                 r = 0;
             else
                 r = 3;
+
             RoundRect(hdc,prc->left,prc->top,prc->right,prc->bottom,r,r);
             DeleteObject(hpen);
         }

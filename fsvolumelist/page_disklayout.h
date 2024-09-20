@@ -168,7 +168,7 @@ public:
 public:
 	VOID FillDriveLayout(DRIVE_LAYOUT_INFORMATION_EX *pdli,DWORD dwDriveNumber,LARGE_INTEGER liDriveLength)
 	{
-		m_findVolume.Enum();
+		m_findVolume.Enum(TRUE);
 
 		if( pdli->PartitionStyle == PARTITION_STYLE_MBR )
 		{

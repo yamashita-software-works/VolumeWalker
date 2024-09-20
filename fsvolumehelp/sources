@@ -124,6 +124,9 @@ _LIBNTWDK=$(_LIB_PATH)\x64\lib$(DDKBUILDENV)
 _LIBNTWDK=$(_LIB_PATH)\x86\lib$(DDKBUILDENV)
 !endif
 
+LINKER_FLAGS=$(LINKER_FLAGS) \
+    /DELAYLOAD:"virtdisk.dll"
+
 LINKLIBS=\
 	$(SDK_LIB_PATH)\kernel32.lib \
 	$(SDK_LIB_PATH)\user32.lib \
@@ -146,3 +149,4 @@ LINKLIBS=\
 	$(DDK_LIB_PATH)\ntdll.lib \
 	$(_LIBNTWDK)\libcwh.lib\
 	$(_LIBNTWDK)\libntwdk.lib
+

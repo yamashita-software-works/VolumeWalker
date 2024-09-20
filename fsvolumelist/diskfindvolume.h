@@ -29,11 +29,11 @@ public:
 		aVolNames.Destroy();
 	}
 
-	void Enum()
+	void Enum(BOOL bHarddiskOnly)
 	{
 		if( EnumVolumeNames(&pVolumeNames) == 0 )
 		{
-			Make();
+			Make(bHarddiskOnly);
 		}
 	}
 
@@ -83,13 +83,19 @@ public:
 	}
 
 private:
-	void Make()
+	void Make(BOOL bHarddiskOnly)
 	{
 		DWORD i;
 		for(i = 0; i < pVolumeNames->Count; i++)
 		{
 			VOLUME_EXTENT_INFO vi;
 			vi.pVolume = &pVolumeNames->Volume[i];
+
+			if( bHarddiskOnly && !HasPrefix(L"\\Device\\HarddiskVolume",vi.pVolume->NtVolumeName) )
+			{
+				continue;
+			}
+
 			vi.pDiskExtents = GetVolumeDiskExtents(vi.pVolume->NtVolumeName);
 			if( vi.pDiskExtents != NULL )
 				aVolNames.Add( &vi );

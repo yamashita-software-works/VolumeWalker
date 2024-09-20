@@ -1721,11 +1721,13 @@ CreateVolumeInformationBuffer(
 	//
 	HANDLE hVolume = NULL;
 	HANDLE hRootDirectory = NULL;
-
+	UINT PreviousErrorMode = 0;
 	VOLUME_DEVICE_INFORMATION *pVolumeInfo = NULL;
 
 	__try
 	{
+		PreviousErrorMode = SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOOPENFILEERRORBOX);
+
 		//
 		// Create and Initialize VOLUME_DEVICE_INFORMATION binded data structure.
 		//
@@ -1847,6 +1849,8 @@ CreateVolumeInformationBuffer(
 			CloseHandle(hVolume);
 		if( hRootDirectory != INVALID_HANDLE_VALUE )
 			CloseHandle(hRootDirectory);
+
+		SetErrorMode(PreviousErrorMode);
 
 		*InformaionBuffer = pVolumeInfo;
 	}

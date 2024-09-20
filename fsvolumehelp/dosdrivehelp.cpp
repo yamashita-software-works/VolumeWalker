@@ -171,14 +171,16 @@ EnumDosDriveItems(
 {
 	HRESULT hr = E_FAIL;
 
+	if( DosDrivesTable == NULL )
+		return E_INVALIDARG;
+
+	DWORD PreviousErrorMode = SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOOPENFILEERRORBOX);
+
 	WCHAR szDrives[ 26 * 4 + 1 ];
 	GetLogicalDriveStrings(ARRAYSIZE(szDrives),szDrives);
 
 	ULONG i,cDrives = 0;;
 	WCHAR *p;
-
-	if( DosDrivesTable == NULL )
-		return E_INVALIDARG;
 
 	// count valid drive letters.
 	p = szDrives;
@@ -191,7 +193,10 @@ EnumDosDriveItems(
 	// allocate structure buffer.
 	DOS_DRIVE_INFORMATION_ARRAY *pBuffer = (DOS_DRIVE_INFORMATION_ARRAY *)_MemAllocZero( sizeof(DOS_DRIVE_INFORMATION_ARRAY) + ((cDrives -1 ) * sizeof(DOS_DRIVE_INFORMATION)) );
 	if( pBuffer == NULL )
+	{
+		SetErrorMode(PreviousErrorMode);
 		return HRESULT_FROM_WIN32( ERROR_NOT_ENOUGH_MEMORY );
+	}
 
 	// get information each drive.
 	WCHAR szBuffer[MAX_PATH];
@@ -258,6 +263,8 @@ EnumDosDriveItems(
 	}
 
 	*DosDrivesTable = pBuffer;
+
+	SetErrorMode(PreviousErrorMode);
 
 	return S_OK;
 }

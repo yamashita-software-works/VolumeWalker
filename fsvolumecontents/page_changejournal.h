@@ -485,11 +485,11 @@ public:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
 			case WM_QUERY_MESSAGE:
 			{
-				if( LOWORD(wParam) == WQ_GETVOLUMEPATH && lParam != 0 ) 
+				if( LOWORD(wParam) == QMT_GETVOLUMEPATH && lParam != 0 ) 
 				{
 					if( m_pszRawFileName )
 					{
-						WQ_PARAM *pParam = (WQ_PARAM *)lParam;
+						QM_PARAM *pParam = (QM_PARAM *)lParam;
 						StringCchCopy(pParam->VolumePath,pParam->dwLength,m_pszRawFileName);
 						return (LRESULT)wcslen(m_pszRawFileName);
 					}

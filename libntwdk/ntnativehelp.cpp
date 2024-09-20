@@ -678,9 +678,9 @@ NTSTATUS FindRootDirectory_U(UNICODE_STRING *pusFullyQualifiedPath,PWSTR *pRootD
 
 NTSTATUS FindRootDirectory_W(__in PCWSTR pszFullyQualifiedPath,__out PWSTR *pRootDirectory)
 {
-	UNICODE_STRING usPath;
-	RtlInitUnicodeString(&usPath,pszFullyQualifiedPath);
-	return FindRootDirectory_U(&usPath,pRootDirectory);
+    UNICODE_STRING usPath;
+    RtlInitUnicodeString(&usPath,pszFullyQualifiedPath);
+    return FindRootDirectory_U(&usPath,pRootDirectory);
 }
 
 BOOLEAN GetRootDirectory_U(UNICODE_STRING *pusFullyQualifiedPath)

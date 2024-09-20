@@ -249,10 +249,10 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 			case VOLUME_CONSOLE_SIMPLEHEXDUMP:
 			case VOLUME_CONSOLE_CONTENT_FILES:
 			{
-				WQ_PARAM wqp = {0};
+				QM_PARAM wqp = {0};
 				wqp.dwLength = cch;
 				wqp.VolumePath = sz;
-				SendMessage(hwndView,WM_QUERY_MESSAGE,WQ_GETVOLUMEPATH,(LPARAM)&wqp);
+				SendMessage(hwndView,WM_QUERY_MESSAGE,QMT_GETVOLUMEPATH,(LPARAM)&wqp);
 				break;
 			}
 			default:
@@ -267,10 +267,10 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 
 	if( wndGuid.Data1 == VOLUME_CONSOLE_SIMPLEHEXDUMP )
 	{
-		WQ_PARAM wqp = {0};
+		QM_PARAM wqp = {0};
 		wqp.dwLength = sizeof(LARGE_INTEGER);
 		wqp.liValue.QuadPart = 0;
-		SendMessage(hwndView,WM_QUERY_MESSAGE,WQ_GETSTARTOFFSET,(LPARAM)&wqp);
+		SendMessage(hwndView,WM_QUERY_MESSAGE,QMT_GETSTARTOFFSET,(LPARAM)&wqp);
 		StringCchPrintf(sz,cch,L"0x%I64x",wqp.liValue.QuadPart);
 		WriteSectionString(pszSection,L"Offset",sz);
 	}

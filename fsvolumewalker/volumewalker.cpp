@@ -83,7 +83,17 @@ static void OSVersionText(HWND hwndEdit)
 	osi.dwOSVersionInfoSize = sizeof(osi);
 	GetVersionEx((LPOSVERSIONINFO)&osi);
 
-	DWORD cb = sizeof(DWORD);
+	DWORD cb;
+
+	cb = MAX_PATH;
+	SHRegGetValue(HKEY_LOCAL_MACHINE,L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",L"ProductName",SRRF_RT_REG_DWORD,NULL,szText,&cb);
+
+	Edit_AddText(hwndEdit,L"  ");
+	Edit_AddText(hwndEdit,szText);
+	Edit_AddText(hwndEdit,L"\r\n");
+
+
+	cb = sizeof(DWORD);
 	DWORD UBR = 0;
 	SHRegGetValue(HKEY_LOCAL_MACHINE,L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",L"UBR",SRRF_RT_REG_DWORD,NULL,&UBR,&cb);
 
@@ -191,6 +201,27 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				Edit_AddText(hwndEdit,L"\r\n\r\n");
 				Edit_AddText(hwndEdit,L"Windows Versison:\r\n");
 				OSVersionText(GetDlgItem(hDlg,IDC_EDIT));
+			}
+
+			// System Install Date
+			{
+				LARGE_INTEGER t = {0};
+
+				if( GetComputerInformation(9,CIF_REG_WOW64_64KEY,&t.QuadPart,sizeof(t.QuadPart)) != ERROR_SUCCESS )
+				{
+					DWORD dw;
+					GetComputerInformation(6,CIF_REG_WOW64_64KEY,&dw,sizeof(dw));
+
+					SecondsSince1970ToTime(dw,&t);
+				}
+
+				WCHAR sz[64];
+				_GetDateTimeStringEx(t.QuadPart,sz,64,NULL,NULL,FALSE);
+
+				Edit_AddText(hwndEdit,L"\r\n\r\n");
+				Edit_AddText(hwndEdit,L"System Install Date:\r\n");
+				Edit_AddText(hwndEdit,L"  ");
+				Edit_AddText(hwndEdit,sz);
 			}
 
 			return (INT_PTR)TRUE;
@@ -512,14 +543,33 @@ VOID SendContentsBrowserFileListPath(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CH
 	ASSERT( pOpenParam != NULL );
 	ASSERT( pOpenParam->Path != NULL );
 
-	WCHAR szVolumeRootOrPath[MAX_PATH];
-	StringCchPrintf(szVolumeRootOrPath,MAX_PATH,L"%s\\",pOpenParam->Path);
-	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_SET_DIRECTORY,(LPARAM)szVolumeRootOrPath);
+	PWSTR pszPath;
+	SIZE_T cchPathLength;
 
-	SetWindowText(hwndMDIChild,pOpenParam->Path);
+	cchPathLength = wcslen(pOpenParam->Path);
+
+	if( cchPathLength < MAX_PATH && FindRootDirectory_W(pOpenParam->Path,NULL) == 0 )
+	{
+		pszPath = _MemAllocString(pOpenParam->Path);
+	}
+	else
+	{
+		pszPath = _MemAllocStringCat(pOpenParam->Path,L"\\");
+	}
+
+	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_SET_DIRECTORY,(LPARAM)pszPath);
+
+	UNICODE_STRING usVolumeName;
+	RtlInitUnicodeString(&usVolumeName,pOpenParam->Path);
+	GetVolumeName_U(&usVolumeName);
+	PWSTR pszVolumeName = AllocateSzFromUnicodeString(&usVolumeName);
+	SetWindowText(hwndMDIChild,pszVolumeName);
+	FreeMemory(pszVolumeName);
+
+	_MemFree(pszPath);
 }
 
-VOID SendHexDumpInformation(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CHILDFRAME_STARTOFFSET *OpenSelItem)
+VOID SendHexDumpInformation(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CHILDFRAME_PARAM *OpenSelItem)
 {
 	//
 	// Hex dump: Set data source, offset, and home offset.
@@ -527,7 +577,7 @@ VOID SendHexDumpInformation(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CHILDFRAME_
 	SELECT_OFFSET_ITEM sel = {0};
 	sel.hdr.mask = SI_MASK_PATH|SI_MASK_NAME|SI_MASK_VIEWTYPE|SI_MASK_START_OFFSET;
 	sel.hdr.ViewType   = VOLUME_CONSOLE_SIMPLEHEXDUMP;
-	sel.hdr.pszStorage = OpenSelItem->hdr.Path;
+	sel.hdr.pszStorage = OpenSelItem->Path;
 	sel.liStartOffset  = OpenSelItem->StartOffset;
 
 	SendMessage(hWndView,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
@@ -639,7 +689,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		}
 		else if( VOLUME_CONSOLE_SIMPLEHEXDUMP == ConsoleTypeId && pOpenParam )
 		{
-			SendHexDumpInformation(hwndChildFrame,pd->hWndView,(OPEN_MDI_CHILDFRAME_STARTOFFSET*)pOpenParam);
+			SendHexDumpInformation(hwndChildFrame,pd->hWndView,pOpenParam);
 		}
 
 		if( bMaximized )
@@ -701,7 +751,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 
 				SendUIInitLayout(hwndMDIChild,pd->hWndView);
 
-				SendHexDumpInformation(hwndMDIChild,pd->hWndView,(OPEN_MDI_CHILDFRAME_STARTOFFSET *)pOpenParam);
+				SendHexDumpInformation(hwndMDIChild,pd->hWndView,pOpenParam);
 			}
 			else if( VOUUME_CONSOLE_CHANGE_JOURNAL == ConsoleTypeId )
 			{
@@ -1039,10 +1089,7 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 			hr = LoadLayout(hWnd,g_hWndMDIClient,&pFrames,&dwFrames);
 			if( hr == S_OK )
 			{
-				union {
-					OPEN_MDI_CHILDFRAME_PARAM Param;
-					OPEN_MDI_CHILDFRAME_STARTOFFSET Offset;
-				} Open = {0};
+				OPEN_MDI_CHILDFRAME_PARAM op = {0};
 
 				HWND hwndMDIChild = NULL;
 				for(int i = ((int)dwFrames-1); i >= 0; i--)
@@ -1050,13 +1097,13 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 					if( IsVolumeNameRequiredConsole(&pFrames[i].Guid,(UINT)pFrames[i].Guid.Data1) && pFrames[i].Path == NULL )
 						continue;
 
-					Open.Param.Path = pFrames[i].Path;
-					Open.Offset.StartOffset.QuadPart = pFrames[i].liStartOffset.QuadPart;
+					op.Path = pFrames[i].Path;
+					op.StartOffset.QuadPart = pFrames[i].liStartOffset.QuadPart;
 
 					hwndMDIChild = OpenMDIChild(hWnd,
 							(UINT)pFrames[i].Guid.Data1, // todo:
 							&pFrames[i].Guid,
-							(OPEN_MDI_CHILDFRAME_PARAM *)&Open,
+							&op,
 							pFrames[i].hdr.show == SW_MAXIMIZE ? TRUE : FALSE,
 							&pFrames[i].hdr);
 
@@ -1383,6 +1430,11 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	InitIniFile();
 
 	InitializeLibMisc(hInstance,GetUserDefaultUILanguage());
+
+	if( _GetOSVersion() >= 0xA00 )
+	{
+		SetProcessPlaceholderCompatibilityMode(PHCM_EXPOSE_PLACEHOLDERS);
+	}
 
 	if( (g_hWndMain = InitInstance (hInstance, nCmdShow)) == NULL )
 	{

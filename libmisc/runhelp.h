@@ -21,6 +21,15 @@
 #define EnvStrFilePath          L"_FILEPATH_"
 #define EnvStrFileName          L"_FILENAME_"
 
+#define RHCF_MASK_PATH           0x00000001
+#define RHCF_MASK_DOSPATH        0x00000002
+#define RHCF_MASK_DIRECTORY      0x00000004
+#define RHCF_MASK_FILENAME       0x00000008
+#define RHCF_MASK_EXECPATH       0x00000010
+#define RHCF_MASK_CURDIR         0x00000020
+#define RHCF_MASK_FILELIST       0x00000040
+#define RHCF_MASK_PARAM          0x00000080
+
 class CRunHelp
 {
 private:
@@ -160,7 +169,7 @@ public:
 						}
 
 						// Set path from XML parameter and  and append to %PATH% environment variable.
-						if( pcf->pszAppendPath != NULL )
+						if( pcf->pszAppendPath != NULL && *pcf->pszAppendPath != L'\0' )
 						{
 							StringCchCopy(sbNewEnvPath,32767,sbOrgEnvPath);
 							if( *pcf->pszAppendPath != L';' )
@@ -239,9 +248,11 @@ public:
 	{
 		SHELLEXECUTEINFO sei = {0};
 
+		LPITEMIDLIST pidl = ILCreateFromPath(pszExePath);
+
 		sei.cbSize = sizeof(sei);
-		sei.fMask = 0;
-		sei.lpFile = pszExePath;
+		sei.fMask = SEE_MASK_IDLIST;
+		sei.lpIDList = pidl;
 		sei.lpDirectory = pszCurrentDir;
 		sei.lpParameters = pszCommandLine;
 		sei.lpVerb = L"open";
@@ -249,6 +260,8 @@ public:
 
 		BOOL bSuccess;
 		bSuccess = ShellExecuteEx( &sei );
+
+		ILFree(pidl);
 
 		return bSuccess ? S_OK : HRESULT_FROM_WIN32( GetLastError() );
 	}
@@ -263,7 +276,7 @@ public:
 		SHELLEXECUTEINFO sei = {0};
 
 		sei.cbSize = sizeof(sei);
-		sei.fMask = 0;
+		sei.fMask = SEE_MASK_IDLIST;
 		sei.lpFile = pszExePath;
 		sei.lpDirectory = pszCurrentDir;
 		sei.lpParameters = pszCommandLine;

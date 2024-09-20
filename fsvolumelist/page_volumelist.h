@@ -146,15 +146,16 @@ public:
 		ListView_SetExtendedListViewStyle(m_hWndList,LVS_EX_DOUBLEBUFFER|LVS_EX_FULLROWSELECT|LVS_EX_HEADERDRAGDROP|LVS_EX_LABELTIP|LVS_EX_INFOTIP);
 
 		static COLUMN def_columns[] = {
-			{ COLUMN_Name,        L"Name",       1, 160, LVCFMT_LEFT },
-			{ COLUMN_Drive,       L"Drive",      2, 100, LVCFMT_LEFT },
-			{ COLUMN_UsageRate,   L"Usage %",    3, 100, LVCFMT_CENTER },
-			{ COLUMN_Size,        L"Size",       4, 100, LVCFMT_RIGHT },
-			{ COLUMN_Usage,       L"Usage",      6, 100, LVCFMT_RIGHT },
-			{ COLUMN_Free,        L"Free",       7, 100, LVCFMT_RIGHT },
-			{ COLUMN_VolumeLabel, L"Label",      8, 100, LVCFMT_LEFT },
-			{ COLUMN_Format,      L"Format",     9,  80, LVCFMT_LEFT },
-			{ COLUMN_Guid,        L"Guid",      10, 340, LVCFMT_LEFT },
+			{ COLUMN_Name,         L"Name",           1, 160, LVCFMT_LEFT },
+			{ COLUMN_Drive,        L"Drive",          2, 100, LVCFMT_LEFT },
+			{ COLUMN_UsageRate,    L"Usage %",        3, 100, LVCFMT_CENTER },
+			{ COLUMN_Size,         L"Size",           4, 100, LVCFMT_RIGHT },
+			{ COLUMN_Usage,        L"Usage",          5, 100, LVCFMT_RIGHT },
+			{ COLUMN_Free,         L"Free",           6, 100, LVCFMT_RIGHT },
+			{ COLUMN_VolumeLabel,  L"Label",          7, 100, LVCFMT_LEFT },
+			{ COLUMN_Format,       L"Format",         8,  80, LVCFMT_LEFT },
+			{ COLUMN_Guid,         L"Guid",           9, 340, LVCFMT_LEFT },
+			{ COLUMN_CreationTime, L"Creation Time", 10, 160, LVCFMT_LEFT },
 		};
 
 		m_columns.SetDefaultColumns(def_columns,ARRAYSIZE(def_columns));
@@ -642,6 +643,22 @@ public:
 		return 0;
 	}
 
+	LRESULT OnDisp_CreationTime(UINT id,NMLVDISPINFO *pnmlvdi)
+	{
+		*pnmlvdi->item.pszText = L'\0';
+
+		CVolumeItem *pItem = (CVolumeItem *)pnmlvdi->item.lParam;
+		if( pItem->VolInfoBuffer->VolumeCreationTime.QuadPart > 0 )
+		{
+			_GetDateTimeStringEx(
+					pItem->VolInfoBuffer->VolumeCreationTime.QuadPart,
+					pnmlvdi->item.pszText,
+					pnmlvdi->item.cchTextMax,
+					NULL,NULL,FALSE);
+		}
+		return 0;
+	}
+
 	void InitColumnTable()
 	{
 		static COLUMN_HANDLER_DEF<CVolumeListPage> ch[] =
@@ -655,6 +672,7 @@ public:
 			COL_HANDLER_MAP_DEF(COLUMN_UsageRate,      &CVolumeListPage::OnDisp_UsageRate),
 			COL_HANDLER_MAP_DEF(COLUMN_Drive,          &CVolumeListPage::OnDisp_Drive),
 			COL_HANDLER_MAP_DEF(COLUMN_VolumeLabel,    &CVolumeListPage::OnDisp_VolumeLabel),
+			COL_HANDLER_MAP_DEF(COLUMN_CreationTime,   &CVolumeListPage::OnDisp_CreationTime),
 		};
 
 		m_disp_proc = new COLUMN_HANDLER_DEF<CVolumeListPage>[COLUMN_MaxItem];
@@ -1170,6 +1188,13 @@ public:
 		return _COMP(pItem1->DiskUsage,pItem2->DiskUsage);
 	}
 
+	int comp_creationtime(CVolumeItem *pItem1,CVolumeItem *pItem2, const void *p)
+	{
+		SORT_PARAM<CVolumeListPage> *op = (SORT_PARAM<CVolumeListPage> *)p;
+		return _COMP(pItem1->VolInfoBuffer->VolumeCreationTime.QuadPart,
+					 pItem2->VolInfoBuffer->VolumeCreationTime.QuadPart);
+	}
+
 	void init_compare_proc_def_table()
 	{
 		static COMPARE_HANDLER_PROC_DEF<CVolumeListPage,CVolumeItem> comp_proc[] = 
@@ -1183,6 +1208,7 @@ public:
 			{COLUMN_VolumeLabel, &CVolumeListPage::comp_volumelabel},
 			{COLUMN_Format,      &CVolumeListPage::comp_format},
 			{COLUMN_Guid,        &CVolumeListPage::comp_guid},
+			{COLUMN_CreationTime,&CVolumeListPage::comp_creationtime},
 		};
 
 		m_comp_proc = new COMPARE_HANDLER_PROC_DEF<CVolumeListPage,CVolumeItem>[COLUMN_MaxItem];

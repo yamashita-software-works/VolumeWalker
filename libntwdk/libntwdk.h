@@ -267,3 +267,11 @@ TimeIntegerToSystemTime(
 	LARGE_INTEGER *pnSysTime,
 	SYSTEMTIME *pst
 	);
+
+EXTERN_C
+VOID
+NTAPI
+SecondsSince1970ToTime(
+    IN ULONG ElapsedSeconds,
+    OUT PLARGE_INTEGER Time
+	);

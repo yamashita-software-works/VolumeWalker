@@ -93,6 +93,12 @@ VirtualDisk_GetDependencyInformation(
 {
 	DWORD dwError = 0;
 
+	if( GetOSVersion() <= 0x600 )
+	{
+		SetLastError(ERROR_INVALID_FUNCTION);
+		return FALSE;
+	}
+
 	BOOL bResult = FALSE;
 	HANDLE Handle;
 	Handle = OpenDisk(NtDevicePath,0,FILE_READ_ATTRIBUTES|SYNCHRONIZE);

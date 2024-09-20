@@ -114,10 +114,10 @@ inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz,LONGLONG StartOffs
 	StringCchCopy(popen_mdi->hdr.Path,cch,psz);
 	PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,1),(LPARAM)popen_mdi);
 #else
-	OPEN_MDI_CHILDFRAME_STARTOFFSET open_mdi = {0};
-	open_mdi.hdr.flags    = 0;
-	open_mdi.hdr.hwndFrom = 0;
-	open_mdi.hdr.Path     = (PWSTR)psz;
+	OPEN_MDI_CHILDFRAME_PARAM open_mdi = {0};
+	open_mdi.Flags    = 0;
+	open_mdi.hwndFrom = 0;
+	open_mdi.Path     = (PWSTR)psz;
 	open_mdi.StartOffset.QuadPart = StartOffset;
 	SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,0),(LPARAM)&open_mdi);
 #endif
@@ -135,7 +135,7 @@ inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz)
 		{
 			SIZE_T cch = (wcslen(psz) + 1);
 			OPEN_MDI_CHILDFRAME_PARAM *popen_mdi = (OPEN_MDI_CHILDFRAME_PARAM *)CoTaskMemAlloc( sizeof(OPEN_MDI_CHILDFRAME_PARAM) + (cch * sizeof(WCHAR)) );
-			popen_mdi->flags    = 0;
+			popen_mdi->Flags    = 0;
 			popen_mdi->hwndFrom = 0;
 			popen_mdi->Path     = (PWSTR)(((UINT_PTR)popen_mdi)+sizeof(OPEN_MDI_CHILDFRAME_PARAM));
 			StringCchCopy(popen_mdi->Path,cch,psz);
@@ -144,7 +144,7 @@ inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz)
 		else
 		{
 			OPEN_MDI_CHILDFRAME_PARAM open_mdi = {0};
-			open_mdi.flags    = 0;
+			open_mdi.Flags    = 0;
 			open_mdi.hwndFrom = 0;
 			open_mdi.Path     = (PWSTR)psz;
 			SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,0),(LPARAM)&open_mdi);
