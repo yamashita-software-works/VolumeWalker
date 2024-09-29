@@ -586,11 +586,39 @@ NTSTATUS FindRootDirectory_U(UNICODE_STRING *pusFullyQualifiedPath,PWSTR *pRootD
 
     if( RtlPrefixUnicodeString(&usPrefix,pusFullyQualifiedPath,TRUE) )
     {
-        //
-        // Find root directory from global root  prefixed.
-        // "\??\C:\", "\??\HarddiskVolume1\", "\??\Volume{xxx...xxx}\"
-        //
-        ParseStartPos = 4;
+        RtlInitUnicodeString(&usPrefix,L"\\??\\UNC\\");
+
+        if( RtlPrefixUnicodeString(&usPrefix,pusFullyQualifiedPath,TRUE) )
+        {
+            //
+            // Find root directory from UNC path
+            // "\??\UNC\ServerName\ShareFolder"
+            //
+            PWSTR p = &pusFullyQualifiedPath->Buffer[8];
+
+            p = wcschr(p,L'\\'); // find server name end
+            if( p != NULL )
+            {
+                p = wcschr(++p,L'\\'); // find sharefolder end (unc path root)
+
+                if( p != NULL )
+                {
+                    int cb = (int)((INT_PTR)p - (INT_PTR)pusFullyQualifiedPath->Buffer);
+                    if( cb <= pusFullyQualifiedPath->Length )
+                    {
+                        ParseStartPos = WCHAR_LENGTH(cb);
+                    }
+                }
+            }
+        }
+        else
+        {
+            //
+            // Find root directory from global root  prefixed.
+            // "\??\C:\", "\??\HarddiskVolume1\", "\??\Volume{xxx...xxx}\"
+            //
+            ParseStartPos = 4;
+        }
     }
     else
     {
@@ -932,14 +960,21 @@ NTSTATUS SplitPathFileName_U(__inout UNICODE_STRING *Path,__out UNICODE_STRING *
             }
         }
 
-        FileName->Buffer = &Path->Buffer[i + 1];
-        FileName->Length = (USHORT)WCHAR_BYTES((len - i -1));
+		if( i >= 0 )
+		{
+			FileName->Buffer = &Path->Buffer[i + 1];
+	        FileName->Length = (USHORT)WCHAR_BYTES((len - i -1));
 
-        Path->Length -= FileName->Length;
-        if( Path->Length > sizeof(WCHAR) )
-            Path->Length -= sizeof(WCHAR); // separator
+		    Path->Length -= FileName->Length;
+			if( Path->Length > sizeof(WCHAR) )
+				Path->Length -= sizeof(WCHAR); // separator
 
-        Status = STATUS_SUCCESS;
+	        Status = STATUS_SUCCESS;
+		}
+		else
+		{
+			Status = STATUS_INVALID_PARAMETER;
+		}
     }
     else
     {

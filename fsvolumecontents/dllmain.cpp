@@ -36,6 +36,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		case DLL_PROCESS_ATTACH:
 			hInstance = hModule;
 			_MemInit();
+			InitLongPathBox(hInstance);
 			break;
 		case DLL_PROCESS_DETACH:
 			_MemEnd();

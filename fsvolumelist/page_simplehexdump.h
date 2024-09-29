@@ -152,6 +152,8 @@ public:
 		GetClientRect(m_hWnd,&rc);
 		UpdateLayout(_RECT_WIDTH(rc),_RECT_HIGHT(rc));
 
+		UpdateToolbarButtons();
+
 		return S_OK;
 	}
 
@@ -1012,7 +1014,7 @@ private:
 
 		SetToolbarButtonState(ID_FIRST,(m_rd.Size.QuadPart > 0) && (m_rd.ReadOffset.QuadPart > 0));
 		SetToolbarButtonState(ID_LAST,(m_rd.Size.QuadPart > 0) && (m_rd.ReadOffset.QuadPart < (m_rd.Size.QuadPart - m_rd.Length)));
-		SetToolbarButtonState(ID_GOTO,m_rd.Size.QuadPart > 0);
+		SetToolbarButtonState(ID_GOTO,(m_rd.Size.QuadPart > 0) && (m_rd.Buffer != NULL) );
 	}
 
 	void SetErrorState()
@@ -1030,6 +1032,6 @@ private:
 		SetToolbarButtonState(ID_FIRST,FALSE);
 		SetToolbarButtonState(ID_LAST,FALSE);
 		SetToolbarButtonState(ID_HOME,FALSE);
-		SetToolbarButtonState(ID_GOTO,TRUE);
+		SetToolbarButtonState(ID_GOTO,FALSE);
 	}
 };

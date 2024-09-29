@@ -16,6 +16,10 @@
 #include "fsfilelib.h"
 #include <ntddvol.h>
 
+#define CIF_NONE                       0x0
+#define CIF_PHYSICAL_LOCATION          0x1
+#define CIF_FIRST_CLUSTER_ONLY         0x2
+
 static
 BOOL
 _GetPhysicalLocation(
@@ -91,11 +95,9 @@ _GetClustersInformation(
     DWORD dwErrorCode = NO_ERROR;
     BOOL bSuccess = false; 
 	ULONG i;
-	DWORD dwBytesReturned;
+	DWORD dwBytesReturned = 0;
+
 	RETRIEVAL_POINTER_BASE rpb = {0};
-
-	dwBytesReturned = 0;
-
 	if( !DeviceIoControl(hVolume,
 						FSCTL_GET_RETRIEVAL_POINTER_BASE,
 						NULL,0,
@@ -170,7 +172,7 @@ _GetClustersInformation(
 						pLoc->Count.QuadPart = rpBuf.Extents[i].NextVcn.QuadPart - rpBuf.StartingVcn.QuadPart;
 					} 
 
-					if( dwFlags )
+					if( dwFlags & CIF_PHYSICAL_LOCATION )
 					{
 						for(i = 0; i < rpBuf.ExtentCount; i++)
 						{
@@ -186,7 +188,6 @@ _GetClustersInformation(
 										(VOLUME_PHYSICAL_OFFSETS **)&pClusters->Extents[pClusters->ExtentCount+i].PhysicalOffsets))
 								{
 									dwErrorCode = GetLastError();
-									bSuccess = false;
 									break;
 								}
 							}
@@ -194,6 +195,9 @@ _GetClustersInformation(
 							{
 								pClusters->Extents[pClusters->ExtentCount+i].PhysicalOffsets = 0;
 							}
+
+							if( dwFlags & CIF_FIRST_CLUSTER_ONLY )
+								break;
 						} 
 					}
 
@@ -213,6 +217,9 @@ _GetClustersInformation(
 			default:
 				break;
 		} 
+
+		if( dwFlags & CIF_FIRST_CLUSTER_ONLY )
+			break;
 	}
 	while (dwErrorCode == ERROR_MORE_DATA);
 
@@ -235,10 +242,13 @@ ReadFileClusterInformaion_U(
 	HANDLE hVolume;
 	HANDLE hVolumeRoot;
 	NTSTATUS Status;
-
+	DWORD dwWin32Error;
 	DWORD dwBytesPerCluster = 0;
 	DWORD dwBytesPerSector = 0;
 
+	//
+	// Get information about the volume on which a file existing.
+	//
 	SplitRootRelativePath(VolumeRootDirectoryName->Buffer,&usVolumeRoot,NULL);
 
 #ifdef _DEBUG
@@ -265,7 +275,7 @@ ReadFileClusterInformaion_U(
 	if( Status == STATUS_SUCCESS )
 	{
 		VOLUME_FS_SIZE_INFORMATION *SizeInfo;
-		if( GetVolumeFsInformation(hVolumeRoot,VOLFS_SIZE_INFORMATION,(void **)&SizeInfo) == STATUS_SUCCESS )
+		if( (Status = GetVolumeFsInformation(hVolumeRoot,VOLFS_SIZE_INFORMATION,(void **)&SizeInfo)) == STATUS_SUCCESS )
 		{
 			dwBytesPerCluster = SizeInfo->SectorsPerAllocationUnit * SizeInfo->BytesPerSector;
 			dwBytesPerSector  = SizeInfo->BytesPerSector;
@@ -274,11 +284,13 @@ ReadFileClusterInformaion_U(
 		CloseHandle(hVolumeRoot);
 	}
 
-	//
-	// Open volume
-	//
+	dwWin32Error = NtStatusToDosError(Status);
+
 	if( hFile != NULL )
 	{
+		//
+		// Open volume
+		//
 		hVolume = NULL;
 
 		FS_CLUSTER_INFORMATION *pClusters = NULL;
@@ -287,6 +299,9 @@ ReadFileClusterInformaion_U(
 		usVolumeDevice = usVolumeRoot;
 		GetVolumeName_U(&usVolumeDevice);
 
+		// try open to
+		// 1:"\Device\HarddiskVolumeX" (Volume Device)
+		// 2:"\Device\HarddiskVolumeX\" (Root directory)
 		for(ULONG fOption = FILE_NON_DIRECTORY_FILE;;)
 		{
 			if( IsUserAnAdmin() )
@@ -311,55 +326,77 @@ ReadFileClusterInformaion_U(
 				fOption &= ~FILE_NON_DIRECTORY_FILE;
 				continue;
 			}
-
 			break;
 		}
 
-		if( Status == 0 )
+		if( Status == STATUS_SUCCESS )
 		{
-			if(!_GetClustersInformation(
-							hVolume, 
-							hFile, 
-							(Class == ClusterInformationAll) ? 0x1 : 0x0,
-							dwBytesPerCluster,
-							dwBytesPerSector,
-							&pClusters
-							))
-			{
-				Status = GetLastError();
-			}
-			else
-			{
-				if( pClusters == NULL )
-					Status = ERROR_NO_MORE_ITEMS;
-			}
-		}
+			DWORD dwFlags = 0;
+			if( ClusterInformationAll == Class )
+				dwFlags = CIF_PHYSICAL_LOCATION;
+			else if( ClusterInformationBasic == Class )
+				dwFlags = CIF_FIRST_CLUSTER_ONLY;
+			else if( Class == ClusterInformationBasicWithPhysicalLocation )
+				dwFlags = CIF_FIRST_CLUSTER_ONLY|CIF_PHYSICAL_LOCATION;
 
-		if( hVolume != NULL )
+			_GetClustersInformation(
+					hVolume, 
+					hFile, 
+					dwFlags,
+					dwBytesPerCluster,
+					dwBytesPerSector,
+					&pClusters
+					);
+
+			dwWin32Error = GetLastError();
+
 			CloseHandle(hVolume);
+		}
+		else
+		{
+			dwWin32Error = NtStatusToDosError(Status);
+		}
 
 		if( pClusters != NULL )
 		{
-			if( Class == ClusterInformationBasic )
+			if( Class == ClusterInformationBasic || Class == ClusterInformationBasicWithPhysicalLocation )
 			{
-				((FS_CLUSTER_INFORMATION_BASIC *)Data)->FirstLcn = pClusters->Extents[0].Lcn;
-				((FS_CLUSTER_INFORMATION_BASIC *)Data)->FirstCount = pClusters[0].ExtentCount;
-				((FS_CLUSTER_INFORMATION_BASIC *)Data)->Split = pClusters->ExtentCount;
-				((FS_CLUSTER_INFORMATION_BASIC *)Data)->SectorsPerCluster = dwBytesPerCluster;
-				((FS_CLUSTER_INFORMATION_BASIC *)Data)->BytesPerSector = dwBytesPerSector;
-				_MemFree( pClusters );
+				if( cbData == sizeof(FS_CLUSTER_INFORMATION_BASIC) || cbData == sizeof(FS_CLUSTER_INFORMATION_BASIC_EX) )
+				{
+					((FS_CLUSTER_INFORMATION_BASIC *)Data)->FirstLcn          = pClusters->Extents[0].Lcn;
+					((FS_CLUSTER_INFORMATION_BASIC *)Data)->FirstCount        = pClusters[0].ExtentCount;
+					((FS_CLUSTER_INFORMATION_BASIC *)Data)->Split             = pClusters->ExtentCount;
+					((FS_CLUSTER_INFORMATION_BASIC *)Data)->SectorsPerCluster = dwBytesPerCluster;
+					((FS_CLUSTER_INFORMATION_BASIC *)Data)->BytesPerSector    = dwBytesPerSector;
+					if( cbData == sizeof(FS_CLUSTER_INFORMATION_BASIC_EX) )
+					{
+						if( pClusters->Extents[0].PhysicalOffsets )
+						{
+							((FS_CLUSTER_INFORMATION_BASIC_EX *)Data)->PhysicalLocation.QuadPart = pClusters->Extents[0].PhysicalOffsets[0].PhysicalOffset[0].Offset;
+							((FS_CLUSTER_INFORMATION_BASIC_EX *)Data)->DiskNumber = pClusters->Extents[0].PhysicalOffsets[0].PhysicalOffset[0].DiskNumber;
+						}
+						else
+						{
+							((FS_CLUSTER_INFORMATION_BASIC_EX *)Data)->PhysicalLocation.QuadPart = -1;
+							((FS_CLUSTER_INFORMATION_BASIC_EX *)Data)->DiskNumber = (ULONG)-1;
+						}
+					}
+				}
+
+				FreeClusterInformation( pClusters );
 			}
 			else
 			{
 				pClusters->BytesPerCluster = dwBytesPerCluster;
-				pClusters->BytesPerSector = dwBytesPerSector;
-				*((FS_CLUSTER_INFORMATION **)Data) = pClusters;
+				pClusters->BytesPerSector  = dwBytesPerSector;
+				*((FS_CLUSTER_INFORMATION **)Data) = pClusters; // must free by caller use FreeClusterInformation()
 			}
-			Status = ERROR_SUCCESS;
+
+			dwWin32Error = ERROR_SUCCESS;
 		}
 	}
 
-	return Status;
+	return dwWin32Error;
 }
 
 EXTERN_C
@@ -388,6 +425,9 @@ FreeClusterInformation(
 	PVOID Buffer
 	)
 {
+	if( Buffer == NULL )
+		return 0;
+
 	FS_CLUSTER_INFORMATION *pClusters = (FS_CLUSTER_INFORMATION *)Buffer;
 
 	ULONG i;

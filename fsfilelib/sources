@@ -106,6 +106,7 @@ SOURCES = \
 	fsfilelib.cpp \
 	clusterreader.cpp \
 	changejournalhelp.cpp \
+	watchdirectory.cpp \
 	ntfsrecord.cpp \
 	fsfilelib.rc
 

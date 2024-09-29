@@ -54,69 +54,7 @@ HINSTANCE _GetResourceInstance();
 
 #include "filemisc.h"
 #include "fsfilelib.h"
-
-typedef struct _FILEITEMHEADER
-{
-	ULONG Reserved;
-	PWSTR Path;
-	PWSTR FileName;
-} FILEITEMHEADER;
-
-typedef struct _FILEITEM
-{
-	FILEITEMHEADER hdr;
-    LARGE_INTEGER CreationTime;
-    LARGE_INTEGER LastAccessTime;
-    LARGE_INTEGER LastWriteTime;
-    LARGE_INTEGER ChangeTime;
-    LARGE_INTEGER EndOfFile;
-    LARGE_INTEGER AllocationSize;
-    ULONG FileAttributes;
-    ULONG FileNameLength;
-    ULONG EaSize;
-    ULONG FileIndex;
-    LARGE_INTEGER FileId;
-    WCHAR ShortName[14];
-} FILEITEM,*PFILEITEM;
-
-class CFileItem : public FILEITEM
-{
-public:
-	ULONG ItemTypeFlag;
-	LARGE_INTEGER FirstLCN;
-	LARGE_INTEGER ParentFileId; // todo: 128bit id not support
-    DWORD NumberOfLinks;
-    BOOLEAN DeletePending;
-    BOOLEAN Directory;
-	BOOLEAN Wof; // Overray File
-	CFileItem()
-	{
-		memset(this,0,sizeof(CFileItem));
-		FirstLCN.QuadPart = 0;
-	}
-
-	CFileItem(PCWSTR pszDirPath,PCWSTR pszFile)
-	{
-		memset(this,0,sizeof(CFileItem));
-		if( pszDirPath )
-			hdr.Path = _MemAllocString(pszDirPath);
-		if( pszFile )
-			hdr.FileName = _MemAllocString(pszFile);
-	}
-
-	~CFileItem()
-	{
-		_SafeMemFree(hdr.Path);
-		_SafeMemFree(hdr.FileName);
-	}
-};
-
-typedef struct _FILELIST
-{
-	PWSTR RootPath;
-	ULONG cItemCount;
-	CFileItem **pFI;
-} FILELIST,*PFILELIST;
+#include "fileitem.h"
 
 HICON SetWindowIcon(HWND hWnd,SHSTOCKICONID ssii);
 VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus=FALSE,COLORREF crBorder=RGB(80,110,190));
@@ -124,7 +62,6 @@ PWSTR GetIniFilePath();
 HFONT GetGlobalFont(HWND hWnd);
 HFONT GetIconFont();
 
-//++todo:
 enum {
     COLUMN_None=0,
     COLUMN_Name,            /* 1 */
@@ -148,7 +85,8 @@ enum {
     COLUMN_Usn,             /* 19 */
     COLUMN_Frn,             /* 20 */
     COLUMN_ParentFrn,       /* 21 */
+    COLUMN_PhysicalDriveNumber, /* 22 */
+    COLUMN_PhysicalDriveOffset, /* 23 */
     COLUMN_MaxItem,
     COLUMN_MaxCount=COLUMN_MaxItem,
 };
-//--todo:

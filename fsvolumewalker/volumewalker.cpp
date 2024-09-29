@@ -471,11 +471,46 @@ HICON GetConsoleIcon(UINT ConsoleTypeId)
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
 		FreeLibrary(hmod);
 	}
+	else if( ConsoleTypeId == VOLUME_CONSOLE_CONTENT_FILES )
+	{
+#if 0
+		HINSTANCE hmod = LoadLibrary(L"imageres.dll");
+		hIcon = (HICON)LoadImage(hmod,
+							( _GetOSVersion() < 0xA00 ) ? MAKEINTRESOURCE(3) : MAKEINTRESOURCE(5355),
+							IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
+		FreeLibrary(hmod);
+#else
+		hIcon = GetShellStockIcon(SIID_FOLDER);
+#endif
+	}
 	else
 	{
 		hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
 	}
 	return hIcon;
+}
+
+BOOL IsValidDevicePath( PWSTR Path )
+{
+	HANDLE Handle;
+	WCHAR szDeviceName[MAX_PATH];
+
+	if( wcschr(Path,L'\\') )
+		StringCchCopy(szDeviceName,MAX_PATH,Path);
+	else
+		StringCchPrintf(szDeviceName,MAX_PATH,L"\\??\\%s",Path);
+
+	if( OpenFile_W(&Handle,NULL,szDeviceName,FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_NON_DIRECTORY_FILE) == 0 )
+	{
+		CloseHandle(Handle);
+		return TRUE;
+	}
+
+#ifdef _DEBUG
+	DbgPrint("Fail : %S\n",szDeviceName);
+#endif
+
+	return FALSE;
 }
 
 void InitConfigFile()
@@ -559,12 +594,7 @@ VOID SendContentsBrowserFileListPath(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CH
 
 	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_SET_DIRECTORY,(LPARAM)pszPath);
 
-	UNICODE_STRING usVolumeName;
-	RtlInitUnicodeString(&usVolumeName,pOpenParam->Path);
-	GetVolumeName_U(&usVolumeName);
-	PWSTR pszVolumeName = AllocateSzFromUnicodeString(&usVolumeName);
-	SetWindowText(hwndMDIChild,pszVolumeName);
-	FreeMemory(pszVolumeName);
+	SetWindowText(hwndMDIChild,(LPCWSTR)L"Volume Files");
 
 	_MemFree(pszPath);
 }
@@ -1097,11 +1127,22 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 					if( IsVolumeNameRequiredConsole(&pFrames[i].Guid,(UINT)pFrames[i].Guid.Data1) && pFrames[i].Path == NULL )
 						continue;
 
+					switch( pFrames[i].Guid.Data1 ) // console type id
+					{
+						case VOLUME_CONSOLE_VOLUMEINFORMAION:
+						case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
+						case VOLUME_CONSOLE_DISKLAYOUT:
+						case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
+//						case VOLUME_CONSOLE_SIMPLEHEXDUMP:
+							if( pFrames[i].Path && !IsValidDevicePath(pFrames[i].Path) )
+								continue;
+					}
+
 					op.Path = pFrames[i].Path;
 					op.StartOffset.QuadPart = pFrames[i].liStartOffset.QuadPart;
 
 					hwndMDIChild = OpenMDIChild(hWnd,
-							(UINT)pFrames[i].Guid.Data1, // todo:
+							(UINT)pFrames[i].Guid.Data1, // console type id
 							&pFrames[i].Guid,
 							&op,
 							pFrames[i].hdr.show == SW_MAXIMIZE ? TRUE : FALSE,
@@ -1376,7 +1417,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndChildFrame,GWLP_USERDATA);
 				CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(pd->hWndView,_PROP_CONSOLE_VIEW_ID);
 
-				ClearWindowHandle(pcv->wndId,hwndChildFrame);
+				if( pcv )
+					ClearWindowHandle(pcv->wndId,hwndChildFrame);
 
 				RemoveProp(pd->hWndView,_PROP_CONSOLE_VIEW_ID);
 

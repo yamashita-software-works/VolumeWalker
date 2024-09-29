@@ -20,8 +20,11 @@
 #include "column.h"
 #include "history.h"
 #include "findhandler.h"
+#include "ntnotifychangedirectory.h"
 #include "dialogs.h"
 #include "fsfilelib.h"
+
+#define PM_UPDATE_FILELIST (PM_PRIVATEBASE + 1)
 
 #define _IS_CURDIR_NAME( fname ) (fname[0] == L'.' && fname[1] == L'\0')
 #define _IS_PARENT_DIR_NAME( fname ) (fname[0] == L'.' && fname[1] == L'.' && fname[2] == L'\0')
@@ -80,6 +83,8 @@ class CFileListPage :
 
 	UINT m_columnShowStyleFlags[COLUMN_MaxCount];
 
+	HANDLE m_hWatchHandle;
+
 	CHistoryManager m_history;
 public:
 	PWSTR GetPath() const { return m_pszCurDir; }
@@ -109,6 +114,7 @@ public:
 		m_bNtfsSpecialDirectory = FALSE;
 		m_hFont = NULL;
 		m_hFontHeader = NULL;
+		m_hWatchHandle = NULL;
 		ZeroMemory(m_columnShowStyleFlags,sizeof(m_columnShowStyleFlags));
 	}
 
@@ -124,6 +130,9 @@ public:
 
 	virtual HRESULT OnInitPage(PVOID)
 	{
+		CONFIG_STRUCT cs = {0};
+		SendMessage(GetParent(m_hWnd),WM_QUERY_MESSAGE,UI_QUERY_INIFILEINFO,(LPARAM)&cs);
+
 		static COLUMN_NAME column_name_map[] = {
 			{ COLUMN_Name,           L"Name",                  0},
 			{ COLUMN_Extension,      L"Extension",             0},
@@ -146,9 +155,11 @@ public:
 			{ COLUMN_Reason,         L"Reason",                0},
 			{ COLUMN_Frn,            L"FRN",                   0},
 			{ COLUMN_ParentFrn,      L"Parent FRN",            0},
+			{ COLUMN_PhysicalDriveNumber,   L"PhysicalDrive",  0}, 
+			{ COLUMN_PhysicalDriveOffset,   L"PhysicalOffset", 0},
 		};
 		m_columns.SetColumnNameMap( _countof(column_name_map), column_name_map );
-		m_columns.SetIniFilePath( GetIniFilePath() );
+		m_columns.SetIniFilePath( cs.IniFileName );
 
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 
@@ -171,7 +182,10 @@ public:
 
 		InitColumnDefinitions();
 
-		if( !LoadColumns(m_hWndList) )
+		WCHAR szFileListSection[48];
+		StringCchPrintf(szFileListSection,_countof(szFileListSection),L"%s.columns",cs.SectionName);
+
+		if( !LoadColumns(m_hWndList,szFileListSection) )
 		{
 			InsertDefaultColumns(m_hWndList);
 		}
@@ -186,6 +200,11 @@ public:
 		RECT rc;
 		GetClientRect(m_hWnd,&rc);
 		UpdateLayout(_RECT_WIDTH(rc),_RECT_HIGHT(rc));
+
+		StartDirectoryWatch(&m_hWatchHandle,&CFileListPage::NotifyCallback,this);
+
+		_CoTaskSafeMemFree(cs.IniFileName);
+		_CoTaskSafeMemFree(cs.SectionName);
 
 		return S_OK;
 	}
@@ -202,6 +221,12 @@ public:
 
 	LRESULT OnDestroy(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
+		if( m_hWatchHandle )
+		{
+			StopDirectoryWatch(m_hWatchHandle);
+			m_hWatchHandle = NULL;
+		}
+
 		if( m_hFont )
 		{
 			DeleteObject(m_hFont);
@@ -214,7 +239,18 @@ public:
 			m_hFontHeader = NULL;
 		}
 
-		SaveColumns(m_hWndList);
+//++ todo:
+		CONFIG_STRUCT cs = {0};
+		SendMessage(GetParent(m_hWnd),WM_QUERY_MESSAGE,UI_QUERY_INIFILEINFO,(LPARAM)&cs);
+
+		WCHAR szFileListSection[48];
+		StringCchPrintf(szFileListSection,_countof(szFileListSection),L"%s.columns",cs.SectionName);
+
+		SaveColumns(m_hWndList,szFileListSection,cs.IniFileName);
+
+		_CoTaskSafeMemFree(cs.IniFileName);
+		_CoTaskSafeMemFree(cs.SectionName);
+//-- todo:
 
 		return 0;
 	}
@@ -847,6 +883,26 @@ public:
 		return 0;
 	}
 
+	LRESULT OnDisp_PhysicalDriveNumber(UINT id,NMLVDISPINFO *pnmlvdi)
+	{
+		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		if( pItem->pFI->PhysicalDriveNumber != (ULONG)-1 )
+			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"PhysicalDrive%u",pItem->pFI->PhysicalDriveNumber);
+		else
+			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"-");
+		return 0;
+	}
+
+	LRESULT OnDisp_PhysicalDriveOffset(UINT id,NMLVDISPINFO *pnmlvdi)
+	{
+		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		if( pItem->pFI->PhysicalDriveOffset.QuadPart != 0 && pItem->pFI->PhysicalDriveOffset.QuadPart != -1 )
+			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->pFI->PhysicalDriveOffset.QuadPart);
+		else
+			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"-");
+		return 0;
+	}
+
 	void InitColumnTable()
 	{
 		static COLUMN_HANDLER_DEF<CFileListPage> ch[] =
@@ -866,6 +922,8 @@ public:
 			COL_HANDLER_MAP_DEF(COLUMN_Extension,      &CFileListPage::OnDisp_Extension),
 			COL_HANDLER_MAP_DEF(COLUMN_Path,           &CFileListPage::OnDisp_Path),
 			COL_HANDLER_MAP_DEF(COLUMN_Lcn,            &CFileListPage::OnDisp_Lcn),
+			COL_HANDLER_MAP_DEF(COLUMN_PhysicalDriveNumber, &CFileListPage::OnDisp_PhysicalDriveNumber),
+			COL_HANDLER_MAP_DEF(COLUMN_PhysicalDriveOffset, &CFileListPage::OnDisp_PhysicalDriveOffset),
 		};
 
 		m_disp_proc = new COLUMN_HANDLER_DEF<CFileListPage>[COLUMN_MaxItem];
@@ -931,7 +989,191 @@ public:
 
 	LRESULT OnGetCurPath(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-		return (LRESULT)this->m_pszCurDir;
+		if( wParam == 0 && lParam == 0 )
+			return (LRESULT)this->m_pszCurDir;
+
+		if( wParam != 0 )
+		{
+			StringCchCopy((PWSTR)lParam,(SIZE_T)wParam,GetPath());
+			return (LRESULT)IsNtfsSpecialDirectory();
+		}
+		else
+		{
+			*((LARGE_INTEGER *)lParam) = GetFileId();
+		}
+		return 0;
+	}
+
+	LRESULT OnGetSelectedFilePath(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		if( lParam == 0 )
+			return 0;
+		return GetSelectedFileInfo((FS_SELECTED_FILE *)lParam) == S_OK ? TRUE : FALSE;
+	}
+
+	LRESULT OnGetSelectedFileList(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		if( lParam == 0 )
+			return 0;
+#if _ENABLE_FILE_TOOLS
+		return MakeSelectedFileList((FS_SELECTED_FILELIST *)lParam) == S_OK ? TRUE : FALSE;
+#else
+		return 0;
+#endif
+	}
+
+	LRESULT OnGetSelectedFileAttribute(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( iItem == -1 )
+			return 0;
+
+		CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+		return pItem->pFI->FileAttributes;
+	}
+
+	LRESULT OnQuerySelectedItemState(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		UINT mask = (UINT)wParam;
+		UINT state = 0;
+		int cSelItems = ListView_GetSelectedCount(m_hWndList);
+		if( cSelItems > 0 )
+		{
+			if( mask & QSIS_SELECTED )
+				state |= QSIS_SELECTED;
+			if( (mask & QSIS_MULTIITEMSELECTED) && cSelItems > 1 )
+				state |= QSIS_MULTIITEMSELECTED;
+		}
+
+		if( mask & QSIS_EMPTYLIST )
+			state |= ((ListView_GetItemCount(m_hWndList) == 0) ? QSIS_EMPTYLIST : 0);
+#if 0
+		if( mask & QSIS_EMPTYDIRECTORY )
+		{
+			int cItems = ListView_GetItemCount(m_hWndList);
+			if( cItems == 1 )
+			{
+				CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+				state |=( wcscmp(pItem->pFI->hdr.FileName,L"..") == 0 ) ? QSIS_EMPTYDIRECTORY : 0;
+			}
+		}
+#endif
+		return (LRESULT)state;
+	}
+
+	LRESULT OnFileOperation(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		if( lParam == 0 )
+			return 0;
+#if _ENABLE_FILE_TOOLS
+		CFileOperationList *pfol = (CFileOperationList*)lParam;
+
+		PWSTR pSourcePath;
+		if( AreListItemsSameSource(pfol,&pSourcePath) )
+		{
+			pfol->SetSourcePath(pSourcePath);
+			_MemFree(pSourcePath);
+		}
+
+		FO_PARAM fp = {0};
+		fp.cmd = FO_COPY_FILE;
+		fp.hwnd = m_hWnd;
+		fp.Flags = FOF_FILEOPERATIONLIST;
+		FileTool_FileOperation(GetToolHostWnd(),&fp,pfol);
+
+		delete (CFileOperationList*)lParam;
+#endif
+		return 0;
+	}
+
+	LRESULT OnAsyncUpdateList(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		ASSERT(lParam != 0);
+
+		if( lParam == 0 )
+			return 0;
+
+		UINT Action = LOWORD(wParam);
+
+		switch( Action )
+		{
+			case FILE_ACTION_REMOVED:
+			case FILE_ACTION_RENAMED_OLD_NAME:
+			{
+				int cItems = ListView_GetItemCount(m_hWndList);
+				int iItemDelete = -1;
+				iItemDelete = FindFileName((PCWSTR)lParam);
+				if( iItemDelete != -1 )
+				{
+					SetRedraw(m_hWndList,FALSE);
+					ListView_DeleteItem(m_hWndList,iItemDelete);
+					SetRedraw(m_hWndList,TRUE);
+					InvalidateListItem(iItemDelete);
+				}
+				_MemFree((PVOID)lParam);
+				return 0;	
+			}
+			case FILE_ACTION_ADDED:
+			case FILE_ACTION_RENAMED_NEW_NAME:
+			{
+				CFileItem *pFI = (CFileItem *)lParam;
+				if( FindFileName(pFI->hdr.FileName) == -1 )
+				{
+					Insert(m_hWndList,pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY ? ID_GROUP_DIRECTORY : ID_GROUP_FILE,-1,pFI);
+				}
+				else
+				{
+					delete pFI;
+				}
+				return 0;
+			}
+			case FILE_ACTION_MODIFIED:
+			{
+				CFileItem *pFI = (CFileItem *)lParam;
+				int iItem;
+				iItem = FindFileName(pFI->hdr.FileName);
+				if( iItem != -1 )
+				{
+					CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+					pItem->pFI->AllocationSize = pFI->AllocationSize;
+					pItem->pFI->ChangeTime     = pFI->ChangeTime;
+					pItem->pFI->CreationTime   = pFI->CreationTime;
+					pItem->pFI->EndOfFile      = pFI->EndOfFile;
+					pItem->pFI->LastAccessTime = pFI->LastAccessTime;
+					pItem->pFI->LastWriteTime  = pFI->LastWriteTime;
+					pItem->pFI->FileAttributes = pFI->FileAttributes;
+
+					pItem->pFI->ItemTypeFlag &= ~_FLG_COSTRY_DATA_TRIED_TAKE;
+
+					InvalidateListItem(iItem);
+				}
+				delete pFI;
+				return 0;
+			}
+			case _FILE_ACTION_RENAME:
+			{
+				PWSTR pmszFileNamePair = (PWSTR)lParam;
+				int iItem;
+				PWSTR pszOldName = pmszFileNamePair;
+				PWSTR pszNewName = &pmszFileNamePair[ wcslen(pmszFileNamePair) + 1 ];
+
+				iItem = FindFileName( pszOldName );
+				if( iItem != -1 )
+				{
+					CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+					pItem->pFI->SetFileName( pszNewName );
+					InvalidateListItem(iItem);
+				}
+				else
+				{
+					AppendFileItem( pszNewName );
+				}
+				_MemFree(pmszFileNamePair);
+				return 0;
+			}
+		}
+		return 0;
 	}
 
 	void InvalidateListItem(int iItem)
@@ -1005,6 +1247,10 @@ public:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
 				return CFindHandler<CFileListPage>::OnFindItem(hWnd,uMsg,wParam,lParam);;
+			case PM_GETWORKINGDIRECTORY:
+				return OnGetCurPath(hWnd,uMsg,wParam,lParam);
+			case PM_UPDATE_FILELIST:
+				return OnAsyncUpdateList(hWnd,uMsg,wParam,lParam);
 			case WM_QUERY_MESSAGE:
 			{
 				if( LOWORD(wParam) == QMT_GETVOLUMEPATH && lParam != 0 ) 
@@ -1083,20 +1329,21 @@ public:
 	void InitColumnDefinitions()
 	{
 		static COLUMN def_columns[] = {
-			{ COLUMN_Name,           L"Name",                  1, 280, LVCFMT_LEFT },
-			{ COLUMN_Extension,      L"Extension",             2,  80, LVCFMT_LEFT },
-			{ COLUMN_FileId,         L"File ID",               3, 156, LVCFMT_LEFT },
-			{ COLUMN_Lcn,            L"LCN",                   4, 120, LVCFMT_RIGHT },
-//			{ COLUMN_FileAttributes, L"Attributes",            5, 100, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
-			{ COLUMN_FileAttributes, L"Attributes",            5, 100, LVCFMT_RIGHT|LVCFMT_SPLITBUTTON },
-			{ COLUMN_EndOfFile,      L"Size",                  6, 116, LVCFMT_RIGHT|LVCFMT_SPLITBUTTON },
-			{ COLUMN_AllocationSize, L"Allocation Size",       7, 116, LVCFMT_RIGHT|LVCFMT_SPLITBUTTON },
-			{ COLUMN_LastWriteTime,  L"Date",                  8, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
-			{ COLUMN_CreationTime,   L"Creation Time",         9, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
-			{ COLUMN_LastAccessTime, L"Last Access Time",     10, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
-			{ COLUMN_ChangeTime,     L"Change Time",          11, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
-			{ COLUMN_EaSize,         L"EA",                   12, 100, LVCFMT_LEFT },
-			{ COLUMN_ShortName,      L"Short Name",           13, 120, LVCFMT_LEFT },
+			{ COLUMN_Name,                L"Name",                  1, 280, LVCFMT_LEFT },
+			{ COLUMN_Extension,           L"Extension",             2,  80, LVCFMT_LEFT },
+			{ COLUMN_FileId,              L"File ID",               3, 156, LVCFMT_LEFT },
+			{ COLUMN_FileAttributes,      L"Attributes",            4, 100, LVCFMT_RIGHT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_Lcn,                 L"LCN",                   5, 120, LVCFMT_RIGHT },
+			{ COLUMN_PhysicalDriveOffset, L"Physical Offset",       6, 120, LVCFMT_RIGHT },
+			{ COLUMN_PhysicalDriveNumber, L"Physical Drive",        7, 120, LVCFMT_LEFT },
+			{ COLUMN_EndOfFile,           L"Size",                  8, 116, LVCFMT_RIGHT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_AllocationSize,      L"Allocation Size",       9, 116, LVCFMT_RIGHT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_LastWriteTime,       L"Date",                 10, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_CreationTime,        L"Creation Time",        11, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_LastAccessTime,      L"Last Access Time",     12, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_ChangeTime,          L"Change Time",          13, 180, LVCFMT_LEFT|LVCFMT_SPLITBUTTON },
+			{ COLUMN_EaSize,              L"EA",                   14, 100, LVCFMT_LEFT },
+			{ COLUMN_ShortName,           L"Short Name",           15, 120, LVCFMT_LEFT },
 		};
 
 		m_columns.SetDefaultColumns(def_columns,ARRAYSIZE(def_columns));
@@ -1121,10 +1368,10 @@ public:
 		}
 	}
 
-	BOOL LoadColumns(HWND hWndList)
+	BOOL LoadColumns(HWND hWndList,PCWSTR pszSectionName)
 	{
 		COLUMN_TABLE *pcoltbl;
-		if( m_columns.LoadUserDefinitionColumnTable(&pcoltbl,L"ColumnLayout") == 0)
+		if( m_columns.LoadUserDefinitionColumnTable(&pcoltbl,pszSectionName) == 0)
 			return FALSE;
 
 		LVCOLUMN lvc = {0};
@@ -1145,11 +1392,22 @@ public:
 
 		m_columns.FreeUserDefinitionColumnTable(pcoltbl);
 
+		LARGE_INTEGER li;
+		li = m_columns.GetColumnSortInfo(pszSectionName);
+		if( li.QuadPart != 0 )
+		{
+			m_Sort.CurrentSubItem = FindSubItemById( li.LowPart );
+			m_Sort.Direction = li.HighPart;
+		}
+
 		return TRUE;
 	}
 
-	BOOL SaveColumns(HWND hWndList)
+	BOOL SaveColumns(HWND hWndList,LPCWSTR SectionName,LPCWSTR IniFileName)
 	{
+		if( SectionName == NULL || IniFileName == NULL )
+			return FALSE;
+
 		int cColumns = ListViewEx_GetColumnCount(hWndList);
 		COLUMN_TABLE *pcoltbl = (COLUMN_TABLE *)_MemAllocZero(sizeof(COLUMN_TABLE) + sizeof(COLUMN) * cColumns);
 
@@ -1172,7 +1430,7 @@ public:
 		int ColumnId;
 		ColumnId = (int)ListViewEx_GetHeaderItemData( m_hWndList, m_Sort.CurrentSubItem  );
 
-		m_columns.SaveColumnTable(pcoltbl,L"ColumnLayout",m_columns.GetIniFilePath(),ColumnId,m_Sort.Direction);
+		m_columns.SaveColumnTable(pcoltbl,SectionName,IniFileName,ColumnId,m_Sort.Direction);
 
 		_MemFree(pcoltbl);
 
@@ -1270,6 +1528,17 @@ public:
 		return S_OK;
 	}
 
+	void InitCostryFileItemInformation(CFileItem *pFI)
+	{
+	    pFI->NumberOfLinks = -1;
+		pFI->DeletePending = false;
+		pFI->Directory = false;
+		pFI->Wof = false;
+		pFI->FirstLCN.QuadPart = 0;
+		pFI->PhysicalDriveOffset.QuadPart = -1;
+		pFI->PhysicalDriveNumber = (ULONG)-1;
+	}
+
 	void UpdateFileItemInformation(HANDLE hVolume,HANDLE hFile,CFileItem *pFI)
 	{
 		pFI->ItemTypeFlag |= _FLG_COSTRY_DATA_TRIED_TAKE;
@@ -1297,15 +1566,29 @@ public:
 		else
 			RootDirectory = DuplicateString(m_pszCurDir);
 
-		pFI->Wof = false;
-		pFI->FirstLCN.QuadPart = 0;
-
 		if( pFI->AllocationSize.QuadPart != 0 )
 		{
+#if 1
+			FS_CLUSTER_INFORMATION_BASIC_EX clusterex = {0};
+			if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
+			{
+				pFI->FirstLCN = clusterex.FirstLcn;
+				pFI->PhysicalDriveOffset = clusterex.PhysicalLocation;
+				pFI->PhysicalDriveNumber = clusterex.DiskNumber;
+			}
+#else
 			FS_CLUSTER_INFORMATION_BASIC cluster = {0};
 			if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasic,&cluster,sizeof(cluster)) == 0 )
 			{
 				pFI->FirstLCN = cluster.FirstLcn;
+			}
+#endif
+		}
+		else
+		{
+			if( (pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 )
+			{
+				pFI->Wof = (GetWofInformation(hFile,NULL,NULL) == S_OK);
 			}
 		}
 		FreeMemory(RootDirectory);
@@ -1321,6 +1604,8 @@ public:
 		PWSTR RootDirectory=NULL,RootRelativePath=NULL;
 		ULONG cchRootDirectory=0,cchRootRelativePath=0;
 		SplitRootPath_W(m_pszCurDir,&RootDirectory,&cchRootDirectory,&RootRelativePath,&cchRootRelativePath);
+
+		InitCostryFileItemInformation(pFI);
 
 		HANDLE hRootDirectory = NULL;
 		if( OpenRootDirectory(RootDirectory,0,&hRootDirectory) != STATUS_SUCCESS )
@@ -1392,6 +1677,8 @@ public:
 			for(i = 0; i < cFiles; i++)
 			{
 				CFileItem *pFI = pa->Get(i);
+
+				InitCostryFileItemInformation(pFI);
 
 				if( !_IS_CURDIR_NAME( pFI->hdr.FileName ) && !_IS_PARENT_DIR_NAME( pFI->hdr.FileName ) )
 				{
@@ -1574,6 +1861,8 @@ public:
 			ListView_EnsureVisible(m_hWndList,iItem,FALSE);
 		}
 
+		SetWatchDirectory(m_hWatchHandle,pSel->pszPath);
+
 		return S_OK;
 	}
 
@@ -1597,6 +1886,10 @@ public:
 
 		HMENU hMenu = CreatePopupMenu();
 		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
+
+#if _ENABLE_FILE_TOOLS
+		SendMessage(GetActiveWindow(),PM_MAKECONTEXTMENU,(WPARAM)hMenu,0);
+#endif
 
 		POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 		ListViewEx_SimpleContextMenuHandler(NULL,m_hWndList,0,hMenu,pt,TPM_LEFTALIGN|TPM_TOPALIGN);
@@ -1625,6 +1918,99 @@ public:
 			}
 		}
 		return -1;
+	}
+
+	HRESULT GetSelectedFileInfo(FS_SELECTED_FILE *pPath)
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( iItem == -1 )
+		{
+			return S_FALSE;
+		}
+
+		CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+		if( wcscmp(pItem->pFI->hdr.FileName,L".") == 0 )
+			return S_FALSE;
+
+		if( wcscmp(pItem->pFI->hdr.FileName,L"..") == 0 )
+			return S_FALSE;
+
+		PWSTR pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+
+		pPath->FileAttributes = pItem->pFI->FileAttributes;
+
+		pPath->pszPath = (PWSTR)LocalAlloc(LPTR, (wcslen(pszFullPath)+1) * sizeof(WCHAR));
+		wcscpy(pPath->pszPath,pszFullPath);
+
+		FreeMemory(pszFullPath);
+
+		return S_OK;
+	}
+
+	int SelectFileName(PCWSTR pszName)
+	{
+		int iItem = FindFileName(pszName);
+		if( iItem != -1 )
+		{
+			ListView_SetItemState(m_hWndList,iItem,LVNI_SELECTED|LVNI_FOCUSED,LVNI_SELECTED|LVNI_FOCUSED);
+		}
+		return iItem;
+	}
+
+	int AppendFileItem( PCWSTR pszFileName )
+	{
+		CFileItem *pFI = CreateFileItem( pszFileName );
+		if( pFI )
+		{
+			return Insert(m_hWndList,pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY ? ID_GROUP_DIRECTORY : ID_GROUP_FILE,-1,pFI);
+		}
+		return -1;
+	}
+
+	CFileItem *CreateFileItem( PCWSTR pszFileName )
+	{
+		CFileItem *pFI = NULL;
+
+		PWSTR pszFullPath;
+		pszFullPath = CombinePath(m_pszCurDir,pszFileName);
+		if( pszFullPath == NULL )
+			return NULL;
+
+		HANDLE hDirectory;
+
+		if( OpenFileEx_W(&hDirectory,m_pszCurDir,
+					GENERIC_READ|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,
+					FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT) == STATUS_SUCCESS )
+		{
+			UNICODE_STRING usFileName;
+
+			RtlInitUnicodeString(&usFileName,pszFileName);
+
+			FS_FILE_DIRECTORY_INFORMATION fdi;
+			if( GetDirectoryFileInformation_U(hDirectory,&usFileName,&fdi,NULL) == STATUS_SUCCESS )
+			{
+				pFI = new CFileItem(NULL,pszFileName);
+
+				pFI->FileAttributes = fdi.FileAttributes;
+				pFI->LastWriteTime  = fdi.LastWriteTime;
+				pFI->CreationTime   = fdi.CreationTime;
+				pFI->LastAccessTime = fdi.LastAccessTime;
+				pFI->ChangeTime     = fdi.ChangeTime;
+				pFI->EndOfFile      = fdi.EndOfFile;
+				pFI->AllocationSize = fdi.AllocationSize;
+				pFI->EaSize         = fdi.EaSize;
+				pFI->FileId         = fdi.FileId;
+				memcpy(pFI->ShortName,fdi.ShortName,fdi.ShortNameLength);
+				pFI->ShortName[fdi.ShortNameLength/sizeof(WCHAR)] = UNICODE_NULL;
+			}
+
+			CloseHandle(hDirectory);
+		}
+
+		FreeMemory(pszFullPath);
+
+		return pFI;
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -1761,27 +2147,53 @@ public:
 
 	int _comp_lcn(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
 	{
+		SORT_PARAM<CFileListPage> *op = (SORT_PARAM<CFileListPage> *)p;
+		if( pItem1->pFI->FirstLCN.QuadPart == 0 && pItem2->pFI->FirstLCN.QuadPart != 0 )
+			return 1 * op->direction;
+		if( pItem1->pFI->FirstLCN.QuadPart != 0 && pItem2->pFI->FirstLCN.QuadPart == 0 )
+			return -1 * op->direction;
 		return _COMP(pItem1->pFI->FirstLCN.QuadPart,pItem2->pFI->FirstLCN.QuadPart);
+	}
+
+	int _comp_physicaldrivenumber(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	{
+		SORT_PARAM<CFileListPage> *op = (SORT_PARAM<CFileListPage> *)p;
+		if( pItem1->pFI->PhysicalDriveNumber == -1 && pItem2->pFI->PhysicalDriveNumber != -1 )
+			return 1 * op->direction;
+		if( pItem1->pFI->PhysicalDriveNumber != -1 && pItem2->pFI->PhysicalDriveNumber == -1 )
+			return -1 * op->direction;
+		return _COMP(pItem1->pFI->PhysicalDriveNumber,pItem2->pFI->PhysicalDriveNumber);
+	}
+
+	int _comp_physicaldriveoffset(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	{
+		SORT_PARAM<CFileListPage> *op = (SORT_PARAM<CFileListPage> *)p;
+		if( pItem1->pFI->PhysicalDriveOffset.QuadPart == -1 && pItem2->pFI->PhysicalDriveOffset.QuadPart != -1 )
+			return 1 * op->direction;
+		if( pItem1->pFI->PhysicalDriveOffset.QuadPart != -1 && pItem2->pFI->PhysicalDriveOffset.QuadPart == -1 )
+			return -1 * op->direction;
+		return _COMP(pItem1->pFI->PhysicalDriveOffset.QuadPart,pItem2->pFI->PhysicalDriveOffset.QuadPart);
 	}
 
 	void init_compare_proc_def_table()
 	{
 		static COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileInfoItem> _comp_proc[] = 
 		{
-			{COLUMN_Name,           &CFileListPage::_comp_name},
-			{COLUMN_LastWriteTime,  &CFileListPage::_comp_datetime},
-			{COLUMN_CreationTime,   &CFileListPage::_comp_datetime},
-			{COLUMN_LastAccessTime, &CFileListPage::_comp_datetime},
-			{COLUMN_ChangeTime,     &CFileListPage::_comp_datetime},
-			{COLUMN_EndOfFile,      &CFileListPage::_comp_size},
-			{COLUMN_AllocationSize, &CFileListPage::_comp_size},
-			{COLUMN_FileAttributes, &CFileListPage::_comp_fileattributes},
-			{COLUMN_EaSize,         &CFileListPage::_comp_ea},
-			{COLUMN_ShortName,      &CFileListPage::_comp_shortname},
-			{COLUMN_Extension,      &CFileListPage::_comp_extension},
-			{COLUMN_FileId,         &CFileListPage::_comp_fileid},
-			{COLUMN_Lcn,            &CFileListPage::_comp_lcn},
-			{COLUMN_Path,           NULL},
+			{COLUMN_Name,                &CFileListPage::_comp_name},
+			{COLUMN_LastWriteTime,       &CFileListPage::_comp_datetime},
+			{COLUMN_CreationTime,        &CFileListPage::_comp_datetime},
+			{COLUMN_LastAccessTime,      &CFileListPage::_comp_datetime},
+			{COLUMN_ChangeTime,          &CFileListPage::_comp_datetime},
+			{COLUMN_EndOfFile,           &CFileListPage::_comp_size},
+			{COLUMN_AllocationSize,      &CFileListPage::_comp_size},
+			{COLUMN_FileAttributes,      &CFileListPage::_comp_fileattributes},
+			{COLUMN_EaSize,              &CFileListPage::_comp_ea},
+			{COLUMN_ShortName,           &CFileListPage::_comp_shortname},
+			{COLUMN_Extension,           &CFileListPage::_comp_extension},
+			{COLUMN_FileId,              &CFileListPage::_comp_fileid},
+			{COLUMN_Lcn,                 &CFileListPage::_comp_lcn},
+			{COLUMN_PhysicalDriveNumber, &CFileListPage::_comp_physicaldrivenumber},
+			{COLUMN_PhysicalDriveOffset, &CFileListPage::_comp_physicaldriveoffset},
 		};
 
 		m_comp_proc = new COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileInfoItem>[COLUMN_MaxItem];
@@ -1853,12 +2265,97 @@ public:
 			case ID_EDIT_COPY:
 				*puState = ListView_GetSelectedCount(m_hWndList) ?  UPDUI_ENABLED : UPDUI_DISABLED;
 				break;
+			case ID_UP_DIR:
+				*puState = ( !IsRootDirectory_W( m_pszCurDir ) ? UPDUI_ENABLED : UPDUI_DISABLED );
+				break;
+			case ID_GOTO :
+			case ID_VIEW_REFRESH:
 				*puState = UPDUI_ENABLED;
 				break;
 			default:
 				return S_FALSE;
 		}
 		return S_OK;
+	}
+
+	VOID OnUpDir()
+	{
+		LRESULT lResult;
+		CStringBuffer szDirPath( _NT_PATH_FULL_LENGTH );
+
+		lResult = SendMessage(m_hWnd,PM_GETWORKINGDIRECTORY,szDirPath.GetBufferSize(),(LPARAM)szDirPath.c_str());
+
+		if( lResult == 1 )
+		{
+			// NTFS Special File
+			UNICODE_STRING usRoot;
+			SplitRootRelativePath(szDirPath,&usRoot,NULL);
+			HANDLE hFile;
+			OpenFile_U(&hFile,NULL,&usRoot,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE,0);
+			LARGE_INTEGER liRoot;
+			::GetFileId(hFile,&liRoot);
+			CloseHandle(hFile);
+
+			LARGE_INTEGER li;
+			SendMessage(m_hWnd,PM_GETWORKINGDIRECTORY,0,(LPARAM)&li);
+			if( li.QuadPart != liRoot.QuadPart )
+			{
+				UNICODE_STRING usPath;
+				UNICODE_STRING usFileName;
+
+				RtlInitUnicodeString(&usPath,szDirPath);
+				SplitPathFileName_U(&usPath,&usFileName);
+				RemoveBackslash_U(&usPath);
+
+				PWSTR ParentPath = AllocateSzFromUnicodeString(&usPath);
+				PWSTR ChooseFileName = AllocateSzFromUnicodeString(&usFileName);
+
+				SELECT_ITEM sel = {0};
+				sel.ViewType  = VIEW_PAGE_FILELIST;
+				sel.mask = SI_MASK_FILEID;
+				sel.Flags = _FLG_NTFS_SPECIALFILE;
+				sel.FileId.dwSize = sizeof(FILE_ID_DESCRIPTOR);
+				sel.FileId.Type = FileIdType;
+				sel.pszPath = ParentPath;
+				sel.pszName = ChooseFileName;
+				sel.FileId.FileId = li;
+				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
+
+				FreeMemory(ParentPath);
+				FreeMemory(ChooseFileName);
+			}
+			else
+			{
+				UNICODE_STRING usPath;
+				UNICODE_STRING usFileName;
+				RtlInitUnicodeString(&usPath,szDirPath);
+				SplitRootRelativePath_U(&usPath,&usRoot,&usFileName);
+				PWSTR ParentPath = AllocateSzFromUnicodeString(&usRoot);
+				PWSTR ChooseFileName = AllocateSzFromUnicodeString(&usFileName);
+
+				SELECT_ITEM sel = {0};
+				sel.ViewType  = VIEW_PAGE_FILELIST;
+				sel.pszPath = ParentPath;
+				sel.pszName = ChooseFileName;
+				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
+
+				FreeMemory(ParentPath);
+				FreeMemory(ChooseFileName);
+			}
+
+			return ;
+		}
+
+		if( IsRootDirectory_W(szDirPath) )
+		{
+			return ;
+		}
+
+		SELECT_ITEM sel = {0};
+		sel.ViewType  = VIEW_PAGE_FILELIST;
+		sel.pszCurDir = szDirPath;
+		sel.pszName   = L"..";
+		SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
 	}
 
 	VOID OnHistoryBackward()
@@ -1905,6 +2402,9 @@ public:
 	{
 		switch( CmdId )
 		{
+			case ID_UP_DIR:
+				OnUpDir();
+				break;
 			case ID_HISTORY_BACKWARD:
 				OnHistoryBackward();
 				break;
@@ -1959,8 +2459,6 @@ public:
 				}
 			}
 
-			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SET_TITLE,(LPARAM)szVolumeName);
-
 			CoTaskMemFree(pszNewPath);
 		}
 	}
@@ -1975,5 +2473,169 @@ public:
 		sel.pszName   = (PWSTR)NULL;
 
 		FillItems(&sel);
+	}
+
+	//
+	// Directory Watch Notify Callback Proc
+	//
+	// NOTE: This function called under context of the watch thread.
+	//
+	VOID CallbackProc(DWORD Action,PWSTR FileName,PWSTR NewFileName)
+	{
+		switch( Action )
+		{
+			case FILE_ACTION_MODIFIED:
+			{
+				HANDLE hDirectory;
+				if( OpenFile_W(&hDirectory,NULL,m_pszCurDir,
+						GENERIC_READ|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,
+						FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT) == STATUS_SUCCESS )
+				{
+					UNICODE_STRING usFileName;
+
+					RtlInitUnicodeString(&usFileName,FileName);
+
+					FS_FILE_DIRECTORY_INFORMATION fdi;
+					if( GetDirectoryFileInformation_U(hDirectory,&usFileName,&fdi,NULL) == STATUS_SUCCESS )
+					{
+						CFileItem *pFI = new CFileItem(NULL,FileName);
+
+						pFI->FileAttributes = fdi.FileAttributes;
+						pFI->LastWriteTime  = fdi.LastWriteTime;
+						pFI->CreationTime   = fdi.CreationTime;
+						pFI->LastAccessTime = fdi.LastAccessTime;
+						pFI->ChangeTime     = fdi.ChangeTime;
+						pFI->EndOfFile      = fdi.EndOfFile;
+						pFI->AllocationSize = fdi.AllocationSize;
+						pFI->EaSize         = fdi.EaSize;
+						pFI->FileId         = fdi.FileId;
+						memcpy(pFI->ShortName,fdi.ShortName,fdi.ShortNameLength);
+						pFI->ShortName[fdi.ShortNameLength/sizeof(WCHAR)] = UNICODE_NULL;
+
+						PostMessage(m_hWnd, PM_UPDATE_FILELIST,MAKEWPARAM(Action,0),(LPARAM)pFI);
+					}
+
+					CloseHandle(hDirectory);
+				}
+				break;
+			}
+			case FILE_ACTION_ADDED:
+			case FILE_ACTION_RENAMED_NEW_NAME:
+			{
+				CFileItem *pFI = CreateFileItem( FileName );
+				if( pFI )
+				{
+					PostMessage(m_hWnd, PM_UPDATE_FILELIST,MAKEWPARAM(Action,0),(LPARAM)pFI);
+				}
+				break;
+			}
+			case FILE_ACTION_REMOVED:
+			{
+				// NOTE:
+				// In Windows 10, renaming causes FILE_ACTION_REMOVED, so I added a workaround.
+				// It occurs low frequently with normal renaming, but almost always occurs with case changes.
+				BOOLEAN bExists = FALSE;
+				PWSTR FullPath = CombinePath(m_pszCurDir,FileName);
+				if( FullPath )
+				{
+					// FILE_ACTION_REMOVED occurred, but the file still existing.
+					// In this case, it is determined that the rename operation.
+					bExists = PathFileExists_W(FullPath,NULL);
+					FreeMemory(FullPath);
+				}
+				if( bExists )
+					break;
+				// pass through to the next case block.
+			}
+			case FILE_ACTION_RENAMED_OLD_NAME:
+			{
+				PWSTR pszFileName = _MemAllocString(FileName);
+				PostMessage(m_hWnd, PM_UPDATE_FILELIST,MAKEWPARAM(Action,0),(LPARAM)pszFileName);
+				break;
+			}
+			case _FILE_ACTION_RENAME:
+			{
+				SIZE_T cchOldFileName = wcslen(FileName);
+				SIZE_T cchNewFileName = wcslen(NewFileName);
+				SIZE_T cchLength = (cchOldFileName + 1) + (cchNewFileName + 1) + 1;
+				PWSTR pmszFileNameSet = _MemAllocStringBuffer( cchLength );
+
+				ZeroMemory(pmszFileNameSet,cchLength * sizeof(WCHAR));
+
+				// pmszFileNameSet="OldFileName\0NewFileName\0\0"
+				memcpy(pmszFileNameSet,FileName,cchOldFileName*sizeof(WCHAR));
+				memcpy(&pmszFileNameSet[cchOldFileName+1],NewFileName,cchNewFileName*sizeof(WCHAR));
+
+				PostMessage(m_hWnd, PM_UPDATE_FILELIST,MAKEWPARAM(Action,0),(LPARAM)pmszFileNameSet);
+			}
+		}
+	}
+
+	static HRESULT CALLBACK NotifyCallback(DIRWATCHNOTIFYEVENT *Event)
+	{
+		WCHAR szFileName[MAX_PATH];
+		WCHAR *pszNewFileName = NULL;
+		DWORD Action;
+
+		CFileListPage *pThis = (CFileListPage *)Event->Context;
+
+		//
+		// NOTE:
+		// The order of the first member variables is assumed to be the same each structure.
+		//
+		FILE_NOTIFY_INFORMATION *pNotify;
+
+		pNotify = Event->pNotifyBuffer;
+
+		while( pNotify != NULL )
+		{
+			memcpy(szFileName,pNotify->FileName,pNotify->FileNameLength);
+			szFileName[ pNotify->FileNameLength / sizeof(WCHAR) ] = 0;
+
+			Action = pNotify->Action;
+
+			if( Action == FILE_ACTION_RENAMED_OLD_NAME && pNotify->NextEntryOffset != 0 )
+			{
+				FILE_NOTIFY_INFORMATION *pNextNotify = (FILE_NOTIFY_INFORMATION *)((ULONG_PTR)pNotify + pNotify->NextEntryOffset);
+				if( pNextNotify->Action == FILE_ACTION_RENAMED_NEW_NAME )
+				{
+					if( 0 )
+					{
+						pszNewFileName = (WCHAR*)_MemAllocZero( pNextNotify->FileNameLength + sizeof(WCHAR) );
+						if( pszNewFileName )
+						{
+							memcpy(pszNewFileName,pNextNotify->FileName,pNextNotify->FileNameLength);
+							pNotify = pNextNotify;
+							Action = _FILE_ACTION_RENAME;
+						}
+					}
+					else if( Event->InformationClass == DirectoryNotifyExtendedInformation )
+					{
+						FILE_NOTIFY_EXTENDED_INFORMATION *pNextNotifyEx = (FILE_NOTIFY_EXTENDED_INFORMATION *)pNextNotify;
+						pszNewFileName = (WCHAR*)_MemAllocZero( pNextNotifyEx->FileNameLength + sizeof(WCHAR) );
+						if( pszNewFileName )
+						{
+							memcpy(pszNewFileName,pNextNotifyEx->FileName,pNextNotifyEx->FileNameLength);
+							pNotify = (FILE_NOTIFY_INFORMATION *)pNextNotifyEx;
+							Action = _FILE_ACTION_RENAME;
+						}
+					}
+				}
+			}
+
+			pThis->CallbackProc(Action,szFileName,pszNewFileName);
+
+			if( pszNewFileName )
+			{
+				_MemFree(pszNewFileName);
+				pszNewFileName = NULL;
+			}
+
+			if( pNotify->NextEntryOffset == 0 )
+				break;
+
+			pNotify = (FILE_NOTIFY_INFORMATION *)((ULONG_PTR)pNotify + pNotify->NextEntryOffset);
+		}
+		return S_OK;
 	}
 };

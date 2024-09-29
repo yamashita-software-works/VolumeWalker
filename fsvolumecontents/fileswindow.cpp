@@ -18,18 +18,24 @@
 #include "fsvolumecontents.h"
 #include "fileswindow.h"
 #include "filesview.h"
+#include "simplesplitwindow.h"
 
-class CDirectoryFilesWindow : public CBaseWindow
+#define _ENABLE_SUBPANE  0
+
+class CDirectoryFilesWindow : public CSimpleSplitWindow
 {
-public:
 	IViewBaseWindow *m_pView;
-	HWND  m_hWndCtrlFocus;
-
+	HWND m_hwndSubView;
+	HWND m_hWndCtrlFocus;
+public:
 	CDirectoryFilesWindow()
 	{
 		m_hWnd = NULL;
 		m_pView = NULL;
+		m_hwndSubView = NULL;
 		m_hWndCtrlFocus = NULL;
+		CSimpleSplitWindow::m_xSplitPos = 0;
+		CSimpleSplitWindow::m_ratio = 0.5;
 	}
 
 	~CDirectoryFilesWindow()
@@ -70,6 +76,27 @@ public:
 		return 0;
 	}
 
+	LRESULT OnPaint(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		PAINTSTRUCT ps;
+		HDC hdc;
+
+		hdc = BeginPaint(hWnd,&ps);
+
+		RECT rc;
+		GetClientRect(hWnd,&rc);
+		rc.left = m_xSplitPos - 2;
+		rc.right = m_xSplitPos + 2;
+
+		HBRUSH hbr = CreateSolidBrush( RGB(255,0,0) );
+		FillRect(hdc,&rc,hbr);
+		DeleteObject(hbr);
+
+		EndPaint(hWnd,&ps);
+
+		return 0;
+	}
+
 	LRESULT OnNotify(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		NMHDR *pnmhdr = (NMHDR *)lParam;
@@ -93,9 +120,26 @@ public:
 		{
 			switch( LOWORD(wParam) )
 			{
-				case ID_UP_DIR:
-					OnUpDir();
+				case ID_ROOT:
+				{
+					SELECT_ITEM sel = {0};
+					sel.ViewType  = VOLUME_CONSOLE_ROOT;
+					sel.pszCurDir = NULL;
+					sel.pszPath   = L"Root Directory Viewer";
+					sel.pszName   = NULL;
+					m_pView->SelectView(&sel);
 					break;
+				}
+				case ID_CONTENTSBROWSER:
+				{
+					SELECT_ITEM sel = {0};
+					sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
+					sel.pszCurDir = NULL;
+					sel.pszPath   = NULL;
+					sel.pszName   = NULL;
+					m_pView->SelectView(&sel);
+					break;
+				}
 				default:
 				{
 					if( m_pView )
@@ -116,6 +160,14 @@ public:
 			{
 				UINT *puState = (UINT *)lParam;
 				UINT uCmdId = (UINT)LOWORD(wParam);
+
+				switch( uCmdId )
+				{
+					case ID_CONTENTSBROWSER:
+					case ID_ROOT:
+						*puState = UPDUI_ENABLED;
+						return TRUE;
+				}
 				if( m_pView->QueryCmdState((UINT)LOWORD(wParam),(UINT*)lParam) == S_OK )
 					return TRUE;
 			}
@@ -133,6 +185,117 @@ public:
 		}
 		return 0;
 	}
+
+	LRESULT OnInitView(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		SELECT_ITEM sel = {0};
+		sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
+		sel.pszCurDir = (PWSTR)0;
+		sel.pszPath   = (PWSTR)0;
+		sel.pszName   = (PWSTR)NULL;
+		m_pView->SelectView(&sel);
+		return 0;
+	}
+
+	LRESULT OnSetDirectory(HWND /*hWnd*/,UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam)
+	{
+		PCWSTR pszDirectoryPath = (PCWSTR)lParam;
+
+		PWSTR pszPath;
+		if( IsNtDevicePath(pszDirectoryPath) )
+			pszPath = DuplicateString(pszDirectoryPath);
+		else
+			pszPath = DosPathNameToNtPathName(pszDirectoryPath);
+
+		if( pszPath && PathFileExists_W(pszPath,NULL) )
+		{
+			SELECT_ITEM sel = {0};
+			sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
+			sel.pszCurDir = (PWSTR)pszPath;
+			sel.pszPath   = (PWSTR)pszPath;
+			sel.pszName   = (PWSTR)NULL;
+			m_pView->SelectView(&sel);
+		}
+
+		FreeMemory(pszPath);
+
+		return 0;
+	}
+
+	LRESULT OnSelectFile(HWND /*hWnd*/,UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam)
+	{
+		PCWSTR pszDirectoryPath = (PCWSTR)lParam;
+		PWSTR pszPath;
+		if( IsNtDevicePath(pszDirectoryPath) )
+			pszPath = DuplicateString(pszDirectoryPath);
+		else
+			pszPath = DosPathNameToNtPathName(pszDirectoryPath);
+
+		if( PathFileExists_W(pszPath,NULL) )
+		{
+			InitData(pszPath);
+
+			UNICODE_STRING FileName;
+			UNICODE_STRING Path;
+			RtlInitUnicodeString(&Path,pszPath);
+			SplitPathFileName_U(&Path,&FileName);
+
+			PWSTR pszPath = AllocateSzFromUnicodeString(&Path);
+			PWSTR pszFileName = AllocateSzFromUnicodeString(&FileName);
+
+			SELECT_ITEM sel = {0};
+			sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
+			sel.pszCurDir = (PWSTR)NULL;
+			sel.pszPath   = (PWSTR)pszPath;
+			sel.pszName   = (PWSTR)pszFileName;
+			m_pView->SelectView(&sel);
+
+			FreeMemory(pszPath);
+			FreeMemory(pszFileName);
+		}
+
+		FreeMemory(pszPath);
+
+		return 0;
+	}
+
+#if _ENABLE_SUBPANE
+	LRESULT OnSetSubPane(HWND /*hWnd*/,UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam)
+	{
+		m_hwndSubView = (HWND)lParam;
+
+		//
+		// reselect item when open sub-view
+		//
+		FS_SELECTED_FILE path = {0};
+		if( SendMessage(m_pView->GetHWND(),PM_GETSELECTEDFILE,0,(LPARAM)&path) )
+		{
+			SELECT_ITEM sel = {0};
+			sel.pszName   = (PWSTR)FindFileName_W(path.pszPath);
+			if( wcscmp(sel.pszName,L"..") != 0 )
+			{
+				sel.pszPath   = path.pszPath;
+				sel.pszCurDir = DuplicateString(path.pszPath);
+				RemoveFileSpec_W(sel.pszCurDir);
+
+				sel.ViewType  = VIEW_PAGE_FILELIST;
+				OnItemSelected( &sel );
+
+				FreeMemory(sel.pszCurDir);
+			}
+			LocalFree(path.pszPath);
+		}
+
+		UpdateLayout();
+
+		return 0;
+	}
+
+	LRESULT OnGetSubPane(HWND /*hWnd*/,UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam)
+	{
+		return (LRESULT)m_hwndSubView;
+	}
+#endif
 
 	LRESULT OnQueryMessage(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
@@ -155,11 +318,11 @@ public:
 			case UI_CHANGE_DIRECTORY:
 				return OnChangeDirectory( (SELECT_ITEM*)lParam );
 			case UI_SET_DIRECTORY:
-				return OnSetDirectory(m_hWnd,0,0,lParam);
+				return OnSetDirectory(hWnd,0,0,lParam);
 			case UI_SELECT_FILE:
-				return OnSelectFile(m_hWnd,0,0,lParam);
+				return OnSelectFile(hWnd,0,0,lParam);
 			case UI_INIT_VIEW:
-				return OnInitView(m_hWnd,0,0,lParam);
+				return OnInitView(hWnd,0,0,lParam);
 			case UI_SET_TITLE:
 				SetWindowText(GetParent(hWnd),(LPCWSTR)lParam);
 				break;
@@ -167,6 +330,12 @@ public:
 				DestroyIcon((HICON)SendMessage(GetParent(m_hWnd),WM_GETICON,ICON_SMALL,0));
 				SendMessage(GetParent(hWnd),WM_SETICON,(WPARAM)ICON_SMALL,lParam);
 				break;
+#if _ENABLE_SUBPANE
+			case UI_SET_SUBPANE:
+				return OnSetSubPane(hWnd,0,0,lParam);
+			case UI_GET_SUBPANE:
+				return OnGetSubPane(hWnd,0,0,lParam);
+#endif
 		}
 		return 0;
 	}
@@ -176,9 +345,22 @@ public:
 		switch(uMsg)
 	    {
 			case WM_PRETRANSLATEMESSAGE:
+			{
+				MSG *pmsg = (MSG *)lParam;
+				if( pmsg->message == WM_KEYDOWN && pmsg->wParam == VK_TAB )
+				{
+					// Tab order
+					if( IsDialogMessage(hWnd,pmsg) )
+					{
+						return TRUE;
+					}
+				}
 				if( m_pView )
 					return SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam); // forward to current view
 				return 0;
+			}
+			case WM_PAINT:
+				return OnPaint(hWnd,uMsg,wParam,lParam);
 			case WM_NOTIFY:
 				return OnNotify(hWnd,uMsg,wParam,lParam);
 		    case WM_SIZE:
@@ -199,22 +381,90 @@ public:
 				return OnNotifyMessage(hWnd,uMsg,wParam,lParam);
 			case WM_QUERY_MESSAGE:
 				return OnQueryMessage(hWnd,uMsg,wParam,lParam);
+			case WM_NCACTIVATE:
+				SendMessage(m_pView->GetHWND(),WM_NCACTIVATE,wParam,lParam);
+				return 0;
 			case PM_FINDITEM:
 				if( m_pView )
 					return SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam); // forward to current view
 				return 0;
 		}
-		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
+		return CSimpleSplitWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
 
-	VOID UpdateLayout(int cx,int cy)
+	VOID UpdateLayout(int cx=-1,int cy=-1,BOOL absSplitPos=FALSE)
 	{
-		HDWP hdwp = BeginDeferWindowPos(1);
+		if( cx == -1 && cy == -1 )
+		{
+			RECT rc;
+			GetClientRect(m_hWnd,&rc);
+			cx = _RECT_WIDTH(rc);
+			cy = _RECT_HIGHT(rc);
+		}
+
+		BOOL bSubPane = IsWindow(m_hwndSubView);
+
+		int cyInfoBar = 0;
+		int xViewL;
+		int xViewR;
+		int cxViewL;
+		int cxViewR;
+
+		if( bSubPane )
+		{
+			if( absSplitPos )
+				cxViewL = m_xSplitPos;
+			else
+				cxViewL = m_xSplitPos = (int)((double)cx * m_ratio);
+
+			xViewL  = 0;
+			cxViewL = cxViewL - 1;
+			xViewR  = cxViewL + 1;
+			cxViewR = (cx - cxViewL - 1);
+		}
+		else
+		{
+			xViewL  = 0;
+			cxViewL = cx;
+			xViewR  = 0;
+			cxViewR = 0;
+		}
+
+		int cyHeaderPane = 0;
+
+		HDWP hdwp = BeginDeferWindowPos(3);
+
+		cyInfoBar += cyHeaderPane;
 
 		if( m_pView )
-			DeferWindowPos(hdwp,m_pView->GetHWND(),NULL,0,0,cx,cy,SWP_NOZORDER);
+			DeferWindowPos(hdwp,m_pView->GetHWND(),NULL,
+				xViewL, cyInfoBar, cxViewL, cy-cyInfoBar,SWP_NOZORDER|SWP_NOREDRAW);
+
+		if( bSubPane )
+			DeferWindowPos(hdwp,m_hwndSubView,NULL,
+				xViewR, cyInfoBar, cxViewR, cy-cyInfoBar,SWP_NOZORDER|SWP_NOREDRAW);
 
 		EndDeferWindowPos(hdwp);
+
+		InvalidateRect(m_hWnd,NULL,TRUE);
+		UpdateWindow(m_hWnd);
+	}
+
+	VOID InitData(PCWSTR pszDirectoryPath)
+	{
+		m_pView->InitData(NULL,0);
+
+		SELECT_ITEM sel = {0};
+		sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
+		sel.pszCurDir = (PWSTR)pszDirectoryPath;
+		sel.pszPath   = (PWSTR)pszDirectoryPath;
+		sel.pszName   = (PWSTR)NULL;
+		m_pView->SelectView(&sel);
+	}
+
+	VOID InitLayout(const RECT *prcDesktopWorkArea)
+	{
+		m_pView->InitLayout(NULL);
 	}
 
 	VOID OnUpdateInformationView(SELECT_ITEM* pFile)
@@ -240,6 +490,11 @@ public:
 
 			_SafeMemFree(pszPath);
 			_SafeMemFree(pszName);
+		}
+		else
+		{
+			HWND hwndMainWnd = GetActiveWindow(); // todo:
+			SendMessage(hwndMainWnd,WM_NOTIFY_MESSAGE,UI_NOTIFY_ITEM_SELECTED,(LPARAM)pFile);
 		}
 	}
 
@@ -292,178 +547,6 @@ public:
 			FreeMemory(pszPath);
 		}
 		return 0;
-	}
-
-	VOID OnUpDir()
-	{
-		LRESULT lResult;
-		CStringBuffer szDirPath(32768+260);
-
-		lResult = SendMessage(m_pView->GetHWND(),PM_GETCURDIR,szDirPath.GetBufferSize(),(LPARAM)szDirPath.c_str());
-
-		if( lResult == 1 )
-		{
-			// NTFS Special File
-			UNICODE_STRING usRoot;
-			SplitRootRelativePath(szDirPath,&usRoot,NULL);
-			HANDLE hFile;
-			OpenFile_U(&hFile,NULL,&usRoot,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE,0);
-			LARGE_INTEGER liRoot;
-			GetFileId(hFile,&liRoot);
-			CloseHandle(hFile);
-
-			LARGE_INTEGER li;
-			SendMessage(m_pView->GetHWND(),PM_GETCURDIR,0,(LPARAM)&li);
-			if( li.QuadPart != liRoot.QuadPart )
-			{
-				UNICODE_STRING usPath;
-				UNICODE_STRING usFileName;
-
-				RtlInitUnicodeString(&usPath,szDirPath);
-				SplitPathFileName_U(&usPath,&usFileName);
-				RemoveBackslash_U(&usPath);
-
-				PWSTR ParentPath = AllocateSzFromUnicodeString(&usPath);
-				PWSTR ChooseFileName = AllocateSzFromUnicodeString(&usFileName);
-
-				SELECT_ITEM sel = {0};
-				sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
-				sel.mask = SI_MASK_FILEID;
-				sel.Flags = _FLG_NTFS_SPECIALFILE;
-				sel.FileId.dwSize = sizeof(FILE_ID_DESCRIPTOR);
-				sel.FileId.Type = FileIdType;
-				sel.pszPath = ParentPath;
-				sel.pszName = ChooseFileName;
-				sel.FileId.FileId = li;
-				SendMessage(m_hWnd,WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
-
-				FreeMemory(ParentPath);
-				FreeMemory(ChooseFileName);
-			}
-			else
-			{
-				UNICODE_STRING usPath;
-				UNICODE_STRING usFileName;
-				RtlInitUnicodeString(&usPath,szDirPath);
-				SplitRootRelativePath_U(&usPath,&usRoot,&usFileName);
-				PWSTR ParentPath = AllocateSzFromUnicodeString(&usRoot);
-				PWSTR ChooseFileName = AllocateSzFromUnicodeString(&usFileName);
-
-				SELECT_ITEM sel = {0};
-				sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
-				sel.pszPath = ParentPath;
-				sel.pszName = ChooseFileName;
-				SendMessage(m_hWnd,WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
-
-				FreeMemory(ParentPath);
-				FreeMemory(ChooseFileName);
-			}
-
-			return ;
-		}
-
-		if( IsRootDirectory_W(szDirPath) )
-		{
-			return ;
-		}
-
-		SELECT_ITEM sel = {0};
-		sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
-		sel.pszCurDir = szDirPath;
-		sel.pszName   = L"..";
-		SendMessage(m_hWnd,WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
-	}
-
-	LRESULT OnInitView(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
-	{
-		SELECT_ITEM sel = {0};
-		sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
-		sel.pszCurDir = (PWSTR)0;
-		sel.pszPath   = (PWSTR)0;
-		sel.pszName   = (PWSTR)NULL;
-		m_pView->SelectView(&sel);
-		return 0;
-	}
-
-	LRESULT OnSetDirectory(HWND /*hWnd*/,UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam)
-	{
-		PCWSTR pszDirectoryPath = (PCWSTR)lParam;
-
-		PWSTR pszPath;
-		if( IsNtDevicePath(pszDirectoryPath) )
-			pszPath = DuplicateString(pszDirectoryPath);
-		else
-			pszPath = DosPathNameToNtPathName(pszDirectoryPath);
-
-		if( pszPath && PathFileExists_W(pszPath,NULL) )
-		{
-			InitData(NULL);
-
-			SELECT_ITEM sel = {0};
-			sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
-			sel.pszCurDir = (PWSTR)pszPath;
-			sel.pszPath   = (PWSTR)pszPath;
-			sel.pszName   = (PWSTR)NULL;
-			m_pView->SelectView(&sel); // call enum in this call
-		}
-
-		FreeMemory(pszPath);
-
-		return 0;
-	}
-
-	LRESULT OnSelectFile(HWND /*hWnd*/,UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam)
-	{
-		PCWSTR pszDirectoryPath = (PCWSTR)lParam;
-		PWSTR pszPath;
-		if( IsNtDevicePath(pszDirectoryPath) )
-			pszPath = DuplicateString(pszDirectoryPath);
-		else
-			pszPath = DosPathNameToNtPathName(pszDirectoryPath);
-
-		if( PathFileExists_W(pszPath,NULL) )
-		{
-			InitData(pszPath);
-
-			UNICODE_STRING FileName;
-			UNICODE_STRING Path;
-			RtlInitUnicodeString(&Path,pszPath);
-			SplitPathFileName_U(&Path,&FileName);
-
-			PWSTR pszPath = AllocateSzFromUnicodeString(&Path);
-			PWSTR pszFileName = AllocateSzFromUnicodeString(&FileName);
-
-			SELECT_ITEM sel = {0};
-			sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
-			sel.pszCurDir = (PWSTR)NULL;
-			sel.pszPath   = (PWSTR)pszPath;
-			sel.pszName   = (PWSTR)pszFileName;
-			m_pView->SelectView(&sel);
-
-			FreeMemory(pszPath);
-			FreeMemory(pszFileName);
-		}
-
-		FreeMemory(pszPath);
-
-		return 0;
-	}
-
-	VOID InitData(PCWSTR pszDirectoryPath)
-	{
-		m_pView->InitData(NULL,0);
-
-		SELECT_ITEM sel = {0};
-		sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
-		sel.pszCurDir = (PWSTR)pszDirectoryPath;
-		sel.pszPath   = (PWSTR)pszDirectoryPath;
-		sel.pszName   = (PWSTR)NULL;
-		m_pView->SelectView(&sel);
-	}
-
-	VOID InitLayout(const RECT *prcDesktopWorkArea)
-	{
-		m_pView->InitLayout(NULL);
 	}
 };
 

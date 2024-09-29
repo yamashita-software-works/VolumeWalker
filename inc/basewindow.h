@@ -120,3 +120,78 @@ public:
 		return hwnd;
 	}
 };
+
+#define DEFDIALOGRESID(id) UINT_PTR GetResId() const { return id; }
+
+class CDialogWindow : public CWindowHandle
+{
+	typedef struct _INITDLGPARAM {
+		CDialogWindow *pThis;
+		LPARAM lParam;
+	} INITDLGPARAM;
+
+public:
+	CDialogWindow()
+	{
+		m_hWnd = NULL;
+	}
+
+	virtual ~CDialogWindow()
+	{
+	}
+
+	virtual UINT_PTR GetResId() const { return 0; }
+
+	virtual INT_PTR DlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		return FALSE;
+	}
+
+	static INT_PTR CALLBACK _dlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		if( uMsg == WM_INITDIALOG )
+		{
+			INITDLGPARAM *pidp = (INITDLGPARAM *)lParam;
+			CDialogWindow *pdlg = pidp->pThis;
+			pdlg->m_hWnd = hDlg;
+			AttachBaseWindowObject(hDlg,pdlg);
+			return pdlg->DlgProc(hDlg,uMsg,wParam,pidp->lParam);
+		}
+
+		CDialogWindow *pwnd = (CDialogWindow *)GetBaseWindowObject(hDlg);
+
+		LRESULT lResult = 0;
+		if( pwnd )
+		{
+			lResult = pwnd->DlgProc(hDlg,uMsg,wParam,lParam);
+
+			if( uMsg == WM_NCDESTROY )
+			{
+				DetachBaseWindowObject(hDlg);
+			}
+		}
+		return lResult;
+	}
+
+	virtual INT_PTR DoModal(HWND hWnd,UINT_PTR idRes,LPARAM lParam=0,HINSTANCE hInstance=NULL)
+	{
+		if( hInstance == NULL )
+			hInstance = GETINSTANCE(hWnd);
+
+		INITDLGPARAM idp = {0};
+		idp.pThis  = this;
+		idp.lParam = lParam;
+		return DialogBoxParam(hInstance,(LPCWSTR)idRes,hWnd,&_dlgProc,(LPARAM)&idp);
+	}
+
+	virtual HWND Create(HWND hWnd,UINT_PTR idRes,LPARAM lParam=0,HINSTANCE hInstance=NULL)
+	{
+		if( hInstance == NULL )
+			hInstance = GETINSTANCE(hWnd);
+
+		INITDLGPARAM idp = {0};
+		idp.pThis  = this;
+		idp.lParam = lParam;
+		return CreateDialogParamW(hInstance,(LPCWSTR)idRes,hWnd,&_dlgProc,(LPARAM)&idp);
+	}
+};

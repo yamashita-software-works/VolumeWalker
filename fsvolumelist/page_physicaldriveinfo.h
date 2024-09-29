@@ -1148,7 +1148,8 @@ public:
 						iItem = Insert_AccessAlignmentDescriptor(iItem,pdi);
 					break;
 				case ID_GROUP_PD_PARTITION:
-					Insert_DriveLayout(pdi->pDriveLayout);
+					if( pdi->pDriveLayout )
+						Insert_DriveLayout(pdi->pDriveLayout);
 					break;
 				case ID_GROUP_PD_VIRTUALDISK:
 					if( m_pvi )
@@ -1170,6 +1171,7 @@ public:
 
 	virtual HRESULT UpdateData(PVOID pData)
 	{
+		HRESULT hr;
 		SELECT_ITEM *pSel = (SELECT_ITEM *)pData;
 
 		if( pSel == NULL || pSel->pszPhysicalDrive == NULL )
@@ -1184,7 +1186,7 @@ public:
 
 		CPhysicalDriveInformation *pdi = new CPhysicalDriveInformation;
 
-		if( pdi->OpenDisk(pszPhysicalDisk,dwDriveNumber) == S_OK )
+		if( (hr = pdi->OpenDisk(pszPhysicalDisk,dwDriveNumber)) == S_OK )
 		{
 			_SafeMemFree(m_pszPhysicalDrive);
 			m_pszPhysicalDrive = _MemAllocString(pszPhysicalDisk);
@@ -1193,6 +1195,17 @@ public:
 			pdi->GetDriveLayout();
 			pdi->GetDeviceIdDescriptor();
 			pdi->GetDetectSectorSize();
+		}
+		else
+		{
+			delete pdi;
+			pdi = NULL;
+		}
+
+		if( pdi == NULL )
+		{
+			_MemFree(pszPhysicalDisk);
+			return hr;
 		}
 
 		CPhysicalDiskVirtualDependInformation *pvi = NULL;

@@ -30,5 +30,12 @@ EXPORTS
 	ReadChangeJournalDumpFile
 	SaveChangeJournalDumpFile
 
+	GetWofInformation
+	FreeWofInformation
+
+	SetWatchDirectory
+	StartDirectoryWatch
+	StopDirectoryWatch
+
 	_StringFromGUID
 	_HasPrefix

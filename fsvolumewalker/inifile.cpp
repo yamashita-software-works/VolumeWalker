@@ -263,8 +263,6 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 		WriteSectionString(pszSection,L"Volume",sz);
 	}
 
-	delete[] sz;
-
 	if( wndGuid.Data1 == VOLUME_CONSOLE_SIMPLEHEXDUMP )
 	{
 		QM_PARAM wqp = {0};
@@ -274,6 +272,8 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 		StringCchPrintf(sz,cch,L"0x%I64x",wqp.liValue.QuadPart);
 		WriteSectionString(pszSection,L"Offset",sz);
 	}
+
+	delete[] sz;
 
 	return TRUE;
 }
@@ -509,14 +509,17 @@ static VOID SaveLayout(HWND hWnd,HWND hWndMDIClient)
 				mdidoc.hdr.show = wndpl.showCmd;
 
 				CONSOLE_VIEW_ID *pcv = _GET_CONSOLE_VIEW_ID(pd->hWndView);
-				GUID Guid = pcv->wndGuid;
-				StringFromGUID( &Guid, szSection, _countof(szSection) );
-				GUIDStringRemoveBrackets(szSection);
+				if( pcv )
+				{
+					GUID Guid = pcv->wndGuid;
+					StringFromGUID( &Guid, szSection, _countof(szSection) );
+					GUIDStringRemoveBrackets(szSection);
 
-				WriteSectionInfo(szSection,hwnd,pd->hWndView,pcv->wndGuid,&mdidoc);
+					WriteSectionInfo(szSection,hwnd,pd->hWndView,pcv->wndGuid,&mdidoc);
 
-				StringCchPrintf(szEntry,ARRAYSIZE(szEntry),L"%d",iIndex);
-				WriteSectionString(_LPWSTR_SECTION_MDILAYOUT,szEntry,szSection);
+					StringCchPrintf(szEntry,ARRAYSIZE(szEntry),L"%d",iIndex);
+					WriteSectionString(_LPWSTR_SECTION_MDILAYOUT,szEntry,szSection);
+				}
 
 				iIndex++;
 			}

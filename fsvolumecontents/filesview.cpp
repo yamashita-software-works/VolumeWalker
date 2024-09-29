@@ -17,6 +17,10 @@
 #include "resource.h"
 #include "fsvolumecontents.h"
 #include "filesview.h"
+#define _HEADER_BAR 1
+#if _HEADER_BAR
+#include "headerbar.h"
+#endif
 
 class CFileListBase : 
 	public CBaseWindow,
@@ -24,12 +28,20 @@ class CFileListBase :
 {
 	CPageWndBase *m_pPage;
 	CPageWndBase *m_pPageTable[VOLUME_CONSOLE_MAX_ID];
+	int m_nView;
+#if _HEADER_BAR
+	CHeaderBarWindow *m_pHeaderBar;
+#endif
 public:
 	CFileListBase()
 	{
 		m_hWnd = NULL;
 		m_pPage = NULL;
+#if _HEADER_BAR
+		m_pHeaderBar = NULL;
+#endif
 		memset(m_pPageTable,0,sizeof(m_pPageTable));
+		m_nView = -1;
 	}
 
 	virtual ~CFileListBase()
@@ -38,20 +50,54 @@ public:
 
 	VOID UpdateLayout(int cx,int cy,BOOL absSplitPos=FALSE)
 	{
-		HDWP hdwp = BeginDeferWindowPos(1);
+		int cyHeaderBar = 0;
+		HDWP hdwp = BeginDeferWindowPos(2);
+#if _HEADER_BAR
+		if( m_pHeaderBar && IsWindow(m_pHeaderBar->GetHwnd()) && (GetWindowLong(m_pHeaderBar->GetHwnd(),GWL_STYLE) & WS_VISIBLE) )
+		{
+			cyHeaderBar = m_pHeaderBar->GetHeight();
+
+			DeferWindowPos(hdwp,m_pHeaderBar->GetHwnd(),NULL,0,0,cx,cyHeaderBar,SWP_NOZORDER);
+		}
+#endif
 		if( m_pPage )
-			DeferWindowPos(hdwp,m_pPage->GetHwnd(),NULL,0,0,cx,cy,SWP_NOZORDER);
+		{
+			DeferWindowPos(hdwp,m_pPage->GetHwnd(),NULL,0,cyHeaderBar,cx,cy-cyHeaderBar,SWP_NOZORDER);
+		}
 		EndDeferWindowPos(hdwp);
 	}
 
 	LRESULT OnCreate(HWND hWnd,UINT,WPARAM,LPARAM lParam)
 	{
 		SetWindowText(hWnd,L"CFileListBase");
+#if _HEADER_BAR
+		m_pHeaderBar = new CHeaderBarWindow;
+		m_pHeaderBar->Create(hWnd,0,L"",WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,WS_EX_CONTROLPARENT);
+
+		COLORREF crHighlightBack = RGB(247,247,247);
+		COLORREF crBack = GetSysColor(COLOR_3DFACE);
+
+		HEADERBARCOLOR ibc;
+		ibc.crHighlightText = RGB(0,0,0);
+		ibc.crHighlightBack = crHighlightBack;
+		ibc.crNormalBack    = crBack;
+		ibc.crNormalText    = RGB(55,55,55);
+		ibc.crBoxBack       = crHighlightBack;
+		ibc.crBoxBorder     = crHighlightBack;
+		ibc.crBoxInactiveBack = crBack;
+		ibc.crBoxInactiveBorder = crBack;
+		SendMessage(m_pHeaderBar->GetHwnd(),IBM_SETCOLOR,2,(LPARAM)&ibc);
+
+		SendMessage(m_pHeaderBar->GetHwnd(),IBM_SETCOLOR,1,0);
+#endif
 		return 0;
 	}
 
 	LRESULT OnDestroy(HWND hWnd,UINT,WPARAM,LPARAM)
 	{
+#if _HEADER_BAR
+		DestroyWindow( m_pHeaderBar->GetHwnd() );
+#endif
 		return 0;
 	}
 
@@ -93,6 +139,25 @@ public:
 		return 0;
 	}
 
+#if _HEADER_BAR
+	LRESULT OnMakeContextMenu(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		HMENU hMenu = (HMENU)lParam;
+		UINT id = LOWORD(wParam);
+		if( ID_MENU == id )
+		{
+			AppendMenu(hMenu,MF_STRING,ID_UP_DIR,  L"&Up One Directory\tAlt+UpArrow");
+			AppendMenu(hMenu,MF_STRING,ID_GOTO,    L"&GoTo Directory\tCtrl+G");
+		}
+		else
+		{
+			AppendMenu(hMenu,MF_STRING,ID_GOTO,L"&GoTo Directory");
+			SetMenuDefaultItem(hMenu,ID_GOTO,FALSE);
+		}
+		return 0;
+	}
+#endif
+
 	virtual LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		switch(uMsg)
@@ -111,6 +176,9 @@ public:
 				return OnCreate(hWnd,uMsg,wParam,lParam);
 			case WM_DESTROY:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
+			case WM_NCACTIVATE:
+				SendMessage(m_pHeaderBar->GetHwnd(),IBM_SETCOLOR,wParam?1:0,0);
+				break;
 			case PM_GETCURDIR:
 				if( wParam != 0 )
 				{
@@ -126,6 +194,8 @@ public:
 				if( m_pPage )
 					return SendMessage(m_pPage->GetHwnd(),uMsg,wParam,lParam); // forward to current view
 				break;
+			case PM_MAKECONTEXTMENU:
+				return OnMakeContextMenu(hWnd,uMsg,wParam,lParam);
 			// Forward Parent Window
 			case WM_CONTROL_MESSAGE:
 				return SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,wParam,lParam);
@@ -135,6 +205,25 @@ public:
 				if( m_pPage )
 					return SendMessage(m_pPage->GetHwnd(),uMsg,wParam,lParam); // forward to current view
 				break;
+			case PM_CHANGEPATH:
+			{
+				/* lookup current directory */
+				HEADERBARITEM *phbi = (HEADERBARITEM *)lParam;
+				SIZE_T cch = 32768;
+				WCHAR *sz = new WCHAR[cch];
+				if( sz != NULL ) {
+					if( HDIF_DRIVE_ITEM & phbi->Flags )
+						StringCchPrintf(sz,cch,L"\\??\\%s\\",phbi->Drive);
+					else
+						StringCchPrintf(sz,cch,L"%s\\",phbi->NtDeviceName);
+					SELECT_ITEM sel = {0};
+					sel.pszPath = sz;
+					m_pPage->UpdateData( &sel );
+					m_pHeaderBar->SetPath(sz);
+					delete[] sz;
+				}
+				return 0;
+			}
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -245,15 +334,17 @@ public:
 		return pNew;
 	}
 
-	CPageWndBase* _SelectPage(int nView)
+	CPageWndBase* _SelectPage(SELECT_ITEM *pSel)
 	{
+		int nView = pSel->ViewType;
+
 		CPageWndBase* pPage = m_pPageTable[ nView ];
 
 		if( pPage == NULL )
 		{
 			pPage = _CreatePage(nView);
 
-			pPage->OnInitPage(0);
+			pPage->OnInitPage( pSel );
 		}
 
 		if( m_pPage == pPage )
@@ -264,6 +355,7 @@ public:
 		CPageWndBase* pPrev = m_pPage;
 
 		m_pPage = pPage;
+		m_nView = nView;
 
 		return pPrev;
 	}
@@ -280,27 +372,83 @@ public:
 		}
 	}
 
+	void UpdateFileList(SELECT_ITEM *Path)
+	{
+		BOOL bValidPath = FALSE;
+
+		if( Path->Flags & _FLG_NTFS_SPECIALFILE )
+		{
+			bValidPath = TRUE;
+		}
+		else if( Path->pszPath && *Path->pszPath && PathFileExists_W(Path->pszPath,NULL) )
+		{
+			bValidPath = TRUE;
+		}
+
+		if( bValidPath )
+		{
+			if( UpdateData(Path) == S_OK )
+			{
+#if _HEADER_BAR
+				m_pHeaderBar->EnableButton(ID_UP_DIR, !IsRootDirectory_W(Path->pszPath) );
+
+				m_pHeaderBar->SetPath( Path->pszPath );
+#endif
+			}
+		}
+		else
+		{
+			m_pHeaderBar->EnableButton(ID_UP_DIR, FALSE);
+		}
+	}
+
+	void UpdateRootView(SELECT_ITEM *Path)
+	{
+		UpdateData(Path);
+		SetWindowText(m_pHeaderBar->GetHwnd(),Path->pszPath);
+		m_pHeaderBar->EnableButton(ID_UP_DIR, FALSE);
+		m_pHeaderBar->EnableButton(ID_GOTO, FALSE);
+	}
+
 	HRESULT SelectView(SELECT_ITEM *Path) 
 	{
 		SELECT_ITEM *pSel = (SELECT_ITEM *)Path;
 		ASSERT(pSel != NULL);
 
 		CPageWndBase *pPrev=NULL;
+		int nPrevView = -1;
 
 		switch( pSel->ViewType )
 		{
 			case VOLUME_CONSOLE_ROOT:
+				pPrev = _SelectPage( pSel );
+				UpdateRootView(Path);
+				break;
 			case VOLUME_CONSOLE_CONTENT_FILES:
-				pPrev = _SelectPage( pSel->ViewType );
+				nPrevView = m_nView;
+				pPrev = _SelectPage( pSel );
+				if( nPrevView != -1 &&  pSel->ViewType != nPrevView )
+				{
+					PWSTR pszWorkPath = (PWSTR)SendMessage(m_pPage->GetHwnd(),PM_GETWORKINGDIRECTORY,0,0);
+					if(pszWorkPath)
+					{
+						m_pHeaderBar->EnableButton(ID_UP_DIR, !IsRootDirectory_W(pszWorkPath) );
+
+						UNICODE_STRING usText;
+						PWSTR pszRoot;
+						RtlInitUnicodeString(&usText,pszWorkPath);
+						FindRootDirectory_U(&usText,&pszRoot);
+						SetWindowText(m_pHeaderBar->GetHwnd(),pszRoot);
+					}
+				}
+				else
+				{
+					UpdateFileList(Path);
+				}
 				break;
 			default:
 				ASSERT(FALSE);
 				break;
-		}
-
-		if( Path->pszPath || Path->Flags )
-		{
-			UpdateData(Path);
 		}
 
 		RECT rc;

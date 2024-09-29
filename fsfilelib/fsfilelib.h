@@ -175,10 +175,109 @@ EXTERN_C
 DWORD
 APIENTRY
 NtPathGetLongPathNameFromHandle(
-	HANDLE hFile,
-	PWSTR *LongFileName,
-	PULONG pcbLongFileName
-	);
+    HANDLE hFile,
+    PWSTR *LongFileName,
+    PULONG pcbLongFileName
+    );
+
+//----------------------------------------------------------------------------
+//
+//  Overray File
+//
+//----------------------------------------------------------------------------
+EXTERN_C
+HRESULT
+APIENTRY
+GetWofInformation(
+    HANDLE FileHandle,
+    PVOID *ExternalInfo,
+    PVOID *ProviderInfo
+    );
+
+EXTERN_C
+HRESULT 
+APIENTRY
+FreeWofInformation(
+    PVOID ExternalInfo,
+    PVOID ProviderInfo
+    );
+
+//----------------------------------------------------------------------------
+//
+//  Directory Watch
+//
+//----------------------------------------------------------------------------
+typedef struct _DIRWATCHNOTIFYEVENT
+{
+    ULONG cbNotifyBufferLength;
+    FILE_NOTIFY_INFORMATION *pNotifyBuffer;
+    PVOID Context;
+	UINT InformationClass;
+} DIRWATCHNOTIFYEVENT;
+
+typedef HRESULT (CALLBACK *PFNDIRWATCHNOTIFYPROC)(DIRWATCHNOTIFYEVENT *Event);
+
+typedef struct _DIRECTORY_WATCH_STRUCT
+{
+    HANDLE hDirectoryHandle;
+
+    HANDLE hChgDirEvent;
+    HANDLE hChangedUp;
+    HANDLE hExitEvent;
+
+    INT EnterChangeDirectorySection;
+    HANDLE hThread;
+
+    PFNDIRWATCHNOTIFYPROC pfnNotifyCallback;
+    PVOID NotifyCallbackContext;
+
+    ULONG cbNotifyBufferSize;
+    PVOID pNotifyBuffer;
+
+	UINT InformationClass;
+
+} DIRECTORY_WATCH_STRUCT;
+
+enum {
+	DirectoryWatchNotifyInformation = 1,     // DirectoryNotifyInformation,FILE_NOTIFY_INFORMATION
+    DirectoryWatchNotifyExtendedInformation, // DirectoryNotifyExtendedInformation,FILE_NOTIFY_EXTENDED_INFORMATION
+    DirectoryWatchNotifyFullInformation,     // DirectoryNotifyFullInformation,FILE_NOTIFY_FULL_INFORMATION
+	DirectoryWatchNotifyMaxInformation
+};
+
+EXTERN_C
+HRESULT
+WINAPI
+StartDirectoryWatchEx(
+    HANDLE *pHandle,
+	UINT InformationClass,
+    PFNDIRWATCHNOTIFYPROC pfnNotifyCallback,
+    PVOID Context
+    );
+
+EXTERN_C
+HRESULT
+WINAPI
+StartDirectoryWatch(
+    HANDLE *pHandle,
+    PFNDIRWATCHNOTIFYPROC pfnNotifyCallback,
+    PVOID Context
+    );
+
+EXTERN_C
+HRESULT
+WINAPI
+StopDirectoryWatch(
+    HANDLE Handle
+    );
+
+EXTERN_C
+HRESULT
+WINAPI
+SetWatchDirectory(
+    HANDLE hWatch,
+    PCWSTR pszDirectory
+    );
 
 //----------------------------------------------------------------------------
 //
@@ -189,6 +288,7 @@ typedef enum _FS_CLUSTER_INFORMATION_CLASS
 {
     ClusterInformationBasic = 0,
     ClusterInformationAll,
+	ClusterInformationBasicWithPhysicalLocation,
 } FS_CLUSTER_INFORMATION_CLASS;
 
 // Physical offset information
@@ -213,6 +313,17 @@ typedef struct _FS_CLUSTER_INFORMATION_BASIC
     ULONG SectorsPerCluster;
     ULONG BytesPerSector;
 } FS_CLUSTER_INFORMATION_BASIC;
+
+typedef struct _FS_CLUSTER_INFORMATION_BASIC_EX
+{
+    LARGE_INTEGER FirstLcn;
+    ULONG FirstCount;
+    ULONG Split;
+    ULONG SectorsPerCluster;
+    ULONG BytesPerSector;
+	ULONG DiskNumber;
+	LARGE_INTEGER PhysicalLocation;
+} FS_CLUSTER_INFORMATION_BASIC_EX;
 
 // Volume cluster information
 typedef struct _FS_CLUSTER_LOCATION

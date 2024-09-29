@@ -79,7 +79,8 @@ public:
 
 		hOrgBmp = (HBITMAP)SelectObject(hdcMem,hBmp);
 
-		HBRUSH hbr = CreateSolidBrush(GetSysColor(COLOR_3DFACE));
+		COLORREF cr = RGB(247,247,247);
+		HBRUSH hbr = CreateSolidBrush(cr);
 		FillRect(hdcMem,&rc,hbr);
 		DeleteObject(hbr);
 

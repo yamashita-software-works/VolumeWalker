@@ -17,6 +17,7 @@
 
 #define ID_CONTENTSBROWSER             41020
 #define ID_CHANGEJOURNALBROWSER        41021
+#define ID_ROOT                        41022
 
 #define ID_OPEN_LOCATION_EXPLORER         41031
 #define ID_OPEN_LOCATION_CMDPROMPT        41032
@@ -55,7 +56,9 @@
 #define ID_UP_DIR                      41213
 #define ID_HISTORY_BACKWARD            41214
 #define ID_HISTORY_FORWARD             41215
+#define ID_MENU                        41216
 
 #endif
+
 
 

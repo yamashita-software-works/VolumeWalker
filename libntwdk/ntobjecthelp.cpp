@@ -70,7 +70,11 @@ GetNtDeviceNameAssignedDosDrive(
 
                     if( QuerySymbolicLinkObject_U(hObjDir,DosDeviceName,&usNtDeviceName,FALSE) == 0 )
                     {
-                        ptr_array[ RtlUpcaseUnicodeChar( DosDeviceName[0] ) - L'A' ] = AllocateSzFromUnicodeString( &usNtDeviceName );
+						int iIndex = (int)RtlUpcaseUnicodeChar( DosDeviceName[0] ) - L'A';
+						ASSERT( ptr_array[ iIndex ] == NULL );
+
+						if( ptr_array[ iIndex ] == NULL )
+							ptr_array[ iIndex ] = AllocateSzFromUnicodeString( &usNtDeviceName );
                     }
                 }
             }
