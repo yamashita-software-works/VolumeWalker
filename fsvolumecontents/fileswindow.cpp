@@ -160,14 +160,6 @@ public:
 			{
 				UINT *puState = (UINT *)lParam;
 				UINT uCmdId = (UINT)LOWORD(wParam);
-
-				switch( uCmdId )
-				{
-					case ID_CONTENTSBROWSER:
-					case ID_ROOT:
-						*puState = UPDUI_ENABLED;
-						return TRUE;
-				}
 				if( m_pView->QueryCmdState((UINT)LOWORD(wParam),(UINT*)lParam) == S_OK )
 					return TRUE;
 			}

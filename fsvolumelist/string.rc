@@ -46,6 +46,7 @@ STRINGTABLE
 BEGIN
     diSize                                   "Total Size"
     diUsage                                  "Usage"
+    diUsagePct                               "Usage %"
     diFree                                   "Free"
     diTotalAllocationUnits                   "Total Allocation Units"
     diAvailableAllocationUnits               "Available Allocation Units"

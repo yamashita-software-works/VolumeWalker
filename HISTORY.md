@@ -1,3 +1,7 @@
+### 0.1.17.0
+
+- Volume Informationにボリューム使用量バー表示行（ Usage% 行 ）を追加。
+
 ### 0.1.16.0
 
 - Volume Contents Browser - Filesウィンドウを更新。

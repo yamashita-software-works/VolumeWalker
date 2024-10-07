@@ -13,9 +13,9 @@ inline BOOL AttachBaseWindowObject(HWND hWnd,PVOID pwnd)
 	return SetProp(hWnd,PROP_NAME_WNDOBJ,pwnd);
 }
 
-inline BOOL DetachBaseWindowObject(HWND hWnd)
+inline PVOID DetachBaseWindowObject(HWND hWnd)
 {
-	return SetProp(hWnd,PROP_NAME_WNDOBJ,NULL);
+	return RemoveProp(hWnd,PROP_NAME_WNDOBJ);
 }
 
 class CWindowHandle

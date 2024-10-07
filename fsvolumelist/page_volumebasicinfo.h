@@ -165,22 +165,171 @@ public:
 
 	LRESULT OnCustomDraw(NMHDR *pnmhdr)
 	{
-		NMLVCUSTOMDRAW *pnmlvcd = (NMLVCUSTOMDRAW *)pnmhdr;
+		LRESULT lResult = 0;
+		NMLVCUSTOMDRAW* pcd = (NMLVCUSTOMDRAW* )pnmhdr;
 
-		if( pnmlvcd->nmcd.hdr.hwndFrom != m_hWndList )
+		if( pcd->nmcd.hdr.hwndFrom != m_hWndList )
 			return CDRF_DODEFAULT;
 
-		if( pnmlvcd->nmcd.dwDrawStage == CDDS_PREPAINT )
+		if( pcd->nmcd.dwDrawStage == CDDS_PREPAINT )
 		{
 			return CDRF_NOTIFYITEMDRAW;
 		}
 
-		if( pnmlvcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT )
+		if( pcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT )
 		{
-			SelectObject(pnmlvcd->nmcd.hdc,m_hFont);
+			SelectObject(pcd->nmcd.hdc,m_hFont);
+
+			CVolumeInfoItem *pItem = (CVolumeInfoItem *)pcd->nmcd.lItemlParam;
+			if( pItem )
+			{
+				if( pItem->Type == diUsagePct )
+				{
+					return CDRF_NOTIFYSUBITEMDRAW;
+				}
+				else
+				{
+					return CDRF_NEWFONT;
+				}
+			}
+
 			return CDRF_NEWFONT;
 		}
 
+		if( pcd->nmcd.dwDrawStage == (CDDS_ITEMPREPAINT|CDDS_SUBITEM) )
+		{
+			return CDRF_NOTIFYPOSTPAINT|CDRF_NOTIFYSUBITEMDRAW;
+		}
+
+		if( pcd->nmcd.dwDrawStage == (CDDS_ITEMPOSTPAINT|CDDS_SUBITEM) )
+		{
+			CVolumeInfoItem *p = (CVolumeInfoItem *)pcd->nmcd.lItemlParam;
+
+			if( p->Type == diUsagePct )
+			{
+				RECT rc;
+				ListView_GetItemRect(pcd->nmcd.hdr.hwndFrom,(int)pcd->nmcd.dwItemSpec,&rc,LVIR_BOUNDS);
+
+				HWND hwndHD = ListView_GetHeader(pcd->nmcd.hdr.hwndFrom);
+				RECT rcHeader1,rcHeader2;
+				Header_GetItemRect( hwndHD, 0, &rcHeader1);
+				Header_GetItemRect( hwndHD, 1, &rcHeader2);
+				int cxColumnWidth = rcHeader2.left - rcHeader1.left;
+
+				int cxIcon = 0;
+
+				int cxMeterWidth = (rcHeader2.right - rcHeader2.left);
+				if( cxMeterWidth > 320 )
+					cxMeterWidth = 320;
+
+				RECT rcMeter = rc;
+				rcMeter.top += 2;
+				rcMeter.left += cxColumnWidth + 4 + cxIcon;
+				rcMeter.right = rcMeter.left + cxMeterWidth - 4 - 4 -  cxIcon;
+				rcMeter.bottom -= 2;
+
+				LONGLONG use;
+				LONGLONG total;
+				LONG alloc = m_pvdi->SectorsPerAllocationUnit * m_pvdi->BytesPerSector;
+				total = m_pvdi->TotalAllocationUnits.QuadPart;
+				use = m_pvdi->TotalAllocationUnits.QuadPart - m_pvdi->AvailableAllocationUnits.QuadPart;
+				total *= alloc;
+				use *= alloc;
+				double pct = (double)use / (double)total;
+				double DiskUsage = pct;
+
+				if( m_pvdi->TotalAllocationUnits.QuadPart != 0 )
+				{
+					double width = (double)_RECT_WIDTH(rcMeter);
+					if( (DiskUsage * 100.0) == 0.0 )
+					{
+						width = 0.0;
+					}
+					else
+					{
+						width *= DiskUsage;
+
+						if( width < 2.0 )
+							width = 2.0;
+					}
+
+					{
+						//
+						// draw fill meter style
+						//
+						COLORREF crText = RGB(60,72,74);
+						COLORREF crMeter = RGB(80,120,220);
+						COLORREF crMeterBack = ColorAdjustLuma(GetSysColor(COLOR_3DSHADOW),680,TRUE);
+						HBRUSH hbrMeter = CreateSolidBrush( crMeter );
+						HBRUSH hbrMeterBack = CreateSolidBrush( crMeterBack );
+						HDC hdc = pcd->nmcd.hdc;
+						HDC hdcMem1 = CreateCompatibleDC(hdc);
+						HDC hdcMem2 = CreateCompatibleDC(hdc);
+						HBITMAP hbmp1 = CreateCompatibleBitmap(hdc,_RECT_WIDTH(rcMeter),_RECT_HIGHT(rcMeter));
+						HBITMAP hbmp2 = CreateCompatibleBitmap(hdc,_RECT_WIDTH(rcMeter),_RECT_HIGHT(rcMeter));
+
+						HBITMAP hbmpOld1 = (HBITMAP)SelectObject(hdcMem1,hbmp1);
+						HBITMAP hbmpOld2 = (HBITMAP)SelectObject(hdcMem2,hbmp2);
+
+						RECT box;
+						box.left   = 0;
+						box.top    = 0;
+						box.right  = _RECT_WIDTH(rcMeter);
+						box.bottom = _RECT_HIGHT(rcMeter);
+				
+						FillRect(hdcMem1,&box,hbrMeterBack);
+						FillRect(hdcMem2,&box,hbrMeter);
+
+						WCHAR sz[MAX_PATH];
+						ListView_GetItemText(pcd->nmcd.hdr.hwndFrom,(int)pcd->nmcd.dwItemSpec,pcd->iSubItem,sz,_countof(sz));
+
+						RECT rcText = box;
+						rcText.right -= 2;
+
+						HFONT hfontOld;
+						hfontOld = (HFONT)SelectObject(hdcMem1,m_hFont);
+						SetTextColor(hdcMem1,RGB(0,0,0));
+						SetBkMode(hdcMem1,TRANSPARENT);
+						DrawText(hdcMem1,sz,-1,&rcText,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+						SelectObject(hdcMem1,hfontOld);
+
+						hfontOld = (HFONT)SelectObject(hdcMem2,m_hFont);
+						SetTextColor(hdcMem2,RGB(255,255,255));
+						SetBkMode(hdcMem2,TRANSPARENT);
+						DrawText(hdcMem2,sz,-1,&rcText,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+						SelectObject(hdcMem2,hfontOld);
+
+						// draw meter back
+						BitBlt(hdc,
+							rcMeter.left,
+							rcMeter.top,
+							_RECT_WIDTH(rcMeter),
+							_RECT_HIGHT(rcMeter),
+							hdcMem1,0,0,SRCCOPY);
+
+						// draw meter level
+						rcMeter.right = rcMeter.left + (int)width;
+						BitBlt(hdc,
+							rcMeter.left,
+							rcMeter.top,
+							_RECT_WIDTH(rcMeter),
+							_RECT_HIGHT(rcMeter),
+							hdcMem2,0,0,SRCCOPY);
+
+						SelectObject(hdcMem1,hbmpOld1);
+						SelectObject(hdcMem2,hbmpOld2);
+
+						DeleteObject(hbmp1);
+						DeleteObject(hbmp2);
+						DeleteDC(hdcMem1);
+						DeleteDC(hdcMem2);
+						DeleteObject(hbrMeter);
+						DeleteObject(hbrMeterBack);
+					}
+				}
+				return CDRF_DODEFAULT;
+			}
+		}
 		return CDRF_DODEFAULT;
 	}
 
@@ -278,6 +427,11 @@ public:
 		}
 	}
 
+	__forceinline LONGLONG _calcSize(LONGLONG TotalAllocationUnits,LONGLONG SectorsPerAllocationUnit,LONGLONG  BytesPerSector)
+	{
+		return TotalAllocationUnits * SectorsPerAllocationUnit * BytesPerSector;
+	}
+
 	VOID GetInfoText(int iItemType,PWSTR *pszText,int cchText)
 	{
 		**pszText = L'\0';
@@ -322,6 +476,34 @@ public:
 						- (m_pvdi->AvailableAllocationUnits.QuadPart * m_pvdi->SectorsPerAllocationUnit * m_pvdi->BytesPerSector),
 						pszText,cchText
 						);
+				}
+				break;
+			case diUsagePct:
+				if( m_pvdi->State.SizeInformation )
+				{
+					LONGLONG Total;
+					Total = _calcSize( m_pvdi->TotalAllocationUnits.QuadPart,
+								m_pvdi->SectorsPerAllocationUnit,
+								m_pvdi->BytesPerSector );
+
+					LONGLONG Available;
+					Available = _calcSize( m_pvdi->AvailableAllocationUnits.QuadPart,
+								m_pvdi->SectorsPerAllocationUnit,
+								m_pvdi->BytesPerSector);
+
+					LONGLONG Usage;
+					Usage = Total - Available;
+
+					if( Total != 0 )
+					{
+						double pct = (double)Usage / (double)Total;
+						if( (pct * 100.0) == 0.0 )
+							StringCchPrintf(*pszText,cchText,L"0%%");
+						else if( (pct * 100.0) < 1.0 )
+							StringCchPrintf(*pszText,cchText,L"%.g%%",(pct * 100.0));
+						else
+							StringCchPrintf(*pszText,cchText,L"%d%%",(int)(pct * 100.0));
+					}
 				}
 				break;
 			case diTotalAllocationUnits:
@@ -874,6 +1056,7 @@ public:
 
 		UINT uInfoId[] = {
 			diSize,
+			diUsagePct,
 			diUsage,
 			diFree,
 			diTotalAllocationUnits,

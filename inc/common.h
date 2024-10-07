@@ -131,6 +131,14 @@ enum {
 #define WM_MDI_CHILDFRAME_CLOSE   (PRIVATE_MESSAGE_BASE+13)
 
 //
+// WM_MDI_CHILDFRAME_NCDESTROY
+//
+// wParam -
+// lParam -
+//
+#define WM_MDI_CHILDFRAME_NCDESTROY   (PRIVATE_MESSAGE_BASE+14)
+
+//
 // WM_GETCONSOLEVIEWID
 //
 // wParam - Pointer to UINT, ConsoleId contained.
