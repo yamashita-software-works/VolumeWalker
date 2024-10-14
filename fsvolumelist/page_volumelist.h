@@ -251,8 +251,8 @@ public:
 
 			hSubMenu = CreatePopupMenu();
 			{
-				AppendMenu(hSubMenu,MF_STRING,ID_CONTENTSBROWSER,L"&Files");
-				AppendMenu(hSubMenu,MF_STRING,ID_CHANGEJOURNALBROWSER,L"Change &Journal");
+				AppendMenu(hSubMenu,MF_STRING,ID_FILE_VOLUMEFILES,L"&Files");
+				AppendMenu(hSubMenu,MF_STRING,ID_FILE_CHANGEJOURNAL,L"Change &Journal");
 			}
 			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Volume Contents &Browser");
 
@@ -1295,8 +1295,8 @@ public:
 			case ID_VOLUMEINFORMATION:
 			case ID_FILESYSTEMSTATISTICS:
 			case ID_HEXDUMP:
-			case ID_CONTENTSBROWSER:
-			case ID_CHANGEJOURNALBROWSER:
+			case ID_FILE_VOLUMEFILES:
+			case ID_FILE_CHANGEJOURNAL:
 			case ID_EDIT_COPY:
 			case ID_OPEN_LOCATION_EXPLORER:
 			case ID_OPEN_LOCATION_CMDPROMPT:
@@ -1334,10 +1334,10 @@ public:
 			case ID_HEXDUMP:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );
 				break;
-			case ID_CONTENTSBROWSER:
-				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_CONTENT_FILES );
+			case ID_FILE_VOLUMEFILES:
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_FILES );
 				break;
-			case ID_CHANGEJOURNALBROWSER:
+			case ID_FILE_CHANGEJOURNAL:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOUUME_CONSOLE_CHANGE_JOURNAL );
 				break;
 			case ID_OPEN_LOCATION_EXPLORER:

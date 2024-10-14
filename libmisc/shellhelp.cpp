@@ -77,7 +77,7 @@ int GetShellIconIndexIL(LPITEMIDLIST lpi, UINT uFlags)
 {
 	SHFILEINFO sfi = { 0 };
 	uFlags |= (SHGFI_PIDL|SHGFI_SYSICONINDEX);
-	DWORD_PTR dwRet = ::SHGetFileInfo((LPCTSTR)lpi, 0, &sfi, sizeof(SHFILEINFO), uFlags);
+	DWORD_PTR dwRet = SHGetFileInfo((LPCTSTR)lpi, 0, &sfi, sizeof(SHFILEINFO), uFlags);
 	if( sfi.hIcon )
 		DestroyIcon(sfi.hIcon);
 	return (dwRet != 0) ? sfi.iIcon : I_IMAGENONE;
@@ -87,8 +87,24 @@ HICON GetShellIconIL(LPITEMIDLIST lpi, UINT uFlags)
 {
 	SHFILEINFO sfi = { 0 };
 	uFlags |= (SHGFI_PIDL|SHGFI_ICON);
-	DWORD_PTR dwRet = ::SHGetFileInfo((LPCTSTR)lpi, 0, &sfi, sizeof(SHFILEINFO), uFlags);
+	DWORD_PTR dwRet = SHGetFileInfo((LPCTSTR)lpi, 0, &sfi, sizeof(SHFILEINFO), uFlags);
 	return (dwRet != 0) ? sfi.hIcon : NULL;
+}
+
+HICON WINAPI GetShellFileIcon(PCWSTR pszPath, UINT uFlags)
+{
+	SHFILEINFO sfi = { 0 };
+	uFlags |= SHGFI_ICON;
+	DWORD_PTR dwRet = SHGetFileInfo(pszPath, 0, &sfi, sizeof(SHFILEINFO), uFlags);
+	return (dwRet != 0) ? sfi.hIcon : NULL;
+}
+
+HICON WINAPI GetShellStockIcon(SHSTOCKICONID StockIconId)
+{
+	SHSTOCKICONINFO sii = {0};
+	sii.cbSize = sizeof(sii);
+	SHGetStockIconInfo(StockIconId,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
+	return sii.hIcon;
 }
 
 BOOL GetShellItemName(LPSHELLFOLDER lpsf, LPITEMIDLIST lpi, DWORD dwFlags, LPWSTR lpFriendlyName,int cchFriendlyName)

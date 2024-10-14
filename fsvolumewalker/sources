@@ -82,6 +82,7 @@ INCLUDES=$(INCLUDES);..\libcwh
 INCLUDES=$(INCLUDES);..\libmisc
 INCLUDES=$(INCLUDES);..\libntwdk
 INCLUDES=$(INCLUDES);..\inc
+INCLUDES=$(INCLUDES);..\fsfilelib
 INCLUDES=$(INCLUDES);..\fsvolumelist
 
 #----------------------------------------------------------
@@ -130,6 +131,7 @@ LINKLIBS=\
 	$(DDK_LIB_PATH)\ntdll.lib \
 	$(_USERLIB)\fsvolumelist.lib \
 	$(_USERLIB)\fsvolumecontents.lib \
+	$(_USERLIB)\fsfilelib.lib \
 	$(_USERLIB)\libcwh.lib \
 	$(_USERLIB)\libmisc.lib \
 	$(_USERLIB)\libntwdk.lib

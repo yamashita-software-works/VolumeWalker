@@ -74,6 +74,7 @@ LRESULT CALLBACK MDIChildWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 		}
 		case WM_NCDESTROY:
 		{
+			SendMessage(GetParent(GetParent(hWnd)),WM_MDI_CHILDFRAME_NCDESTROY,(WPARAM)hWnd,0);
 			MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hWnd,GWLP_USERDATA);
 			if( pd )
 			{
@@ -197,7 +198,7 @@ HWND CreateMDIChildFrame(HWND hWndMDIClient,PCWSTR pszTitle,MDICHILDFRAMEINIT *p
 	mcs.hOwner  = _GetResourceInstance();
 	mcs.x = mcs.cx = CW_USEDEFAULT; 
 	mcs.y = mcs.cy = CW_USEDEFAULT; 
-	mcs.style = WS_VISIBLE | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CAPTION | WS_CLIPCHILDREN; 
+	mcs.style = WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CAPTION | WS_CLIPCHILDREN; 
 	mcs.lParam = lParam;
 
 	if( !bMaximize )

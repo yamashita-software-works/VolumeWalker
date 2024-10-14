@@ -15,9 +15,13 @@
 #define ID_HEXDUMP                     41012
 #define ID_FILTERDRIVER                41013
 
-#define ID_CONTENTSBROWSER             41020
-#define ID_CHANGEJOURNALBROWSER        41021
-#define ID_ROOT                        41022
+#define ID_FILE_VOLUMEFILES            41020
+#define ID_FILE_CHANGEJOURNAL          41021
+#define ID_FILE_ROOTDIRECTORIES        41022
+
+#define ID_CONTENTSBROWSER             ID_FILE_VOLUMEFILES
+#define ID_CHANGEJOURNALBROWSER        ID_FILE_CHANGEJOURNAL
+#define ID_ROOT                        ID_FILE_ROOTDIRECTORIES
 
 #define ID_OPEN_LOCATION_EXPLORER         41031
 #define ID_OPEN_LOCATION_CMDPROMPT        41032
@@ -59,6 +63,5 @@
 #define ID_MENU                        41216
 
 #endif
-
 
 

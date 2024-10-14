@@ -104,7 +104,6 @@ SOURCES = \
 	changejournalview.cpp\
 	changejournalwindow.cpp\
 	dialogs.cpp\
-	filemisc.cpp\
 	fsvolumecontents.rc
 
 #----------------------------------------------------------

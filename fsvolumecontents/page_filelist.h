@@ -86,6 +86,9 @@ class CFileListPage :
 	HANDLE m_hWatchHandle;
 
 	CHistoryManager m_history;
+
+	HRESULT m_LastErrorCode;
+
 public:
 	PWSTR GetPath() const { return m_pszCurDir; }
 	HWND GetListView() const { return m_hWndList; }
@@ -115,6 +118,7 @@ public:
 		m_hFont = NULL;
 		m_hFontHeader = NULL;
 		m_hWatchHandle = NULL;
+		m_LastErrorCode = 0;
 		ZeroMemory(m_columnShowStyleFlags,sizeof(m_columnShowStyleFlags));
 	}
 
@@ -150,11 +154,6 @@ public:
 			{ COLUMN_Extension,      L"Extention",             0},
 			{ COLUMN_Path,           L"Path",                  0},
 			{ COLUMN_Lcn,            L"Lcn",                   0},
-			{ COLUMN_Usn,            L"Usn",                   0},
-			{ COLUMN_Date,           L"Date",                  0},
-			{ COLUMN_Reason,         L"Reason",                0},
-			{ COLUMN_Frn,            L"FRN",                   0},
-			{ COLUMN_ParentFrn,      L"Parent FRN",            0},
 			{ COLUMN_PhysicalDriveNumber,   L"PhysicalDrive",  0}, 
 			{ COLUMN_PhysicalDriveOffset,   L"PhysicalOffset", 0},
 		};
@@ -281,6 +280,8 @@ public:
 				return OnItemActivate(pnmhdr);
 			case LVN_COLUMNCLICK:
 				return OnColumnClick(pnmhdr);
+			case LVN_GETEMPTYMARKUP:
+				return OnGetEmptyMarkup(pnmhdr);
 			case NM_SETFOCUS:
 				return OnNmSetFocus(pnmhdr);
 			case HDN_ENDDRAG:
@@ -484,7 +485,7 @@ public:
 			pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
 
 			SELECT_ITEM sel = {0};
-			sel.ViewType  = VIEW_PAGE_FILELIST;
+			sel.ViewType  = VOLUME_CONSOLE_FILES;
 			sel.pszPath   = pszFullPath;
 			sel.pszCurDir = DuplicateString(m_pszCurDir);
 			sel.pszName   = DuplicateString(pItem->pFI->hdr.FileName);
@@ -518,7 +519,7 @@ public:
 
 			SELECT_ITEM sel = {0};
 			sel.mask      = SI_MASK_PATH|SI_MASK_NAME|SI_MASK_CURDIR;
-			sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
+			sel.ViewType  = VOLUME_CONSOLE_FILES;
 			sel.pszPath   = pszGoToDir;
 			sel.pszCurDir = DuplicateString(m_pszCurDir);
 
@@ -591,6 +592,22 @@ public:
 		}
 
 		return 0;
+	}
+
+	LRESULT OnGetEmptyMarkup(NMHDR *pnmhdr)
+	{
+		NMLVEMPTYMARKUP *pnmMarkup = (NMLVEMPTYMARKUP*)pnmhdr;
+
+		pnmMarkup->dwFlags = EMF_CENTERED;
+
+		PWSTR SystemErrorMessage = NULL;
+		_GetSystemErrorMessageEx(this->m_LastErrorCode,&SystemErrorMessage,0);
+
+		StringCchPrintf(pnmMarkup->szMarkup,ARRAYSIZE(pnmMarkup->szMarkup),L"%s 0x%08X",SystemErrorMessage,m_LastErrorCode);
+
+		_FreeSystemErrorMessage(SystemErrorMessage);
+
+		return TRUE;
 	}
 
 	LRESULT OnColumnClick(NMHDR *pnmhdr)
@@ -1069,7 +1086,7 @@ public:
 		CFileOperationList *pfol = (CFileOperationList*)lParam;
 
 		PWSTR pSourcePath;
-		if( AreListItemsSameSource(pfol,&pSourcePath) )
+		if( CFileOperationHelp::AreListItemsSameSource(pfol,&pSourcePath) )
 		{
 			pfol->SetSourcePath(pSourcePath);
 			_MemFree(pSourcePath);
@@ -1249,6 +1266,8 @@ public:
 				return CFindHandler<CFileListPage>::OnFindItem(hWnd,uMsg,wParam,lParam);;
 			case PM_GETWORKINGDIRECTORY:
 				return OnGetCurPath(hWnd,uMsg,wParam,lParam);
+			case PM_GETSELECTEDFILE:
+				return OnGetSelectedFilePath(hWnd,uMsg,wParam,lParam);
 			case PM_UPDATE_FILELIST:
 				return OnAsyncUpdateList(hWnd,uMsg,wParam,lParam);
 			case WM_QUERY_MESSAGE:
@@ -1742,11 +1761,14 @@ public:
 
 				hr = EnumFiles_W(szNtPath,NULL,0,&EnumCallbackProc,(PVOID)pa);
 
-				if( hr == S_OK )
+				if( hr != S_OK )
 				{
-					_SafeMemFree(m_pszCurDir);
-					m_pszCurDir = _MemAllocString(szNtPath);
+					;
 				}
+
+				// always save curdir
+				_SafeMemFree(m_pszCurDir);
+				m_pszCurDir = _MemAllocString(szNtPath);
 
 				delete szNtPath;
 			}
@@ -1757,10 +1779,15 @@ public:
 
 			if( hr != S_OK )
 			{
-				pa->DeleteAll();
 				delete pa;
 				SetRedraw(m_hWndList,TRUE);
 				MessageBeep(MB_ICONSTOP);
+
+				ListView_DeleteAllItems(m_hWndList);
+
+				m_LastErrorCode = hr;
+				ListViewEx_ResetEmptyText(m_hWndList);
+
 				return hr;
 			}
 
@@ -1802,10 +1829,15 @@ public:
 			}
 			else
 			{
-				pa->DeleteAll();
 				delete pa;
 				SetRedraw(m_hWndList,TRUE);
 				MessageBeep(MB_ICONSTOP);
+
+				ListView_DeleteAllItems(m_hWndList);
+
+				m_LastErrorCode = hr = E_FAIL;
+				ListViewEx_ResetEmptyText(m_hWndList);
+
 				return E_FAIL;
 			}
 		}
@@ -1862,6 +1894,8 @@ public:
 		}
 
 		SetWatchDirectory(m_hWatchHandle,pSel->pszPath);
+
+		m_LastErrorCode = S_OK;
 
 		return S_OK;
 	}
@@ -2311,7 +2345,7 @@ public:
 				PWSTR ChooseFileName = AllocateSzFromUnicodeString(&usFileName);
 
 				SELECT_ITEM sel = {0};
-				sel.ViewType  = VIEW_PAGE_FILELIST;
+				sel.ViewType  = VOLUME_CONSOLE_FILES;
 				sel.mask = SI_MASK_FILEID;
 				sel.Flags = _FLG_NTFS_SPECIALFILE;
 				sel.FileId.dwSize = sizeof(FILE_ID_DESCRIPTOR);
@@ -2334,7 +2368,7 @@ public:
 				PWSTR ChooseFileName = AllocateSzFromUnicodeString(&usFileName);
 
 				SELECT_ITEM sel = {0};
-				sel.ViewType  = VIEW_PAGE_FILELIST;
+				sel.ViewType  = VOLUME_CONSOLE_FILES;
 				sel.pszPath = ParentPath;
 				sel.pszName = ChooseFileName;
 				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
@@ -2352,7 +2386,7 @@ public:
 		}
 
 		SELECT_ITEM sel = {0};
-		sel.ViewType  = VIEW_PAGE_FILELIST;
+		sel.ViewType  = VOLUME_CONSOLE_FILES;
 		sel.pszCurDir = szDirPath;
 		sel.pszName   = L"..";
 		SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
@@ -2367,7 +2401,7 @@ public:
 			{
 				SELECT_ITEM sel = {0};
 				sel.Flags = SI_FLAG_NOT_ADD_TO_HISTORY;
-				sel.ViewType  = VIEW_PAGE_FILELIST;
+				sel.ViewType  = VOLUME_CONSOLE_FILES;
 				sel.pszPath   = item.pszPath;
 				sel.pszName   = NULL;
 				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
@@ -2376,7 +2410,7 @@ public:
 			{
 				SELECT_ITEM sel = {0};
 				sel.Flags = SI_FLAG_NOT_ADD_TO_HISTORY;
-				sel.ViewType  = VIEW_PAGE_FILELIST;
+				sel.ViewType  = VOLUME_CONSOLE_FILES;
 				sel.pszPath   = item.pszPath;
 				sel.pszName   = item.pszFileName;
 				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
@@ -2391,7 +2425,7 @@ public:
 		{
 			SELECT_ITEM sel = {0};
 			sel.Flags = SI_FLAG_NOT_ADD_TO_HISTORY;
-			sel.ViewType  = VIEW_PAGE_FILELIST;
+			sel.ViewType  = VOLUME_CONSOLE_FILES;
 			sel.pszPath   = item.pszPath;
 			sel.pszName   = NULL;
 			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
@@ -2444,7 +2478,7 @@ public:
 		if( GotoDirectoryDialog(m_hWnd,&pszNewPath) == S_OK )
 		{
 			SELECT_ITEM sel = {0};
-			sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
+			sel.ViewType  = VOLUME_CONSOLE_FILES;
 			sel.pszPath   = pszNewPath;
 			sel.pszCurDir = NULL;
 			sel.pszName   = NULL;
@@ -2467,7 +2501,7 @@ public:
 	{
 		SELECT_ITEM sel = {0};
 
-		sel.ViewType  = VOLUME_CONSOLE_CONTENT_FILES;
+		sel.ViewType  = VOLUME_CONSOLE_FILES;
 		sel.pszCurDir = (PWSTR)this->m_pszCurDir;
 		sel.pszPath   = (PWSTR)this->m_pszCurDir;
 		sel.pszName   = (PWSTR)NULL;

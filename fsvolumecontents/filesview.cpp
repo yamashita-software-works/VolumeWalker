@@ -86,9 +86,9 @@ public:
 		ibc.crBoxBorder     = crHighlightBack;
 		ibc.crBoxInactiveBack = crBack;
 		ibc.crBoxInactiveBorder = crBack;
-		SendMessage(m_pHeaderBar->GetHwnd(),IBM_SETCOLOR,2,(LPARAM)&ibc);
+		SendMessage(m_pHeaderBar->GetHwnd(),HBM_SETCOLOR,2,(LPARAM)&ibc);
 
-		SendMessage(m_pHeaderBar->GetHwnd(),IBM_SETCOLOR,1,0);
+		SendMessage(m_pHeaderBar->GetHwnd(),HBM_SETCOLOR,1,0);
 #endif
 		return 0;
 	}
@@ -139,6 +139,27 @@ public:
 		return 0;
 	}
 
+	LRESULT OnChangePath(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		/* lookup current directory */
+		HEADERBARITEM *phbi = (HEADERBARITEM *)lParam;
+		SIZE_T cch = 32768;
+		WCHAR *sz = new WCHAR[cch];
+		if( sz != NULL )
+		{
+			if( HDIF_DRIVE_ITEM & phbi->Flags )
+				StringCchPrintf(sz,cch,L"\\??\\%s\\",phbi->Drive);
+			else
+				StringCchPrintf(sz,cch,L"%s\\",phbi->NtDeviceName);
+			SELECT_ITEM sel = {0};
+			sel.pszPath = sz;
+			m_pPage->UpdateData( &sel );
+			m_pHeaderBar->SetPath(sz);
+			delete[] sz;
+		}
+		return 0;
+	}
+
 #if _HEADER_BAR
 	LRESULT OnMakeContextMenu(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
@@ -148,11 +169,6 @@ public:
 		{
 			AppendMenu(hMenu,MF_STRING,ID_UP_DIR,  L"&Up One Directory\tAlt+UpArrow");
 			AppendMenu(hMenu,MF_STRING,ID_GOTO,    L"&GoTo Directory\tCtrl+G");
-		}
-		else
-		{
-			AppendMenu(hMenu,MF_STRING,ID_GOTO,L"&GoTo Directory");
-			SetMenuDefaultItem(hMenu,ID_GOTO,FALSE);
 		}
 		return 0;
 	}
@@ -176,9 +192,11 @@ public:
 				return OnCreate(hWnd,uMsg,wParam,lParam);
 			case WM_DESTROY:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
+#if _HEADER_BAR
 			case WM_NCACTIVATE:
-				SendMessage(m_pHeaderBar->GetHwnd(),IBM_SETCOLOR,wParam?1:0,0);
+				SendMessage(m_pHeaderBar->GetHwnd(),HBM_SETCOLOR,wParam?1:0,0);
 				break;
+#endif
 			case PM_GETCURDIR:
 				if( wParam != 0 )
 				{
@@ -191,11 +209,11 @@ public:
 				}
 				return 0;
 			case PM_FINDITEM:
+			case PM_GETSELECTEDFILE:
+			case PM_GETWORKINGDIRECTORY:
 				if( m_pPage )
 					return SendMessage(m_pPage->GetHwnd(),uMsg,wParam,lParam); // forward to current view
 				break;
-			case PM_MAKECONTEXTMENU:
-				return OnMakeContextMenu(hWnd,uMsg,wParam,lParam);
 			// Forward Parent Window
 			case WM_CONTROL_MESSAGE:
 				return SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,wParam,lParam);
@@ -205,25 +223,12 @@ public:
 				if( m_pPage )
 					return SendMessage(m_pPage->GetHwnd(),uMsg,wParam,lParam); // forward to current view
 				break;
+#if _HEADER_BAR
 			case PM_CHANGEPATH:
-			{
-				/* lookup current directory */
-				HEADERBARITEM *phbi = (HEADERBARITEM *)lParam;
-				SIZE_T cch = 32768;
-				WCHAR *sz = new WCHAR[cch];
-				if( sz != NULL ) {
-					if( HDIF_DRIVE_ITEM & phbi->Flags )
-						StringCchPrintf(sz,cch,L"\\??\\%s\\",phbi->Drive);
-					else
-						StringCchPrintf(sz,cch,L"%s\\",phbi->NtDeviceName);
-					SELECT_ITEM sel = {0};
-					sel.pszPath = sz;
-					m_pPage->UpdateData( &sel );
-					m_pHeaderBar->SetPath(sz);
-					delete[] sz;
-				}
-				return 0;
-			}
+				return OnChangePath(hWnd,uMsg,wParam,lParam);
+			case PM_MAKECONTEXTMENU:
+				return OnMakeContextMenu(hWnd,uMsg,wParam,lParam);
+#endif
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -319,7 +324,7 @@ public:
 				ASSERT(pNew != NULL);
 				break;
 			}
-			case VOLUME_CONSOLE_CONTENT_FILES:
+			case VOLUME_CONSOLE_FILES:
 			{
 				pNew = GetOrAllocWndObjct<CFileListPage>(nView);
 				ASSERT(pNew != NULL);
@@ -374,6 +379,7 @@ public:
 
 	void UpdateFileList(SELECT_ITEM *Path)
 	{
+		HRESULT hr;
 		BOOL bValidPath = FALSE;
 
 		if( Path->Flags & _FLG_NTFS_SPECIALFILE )
@@ -385,9 +391,17 @@ public:
 			bValidPath = TRUE;
 		}
 
-		if( bValidPath )
+		if( Path->pszPath ) // bValidPath )
 		{
-			if( UpdateData(Path) == S_OK )
+			if( (hr = UpdateData(Path)) == S_OK )
+			{
+#if _HEADER_BAR
+				m_pHeaderBar->EnableButton(ID_UP_DIR, !IsRootDirectory_W(Path->pszPath) );
+
+				m_pHeaderBar->SetPath( Path->pszPath );
+#endif
+			}
+			else
 			{
 #if _HEADER_BAR
 				m_pHeaderBar->EnableButton(ID_UP_DIR, !IsRootDirectory_W(Path->pszPath) );
@@ -424,7 +438,7 @@ public:
 				pPrev = _SelectPage( pSel );
 				UpdateRootView(Path);
 				break;
-			case VOLUME_CONSOLE_CONTENT_FILES:
+			case VOLUME_CONSOLE_FILES:
 				nPrevView = m_nView;
 				pPrev = _SelectPage( pSel );
 				if( nPrevView != -1 &&  pSel->ViewType != nPrevView )
@@ -433,12 +447,7 @@ public:
 					if(pszWorkPath)
 					{
 						m_pHeaderBar->EnableButton(ID_UP_DIR, !IsRootDirectory_W(pszWorkPath) );
-
-						UNICODE_STRING usText;
-						PWSTR pszRoot;
-						RtlInitUnicodeString(&usText,pszWorkPath);
-						FindRootDirectory_U(&usText,&pszRoot);
-						SetWindowText(m_pHeaderBar->GetHwnd(),pszRoot);
+						m_pHeaderBar->SetPath(pszWorkPath);
 					}
 				}
 				else
@@ -450,6 +459,8 @@ public:
 				ASSERT(FALSE);
 				break;
 		}
+
+		SetFocus(m_pPage->GetHwnd());	
 
 		RECT rc;
 		GetClientRect(m_hWnd,&rc);

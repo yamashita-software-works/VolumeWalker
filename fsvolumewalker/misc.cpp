@@ -88,3 +88,81 @@ LONG WINAPI GetComputerInformation(ULONG InfoClass, UINT Flags, PVOID Buffer, UL
 
 	return Result;
 }
+
+HICON GetAppropriateVolumeIconByPath(PCWSTR pszPath)
+{
+	HICON hIcon = NULL;
+	if( pszPath[1] == L':' && _DOS_DRIVE_CHAR(pszPath[0]) )
+	{
+		SHSTOCKICONID siid = (SHSTOCKICONID)0;
+		UINT Type = GetDriveType(pszPath);
+		switch( Type )
+		{
+			case DRIVE_REMOVABLE:
+				siid = SIID_DRIVEREMOVE;
+				break;
+			case DRIVE_FIXED:
+				siid = SIID_DRIVEFIXED;
+				break;
+			case DRIVE_REMOTE:
+				siid = SIID_DRIVENET;
+				break;
+			case DRIVE_CDROM:
+				siid = SIID_DRIVECD;
+				break;
+			case DRIVE_RAMDISK:
+				siid = SIID_DRIVERAM;
+				break;
+			default:
+				hIcon = GetShellFileIcon(pszPath,SHGFI_SMALLICON);
+				break;
+		}
+		if( siid != (SHSTOCKICONID)0 )
+			hIcon = GetShellStockIcon(siid);
+	}
+	else
+	{
+		WCHAR szVolume[MAX_PATH];
+		NtPathGetVolumeName(pszPath,szVolume,MAX_PATH);
+			HANDLE hVolume;
+		if( OpenVolume(szVolume,0,&hVolume) == 0 )
+		{
+			SHSTOCKICONID siid;
+			ULONG DeviceType;
+			ULONG Characteristics;
+			GetVolumeDeviceType(hVolume,&DeviceType,&Characteristics);
+			switch( DeviceType )
+			{
+				case FILE_DEVICE_CD_ROM:
+					siid = SIID_DRIVECD;
+					break;
+				case FILE_DEVICE_DISK:
+					if( Characteristics & (FILE_REMOVABLE_MEDIA|FILE_PORTABLE_DEVICE) )
+						siid = SIID_DRIVEREMOVE;
+					else 
+						siid = SIID_DRIVEFIXED;
+					break;
+				default:
+					siid = SIID_DRIVEFIXED;
+					break;
+			}
+			CloseHandle(hVolume);
+				hIcon = GetShellStockIcon(siid);
+		}
+		else
+		{
+			if( PathIsPrefixDosDeviceDrive(szVolume) )
+			{
+				hIcon = GetShellFileIcon(&szVolume[4],SHGFI_SMALLICON);
+			}
+			else
+			{
+				if( pszPath[1] == L':' && _DOS_DRIVE_CHAR(pszPath[0]) )
+					hIcon = GetShellFileIcon(szVolume,SHGFI_SMALLICON);
+				else
+					hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
+			}
+		}
+	}
+	return (HICON)hIcon;
+}

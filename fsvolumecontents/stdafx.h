@@ -52,7 +52,6 @@
 
 HINSTANCE _GetResourceInstance();
 
-#include "filemisc.h"
 #include "fsfilelib.h"
 #include "fileitem.h"
 

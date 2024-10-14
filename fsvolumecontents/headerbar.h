@@ -20,9 +20,13 @@
 #include "ntvolumenames.h"
 #include "ntobjecthelp.h"
 
-#define PM_CHANGEPATH (WM_APP+5000)
-
 #define _USE_COMBOBOX_EX  1
+
+#define ID_PATHBOX 100
+
+#define PM_CHANGEPATH             (WM_APP+5000)
+
+#define HDBS_VOLUMECOMBOBOX       (0x00000001)
 
 typedef struct _HEADERBARCOLOR
 {
@@ -36,7 +40,7 @@ typedef struct _HEADERBARCOLOR
 	COLORREF crBoxInactiveBorder;
 } HEADERBARCOLOR;
 
-#define IBM_SETCOLOR (PM_USERBASE+0)
+#define HBM_SETCOLOR (PM_USERBASE+0)
 
 typedef struct _HEADERBARITEM
 {
@@ -71,6 +75,8 @@ class CHeaderBarWindow : public CBaseWindow
 	HWND m_hWndPathBox;
 	HWND m_hwndComboBox;
 
+	DWORD m_dwStyleFlags;
+
 public:
 	CHeaderBarWindow()
 	{
@@ -82,12 +88,14 @@ public:
 		m_hWndToolbar = NULL;
 		m_hWndMenubar = NULL;
 		m_hWndPathBox = NULL;
+		m_hwndComboBox = NULL;
 		m_crHighlightBack = m_crNormalBack = GetSysColor(COLOR_3DFACE);
 		m_crHighlightText = m_crNormalText = GetSysColor(COLOR_WINDOWTEXT);
 		m_crBoxBack = m_crHighlightBack;
 		m_crBoxBorder = m_crHighlightBack;
 		m_crBoxInactiveBack = m_crBoxBack;
 		m_crBoxInactiveBorder = m_crBoxInactiveBack;
+		m_dwStyleFlags = 0;
 	}
 
 	~CHeaderBarWindow()
@@ -243,38 +251,41 @@ public:
 		//
 		// Create Volume ComboBox
 		//
+		if( HDBS_VOLUMECOMBOBOX & m_dwStyleFlags )
+		{
 #if _USE_COMBOBOX_EX
-		INITCOMMONCONTROLSEX icex;
-		icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
-		icex.dwICC = ICC_USEREX_CLASSES;
-		InitCommonControlsEx(&icex);
-		m_hwndComboBox = CreateWindowEx(0, WC_COMBOBOXEX, NULL,
-					WS_CHILD | WS_BORDER | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST,
-					// No size yet--resize after setting image list.
-					0,    // Vertical position of Combobox
-					0,    // Horizontal position of Combobox
-					0,    // Sets the width of Combobox
-					2048, // Sets the height of Combobox
-					hWnd,
-					NULL,
-					_GetResourceInstance(),
-					NULL);
+			INITCOMMONCONTROLSEX icex;
+			icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+			icex.dwICC = ICC_USEREX_CLASSES;
+			InitCommonControlsEx(&icex);
+			m_hwndComboBox = CreateWindowEx(0, WC_COMBOBOXEX, NULL,
+						WS_CHILD | WS_BORDER | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST,
+						// No size yet--resize after setting image list.
+						0,    // Vertical position of Combobox
+						0,    // Horizontal position of Combobox
+						0,    // Sets the width of Combobox
+						2048, // Sets the height of Combobox
+						hWnd,
+						NULL,
+						_GetResourceInstance(),
+						NULL);
 #else
-		m_hwndComboBox = CreateWindow(L"COMBOBOX", L"", 
-					CBS_DROPDOWNLIST | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 
-					0, 0, 0, 2048,
-					hWnd, (HMENU)0, _GetResourceInstance(), NULL); 
+			m_hwndComboBox = CreateWindow(L"COMBOBOX", L"", 
+						CBS_DROPDOWNLIST | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 
+						0, 0, 0, 2048,
+						hWnd, (HMENU)0, _GetResourceInstance(), NULL); 
 
-		SendMessage(m_hwndComboBox,WM_SETFONT,(WPARAM)m_hFont,0);
+			SendMessage(m_hwndComboBox,WM_SETFONT,(WPARAM)m_hFont,0);
 #endif
-		InitComboBox();
+			InitComboBox();
+		}
 
 		//
 		// Create Path Box 
 		//
 		m_hWndPathBox = CreateWindowEx(0,LPBC_LONGPATHBOX_NAME,L"",
 							WS_VISIBLE|WS_CHILD|LPBS_FLAT_BORDER|LPBS_NO_TEXTSELECTION|LPBS_NO_FOCUS,
-							0,0,0,0,m_hWnd,(HMENU)100,_GetResourceInstance(),0);
+							0,0,0,0,m_hWnd,(HMENU)ID_PATHBOX,_GetResourceInstance(),0);
 
 		SendMessage(m_hWndPathBox,WM_SETFONT,(WPARAM)m_hFont,0);
 
@@ -386,24 +397,29 @@ public:
 				cytbMenu,
 				SWP_NOZORDER);
 
-		const int margin = 4;
-		int cxComboBox = _DPI_Adjust_X( 220 );
+		int cxMargin = 0;
+		int cxComboBox = 0;
 		int cyPathBox = GetToolbarButtonHeight();
 
-		RECT rcComboBox;
-		GetWindowRect(m_hwndComboBox,&rcComboBox);
+		if( m_hwndComboBox != NULL )
+		{
+			cxMargin = 4;
+			cxComboBox = _DPI_Adjust_X( 240 );
+			RECT rcComboBox;
+			GetWindowRect(m_hwndComboBox,&rcComboBox);
 
-		SetWindowPos(m_hwndComboBox,NULL,
-				margin,
-				(cy-_RECT_HIGHT(rcComboBox))/2,
-				cxComboBox,
-				_RECT_HIGHT(rcComboBox),
-				SWP_NOZORDER);
+			SetWindowPos(m_hwndComboBox,NULL,
+					cxMargin,
+					(cy-_RECT_HIGHT(rcComboBox))/2,
+					cxComboBox,
+					_RECT_HIGHT(rcComboBox),
+					SWP_NOZORDER);
+		}
 
 		SetWindowPos(m_hWndPathBox,NULL,
-				margin + cxComboBox + margin,
+				cxMargin + cxComboBox + cxMargin,
 				(cy-cytbMenu)/2,
-				cx-cxtb-cxtbMenu-(margin*2)-cxComboBox-margin,
+				cx-cxtb-cxtbMenu-(cxMargin*2)-cxComboBox-cxMargin,
 				cyPathBox,
 				SWP_NOZORDER);
 
@@ -486,7 +502,7 @@ public:
 				}
 				return SendMessage(GetActiveWindow(),uMsg,wParam,lParam);
 			}
-			case IBM_SETCOLOR:
+			case HBM_SETCOLOR:
 			{
 				switch( LOWORD(wParam) )
 				{
@@ -864,7 +880,6 @@ typedef struct CBEXITEM {
 		{
 			comp = 1;
 		}
-
 
 #if 0
 		{

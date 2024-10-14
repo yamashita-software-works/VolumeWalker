@@ -39,3 +39,10 @@ EXPORTS
 
 	_StringFromGUID
 	_HasPrefix
+
+	NTFile_OpenFile
+	NTFile_CloseFile
+	NTFile_GatherFileInformation
+	NTFile_FreeFileInformation
+	NTFile_GetAttributeString
+	GetAttributeString

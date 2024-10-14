@@ -163,9 +163,18 @@ inline BOOL ListViewEx_InsertColumnText(HWND hwndLV,int iCol,PCWSTR text,int fmt
 	return (BOOL)SendMessage(hwndLV,LVM_INSERTCOLUMN,iCol,(LPARAM)&col);
 }
 
-__forceinline int ListViewEx_GetCurSel(HWND hwndLV)
+inline int ListViewEx_GetCurSel(HWND hwndLV)
 {
 	return (int)ListView_GetNextItem(hwndLV,-1,LVNI_SELECTED|LVNI_FOCUSED);
+}
+
+#ifndef LVM_RESETEMPTYTEXT
+#define LVM_RESETEMPTYTEXT (LVM_FIRST + 84)
+#endif
+
+inline BOOL ListViewEx_ResetEmptyText(HWND hwndLV)
+{
+	return (BOOL)SendMessage(hwndLV,LVM_RESETEMPTYTEXT,0,0);
 }
 
 typedef struct _LVSORTHOSTPARAM

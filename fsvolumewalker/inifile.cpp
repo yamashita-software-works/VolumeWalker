@@ -247,7 +247,7 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 		switch( wndGuid.Data1 )
 		{
 			case VOLUME_CONSOLE_SIMPLEHEXDUMP:
-			case VOLUME_CONSOLE_CONTENT_FILES:
+			case VOLUME_CONSOLE_FILES:
 			{
 				QM_PARAM wqp = {0};
 				wqp.dwLength = cch;

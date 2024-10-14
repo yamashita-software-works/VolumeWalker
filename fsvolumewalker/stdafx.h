@@ -22,6 +22,7 @@
 #include <shlwapi.h>
 #include <strsafe.h>
 #include <commdlg.h>
+#include <commctrl.h>
 #include <winternl.h> // WinSDK 7.1
 
 #if _MSC_VER <= 1500
@@ -45,6 +46,7 @@
 #include "..\fsvolumehelp\volumehelp.h"
 #include "..\fsvolumelist\fsvolumelist.h"
 #include "..\fsvolumecontents\fsvolumecontents.h"
+#include "..\fsfilelib\fsfilelib.h"
 #include "common_msg.h"
 #include "volumeconsoledef.h"
 #include "misc.h"
@@ -56,14 +58,6 @@
 
 HINSTANCE _GetResourceInstance();
 HWND _GetMainWnd();
-
-inline HICON GetShellStockIcon(SHSTOCKICONID StockIconId)
-{
-	SHSTOCKICONINFO sii = {0};
-	sii.cbSize = sizeof(sii);
-	SHGetStockIconInfo(StockIconId,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
-	return sii.hIcon;
-}
 
 inline HICON SetFrameIcon(HWND hWnd,HICON hIcon)
 {

@@ -1,3 +1,12 @@
+### 0.1.18.0
+
+- Volume Informationにボリューム使用量バー表示の表示不具合を修正。
+
+- Volume Contents Browser - Filesウィンドウの仕様を変更するために一部機能を制限・再構成。   
+ComboBoxは無効化されました。
+
+- 他プロジェクトと同期の為にソース・ライブラリ整理。
+
 ### 0.1.17.0
 
 - Volume Informationにボリューム使用量バー表示行（ Usage% 行 ）を追加。

@@ -82,6 +82,17 @@ typedef struct _FS_SELECTED_FILE
 	PWSTR pszPath;
 } FS_SELECTED_FILE;
 
+//
+// PM_UPDATETITLE
+//   wParam  -
+//   lParam  - Path or VolumeName
+//   lResult -
+//
+// NOTE:
+// Update frame window title.
+//
+#define PM_UPDATETITLE (PM_BASE+2)
+
 //////////////////////////////////////////////////////////////////////////////
 // old compatible message
 // refer to FSFileList/FSUtilGUI document.

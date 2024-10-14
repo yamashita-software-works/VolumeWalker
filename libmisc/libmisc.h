@@ -636,6 +636,8 @@ GetGlobalShareImageList(
 	int ImageList
 	);
 
+#include <shellapi.h>
+
 int
 WINAPI
 GetShellFileIconImageListIndexEx(
@@ -654,3 +656,15 @@ GetShellFileImageListIndex(
 	DWORD dwFileAttributes
 	);
 
+HICON
+WINAPI
+GetShellFileIcon(
+	PCWSTR pszPath,
+	UINT uFlags
+	);
+
+HICON
+WINAPI
+GetShellStockIcon(
+	SHSTOCKICONID StockIconId
+	);

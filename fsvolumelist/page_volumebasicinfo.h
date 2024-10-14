@@ -205,7 +205,7 @@ public:
 		{
 			CVolumeInfoItem *p = (CVolumeInfoItem *)pcd->nmcd.lItemlParam;
 
-			if( p->Type == diUsagePct )
+			if( p->Type == diUsagePct && pcd->nmcd.dwItemSpec,pcd->iSubItem == 1 )
 			{
 				RECT rc;
 				ListView_GetItemRect(pcd->nmcd.hdr.hwndFrom,(int)pcd->nmcd.dwItemSpec,&rc,LVIR_BOUNDS);
