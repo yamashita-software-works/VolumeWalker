@@ -1608,8 +1608,6 @@ NTFile_GatherFileInformation(
 	//
 	// File Name / Alternate (Short) Name Information
 	//
-//++todo:
-//大深度パス参照時に不具合がある。
 	ULONG cb = sizeof(FILE_NAME_INFORMATION) + WIN32_MAX_PATH_BYTES;
 	FILE_NAME_INFORMATION *pfni = (FILE_NAME_INFORMATION *)AllocMemory(cb);
 	if( pfni )
@@ -1626,7 +1624,7 @@ NTFile_GatherFileInformation(
 
 		FreeMemory(pfni);
 	}
-//--
+
 	//
 	// Alternate Stream Information
 	//

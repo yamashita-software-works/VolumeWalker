@@ -5,6 +5,5 @@ DIRS=\
 	fsfilelib\
 	fsvolumehelp\
 	fsvolumelist\
-	fsvolumecontents\
 	fsvolumewalker
 	

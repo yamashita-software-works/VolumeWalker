@@ -91,7 +91,7 @@ MDI Win32アプリケーションのひな形を用いて、[FSWorkbench](https:
 
 ### 使い方
 
-1. fsvolumewalker.exeを実行します。
+1. volumewalker.exeを実行します。
 
 1. `File` メニューから目的のウィンドウを選択します。
 

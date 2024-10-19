@@ -199,14 +199,14 @@ public:
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
 			AppendMenu(hMenu,MF_STRING,0,0);
-
+#if _ENABLE_VOLUME_CONTENTS
 			hSubMenu = CreatePopupMenu();
 			{
 				AppendMenu(hSubMenu,MF_STRING,ID_FILE_VOLUMEFILES,L"&Files");
 				AppendMenu(hSubMenu,MF_STRING,ID_FILE_CHANGEJOURNAL,L"Change &Journal");
 			}
 			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Volume Contents &Browser");
-
+#endif
 			hSubMenu = CreatePopupMenu();
 			{
 				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"&Explorer");
@@ -1136,8 +1136,10 @@ public:
 			case ID_VOLUMEINFORMATION:
 			case ID_FILESYSTEMSTATISTICS:
 			case ID_HEXDUMP:
+#if _ENABLE_VOLUME_CONTENTS
 			case ID_FILE_VOLUMEFILES:
 			case ID_FILE_CHANGEJOURNAL:
+#endif
 			case ID_EDIT_COPY:
 			case ID_OPEN_LOCATION_EXPLORER:
 			case ID_OPEN_LOCATION_CMDPROMPT:
@@ -1175,12 +1177,14 @@ public:
 			case ID_HEXDUMP:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );
 				break;
+#if _ENABLE_VOLUME_CONTENTS
 			case ID_FILE_CHANGEJOURNAL:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOUUME_CONSOLE_CHANGE_JOURNAL );
 				break;
 			case ID_FILE_VOLUMEFILES:
 				OpenInformationViewDosDrive( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_FILES );
 				break;
+#endif
 			case ID_OPEN_LOCATION_EXPLORER:
 				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 0 );
 				break;

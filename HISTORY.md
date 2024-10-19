@@ -1,3 +1,11 @@
+### 0.1.19.0
+
+- 実行ファイルの名称を変更。   
+ fsvoumewalker.exe ⇒ volumewalker.exe
+
+- Volume Contents Browserの仕様を全面見直しの為機能を一旦削除。プロジェクトからも削除。   
+  0.1.8.0以来含まれていたfsvolumecontents.dllは削除されました。
+
 ### 0.1.18.0
 
 - Volume Informationにボリューム使用量バー表示の表示不具合を修正。

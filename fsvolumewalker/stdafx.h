@@ -45,7 +45,6 @@
 #include "..\inc\simplevalarray.h"
 #include "..\fsvolumehelp\volumehelp.h"
 #include "..\fsvolumelist\fsvolumelist.h"
-#include "..\fsvolumecontents\fsvolumecontents.h"
 #include "..\fsfilelib\fsfilelib.h"
 #include "common_msg.h"
 #include "volumeconsoledef.h"

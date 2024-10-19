@@ -1,5 +1,0 @@
-LIBRARY "fsvolumecontents"
-
-EXPORTS
-	CreateVolumeContentsBrowserWindow
-

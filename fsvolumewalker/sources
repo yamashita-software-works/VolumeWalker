@@ -1,10 +1,10 @@
 #
 #
-# FSVolumeWalker MDI frame main
+# VolumeWalker
 #
 #
 TARGETTYPE=PROGRAM
-TARGETNAME=fsvolumewalker
+TARGETNAME=volumewalker
 TARGETPATH=obj
 UMENTRY=wwinmain
 UMTYPE=windows
@@ -130,7 +130,6 @@ LINKLIBS=\
 	$(CRT_LIB_PATH)\delayimp.lib \
 	$(DDK_LIB_PATH)\ntdll.lib \
 	$(_USERLIB)\fsvolumelist.lib \
-	$(_USERLIB)\fsvolumecontents.lib \
 	$(_USERLIB)\fsfilelib.lib \
 	$(_USERLIB)\libcwh.lib \
 	$(_USERLIB)\libmisc.lib \
