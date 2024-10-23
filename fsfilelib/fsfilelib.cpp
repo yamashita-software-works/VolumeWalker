@@ -409,11 +409,21 @@ DosPathToNtDevicePath(
 		WCHAR szNtVolume[64];
 		RtlZeroMemory(szNtVolume,sizeof(szNtVolume));
 
-		if( QuerySymbolicLinkObjectName(L"\\Global??",pVolume,szNtVolume,ARRAYSIZE(szNtVolume),NULL) != 0 )
+		if( PathIsPrefixDosDevice(pVolume) )
 		{
-			if( QuerySymbolicLinkObjectName(L"\\??",pVolume,szNtVolume,ARRAYSIZE(szNtVolume),NULL) != 0 )
+			if( QuerySymbolicLinkObjectName(NULL,pVolume,szNtVolume,ARRAYSIZE(szNtVolume),NULL) != 0 )
 			{
 				;
+			}
+		}
+		else
+		{
+			if( QuerySymbolicLinkObjectName(L"\\Global??",pVolume,szNtVolume,ARRAYSIZE(szNtVolume),NULL) != 0 )
+			{
+				if( QuerySymbolicLinkObjectName(L"\\??",pVolume,szNtVolume,ARRAYSIZE(szNtVolume),NULL) != 0 )
+				{
+					;
+				}
 			}
 		}
 

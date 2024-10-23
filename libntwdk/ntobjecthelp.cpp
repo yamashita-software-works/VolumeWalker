@@ -785,10 +785,13 @@ QuerySymbolicLinkObjectName(
         return 0;
     }
 
-    RtlAppendUnicodeToString(&usSymLinkPath,SymbolicLinkPath);
+	if( SymbolicLinkPath && *SymbolicLinkPath != L'\0' )
+	{
+	    RtlAppendUnicodeToString(&usSymLinkPath,SymbolicLinkPath);
 
-	if( !IsLastCharacterBackslash_U(&usSymLinkPath) )
-	    RtlAppendUnicodeToString(&usSymLinkPath,L"\\");
+		if( !IsLastCharacterBackslash_U(&usSymLinkPath) )
+			RtlAppendUnicodeToString(&usSymLinkPath,L"\\");
+	}
 
     RtlAppendUnicodeToString(&usSymLinkPath,SymbolicLinkName);
 
