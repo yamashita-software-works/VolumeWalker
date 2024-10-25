@@ -288,7 +288,7 @@ HRESULT InitLanguage(LPWSTR pszLangIdOrName)
     However, this may not be the case in the future.
 
       - VOLUME_CONSOLE_FILES
-      - VOUUME_CONSOLE_CHANGE_JOURNAL
+      - VOLUME_CONSOLE_CHANGE_JOURNAL
 
 --*/
 // stl::map<> is the preferred using.
@@ -308,7 +308,7 @@ static MDICHILDFRAMETABLE table[]= {
 	{VOLUME_CONSOLE_FILTERDRIVER,      0},
 #if _ENABLE_VOLUME_CONTENTS && _ENABLE_SINGLETON_CONTENTS_BROWSER_WINDOW
 	{VOLUME_CONSOLE_FILES,             0}, // todo: currently, singleton console.
-	{VOUUME_CONSOLE_CHANGE_JOURNAL,    0}, // todo: currently, singleton console.
+	{VOLUME_CONSOLE_CHANGE_JOURNAL,    0}, // todo: currently, singleton console.
 #endif
 };
 
@@ -400,13 +400,13 @@ VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *O
 #if _ENABLE_VOLUME_CONTENTS
 #if _ENABLE_SINGLETON_CONTENTS_BROWSER_WINDOW
 		case VOLUME_CONSOLE_FILES:
-		case VOUUME_CONSOLE_CHANGE_JOURNAL:
+		case VOLUME_CONSOLE_CHANGE_JOURNAL:
 			Guid.Data1 = (ULONG)ConsoleId;
 			Guid.Data2 = 0x1;
 			break;
 #else
 		case VOLUME_CONSOLE_FILES:
-		case VOUUME_CONSOLE_CHANGE_JOURNAL:
+		case VOLUME_CONSOLE_CHANGE_JOURNAL:
 			Guid.Data1 = (ULONG)ConsoleId;
 			Guid.Data2 = 0x1;
 			GetSystemTimeAsFileTime( (LPFILETIME)Guid.Data4 );
@@ -436,7 +436,7 @@ BOOL IsVolumeNameRequiredConsole(LPGUID pwndGuid,UINT ConsoleId)
 	{
 #if _ENABLE_VOLUME_CONTENTS
 		case VOLUME_CONSOLE_FILES:
-		case VOUUME_CONSOLE_CHANGE_JOURNAL:
+		case VOLUME_CONSOLE_CHANGE_JOURNAL:
 #endif
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
 		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
@@ -463,7 +463,7 @@ PCWSTR GetConsoleTitle(UINT ConsoleTypeId)
 		{VOLUME_CONSOLE_FILTERDRIVER,       L"Minifilter Driver"},
 #if _ENABLE_VOLUME_CONTENTS
 		{VOLUME_CONSOLE_FILES,              L"Volume Contents Browser"},
-		{VOUUME_CONSOLE_CHANGE_JOURNAL,     L"Volume Change Journal Browser"},
+		{VOLUME_CONSOLE_CHANGE_JOURNAL,     L"Volume Change Journal Browser"},
 #endif
 	};
 
@@ -728,7 +728,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP ||
 #if _ENABLE_VOLUME_CONTENTS
 		ConsoleTypeId == VOLUME_CONSOLE_FILES ||
-		ConsoleTypeId == VOUUME_CONSOLE_CHANGE_JOURNAL
+		ConsoleTypeId == VOLUME_CONSOLE_CHANGE_JOURNAL
 #endif
 		)
 #endif
@@ -763,7 +763,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 			SendHexDumpInformation(hwndChildFrame,pd->hWndView,pOpenParam);
 		}
 #if _ENABLE_VOLUME_CONTENTS
-		else if( VOUUME_CONSOLE_CHANGE_JOURNAL == ConsoleTypeId )
+		else if( VOLUME_CONSOLE_CHANGE_JOURNAL == ConsoleTypeId )
 		{
 			SendContentsBrowserChangeJournalVolumeOrFileName(hwndChildFrame,pd->hWndView,pOpenParam,FALSE);
 		}
@@ -840,7 +840,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 				SendHexDumpInformation(hwndMDIChild,pd->hWndView,pOpenParam);
 			}
 #if _ENABLE_VOLUME_CONTENTS
-			else if( VOUUME_CONSOLE_CHANGE_JOURNAL == ConsoleTypeId )
+			else if( VOLUME_CONSOLE_CHANGE_JOURNAL == ConsoleTypeId )
 			{
 				pd->hWndView = CreateVolumeContentsBrowserWindow(hwndMDIChild,ConsoleTypeId);
 
@@ -1443,7 +1443,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			break;
 		}
-		case WM_OPEM_MDI_CHILDFRAME:
+		case WM_OPEN_MDI_CHILDFRAME:
 		{
 			//
 			// Open new child frame window
