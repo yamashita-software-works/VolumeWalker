@@ -46,7 +46,7 @@
 #include "common_msg.h"
 #include "simplestack.h"
 #include "common_resid.h"
-#include "appdef_resid.h"
+#include "common_resid_appdef.h"
 #include "listhelp.h"
 #include "appwindowdefs.h"
 #include "interface.h"
@@ -119,7 +119,7 @@ inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz,LONGLONG StartOffs
 	open_mdi.hwndFrom = 0;
 	open_mdi.Path     = (PWSTR)psz;
 	open_mdi.StartOffset.QuadPart = StartOffset;
-	SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,0),(LPARAM)&open_mdi);
+	SendMessage(GetActiveWindow(),WM_OPEN_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,0),(LPARAM)&open_mdi);
 #endif
 }
 
@@ -139,7 +139,7 @@ inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz)
 			popen_mdi->hwndFrom = 0;
 			popen_mdi->Path     = (PWSTR)(((UINT_PTR)popen_mdi)+sizeof(OPEN_MDI_CHILDFRAME_PARAM));
 			StringCchCopy(popen_mdi->Path,cch,psz);
-			PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,1),(LPARAM)popen_mdi);
+			PostMessage(GetActiveWindow(),WM_OPEN_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,1),(LPARAM)popen_mdi);
 		}
 		else
 		{
@@ -147,7 +147,7 @@ inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz)
 			open_mdi.Flags    = 0;
 			open_mdi.hwndFrom = 0;
 			open_mdi.Path     = (PWSTR)psz;
-			SendMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,0),(LPARAM)&open_mdi);
+			SendMessage(GetActiveWindow(),WM_OPEN_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,0),(LPARAM)&open_mdi);
 		}
 	}
 }

@@ -41,7 +41,7 @@
 #include "..\libmisc\libmisc.h"
 #include "..\inc\common.h"
 #include "..\inc\common_resid.h"
-#include "..\inc\appdef_resid.h"
+#include "..\inc\common_resid_appdef.h"
 #include "..\inc\simplevalarray.h"
 #include "..\fsvolumehelp\volumehelp.h"
 #include "..\fsvolumelist\fsvolumelist.h"
