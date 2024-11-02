@@ -22,12 +22,12 @@ enum {
 	UI_INIT_LAYOUT       =  0x1001,
 	UI_INIT_VIEW         =  0x1002,
 	UI_SELECT_ITEM       =  0x1003,
-	UI_SET_FILEPATH      =  0x1004,
+	UI_SET_FILE          =  0x1004,
 	UI_SET_DIRECTORY     =  0x1005,
 	UI_CHANGE_DIRECTORY  =  0x1006,
 	UI_SET_TITLE         =  0x1007,
 	UI_SET_ICON          =  0x1008,
-	UI_SET_INIFILEINFO   =  0x1009,
+//	OBSOLETE             =  0x1009,
 	UI_GET_SUBPANE       =  0x100A,
 	UI_SET_SUBPANE       =  0x100B,
 	UI_SET_FILELIST      =  0x100C,
@@ -35,7 +35,7 @@ enum {
 	UI_NOTIFY_VOLUME_SELECTED   = 0x2002,
 	UI_NOTIFY_DIRECTORY_CHANGED = 0x2003,
 	UI_NOTIFY_VOLUME_CHANGED    = 0x2004,
-	UI_QUERY_INIFILEINFO        = 0x3001,
+//	OBSOLETE                    = 0x3001,
 	UI_QUERY_CURRENTITEMNAME    = 0x3002,
 };
 
@@ -52,12 +52,11 @@ typedef struct _SELECT_ITEM
 	union {             // Volume, Physical Drive, Storage Device
 		PWSTR pszVolume;
 		PWSTR pszPhysicalDrive;
-		PWSTR pszStorage;
 	};
 	FILE_ID_DESCRIPTOR FileId;
-	UINT ViewType;     // Depends an application.
+	UINT ViewType;
 	PVOID Context;     // Depends an application.
-	GUID *pGuid;       // Depends an application.
+	GUID Guid;
 } SELECT_ITEM;
 
 #define SI_MASK_PATH     0x1

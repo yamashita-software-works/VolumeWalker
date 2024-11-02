@@ -229,7 +229,7 @@ static BOOL GetSectionInfo(PWSTR pszSection,MDICHILDFRAMEINIT_DIRFILES *pmdidoc)
 	return TRUE;
 }
 
-static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndView,GUID& wndGuid,MDICHILDFRAMEINIT_DIRFILES *pmdidoc)
+static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndView,UINT wndId,GUID& wndGuid,MDICHILDFRAMEINIT_DIRFILES *pmdidoc)
 {
 	int cch = 32768 + MAX_PATH;
 	WCHAR *sz = new WCHAR[ cch ];
@@ -244,10 +244,9 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 
 	if( wndGuid.Data4[0] != 0 || wndGuid.Data2 == 0x1 )
 	{
-		switch( wndGuid.Data1 )
+		switch( wndId )
 		{
 			case VOLUME_CONSOLE_SIMPLEHEXDUMP:
-			case VOLUME_CONSOLE_FILES:
 			{
 				QM_PARAM wqp = {0};
 				wqp.dwLength = cch;
@@ -515,7 +514,7 @@ static VOID SaveLayout(HWND hWnd,HWND hWndMDIClient)
 					StringFromGUID( &Guid, szSection, _countof(szSection) );
 					GUIDStringRemoveBrackets(szSection);
 
-					WriteSectionInfo(szSection,hwnd,pd->hWndView,pcv->wndGuid,&mdidoc);
+					WriteSectionInfo(szSection,hwnd,pd->hWndView,pcv->wndId,pcv->wndGuid,&mdidoc);
 
 					StringCchPrintf(szEntry,ARRAYSIZE(szEntry),L"%d",iIndex);
 					WriteSectionString(_LPWSTR_SECTION_MDILAYOUT,szEntry,szSection);

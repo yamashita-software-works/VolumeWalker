@@ -124,7 +124,7 @@ HICON GetAppropriateVolumeIconByPath(PCWSTR pszPath)
 	{
 		WCHAR szVolume[MAX_PATH];
 		NtPathGetVolumeName(pszPath,szVolume,MAX_PATH);
-			HANDLE hVolume;
+		HANDLE hVolume;
 		if( OpenVolume(szVolume,0,&hVolume) == 0 )
 		{
 			SHSTOCKICONID siid;
@@ -147,7 +147,7 @@ HICON GetAppropriateVolumeIconByPath(PCWSTR pszPath)
 					break;
 			}
 			CloseHandle(hVolume);
-				hIcon = GetShellStockIcon(siid);
+			hIcon = GetShellStockIcon(siid);
 		}
 		else
 		{

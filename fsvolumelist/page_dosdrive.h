@@ -21,10 +21,6 @@
 #include "simplevalarray.h"
 #include <devguid.h>
 
-#if 0
-#define TE_OPEN_MDI_CHILD_FRAME  (1)
-#endif
-
 struct CDosDriveItem
 {
 	WCHAR szDrive[3];
@@ -167,19 +163,6 @@ public:
 		return 0;
 	}
 
-#if 0
-	LRESULT OnTimer(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-	{
-		KillTimer(m_hWnd,TE_OPEN_MDI_CHILD_FRAME);
-
-		OpenInformationView(
-				ListViewEx_GetCurSel(m_hWndList),
-				VOLUME_CONSOLE_VOLUMEINFORMAION);
-
-		return 0;
-	}
-#endif
-
 	LRESULT OnContextMenu(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		int iItem = ListViewEx_GetCurSel(m_hWndList);
@@ -199,14 +182,6 @@ public:
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
 			AppendMenu(hMenu,MF_STRING,0,0);
-#if _ENABLE_VOLUME_CONTENTS
-			hSubMenu = CreatePopupMenu();
-			{
-				AppendMenu(hSubMenu,MF_STRING,ID_FILE_VOLUMEFILES,L"&Files");
-				AppendMenu(hSubMenu,MF_STRING,ID_FILE_CHANGEJOURNAL,L"Change &Journal");
-			}
-			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Volume Contents &Browser");
-#endif
 			hSubMenu = CreatePopupMenu();
 			{
 				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"&Explorer");
@@ -700,10 +675,6 @@ public:
 				return OnCreate(hWnd,uMsg,wParam,lParam);
 			case WM_DESTROY:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
-#if 0
-			case WM_TIMER:
-				return OnTimer(hWnd,uMsg,wParam,lParam);
-#endif
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
@@ -1136,10 +1107,6 @@ public:
 			case ID_VOLUMEINFORMATION:
 			case ID_FILESYSTEMSTATISTICS:
 			case ID_HEXDUMP:
-#if _ENABLE_VOLUME_CONTENTS
-			case ID_FILE_VOLUMEFILES:
-			case ID_FILE_CHANGEJOURNAL:
-#endif
 			case ID_EDIT_COPY:
 			case ID_OPEN_LOCATION_EXPLORER:
 			case ID_OPEN_LOCATION_CMDPROMPT:
@@ -1177,14 +1144,6 @@ public:
 			case ID_HEXDUMP:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );
 				break;
-#if _ENABLE_VOLUME_CONTENTS
-			case ID_FILE_CHANGEJOURNAL:
-				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOUUME_CONSOLE_CHANGE_JOURNAL );
-				break;
-			case ID_FILE_VOLUMEFILES:
-				OpenInformationViewDosDrive( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_FILES );
-				break;
-#endif
 			case ID_OPEN_LOCATION_EXPLORER:
 				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 0 );
 				break;

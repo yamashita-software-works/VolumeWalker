@@ -73,6 +73,12 @@ public:
 			_MemFree(m_pszVolumeName);
 			m_pszVolumeName = NULL;
 		}
+
+		if( m_pUsnJournalData != NULL )
+		{
+			_MemFree(m_pUsnJournalData);
+			m_pUsnJournalData = NULL;
+		}
 	}
 
 	VOID Release()

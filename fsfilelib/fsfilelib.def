@@ -29,6 +29,7 @@ EXPORTS
 	MakeChangeJournalDumpFileEx
 	ReadChangeJournalDumpFile
 	SaveChangeJournalDumpFile
+	QueryJournalInformation
 
 	GetWofInformation
 	FreeWofInformation

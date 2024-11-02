@@ -44,7 +44,7 @@ public:
 
 	LRESULT OnSize(HWND hWnd,UINT,WPARAM,LPARAM lParam)
 	{
-		if( IsWindowVisible(m_hWnd) )
+		if( IsWindow(m_hWnd) )
 		{
 			int cx = GET_X_LPARAM(lParam);
 			int cy = GET_Y_LPARAM(lParam);

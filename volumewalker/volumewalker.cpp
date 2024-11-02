@@ -25,14 +25,6 @@
 #include "find.h"
 #include "inifile.h"
 
-#ifndef _ENABLE_SINGLETON_CONTENTS_BROWSER_WINDOW
-#define _ENABLE_SINGLETON_CONTENTS_BROWSER_WINDOW  1
-#endif
-
-#ifndef _ENABLE_VOLUME_CONTENTS
-#define _ENABLE_VOLUME_CONTENTS  0
-#endif
-
 static HINSTANCE g_hInst = NULL;
 static HWND g_hWndMain = NULL;
 static HWND g_hWndMDIClient = NULL;
@@ -284,12 +276,6 @@ HRESULT InitLanguage(LPWSTR pszLangIdOrName)
       - VOLUME_CONSOLE_FILESYSTEMSTATISTICS
       - VOLUME_CONSOLE_SIMPLEHEXDUMP
 
-    Single Instance Console:
-    However, this may not be the case in the future.
-
-      - VOLUME_CONSOLE_FILES
-      - VOLUME_CONSOLE_CHANGE_JOURNAL
-
 --*/
 // stl::map<> is the preferred using.
 typedef struct {
@@ -306,10 +292,6 @@ static MDICHILDFRAMETABLE table[]= {
 	{VOLUME_CONSOLE_MOUNTEDDEVICE,     0},
 	{VOLUME_CONSOLE_DOSDRIVELIST,      0},
 	{VOLUME_CONSOLE_FILTERDRIVER,      0},
-#if _ENABLE_VOLUME_CONTENTS && _ENABLE_SINGLETON_CONTENTS_BROWSER_WINDOW
-	{VOLUME_CONSOLE_FILES,             0}, // todo: currently, singleton console.
-	{VOLUME_CONSOLE_CHANGE_JOURNAL,    0}, // todo: currently, singleton console.
-#endif
 };
 
 int ClearWindowHandle(UINT_PTR ConsoleTypeId,HWND hwnd)
@@ -397,22 +379,6 @@ VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *O
 		case VOLUME_CONSOLE_FILTERDRIVER:
 			Guid.Data1 = (ULONG)ConsoleId;
 			break;
-#if _ENABLE_VOLUME_CONTENTS
-#if _ENABLE_SINGLETON_CONTENTS_BROWSER_WINDOW
-		case VOLUME_CONSOLE_FILES:
-		case VOLUME_CONSOLE_CHANGE_JOURNAL:
-			Guid.Data1 = (ULONG)ConsoleId;
-			Guid.Data2 = 0x1;
-			break;
-#else
-		case VOLUME_CONSOLE_FILES:
-		case VOLUME_CONSOLE_CHANGE_JOURNAL:
-			Guid.Data1 = (ULONG)ConsoleId;
-			Guid.Data2 = 0x1;
-			GetSystemTimeAsFileTime( (LPFILETIME)Guid.Data4 );
-			break;
-#endif
-#endif
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
 		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
 		case VOLUME_CONSOLE_DISKLAYOUT:
@@ -434,10 +400,6 @@ BOOL IsVolumeNameRequiredConsole(LPGUID pwndGuid,UINT ConsoleId)
 
 	switch( ConsoleId )
 	{
-#if _ENABLE_VOLUME_CONTENTS
-		case VOLUME_CONSOLE_FILES:
-		case VOLUME_CONSOLE_CHANGE_JOURNAL:
-#endif
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
 		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
 		case VOLUME_CONSOLE_DISKLAYOUT:
@@ -461,10 +423,6 @@ PCWSTR GetConsoleTitle(UINT ConsoleTypeId)
 		{VOLUME_CONSOLE_MOUNTEDDEVICE,      L"Mounted Devices"},
 		{VOLUME_CONSOLE_DOSDRIVELIST,       L"Dos Drives"},
 		{VOLUME_CONSOLE_FILTERDRIVER,       L"Minifilter Driver"},
-#if _ENABLE_VOLUME_CONTENTS
-		{VOLUME_CONSOLE_FILES,              L"Volume Contents Browser"},
-		{VOLUME_CONSOLE_CHANGE_JOURNAL,     L"Volume Change Journal Browser"},
-#endif
 	};
 
 	PCWSTR pszTitle = L"";
@@ -498,12 +456,6 @@ HICON GetConsoleIcon(UINT ConsoleTypeId,PCWSTR pszInitialPath)
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
 		FreeLibrary(hmod);
 	}
-#if _ENABLE_VOLUME_CONTENTS
-	else if( ConsoleTypeId == VOLUME_CONSOLE_FILES )
-	{
-		hIcon = GetShellStockIcon(SIID_DRIVEFIXED); // set temporary icon
-	}
-#endif
 	else
 	{
 		hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
@@ -569,65 +521,6 @@ VOID SendUIInitLayout(HWND hwndMDIChild,HWND hWndView)
 	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_INIT_LAYOUT,(LPARAM)&rc);
 }
 
-#if _ENABLE_VOLUME_CONTENTS
-VOID SendContentsBrowserChangeJournalVolumeOrFileName(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam,BOOL bInitView)
-{
-	if( bInitView ) 
-		SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_INIT_VIEW,(LPARAM)0);
-
-	ASSERT( pOpenParam != NULL );
-	ASSERT( pOpenParam->Path != NULL );
-
-	if( PathFileExists(pOpenParam->Path) && !PathIsDirectory(pOpenParam->Path) )
-	{
-		SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_SET_FILE,(LPARAM)pOpenParam->Path);
-	}
-	else
-	{
-		WCHAR szVolumeRootOrPath[MAX_PATH];
-		StringCchPrintf(szVolumeRootOrPath,MAX_PATH,L"%s\\",pOpenParam->Path);
-		SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_SET_DIRECTORY,(LPARAM)szVolumeRootOrPath);
-	}
-
-	SetWindowText(hwndMDIChild,pOpenParam->Path);
-}
-
-VOID SendContentsBrowserFileListPath(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam,BOOL bInitView)
-{
-	if( bInitView ) 
-		SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_INIT_VIEW,(LPARAM)0);
-
-	ASSERT( pOpenParam != NULL );
-	ASSERT( pOpenParam->Path != NULL );
-
-	PWSTR pszPath;
-	SIZE_T cchPathLength;
-
-	cchPathLength = wcslen(pOpenParam->Path);
-
-	if( cchPathLength < MAX_PATH && FindRootDirectory_W(pOpenParam->Path,NULL) == 0 )
-	{
-		pszPath = _MemAllocString(pOpenParam->Path);
-	}
-	else
-	{
-		pszPath = _MemAllocStringCat(pOpenParam->Path,L"\\");
-	}
-
-	//
-	// NOTE:
-	// This call may take some time to return depending on the directory state.
-	//
-	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_SET_DIRECTORY,(LPARAM)pszPath);
-
-#if 0
-	SetWindowText(hwndMDIChild,(LPCWSTR)L"Volume Files");
-#endif
-
-	_MemFree(pszPath);
-}
-#endif
-
 VOID SendHexDumpInformation(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CHILDFRAME_PARAM *OpenSelItem)
 {
 	//
@@ -636,12 +529,12 @@ VOID SendHexDumpInformation(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CHILDFRAME_
 	SELECT_OFFSET_ITEM sel = {0};
 	sel.hdr.mask = SI_MASK_PATH|SI_MASK_NAME|SI_MASK_VIEWTYPE|SI_MASK_START_OFFSET;
 	sel.hdr.ViewType   = VOLUME_CONSOLE_SIMPLEHEXDUMP;
-	sel.hdr.pszStorage = OpenSelItem->Path;
+	sel.hdr.pszVolume  = OpenSelItem->Path;
 	sel.liStartOffset  = OpenSelItem->StartOffset;
 
 	SendMessage(hWndView,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
 
-	SetWindowText(hwndMDIChild,sel.hdr.pszStorage);
+	SetWindowText(hwndMDIChild,sel.hdr.pszVolume);
 }
 
 VOID SendSelectVolumeOrPhysicalDisk(HWND hwndMDIChild,HWND hWndView,UINT ConsoleTypeId,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam)
@@ -722,17 +615,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		ConsoleTypeId == VOLUME_CONSOLE_VOLUMEINFORMAION || 
 		ConsoleTypeId == VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION ||
 		ConsoleTypeId == VOLUME_CONSOLE_FILESYSTEMSTATISTICS ||
-#if _ENABLE_SINGLETON_CONTENTS_BROWSER_WINDOW
 		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP )
-#else
-		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP ||
-#if _ENABLE_VOLUME_CONTENTS
-		ConsoleTypeId == VOLUME_CONSOLE_FILES ||
-		ConsoleTypeId == VOLUME_CONSOLE_CHANGE_JOURNAL
-#endif
-		)
-#endif
-
 	{
 		hwndChildFrame = FindSameWindowTitle(ConsoleTypeId,(pOpenParam != NULL) ? pOpenParam->Path : NULL);
 	}
@@ -762,16 +645,6 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		{
 			SendHexDumpInformation(hwndChildFrame,pd->hWndView,pOpenParam);
 		}
-#if _ENABLE_VOLUME_CONTENTS
-		else if( VOLUME_CONSOLE_CHANGE_JOURNAL == ConsoleTypeId )
-		{
-			SendContentsBrowserChangeJournalVolumeOrFileName(hwndChildFrame,pd->hWndView,pOpenParam,FALSE);
-		}
-		else if( VOLUME_CONSOLE_FILES == ConsoleTypeId )
-		{
-			SendContentsBrowserFileListPath(hwndChildFrame,pd->hWndView,pOpenParam,FALSE);
-		}
-#endif
 
 		if( bMaximized )
 		{
@@ -839,28 +712,6 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 
 				SendHexDumpInformation(hwndMDIChild,pd->hWndView,pOpenParam);
 			}
-#if _ENABLE_VOLUME_CONTENTS
-			else if( VOLUME_CONSOLE_CHANGE_JOURNAL == ConsoleTypeId )
-			{
-				pd->hWndView = CreateVolumeContentsBrowserWindow(hwndMDIChild,ConsoleTypeId);
-
-				InitViewType(pd,ConsoleTypeId,pwndGuid);
-
-				SendUIInitLayout(hwndMDIChild,pd->hWndView);
-
-				SendContentsBrowserChangeJournalVolumeOrFileName(hwndMDIChild,pd->hWndView,pOpenParam,TRUE);
-			}
-			else if( VOLUME_CONSOLE_FILES == ConsoleTypeId )
-			{
-				pd->hWndView = CreateVolumeContentsBrowserWindow(hwndMDIChild,ConsoleTypeId);
-
-				InitViewType(pd,ConsoleTypeId,pwndGuid);
-
-				SendUIInitLayout(hwndMDIChild,pd->hWndView);
-
-				SendContentsBrowserFileListPath(hwndMDIChild,pd->hWndView,pOpenParam,TRUE);
-			}
-#endif
 			else
 			{
 				pd->hWndView = CreateVolumeConsoleWindow(hwndMDIChild,ConsoleTypeId,&param);
@@ -1195,6 +1046,10 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 //						case VOLUME_CONSOLE_SIMPLEHEXDUMP:
 							if( pFrames[i].Path && !IsValidDevicePath(pFrames[i].Path) )
 								continue;
+							break;
+						case 0x1e: // obsoleted contents browser console.
+						case 0x1f: // obsoleted contents browser console.
+							continue; // prevent open the blank console.
 					}
 
 					op.Path = pFrames[i].Path;
@@ -1508,42 +1363,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				pcv = GetConsoleId(hwndViewWindow);
 				if( pcv == NULL )
 					return 0;
-#if _ENABLE_VOLUME_CONTENTS
-				switch( pcv->wndId )
-				{
-					case VOLUME_CONSOLE_FILES:
-					{
-						HWND hwndMDIChildFrame = GetParent(hwndViewWindow);
-#if 0
-						PCWSTR pszTitle = FindFileName_W(pszPath);
-						SetWindowText(hwndHostFrame,*pszTitle != L'\0' ? p : L"\\" );
-#else
-						// bUpdateIcon
-						{
-							HICON hIcon = GetAppropriateVolumeIconByPath(pszPath);
-							SendMessage(hwndViewWindow,WM_CONTROL_MESSAGE,UI_SET_ICON,(LPARAM)hIcon);
-							DrawMenuBar(hWnd);
-						}
-
-						WCHAR szVolume[64];
-						NtPathGetVolumeName(pszPath,szVolume,_countof(szVolume));
-
-						if( PathIsPrefixDosDeviceDrive(szVolume) )
-						{
-							szVolume[4] = (WCHAR)CharUpper( (LPWSTR)szVolume[4] );
-						}
-
-						if( PathIsPrefixDosDevice(szVolume) )
-						{
-							StringCchCopy(szVolume,_countof(szVolume),&szVolume[4]);
-						}
-
-						SetWindowText(hwndMDIChildFrame,szVolume);
-#endif
-						return 0;
-					}
-				}
-#endif // _ENABLE_VOLUME_CONTENTS
 			}
 			return 0;
 		}
@@ -1617,14 +1436,14 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 #if 1
 			// This code is follows reason:
 			//
-			// 1. Receives a notify message LVN_ITEMACTIVATE the MDI child window 
+			// 1. Receives a notify message LVN_ITEMACTIVATE the MDI child frame window 
 			//    when occurs  WM_LBUTTONDOWN->WM_LBUTTONDBLCLK on the ListVew contorol.
 			//    (WM_LBUTTONUP is not notified yet)
-			// 2. During LVN_ITEMACTIVATE processing, create new MDI child frame 
+			// 2. During LVN_ITEMACTIVATE processing, create new MDI child frame window
 			//    and to activate.
 			// 3. When LVN_ITEMACTIVATE returns, at that time the active window has changed.
 			// 4. It then receives WM_LBUTTONUP. But this message sending to 
-			//    the newly created window instead of the previous window.
+			//    the newly created MDI child frame window instead of the previous it.
 			// 5. At this moment may case result in unexpected selection operations 
 			//    on the new window (e.g. Group header click select).
 			if( msg.message == WM_LBUTTONDBLCLK  )
@@ -1644,11 +1463,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 				msgDblClk.hwnd = NULL;
 			}
 #endif
-			else
-			{
-				msgDblClk.hwnd = NULL;
-			}
-
 			if( g_hWndActiveMDIChild )
 			{
 				// Forward message to active view on MDI child window.
