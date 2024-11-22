@@ -112,7 +112,7 @@ public:
 				break; // todo: avoid C4065
 			default:
 				if( m_pView )
-					SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam);
+					return SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam);
 				break;
 		}
 		return 0;

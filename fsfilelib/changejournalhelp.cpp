@@ -931,13 +931,13 @@ EXTERN_C BOOL WINAPI ReadChangeJournalDumpFile(PCWSTR pszFileName,PVOID *ppData)
 		Buffer = (UCHAR*)_MemAlloc( cbBufferLength );
 		if( Buffer == NULL )
 		{
-			throw  ERROR_NOT_ENOUGH_MEMORY;
+			throw ERROR_NOT_ENOUGH_MEMORY;
 		}
 
 		pJournalBuffer = new CFSJournalBuffer;
 		if( pJournalBuffer == NULL )
 		{
-			throw  ERROR_NOT_ENOUGH_MEMORY;
+			throw ERROR_NOT_ENOUGH_MEMORY;
 		}
 
 		pJournalBuffer->m_pBufferList = new CValArray<PVOID>;
@@ -958,7 +958,7 @@ EXTERN_C BOOL WINAPI ReadChangeJournalDumpFile(PCWSTR pszFileName,PVOID *ppData)
 
 		if( hVol == INVALID_HANDLE_VALUE )
 		{	
-			throw GetLastError();
+			throw (long)GetLastError();
 		}
 
 		DWORD cbFileSize;
@@ -969,13 +969,21 @@ EXTERN_C BOOL WINAPI ReadChangeJournalDumpFile(PCWSTR pszFileName,PVOID *ppData)
 
 		// Header
 		ReadFile(hVol,hdr,sizeof(hdr),&cb,NULL);
+		if( cb == 0 )
+			throw ERROR_INVALID_DATA;
 
-		// Read shim data "CJUD"
+		// Read shim data signature "CJUD"
 		DATA_SHIM shim;
 		ReadFile(hVol,&shim,sizeof(shim),&cb,NULL);
+		if( cb < sizeof(DATA_SHIM) || memcmp(shim.signature,"CJUD",4) != 0 )
+			throw ERROR_INVALID_DATA;
 
 		// Read data
 		DWORD rd = _16BYTE_ALIGN(shim.length);
+
+		if( rd == 0 )
+			throw ERROR_INVALID_DATA;
+
 		ReadFile(hVol,Buffer,rd,&dwBytes,NULL);
 
 		ULONG cRecords = 0;
@@ -991,19 +999,30 @@ EXTERN_C BOOL WINAPI ReadChangeJournalDumpFile(PCWSTR pszFileName,PVOID *ppData)
 			DATA_SHIM shim;
 			ReadFile(hVol,&shim,sizeof(shim),&cb,NULL);
 
+			if( cb == 0 )
+				break; // End of File
+
+			// signature "CJUR"
+			if( cb < sizeof(shim) || memcmp(shim.signature,"CJUR",4) != 0 )
+				throw ERROR_INVALID_DATA;
+
 			// Read data
 			DWORD rd = _16BYTE_ALIGN(shim.length);
+
+			if( rd == 0 )
+				break;
+
 			ReadFile(hVol,Buffer,rd,&dwBytes,NULL);
 
 			if( dwBytes == 0 )
-				break;
+				throw ERROR_INVALID_DATA;
 
 			dwBytes = shim.length;
 
 			PVOID p = HeapAlloc( GetProcessHeap(), 0, dwBytes );
 			if( p == NULL )
 			{
-				throw GetLastError();
+				throw (long)GetLastError();
 			}
 
 			RtlCopyMemory(p,Buffer,dwBytes);
@@ -1038,7 +1057,7 @@ EXTERN_C BOOL WINAPI ReadChangeJournalDumpFile(PCWSTR pszFileName,PVOID *ppData)
 
 		bRet = TRUE;
 	}
-	catch( DWORD err )
+	catch( long err )
 	{
 		if( pJournalBuffer != NULL )
 		{
@@ -1076,18 +1095,8 @@ EXTERN_C BOOL WINAPI QueryJournalInformation(PCWSTR pszVolumeName,FS_USN_JOURNAL
 	DWORD dwBytes;
 	WCHAR szVolName[MAX_PATH];
 
-	// NOTE:
-	// This is a NOT root filesyetem.
-	if( pszVolumeName[2] == TEXT('?') )
-		// "\\?\Volume{xxxx-xxxx-xxxx}"
-		lstrcpy(szVolName,pszVolumeName);
-	else if( pszVolumeName[1] == L':' )
-		// "C:" -> "\\.\C:"
-		wsprintf(szVolName,TEXT("\\\\.\\%s"),pszVolumeName);
-	else
-	{
-		lstrcpy(szVolName,pszVolumeName);
-	}
+	if( StringCchCopy(szVolName,MAX_PATH,pszVolumeName) != S_OK )
+		return FALSE;
 
 	try
 	{

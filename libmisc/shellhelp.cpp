@@ -229,7 +229,7 @@ _OpenByExplorerEx(
 		LPITEMIDLIST pidl = ILCreateFromPath(pszPath);
         SHELLEXECUTEINFO sei = {0};
         sei.cbSize = sizeof(sei);
-        sei.fMask = SEE_MASK_IDLIST;
+        sei.fMask = SEE_MASK_IDLIST|SEE_MASK_ASYNCOK;
 		sei.lpIDList = pidl;
         sei.lpDirectory = pszCurrentDirectory;
         sei.lpParameters = NULL;

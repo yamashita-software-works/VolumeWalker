@@ -78,6 +78,7 @@ public:
 	BOOL SetIniFilePath(PCWSTR Path);
 	LARGE_INTEGER GetColumnSortInfo(PCWSTR pszSectionName);
 	BOOL SaveColumnTable(COLUMN_TABLE *pColTblPtr,PCWSTR pszSectionName,PCWSTR pszIniFileName,INT idSort,INT sortDirection);
+	BOOL MakeColumnString(COLUMN_TABLE *pColTblPtr,INT idSort,INT sortDirection,PWSTR *ppszColumns,PWSTR *ppszSortColumn);
 #if 0
 	BOOL SaveColumns(HWND hWndList,LPCWSTR SectionName);
 #endif

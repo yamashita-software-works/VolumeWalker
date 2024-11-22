@@ -3,10 +3,10 @@
 <assemblyIdentity
     version="1.0.0.0"
     processorArchitecture="amd64"
-    name="volumewalker.exe"
+    name="volumeinfo.exe"
     type="Win32"
 />
-<description>volumewalker</description>
+<description>volumeinfo</description>
 <dependency>
     <dependentAssembly>
         <assemblyIdentity

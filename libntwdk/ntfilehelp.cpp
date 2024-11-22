@@ -846,6 +846,9 @@ NTSTATUS GetFileNameInformation_U(HANDLE hFile,UNICODE_STRING *pusFileName)
     {
         _SetLastStatusDos(Status);
     }
+
+	FreeMemory(pName);
+
     return Status;
 }
 

@@ -324,6 +324,71 @@ BOOL CColumnList::SaveColumnTable(COLUMN_TABLE *pColTblPtr,PCWSTR pszSectionName
 	return bSuccess;
 }
 
+BOOL CColumnList::MakeColumnString(COLUMN_TABLE *pColTblPtr,INT idSort,INT sortDirection,PWSTR *ppszColumns,PWSTR *ppszSortColumn)
+{
+	BOOL bSuccess = FALSE;
+	ULONG i;
+	PCWSTR pszName;
+	WCHAR szInfo[100];
+	CMultiSz msz;
+
+	try
+	{
+		if( ppszColumns ) {
+		for(i = 0; i < pColTblPtr->cItems; i++)
+		{
+			pszName = IdToName(pColTblPtr->column[i].id);
+
+			if( pszName )
+			{
+				COLUMN *pcol = &pColTblPtr->column[i];
+
+				StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s=%d",pszName,pcol->cx);
+
+				msz.Add(szInfo);
+			}
+		}
+
+		PWSTR pszBuf = (PWSTR)CoTaskMemAlloc( msz.GetBufferSize() );
+
+		ZeroMemory(pszBuf,msz.GetBufferSize());
+
+		PCWSTR psz = msz.GetTop();
+		if( psz && *psz ) {
+		do
+		{
+			StringCbCat(pszBuf,msz.GetBufferSize(),psz);
+			StringCbCat(pszBuf,msz.GetBufferSize(),L";");
+		}
+		while( msz.Next(&psz) );
+		}
+
+		*ppszColumns = pszBuf;
+		}
+
+		if( idSort != -1 && ppszSortColumn )
+		{
+			pszName = IdToName(idSort);
+		
+			if( pszName )
+			{
+				if( StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s,%d",pszName,sortDirection) == S_OK )
+				{
+					*ppszSortColumn = (PWSTR)CoTaskMemAlloc( (wcslen(szInfo) + 1) * sizeof(WCHAR) );
+				}
+			}
+		}
+
+		bSuccess = TRUE;
+	}
+	catch( DWORD err )
+	{
+		SetLastError(err);
+	}
+
+	return bSuccess;
+}
+
 #if 0
 BOOL CColumnList::SaveColumns(HWND hWndList,LPCWSTR SectionName)
 {

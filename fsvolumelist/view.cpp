@@ -389,6 +389,11 @@ public:
 		return E_NOTIMPL;
 	}
 
+	virtual HRESULT SetState(int,ULONG ul)
+	{
+		return E_NOTIMPL;
+	}
+
 	virtual HRESULT PreTranslateMessage(MSG *msg)
 	{
 		return E_NOTIMPL;

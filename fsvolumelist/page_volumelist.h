@@ -258,6 +258,35 @@ public:
 		return 0;
 	}
 
+	LRESULT OnQueryMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		switch( LOWORD(wParam) )
+		{
+			case UI_QUERY_SELECTEDITEM:
+			{
+				int iItem = ListViewEx_GetCurSel(m_hWndList);
+				if( iItem != -1 )
+				{
+					CVolumeItem *pItem = (CVolumeItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+					if( pItem && pItem->VolumeDevice )
+					{
+						if( lParam != 0 )
+						{
+							UIS_SELECTEDITEM *ptr = (UIS_SELECTEDITEM*)lParam;
+							if( ptr->Path && ptr->cchPath )
+							{	
+								if( StringCchCopy(ptr->Path,ptr->cchPath,pItem->VolumeDevice) == S_OK )
+									return (LRESULT)TRUE;
+							}
+						}
+					}
+				}
+				break;
+			}
+		}
+		return 0;
+	}
+
 	LRESULT OnNotify(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		NMHDR *pnmhdr = (NMHDR *)lParam;
@@ -718,6 +747,8 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
+			case WM_QUERY_MESSAGE:
+				return OnQueryMessage(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
 				return OnFindItem(hWnd,uMsg,wParam,lParam);
 		}

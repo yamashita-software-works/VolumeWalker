@@ -1,0 +1,60 @@
+#ifndef _MAC
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Manifest
+//
+
+#ifndef RT_MANIFEST
+#define RT_MANIFEST                        24
+#define CREATEPROCESS_MANIFEST_RESOURCE_ID  1
+#endif
+
+#ifdef _AMD64_
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "res\volumeinfo.exe.amd64.manifest"
+#else
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "res\volumeinfo.exe.i386.manifest"
+#endif
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+#include "..\..\build.h"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION VERSION_STR_DWORD
+ PRODUCTVERSION PRODUCT_VER_DWORD
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription", "NT VolumeInfo\0"
+            VALUE "FileVersion", VERSION_STRING
+            VALUE "InternalName", "fsvolumeinfo\0"
+            VALUE "LegalCopyright", COMMON_LEGALCOPYRIGHT
+            VALUE "OriginalFilename", "fsvolumeinfo.exe\0"
+            VALUE "ProductName", COMMON_PRODUCTNAME
+            VALUE "ProductVersion", PRODUCT_VER_STRING
+			VALUE "CompanyName", COMMON_COMPANYNAME
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+#endif    // !_MAC

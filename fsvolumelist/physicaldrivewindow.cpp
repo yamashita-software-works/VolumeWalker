@@ -111,6 +111,20 @@ public:
 		return 0;
 	}
 
+	LRESULT OnQueryMessage(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		switch( LOWORD(wParam) )
+		{
+			case 0:
+				break; // todo: avoid C4065
+			default:
+				if( m_pView )
+					return SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam);
+				break;
+		}
+		return 0;
+	}
+
 	VOID OnUpdateInformationView(SELECT_ITEM* pSel)
 	{
 		if( SUCCEEDED(m_pView->SelectView(pSel)) )
@@ -152,6 +166,8 @@ public:
 				return OnNotifyMessage(hWnd,uMsg,wParam,lParam);
 			case WM_CONTROL_MESSAGE:
 				return OnControlMessage(hWnd,uMsg,wParam,lParam);
+			case WM_QUERY_MESSAGE:
+				return OnQueryMessage(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
 				if( m_pView )
 					return SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam); // forward to current view

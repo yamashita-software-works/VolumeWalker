@@ -28,9 +28,12 @@ SOURCES=\
 	clipboardtext.cpp\
 	msgbox.cpp\
 	errormsg.cpp\
+	longpathbox.cpp\
 	listviewhelper.cpp\
 	shellhelp.cpp\
-	longpathbox.cpp\
 	column.cpp\
 	menu.cpp\
-	find.cpp
+	find.cpp\
+	darkmode.cpp\
+	viewtab.cpp\
+	menubar.cpp

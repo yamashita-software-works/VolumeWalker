@@ -62,6 +62,11 @@ public:
 		return (T)DPA_GetPtr(m_hdpa,iIndex);
 	}
 
+	BOOL Set(INT iIndex,PVOID p)
+	{
+		return DPA_SetPtr(m_hdpa,iIndex,p);
+	}
+
 	INT GetIndex(const T *ptr)
 	{
 		return DPA_GetPtrIndex(m_hdpa,ptr);

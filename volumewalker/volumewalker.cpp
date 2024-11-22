@@ -1,19 +1,21 @@
-//***************************************************************************
-//*                                                                         *
-//*  volumewalker.cpp                                                       *
-//*                                                                         *
-//*  PURPOSE:                                                               *
-//*    Implements the main procedure and main frame window.                 *
-//*                                                                         *
-//*  AUTHOR:                                                                *
-//*    YAMASHITA Katsuhiro                                                  *
-//*                                                                         *
-//*  HISTORY:                                                               *
-//+    2022.04.02 SDI frame ver created.                                    *
-//*    2022.12.24 MDI frame ver with based on VC++ generated code created.  *
-//*    2023.02.24 MDI frame ver with new main frame created.                *
-//*                                                                         *
-//***************************************************************************
+//****************************************************************************
+//*                                                                          *
+//*  volumewalker.cpp                                                        *
+//*                                                                          *
+//*  PURPOSE:                                                                *
+//*    Implements the main procedure and main frame window.                  *
+//*                                                                          *
+//*  AUTHOR:                                                                 *
+//*    YAMASHITA Katsuhiro                                                   *
+//*                                                                          *
+//*  HISTORY:                                                                *
+//+    2022.04.02 SDI frame ver created.                                     *
+//*    2022.12.24 MDI frame ver with based on VC++ generated code created.   *
+//*    2023.02.24 MDI frame ver with new main frame created.                 *
+//*    2024.04.15 Experimentally implemented Volume Contents Console.        *
+//*    2024.10.24 Volume Contents Console has been obsoleted.                *
+//*                                                                          *
+//****************************************************************************
 //
 //  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.
 //  Licensed under the MIT License.
@@ -780,12 +782,13 @@ VOID ShowHelp(HWND hWnd)
 	PCWSTR pszHelpText = 
 			L"Command Line Syntax\n"
 			L"\n"
-			L"Options: [/v | /pd | /sd | /md | /d | [/f]] | [/we]\n"
+			L"Options: [/v | /pd | /sd | /md | /sd | /d | [/f]] | [/we]\n"
 			L"\n"
 			L"/v : Open Volume List.\n"
 			L"/pd : Open Physical Drive List.\n"
 			L"/sd : Open Storage Device List.\n"
 			L"/md : Open Mounted Device List.\n"
+			L"/sc : Select Shadow Copy Volume List.\n"
 			L"/d : Open MS-DOS Drive List.\n"
 			L"\n"
 			L"/f : Open maximized in the MDI client area.\n"
@@ -870,6 +873,11 @@ BOOL ParseCommandLine(ARGPARAM &args)
 				else if( _wcsicmp(pArg,L"md") == 0 )
 				{
 					if( !args.addOpenConsole( VOLUME_CONSOLE_MOUNTEDDEVICE ) )
+						return FALSE;
+				}
+				else if( _wcsicmp(pArg,L"sc") == 0 )
+				{
+					if( !args.addOpenConsole( VOLUME_CONSOLE_SHADOWCOPYLIST ) )
 						return FALSE;
 				}
 				else if( _wcsicmp(pArg,L"d") == 0 )

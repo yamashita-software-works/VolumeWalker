@@ -119,5 +119,6 @@ public:
 #define FIF_EX_PHYSICALDRIVEOFFSET     (0x00000040)
 #define FIF_EX_PHYSICALDRIVENUMBER     (0x00000080)
 #define FIF_EX_WOF                     (0x00000100)
+#define FIF_EX_ROOTDIRECTORY           (0x80000000) 
 
 #endif

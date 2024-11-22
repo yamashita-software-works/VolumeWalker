@@ -31,12 +31,16 @@ enum {
 	UI_GET_SUBPANE       =  0x100A,
 	UI_SET_SUBPANE       =  0x100B,
 	UI_SET_FILELIST      =  0x100C,
+	UI_SELECT_PAGE       =  0x100D,
+	UI_SELECT_FILE       =  0x100E,
 	UI_NOTIFY_ITEM_SELECTED     = 0x2001,
 	UI_NOTIFY_VOLUME_SELECTED   = 0x2002,
-	UI_NOTIFY_DIRECTORY_CHANGED = 0x2003,
-	UI_NOTIFY_VOLUME_CHANGED    = 0x2004,
+//	OBSOLETE                    = 0x2003,
+//	OBSOLETE                    = 0x2004,
+	UI_NOTIFY_ITEM_ACTIVATED    = 0x2005,
 //	OBSOLETE                    = 0x3001,
 	UI_QUERY_CURRENTITEMNAME    = 0x3002,
+	UI_QUERY_SELECTEDITEM       = 0x3003,
 };
 
 //
@@ -68,6 +72,7 @@ typedef struct _SELECT_ITEM
 #define SI_MASK_VOLUME   0x100
 
 #define SI_FLAG_NOT_ADD_TO_HISTORY 0x1
+#define SI_FLAG_ROOT_DIRECTORY     0x2
 
 typedef struct _SELECT_OFFSET_ITEM
 {
@@ -78,6 +83,27 @@ typedef struct _SELECT_OFFSET_ITEM
 #define SI_MASK_START_OFFSET  0x8000
 
 //
+// UI_SET_DIRECTORY_FILE
+//
+typedef struct _UIS_DIRECTORY_FILE
+{
+	PWSTR pszPath;
+	PWSTR pszFileName;
+} UIS_DIRECTORY_FILE;
+
+//
+// UI_SELECT_PAGE
+//
+typedef struct _UIS_PAGE
+{
+	UINT ConsoleTypeId;
+	GUID ConsoleGuid;
+	PWSTR pszPath;
+	PWSTR pszFileName;
+	DWORD dwFlags;
+} UIS_PAGE;
+
+//
 // UI_QUERY_CURRENTITEMNAME and more String message
 //
 typedef struct _STRING_STRUCT
@@ -86,6 +112,25 @@ typedef struct _STRING_STRUCT
 	ULONG MaximumLength; // length is cb, not cch
 	PWSTR Buffer;
 } STRING_STRUCT;
+
+//
+// UI_NOTIFY_ITEM_ACTIVATED
+//
+typedef struct _UIS_ITEM_ACTIVATED
+{
+	UINT ConsoleTypeId;
+	PWSTR Path;
+} UIS_ITEM_ACTIVATED;
+
+//
+// UI_QUERY_SELECTEDITEM
+//
+typedef struct _UIS_SELECTEDITEM
+{
+	UINT ConsoleTypeId;
+	PWSTR Path;
+	int cchPath;
+} UIS_SELECTEDITEM;
 
 //
 // WM_QUERY_CMDSTATE

@@ -17,6 +17,7 @@ namespace LIBMISC {
 HMODULE g_ResourceInstance = NULL;
 DWORD   g_dwLanguageId = MAKELANGID(LANG_NEUTRAL,SUBLANG_DEFAULT);
 DWORD   g_dwOSVersion = 0;
+DWORD   g_dwBuildNumber = 0;
 };
 
 INT APIENTRY _libmisc_initialize()
@@ -31,6 +32,7 @@ INT APIENTRY _libmisc_set_osversion()
     osversion.dwOSVersionInfoSize = sizeof(osversion);
     GetVersionEx(&osversion);
     LIBMISC::g_dwOSVersion = (osversion.dwMajorVersion << 8) | osversion.dwMinorVersion;
+    LIBMISC::g_dwBuildNumber = osversion.dwBuildNumber;
     return 0;
 }
 
@@ -62,6 +64,11 @@ DWORD APIENTRY _libmisc_set_langage_id()
 DWORD APIENTRY _GetOSVersion()
 {
     return LIBMISC::g_dwOSVersion;
+}
+
+DWORD APIENTRY _GetOSBuildNumber()
+{
+    return LIBMISC::g_dwBuildNumber;
 }
 
 HRESULT
@@ -607,6 +614,9 @@ INT StringFindNumber(PCWSTR psz)
 //
 VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus,COLORREF crActiveFrame)
 {
+    if( prc->left == 0 && prc->top == 0 && prc->right == 0 && prc->bottom == 0)
+        return;
+
     LRESULT lret;
     lret = SendMessage(hWnd,WM_QUERYUISTATE,0,0);
 
@@ -620,9 +630,11 @@ VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus,COLORREF crActiv
             else
                 cr = GetSysColor(COLOR_3DDKSHADOW);
 
-            HPEN hpen = CreatePen(PS_SOLID,1,cr);
-            SelectObject(hdc,hpen);
-            SelectObject(hdc,GetStockObject(NULL_BRUSH));
+            HPEN hpenPrev,hpen;
+            HBRUSH hbrPrev;
+            hpen = CreatePen(PS_SOLID,1,cr);
+            hpenPrev = (HPEN)SelectObject(hdc,hpen);
+            hbrPrev = (HBRUSH)SelectObject(hdc,GetStockObject(NULL_BRUSH));
 
             int r;
             if( _GetOSVersion() >= 0x602 )
@@ -631,6 +643,10 @@ VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus,COLORREF crActiv
                 r = 3;
 
             RoundRect(hdc,prc->left,prc->top,prc->right,prc->bottom,r,r);
+
+            SelectObject(hdc,hpenPrev);
+            SelectObject(hdc,hbrPrev);
+
             DeleteObject(hpen);
         }
         else

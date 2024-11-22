@@ -46,6 +46,12 @@ _GetOSVersion(
     void
     );
 
+DWORD
+APIENTRY
+_GetOSBuildNumber(
+	void
+	);
+
 HRESULT
 WINAPI
 InitializeLibMisc(

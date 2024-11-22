@@ -3,10 +3,10 @@
 <assemblyIdentity
     version="1.0.0.0"
     processorArchitecture="x86"
-    name="fsvolumewalker.exe"
+    name="volumewalker.exe"
     type="Win32"
 />
-<description>fsvolumewalker</description>
+<description>volumewalker</description>
 <dependency>
     <dependentAssembly>
         <assemblyIdentity

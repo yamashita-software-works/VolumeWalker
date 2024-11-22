@@ -445,6 +445,8 @@ DosPathToNtDevicePath(
 				{
 					_SetLastWin32Error( HRESULT_CODE(hr) );
 				}
+
+				FreeMemory( pszNtDevicePath );
 			}
 			else
 			{

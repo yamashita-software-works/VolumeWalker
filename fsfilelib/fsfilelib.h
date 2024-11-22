@@ -46,7 +46,7 @@ NtPathFileExists(
 //
 EXTERN_C
 ULONG
-APIPRIVATE
+APIENTRY
 _StringFromGUID(
     const GUID *pGuid,
     PWSTR pszGuid,
@@ -510,7 +510,7 @@ typedef struct _FILE_INFORMATION_STRUCT
 
 EXTERN_C
 HRESULT
-APIPRIVATE
+APIENTRY
 NTFile_GatherFileInformation(
 	HANDLE hFile,
 	FILE_INFORMATION_STRUCT **pfi
@@ -518,14 +518,14 @@ NTFile_GatherFileInformation(
 
 EXTERN_C
 HRESULT
-APIPRIVATE
+APIENTRY
 NTFile_FreeFileInformation(
 	FILE_INFORMATION_STRUCT *pfi
 	);
 
 EXTERN_C
 HRESULT
-APIPRIVATE
+APIENTRY
 NTFile_OpenFile(
 	HANDLE *phFile,
 	PCWSTR FilePath,
@@ -536,14 +536,14 @@ NTFile_OpenFile(
 
 EXTERN_C
 HRESULT
-APIPRIVATE
+APIENTRY
 NTFile_CloseFile(
 	HANDLE hFile
 	);
 
 EXTERN_C
 BOOL
-APIPRIVATE
+APIENTRY
 NTFile_GetAttributeString(
 	DWORD Attributes,
 	LPWSTR String,
@@ -552,18 +552,9 @@ NTFile_GetAttributeString(
 
 EXTERN_C
 BOOL
-APIPRIVATE
+APIENTRY
 GetAttributeString(
 	DWORD Attributes,
 	LPWSTR String,
 	int cchString
 	);
-
-/*EXTERN_C
-HRESULT
-APIENTRY
-GetWofInformation(
-	HANDLE FileHandle,
-	PVOID *ExternalInfo,
-	PVOID *ProviderInfo
-	);*/

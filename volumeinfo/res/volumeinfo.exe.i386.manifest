@@ -1,19 +1,19 @@
 ﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
 <assemblyIdentity
     version="1.0.0.0"
-    processorArchitecture="amd64"
-    name="volumewalker.exe"
+    processorArchitecture="x86"
+    name="volumeinfo.exe"
     type="Win32"
 />
-<description>volumewalker</description>
+<description>volumeinfo</description>
 <dependency>
     <dependentAssembly>
         <assemblyIdentity
             type="win32"
             name="Microsoft.Windows.Common-Controls"
             version="6.0.0.0"
-            processorArchitecture="amd64"
+            processorArchitecture="x86"
             publicKeyToken="6595b64144ccf1df"
             language="*"
         />
@@ -37,8 +37,8 @@
     <windowsSettings>
         <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
     </windowsSettings>
-    <asmv3:windowsSettings xmlns:ws2="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
+    <windowsSettings xmlns:ws2="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
         <ws2:longPathAware>true</ws2:longPathAware>
-	</asmv3:windowsSettings>
+    </windowsSettings>
 </application>
 </assembly>
