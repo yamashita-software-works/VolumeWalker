@@ -120,7 +120,7 @@ public:
 
 	HWND GetListView() const { return m_hWndList; }
 
-	virtual HRESULT OnInitPage(PVOID)
+	virtual HRESULT OnInitPage(PVOID,DWORD,PVOID)
 	{
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 
@@ -510,7 +510,20 @@ public:
 	{
 #if 1
 		NMITEMACTIVATE *pnmia = (NMITEMACTIVATE *)pnmhdr;
-		OpenInformationView((int)pnmia->iItem,VOLUME_CONSOLE_VOLUMEINFORMAION);
+		if( pnmia->iItem != -1 )
+		{
+			CVolumeItem *pItem = (CVolumeItem *)ListViewEx_GetItemData(m_hWndList,pnmia->iItem);
+
+			UIS_ITEM_ACTIVATED uia = {0};
+			uia.ConsoleTypeId = VOLUME_CONSOLE_VOLUMELIST;
+			uia.Path = pItem->VolumeDevice;
+			if( SendMessage(GetActiveWindow(),WM_NOTIFY_MESSAGE,MAKEWPARAM(UI_NOTIFY_ITEM_ACTIVATED,0),(LPARAM)&uia) != 0 )
+			{
+				return 0;
+			}
+
+			OpenInformationView((int)pnmia->iItem,VOLUME_CONSOLE_VOLUMEINFORMAION);
+		}
 #else
 		// Reason of using SetTimer:
 		// (Only case of mouse click open)

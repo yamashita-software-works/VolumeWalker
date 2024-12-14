@@ -95,6 +95,8 @@ VOID RemoveFileSpec(PWSTR pszPath);
 VOID RemoveFileSpec_W(PWSTR pszPath);
 BOOLEAN RemovePrefix(PCWSTR pszPrefix,PCWSTR Path,PWSTR PathBuffer,ULONG cchPathBuffer);
 
+BOOLEAN AppendBackslash_W(PWSTR pszPath,int cchPath);
+
 PCWSTR FindFileName_W(PCWSTR pszPath);
 
 PWSTR CombinePath(PCWSTR pszPath,PCWSTR pszFileName);

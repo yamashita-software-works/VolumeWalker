@@ -972,7 +972,7 @@ GetEAInformation(
 
 //----------------------------------------------------------------------------
 //
-//  GetReparsePointInformation()
+//  FreeReparsePointInformation()
 //
 //  PURPOSE:
 //
@@ -1843,9 +1843,16 @@ NTFile_GetAttributeString(
 	return TRUE;
 }
 
+//---------------------------------------------------------------------------
+//
+//  GetAttributeString()
+//
+//  PURPOSE:
+//
+//---------------------------------------------------------------------------
 EXTERN_C
 BOOL
-APIPRIVATE
+APIENTRY
 GetAttributeString(
 	DWORD Attributes,
 	LPWSTR String,

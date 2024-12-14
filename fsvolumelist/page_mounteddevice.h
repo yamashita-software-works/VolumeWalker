@@ -79,7 +79,7 @@ public:
 
 	HWND GetListView() const { return m_hWndList; }
 
-	virtual HRESULT OnInitPage(PVOID)
+	virtual HRESULT OnInitPage(PVOID,DWORD,PVOID)
 	{
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 

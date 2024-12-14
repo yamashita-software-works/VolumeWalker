@@ -17,8 +17,8 @@
 
 //
 // NOTE:
-// This code also takes intended to be build with WDK environment (only for user mode).
-// So, do not use Win32 API.
+// The FsSimpleArray class is also intended to be build with WDK environment (for user mode).
+// So, do not use Win32 API in class method.
 //
 #include <limits.h>
 
@@ -631,13 +631,6 @@ static int _GetAttribute_IndexAllocation(HANDLE hVolume,LONGLONG FileId,CNtfsSpe
 
 	if( pAttrRecHdr->Form.Nonresident.CompressionUnit != 0 )
 		return 0;
-
-	// pAttrRecHdr->Form.Nonresident.LowestVcn
-	// pAttrRecHdr->Form.Nonresident.HighestVcn
-	// pAttrRecHdr->Form.Nonresident.AllocatedLength
-	// pAttrRecHdr->Form.Nonresident.ValidDataLength
-	// pAttrRecHdr->Form.Nonresident.FileSize;
-	// pAttrRecHdr->Form.Nonresident.TotalAllocated
 
 	PUCHAR pBuffer = NULL;
 

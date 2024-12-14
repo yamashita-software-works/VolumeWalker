@@ -31,9 +31,9 @@ extern "C" {
 //////////////////////////////////////////////////////////////////////////////
 
 EXTERN_C
-ULONG
+LONG
 WINAPI
-StorageMemFree(
+VolumeMemFree(
 	PVOID ptr
 	)
 {
@@ -42,6 +42,16 @@ StorageMemFree(
 		_MemFree(ptr);
 	}
 	return 0;
+}
+
+EXTERN_C
+ULONG
+WINAPI
+StorageMemFree(
+	PVOID ptr
+	)
+{
+	return (ULONG)VolumeMemFree(ptr);
 }
 
 //////////////////////////////////////////////////////////////////////////////

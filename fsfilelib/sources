@@ -103,7 +103,7 @@ INCLUDES=$(INCLUDES);..\inc
 #----------------------------------------------------------
 SOURCES = \
 	dllmain.cpp \
-	fsfilelib.cpp \
+	filelibnt.cpp \
 	clusterreader.cpp \
 	changejournalhelp.cpp \
 	watchdirectory.cpp \

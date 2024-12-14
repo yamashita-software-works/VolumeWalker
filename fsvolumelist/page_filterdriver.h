@@ -137,7 +137,7 @@ public:
 			delete[] m_comp_proc;
 	}
 
-	virtual HRESULT OnInitPage(PVOID)
+	virtual HRESULT OnInitPage(PVOID,DWORD,PVOID)
 	{
 #if _ENABLE_GROUP_ICON
 		m_scd.cbSize = sizeof(m_scd);

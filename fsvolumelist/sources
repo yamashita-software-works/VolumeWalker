@@ -96,7 +96,6 @@ INCLUDES=$(INCLUDES);..\inc
 #----------------------------------------------------------
 SOURCES = \
 	dllmain.cpp\
-	view.cpp\
 	volumewindow.cpp\
 	physicaldrivewindow.cpp\
 	disklayoutwindow.cpp\
@@ -110,10 +109,6 @@ SOURCES = \
 # Library Files
 #----------------------------------------------------------
 IGNORE_LINKLIB_ABUSE=1
-
-!if defined(_USE_FSLIB)
-LINKER_FLAGS=$(LINKER_FLAGS) /DELAYLOAD:"fslib.dll"
-!endif
 
 DLLDEF=$(TARGETNAME).def
 
@@ -160,13 +155,10 @@ LINKLIBS=\
 	$(SDK_LIB_PATH)\strsafe.lib \
 	$(SDK_LIB_PATH)\uxtheme.lib \
 	$(CRT_LIB_PATH)\delayimp.lib \
-	$(CRT_LIB_PATH)\delayimp.lib \
 	$(DDK_LIB_PATH)\fltlib.lib \
 	$(DDK_LIB_PATH)\ntdll.lib \
-!if defined(_USE_FSLIB)
-	$(_FSLIB)\fslib.lib \
-!endif
 	$(_LIBNTWDK)\fsvolumehelp.lib \
+	$(_LIBNTWDK)\fsfilelib.lib \
 	$(_LIBNTWDK)\libntwdk.lib \
 	$(_LIBNTWDK)\libmisc.lib \
 	$(_LIBNTWDK)\libcwh.lib

@@ -8,8 +8,10 @@
 #define BOOL INT
 #endif
 
+#ifdef _NTDEF_
 #ifndef HMODULE
 #define HMODULE HANDLE
+#endif
 #endif
 
 EXTERN_C

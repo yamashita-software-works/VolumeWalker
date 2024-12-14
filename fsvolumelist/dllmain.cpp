@@ -43,9 +43,6 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 			hInstance = (HINSTANCE)hModule;
 			_MemInit();
 
-#if _ENABLE_DARK_MODE_TEST
-			InitDarkMode();
-#endif
 			InitializeLibMisc(hInstance,GetUserDefaultUILanguage());
 
 			if( GetModuleHandle(L"fltlib.dll") == NULL )	
@@ -73,6 +70,7 @@ InitializeVolumeConsole(
 #if _ENABLE_DARK_MODE_TEST
 	if( dwFlags & VOLUME_DLL_FLAG_ENABLE_DARK_MODE )
 	{
+		InitDarkMode();
 		EnableDarkMode(TRUE);
 		return S_OK;
 	}

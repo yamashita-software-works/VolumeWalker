@@ -90,7 +90,7 @@ public:
 			delete[] m_comp_proc;
 	}
 
-	virtual HRESULT OnInitPage(PVOID)
+	virtual HRESULT OnInitPage(PVOID,DWORD,PVOID)
 	{
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 

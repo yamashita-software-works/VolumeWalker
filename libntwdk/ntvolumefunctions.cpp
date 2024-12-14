@@ -202,9 +202,12 @@ GetVolumeNameSet(
 	RtlZeroMemory(szTempVolume,sizeof(szTempVolume));
 	RtlZeroMemory(szTempDrive,sizeof(szTempDrive));
 
-	*pszDevicePath = L'\0';
-	*pszVolumeName = L'\0';
-	*pszDosDrive = L'\0';
+	if( pszDevicePath )
+		*pszDevicePath = L'\0';
+	if( pszVolumeName )
+		*pszVolumeName = L'\0';
+	if( pszDosDrive )
+		*pszDosDrive = L'\0';
 
 	// Prefix "\??\"
 	//
@@ -300,11 +303,16 @@ GetVolumeNameSet(
 
 	FreeMemory(pszBuffer);
 
-	StringCchCopy(pszDevicePath,cchDevicePath,szTempDevice);
-	StringCchCopy(pszDosDrive,cchDosDrive,szTempDrive);
+	if( pszDevicePath )
+		StringCchCopy(pszDevicePath,cchDevicePath,szTempDevice);
+	if( pszDosDrive )
+		StringCchCopy(pszDosDrive,cchDosDrive,szTempDrive);
 
-	StringCchCopy(pszVolumeName,cchVolumeName,L"\\\\?\\");
-	StringCchCat(pszVolumeName,cchVolumeName,szTempVolume);
+	if( pszVolumeName )
+	{
+		StringCchCopy(pszVolumeName,cchVolumeName,L"\\\\?\\");
+		StringCchCat(pszVolumeName,cchVolumeName,szTempVolume);
+	}
 
 	RtlSetLastWin32Error(ERROR_SUCCESS);
 

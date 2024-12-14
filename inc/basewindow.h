@@ -76,7 +76,6 @@ public:
 
 			if( uMsg == WM_NCDESTROY )
 			{
-				//pwnd->PostNcDestroy();
 				delete pwnd;
 				DetachBaseWindowObject(hWnd);
 			}

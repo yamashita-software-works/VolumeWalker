@@ -13,7 +13,7 @@ public:
 	{
 	}
 
-	virtual HRESULT OnInitPage(PVOID)
+	virtual HRESULT OnInitPage(PVOID,DWORD,PVOID)
 	{
 		return E_NOTIMPL;
 	}
@@ -44,6 +44,11 @@ public:
 	}
 
 	virtual HRESULT PreTranslateMessage(MSG *pMsg)
+	{
+		return E_NOTIMPL;
+	}
+
+	virtual HRESULT GetString(int,LPWSTR psz,int cch)
 	{
 		return E_NOTIMPL;
 	}

@@ -130,16 +130,27 @@ BOOL CColumnList::PaeseLine(PWSTR pszLine,COLUMN *pcol)
 	return (id != 0) && (pcol->id != -1);
 }
 
-DSArray<COLUMN> *CColumnList::GetColumnLayout(PCWSTR pszSectionName)
+DSArray<COLUMN> *CColumnList::GetColumnLayout(PCWSTR pszSectionName,PCWSTR pszSectionText,int cbSectionText)
 {
 	DWORD cch = 32768;
 	PWSTR buf = new WCHAR[cch];
-	DWORD ret;
+	DWORD ret = 0;
 	PCWSTR szIniFileName;
 
-	szIniFileName = GetIniFilePath();
+	if( pszSectionName != NULL )
+	{
+		szIniFileName = GetIniFilePath();
+		ret = GetPrivateProfileSection(pszSectionName,buf,cch,szIniFileName);
+	}
+	else
+	{
+		if( pszSectionText != NULL && cbSectionText != 0 )
+		{
+			memcpy(buf,pszSectionText,cbSectionText);
+			ret = cbSectionText/sizeof(WCHAR);
+		}
+	}
 
-	ret = GetPrivateProfileSection(pszSectionName,buf,cch,szIniFileName);
 	if( ret == 0 )
 	{
 		delete[] buf;
@@ -186,16 +197,9 @@ DSArray<COLUMN> *CColumnList::GetColumnLayout(PCWSTR pszSectionName)
 	return pdsa;
 }
 
-LARGE_INTEGER CColumnList::GetColumnSortInfo(PCWSTR pszSectionName)
+LARGE_INTEGER CColumnList::GetSortInfo(PWSTR sz)
 {
-	PCWSTR szIniFileName;
-	WCHAR sz[MAX_PATH];
-	LARGE_INTEGER liRet = {0};
-
-	szIniFileName = GetIniFilePath();
-
-	GetPrivateProfileString(pszSectionName,L"SortColumn",L"",sz,MAX_PATH,szIniFileName);
-
+	LARGE_INTEGER liRet = {0,0};
 	PWSTR pSep;
 	pSep = wcschr(sz,L',');
 	if( pSep )
@@ -220,6 +224,25 @@ LARGE_INTEGER CColumnList::GetColumnSortInfo(PCWSTR pszSectionName)
 	return liRet;
 }
 
+LARGE_INTEGER CColumnList::GetColumnSortInfo(PCWSTR pszSectionName)
+{
+	PCWSTR szIniFileName;
+	WCHAR sz[MAX_PATH];
+	LARGE_INTEGER liRet = {0};
+
+	szIniFileName = GetIniFilePath();
+
+	GetPrivateProfileString(pszSectionName,L"SortColumn",L"",sz,MAX_PATH,szIniFileName);
+	return GetSortInfo(sz);
+}
+
+LARGE_INTEGER CColumnList::GetColumnSortInfoFromText(PCWSTR pszText)
+{
+	WCHAR sz[MAX_PATH];
+	StringCchCopy(sz,MAX_PATH,pszText);
+	return GetSortInfo(sz);
+}
+
 int CColumnList::LoadUserDefinitionColumnTable(COLUMN_TABLE **pColTblPtr,PCWSTR pszSectionName)
 {
 	int cItems = 0;
@@ -227,6 +250,38 @@ int CColumnList::LoadUserDefinitionColumnTable(COLUMN_TABLE **pColTblPtr,PCWSTR 
 	*pColTblPtr = NULL;
 
 	DSArray<COLUMN> *pc = GetColumnLayout(pszSectionName);
+
+	if( pc )
+	{
+		cItems = pc->GetCount();
+
+		if( cItems > 0 )
+		{
+			COLUMN_TABLE *pcoltbl = (COLUMN_TABLE *)_MemAllocZero( sizeof(COLUMN_TABLE) + ((cItems - 1) * sizeof(COLUMN)) );
+
+			pcoltbl->cItems = cItems;
+
+			for(UINT i = 0; i < pcoltbl->cItems; i++)
+			{
+				pc->GetItem(i,&pcoltbl->column[i]);
+			}
+
+			*pColTblPtr = pcoltbl;
+		}
+
+		delete pc;
+	}
+
+	return cItems;
+}
+
+int CColumnList::LoadUserDefinitionColumnTableFromText(COLUMN_TABLE **pColTblPtr,PCWSTR pszText,int cbText)
+{
+	int cItems = 0;
+
+	*pColTblPtr = NULL;
+
+	DSArray<COLUMN> *pc = GetColumnLayout(NULL,pszText,cbText);
 
 	if( pc )
 	{
@@ -334,36 +389,38 @@ BOOL CColumnList::MakeColumnString(COLUMN_TABLE *pColTblPtr,INT idSort,INT sortD
 
 	try
 	{
-		if( ppszColumns ) {
-		for(i = 0; i < pColTblPtr->cItems; i++)
+		if( ppszColumns )
 		{
-			pszName = IdToName(pColTblPtr->column[i].id);
-
-			if( pszName )
+			for(i = 0; i < pColTblPtr->cItems; i++)
 			{
-				COLUMN *pcol = &pColTblPtr->column[i];
-
-				StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s=%d",pszName,pcol->cx);
-
-				msz.Add(szInfo);
+				pszName = IdToName(pColTblPtr->column[i].id);
+	
+				if( pszName )
+				{
+					COLUMN *pcol = &pColTblPtr->column[i];
+	
+					StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s=%d",pszName,pcol->cx);
+	
+					msz.Add(szInfo);
+				}
 			}
-		}
-
-		PWSTR pszBuf = (PWSTR)CoTaskMemAlloc( msz.GetBufferSize() );
-
-		ZeroMemory(pszBuf,msz.GetBufferSize());
-
-		PCWSTR psz = msz.GetTop();
-		if( psz && *psz ) {
-		do
-		{
-			StringCbCat(pszBuf,msz.GetBufferSize(),psz);
-			StringCbCat(pszBuf,msz.GetBufferSize(),L";");
-		}
-		while( msz.Next(&psz) );
-		}
-
-		*ppszColumns = pszBuf;
+	
+			PWSTR pszBuf = (PWSTR)CoTaskMemAlloc( msz.GetBufferSize() );
+	
+			ZeroMemory(pszBuf,msz.GetBufferSize());
+	
+			PCWSTR psz = msz.GetTop();
+			if( psz && *psz )
+			{
+				do
+				{	
+					StringCbCat(pszBuf,msz.GetBufferSize(),psz);
+					StringCbCat(pszBuf,msz.GetBufferSize(),L";");
+				}
+				while( msz.Next(&psz) );
+			}
+	
+			*ppszColumns = pszBuf;
 		}
 
 		if( idSort != -1 && ppszSortColumn )

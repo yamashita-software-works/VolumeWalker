@@ -136,6 +136,11 @@ GetRetrievalPointerBase(
     RETRIEVAL_POINTER_BASE *RetrievalPointerBase
     );
 
+LONG
+VolumeMemFree(
+	PVOID pv
+	);
+
 BOOL
 GetDiskExtents(
     HANDLE hVolume,

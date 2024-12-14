@@ -108,7 +108,7 @@ public:
 		_SafeMemFree(m_pszErrorMessage);
 	}
 
-	virtual HRESULT OnInitPage(PVOID)
+	virtual HRESULT OnInitPage(PVOID,DWORD,PVOID)
 	{
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 
@@ -596,6 +596,8 @@ public:
 					{
 						m_rd.Status = ERROR_NOT_ENOUGH_MEMORY;
 					}
+
+					VolumeMemFree(Geometry);
 				}
 
 				m_rpb.FileAreaOffset.QuadPart = 0;

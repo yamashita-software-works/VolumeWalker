@@ -21,7 +21,8 @@
 class CListWindow : public CConsoleWindow
 {
 public:
-	IViewBaseWindow *m_pView;
+	CViewBase m_PageHost;
+	CViewBase *m_pView;
 
 	int  m_ConsoleTypeId;
 
@@ -35,14 +36,13 @@ public:
 
 	LRESULT OnCreate(HWND hWnd,UINT,WPARAM,LPARAM)
 	{
-		ViewBase_CreateObject(GETINSTANCE(m_hWnd),&m_pView);
-		m_pView->Create(hWnd);
+		m_pView = &m_PageHost;
+		m_pView->m_hWnd = m_hWnd;
 		return 0;
 	}
 
 	LRESULT OnDestroy(HWND,UINT,WPARAM,LPARAM)
 	{
-		m_pView->Destroy();
 		return 0;
 	}
 
@@ -56,9 +56,9 @@ public:
 
 	LRESULT OnSetFocus(HWND,UINT,WPARAM,LPARAM lParam)
 	{
-		m_hWndCtrlFocus = m_pView->GetHWND();
+		m_hWndCtrlFocus = m_pView->GetPageHWND();
 
-		SetFocus(m_pView->GetHWND());
+		SetFocus(m_pView->GetPageHWND());
 
 		return 0;
 	}
@@ -112,7 +112,7 @@ public:
 				break; // todo: avoid C4065
 			default:
 				if( m_pView )
-					return SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam);
+					return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam);
 				break;
 		}
 		return 0;
@@ -120,7 +120,7 @@ public:
 
 	LRESULT OnQueryCmdState(HWND,UINT,WPARAM wParam,LPARAM lParam)
 	{
-		if( m_hWndCtrlFocus == m_pView->GetHWND() )
+		if( m_hWndCtrlFocus == m_pView->GetPageHWND() )
 		{
 			ASSERT( lParam != NULL );
 			if( lParam )
@@ -136,10 +136,10 @@ public:
 	{
 		switch(uMsg)
 	    {
-			case WM_PRETRANSLATEMESSAGE:
-				if( m_pView )
-					m_pView->PreTranslateMessage((MSG*)lParam);
-				return 0;
+//			case WM_PRETRANSLATEMESSAGE:
+//				if( m_pView )
+//					m_pView->PreTranslateMessage((MSG*)lParam);
+//				return 0;
 		    case WM_CREATE:
 				return OnCreate(hWnd,uMsg,wParam,lParam);
 	        case WM_COMMAND:
@@ -162,7 +162,7 @@ public:
 				return OnQueryCmdState(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
 				if( m_pView )
-					return SendMessage(m_pView->GetHWND(),uMsg,wParam,lParam); // forward to current view
+					return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam); // forward to current view
 				return 0;
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
@@ -172,7 +172,7 @@ public:
 	{
 		HDWP hdwp = BeginDeferWindowPos(1);
 
-		DeferWindowPos(hdwp,m_pView->GetHWND(),NULL,0,0,cx,cy,SWP_NOZORDER|SWP_NOMOVE);
+		DeferWindowPos(hdwp,m_pView->GetPageHWND(),NULL,0,0,cx,cy,SWP_NOZORDER|SWP_NOMOVE);
 
 		EndDeferWindowPos(hdwp);
 	}
@@ -207,7 +207,7 @@ public:
 		GetClientRect(m_hWnd,&rc);
 		UpdateLayout(_RECT_WIDTH(rc),_RECT_HIGHT(rc),FALSE);
 		m_pView->InitLayout(NULL);
-		m_hWndCtrlFocus = m_pView->GetHWND();
+		m_hWndCtrlFocus = m_pView->GetPageHWND();
 	}
 };
 

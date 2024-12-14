@@ -178,8 +178,15 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				SetDlgItemText(hDlg,IDC_TEXT,sz);
 			}
 
+			// OS version:
+			{
+				Edit_AddText(hwndEdit,L"Windows Versison:\r\n");
+				OSVersionText(GetDlgItem(hDlg,IDC_EDIT));
+			}
+
 			// miscellaneous/system information:
 			{
+				Edit_AddText(hwndEdit,L"\r\n\r\n");
 				LARGE_INTEGER liBootTime;
 				LARGE_INTEGER liElapsedTime;
 				GetSystemBootTime( &liBootTime, NULL, &liElapsedTime );
@@ -202,13 +209,6 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				Edit_AddText(hwndEdit,szBuf);
 			}
 
-			// OS version:
-			{
-				Edit_AddText(hwndEdit,L"\r\n\r\n");
-				Edit_AddText(hwndEdit,L"Windows Versison:\r\n");
-				OSVersionText(GetDlgItem(hDlg,IDC_EDIT));
-			}
-
 			// System Install Date
 			{
 				LARGE_INTEGER t = {0};
@@ -225,8 +225,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				_GetDateTimeStringEx(t.QuadPart,sz,64,NULL,NULL,FALSE);
 
 				Edit_AddText(hwndEdit,L"\r\n\r\n");
-				Edit_AddText(hwndEdit,L"System Install Date:\r\n");
-				Edit_AddText(hwndEdit,L"  ");
+				Edit_AddText(hwndEdit,L"System Install Date : ");
 				Edit_AddText(hwndEdit,sz);
 			}
 
@@ -270,7 +269,7 @@ HRESULT InitLanguage(LPWSTR pszLangIdOrName)
       - VOLUME_CONSOLE_DOSDRIVELIST
       - VOLUME_CONSOLE_FILTERDRIVER
 
-    These consoles allow create instances per volume.
+    These consoles are allow create instances per volume:
 
       - VOLUME_CONSOLE_VOLUMEINFORMAION
       - VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION

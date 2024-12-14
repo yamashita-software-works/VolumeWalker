@@ -72,11 +72,13 @@ public:
 	}
 
 	int LoadUserDefinitionColumnTable(COLUMN_TABLE **pColTblPtr,LPCWSTR pszSectionName);
+	int LoadUserDefinitionColumnTableFromText(COLUMN_TABLE **pColTblPtr,PCWSTR pszText,int cbText);
 	int FreeUserDefinitionColumnTable(COLUMN_TABLE *pColTbl);
 	const COLUMN *GetDefaultColumnItemFromId(UINT id);
 	const COLUMN *GetDefaultColumnItem(int index);
 	BOOL SetIniFilePath(PCWSTR Path);
 	LARGE_INTEGER GetColumnSortInfo(PCWSTR pszSectionName);
+	LARGE_INTEGER GetColumnSortInfoFromText(PCWSTR pszText);
 	BOOL SaveColumnTable(COLUMN_TABLE *pColTblPtr,PCWSTR pszSectionName,PCWSTR pszIniFileName,INT idSort,INT sortDirection);
 	BOOL MakeColumnString(COLUMN_TABLE *pColTblPtr,INT idSort,INT sortDirection,PWSTR *ppszColumns,PWSTR *ppszSortColumn);
 #if 0
@@ -86,7 +88,8 @@ public:
 private:
 	int findColumnItem(UINT id);
 	BOOL PaeseLine(PWSTR pszLine,COLUMN *pcol);
-	DSArray<COLUMN> *GetColumnLayout(PCWSTR pszSectionName);
+	DSArray<COLUMN> *GetColumnLayout(PCWSTR pszSectionName,PCWSTR pszSectionText=NULL,int cbSectionText=0);
+	LARGE_INTEGER GetSortInfo(PWSTR sz);
 
 	UINT NameToId(PCWSTR pszName)
 	{

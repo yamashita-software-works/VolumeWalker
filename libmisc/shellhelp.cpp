@@ -594,10 +594,20 @@ GetShellFileIconImageListIndexEx(
 
 	if( iImage == I_IMAGENONE )
 	{
-		if( *pszFileName == L'\0' ||  (pszFileName[0] == L'\\' && pszFileName[1] == L'\0') )
+		if( *pszFileName == L'\0' )
 		{
 			SHSTOCKICONINFO sii = {sizeof(sii)};
 			SHGetStockIconInfo(SIID_DRIVEFIXED,SHGSI_SYSICONINDEX|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
+			iImage = sii.iSysImageIndex;
+			if( sii.hIcon )
+				DestroyIcon(sii.hIcon);
+		}
+		else if( pszFileName[0] == L'\\' && pszFileName[1] == L'\0' )
+		{
+			SHSTOCKICONINFO sii = {sizeof(sii)};
+			SHGetStockIconInfo(
+					(dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? SIID_FOLDER : SIID_DOCNOASSOC,
+					SHGSI_SYSICONINDEX|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
 			iImage = sii.iSysImageIndex;
 			if( sii.hIcon )
 				DestroyIcon(sii.hIcon);

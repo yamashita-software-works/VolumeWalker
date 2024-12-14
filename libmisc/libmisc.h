@@ -555,6 +555,11 @@ inline void WINAPI DoMessageSleep(HWND hWnd=NULL,DWORD dwMilliseconds=0) {
     }
 }
 
+inline BOOL IsWindowVisibleEx(HWND hwnd)
+{
+	return IsWindow(hwnd) && (GetWindowLong(hwnd,GWL_STYLE) & WS_VISIBLE);
+}
+
 inline int GetTextParcent()
 {
     //ex)

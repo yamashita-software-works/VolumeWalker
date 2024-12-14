@@ -118,6 +118,7 @@ typedef struct _STRING_STRUCT
 //
 typedef struct _UIS_ITEM_ACTIVATED
 {
+	HWND hwndFrom;
 	UINT ConsoleTypeId;
 	PWSTR Path;
 } UIS_ITEM_ACTIVATED;

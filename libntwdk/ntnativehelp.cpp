@@ -1063,10 +1063,12 @@ BOOLEAN SplitVolumeRelativePath_U(UNICODE_STRING *FullPath,UNICODE_STRING *Volum
         return TRUE;
     }
 
-    VolumeRelativePath->Length        = (USHORT)(cb - usVolumeName.Length);
-    VolumeRelativePath->MaximumLength = (USHORT)(cb - usVolumeName.MaximumLength);
-    VolumeRelativePath->Buffer        = (PWCH)&FullPath->Buffer[ WCHAR_LENGTH(usVolumeName.Length) ];
-
+	if( VolumeRelativePath )
+	{
+	    VolumeRelativePath->Length        = (USHORT)(cb - usVolumeName.Length);
+		VolumeRelativePath->MaximumLength = (USHORT)(cb - usVolumeName.MaximumLength);
+		VolumeRelativePath->Buffer        = (PWCH)&FullPath->Buffer[ WCHAR_LENGTH(usVolumeName.Length) ];
+	}
 #ifdef _DEBUG
     UNICODE_STRING us1,us2;
     RtlDuplicateUnicodeString(0x3,VolumeName,&us1);
@@ -1172,6 +1174,14 @@ VOID RemoveFileSpec_W(PWSTR pszPath)
         if( pSep )
             *pSep = L'\0';
     }
+}
+
+BOOLEAN AppendBackslash_W(PWSTR pszPath,int cchPath)
+{
+	HRESULT hr = S_FALSE;
+	if( !IsLastCharacterBackslash(pszPath) )
+		hr = StringCchCat(pszPath,cchPath,L"\\");
+	return (hr == S_OK);
 }
 
 PWSTR CombinePathBuffer(PWSTR lpszDest,int cchDest,PCWSTR lpszDir,PCWSTR lpszFile)
