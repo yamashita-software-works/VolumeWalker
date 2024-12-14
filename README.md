@@ -2,6 +2,7 @@
  
 Version 0.1 Preview
 
+**2024/12/14 Download ZIPを実行すると、Windows Securityが "Trojan:Script/Sabsik.FL.A!ml" と誤認識しています。**
 
 **Build 0.1.10.0 からソフトウェア名称を FSVolumeWalker から VolumeWalker に変更しました。**
 
