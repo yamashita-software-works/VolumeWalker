@@ -563,6 +563,13 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				SetDlgItemText(hDlg,IDC_TEXT,sz);
 			}
 
+			// OS version:
+			{
+				Edit_AddText(hwndEdit,L"\r\n\r\n");
+				Edit_AddText(hwndEdit,L"Windows Versison:\r\n");
+				OSVersionText(GetDlgItem(hDlg,IDC_EDIT));
+			}
+
 			// miscellaneous/system information:
 			{
 				LARGE_INTEGER liBootTime;
@@ -585,13 +592,6 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 				StringCchPrintf(szBuf,_countof(szBuf),L"Boot Elapsed Time : %s",szBootElapsedTime);
 				Edit_AddText(hwndEdit,szBuf);
-			}
-
-			// OS version:
-			{
-				Edit_AddText(hwndEdit,L"\r\n\r\n");
-				Edit_AddText(hwndEdit,L"Windows Versison:\r\n");
-				OSVersionText(GetDlgItem(hDlg,IDC_EDIT));
 			}
 
 			return (INT_PTR)TRUE;
@@ -626,7 +626,6 @@ static MDICHILDFRAMETABLE table[]= {
 	{VOLUME_CONSOLE_FILTERDRIVER,            0},
 	{VOLUME_CONSOLE_VOLUMEINFORMAION,        0},
 	{VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION, 0},
-	{VOLUME_CONSOLE_FILESYSTEMSTATISTICS,    0},
 };
 
 int ClearWindowHandle(UINT_PTR ConsoleTypeId,HWND hwnd)
@@ -682,29 +681,6 @@ VOID SendUIInitLayout(HWND hwndBase,HWND hWndView)
 	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_INIT_LAYOUT,(LPARAM)&rc);
 }
 
-VOID SendHexDumpInformation(HWND hwndMDIChild,SELECT_OFFSET_ITEM *OpenSelItem,PCWSTR pszOpenTarget)
-{
-	//
-	// Hex dump: Set data source, offset, and home offset.
-	//
-	SELECT_OFFSET_ITEM sel = {0};
-	sel.hdr.mask = SI_MASK_PATH|SI_MASK_NAME|SI_MASK_VIEWTYPE|SI_MASK_START_OFFSET;
-	sel.hdr.ViewType = VOLUME_CONSOLE_SIMPLEHEXDUMP;
-
-	if( OpenSelItem )
-	{
-		sel.hdr.pszVolume = OpenSelItem->hdr.pszVolume;
-		sel.liStartOffset  = OpenSelItem->liStartOffset;
-	}
-	else
-	{
-		sel.hdr.pszVolume = (PWSTR)pszOpenTarget;
-		sel.liStartOffset.QuadPart = 0;
-	}
-
-	SendMessage(g_hWndViewPage,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
-}
-
 //----------------------------------------------------------------------------
 //
 //  OpenViewPage()
@@ -729,32 +705,27 @@ HWND OpenViewPage(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget = NULL,PVOID
 
 	SendUIInitLayout(hWnd,hWndView);
 
-	if( VOLUME_CONSOLE_SIMPLEHEXDUMP == ConsoleTypeId )
+	SELECT_ITEM sel = {0};
+
+	switch( ConsoleTypeId )
 	{
-		SendHexDumpInformation(hWndView,(SELECT_OFFSET_ITEM *)OffsetParam,pszOpenTarget);
-	}
-	else
-	{
-		SELECT_ITEM sel = {0};
-		switch( ConsoleTypeId )
+		case VOLUME_CONSOLE_VOLUMEINFORMAION:
+//		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 		{
-			case VOLUME_CONSOLE_VOLUMEINFORMAION:
-			case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
-			{
-				sel.pszVolume = (PWSTR)pszOpenTarget;
-				sel.ViewType = ConsoleTypeId;
-				break;
-			}
-			case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
-			case VOLUME_CONSOLE_DISKLAYOUT:
-			{
-				sel.pszPhysicalDrive = (PWSTR)pszOpenTarget;
-				sel.ViewType = ConsoleTypeId;
-				break;
-			}
+			sel.pszVolume = (PWSTR)pszOpenTarget;
+			sel.ViewType = ConsoleTypeId;
+			break;
 		}
-		SendMessage(hWndView,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
+		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
+//		case VOLUME_CONSOLE_DISKLAYOUT:
+		{
+			sel.pszPhysicalDrive = (PWSTR)pszOpenTarget;
+			sel.ViewType = ConsoleTypeId;
+			break;
+		}
 	}
+
+	SendMessage(hWndView,WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
 
 	SetWindowHandle(ConsoleTypeId,hWndView);
 
@@ -796,14 +767,14 @@ VOID OpenConsole(HWND hWnd,UINT ConsoleTypeId,PCWSTR Param,UINT ParamType,BOOL b
 				switch( ConsoleTypeId )
 				{
 					case VOLUME_CONSOLE_VOLUMEINFORMAION:
-					case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
+//					case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 					{
 						sel.pszVolume = psz;
 						sel.ViewType = ConsoleTypeId;
 						break;
 					}
 					case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
-					case VOLUME_CONSOLE_DISKLAYOUT:
+//					case VOLUME_CONSOLE_DISKLAYOUT:
 					{
 						sel.pszPhysicalDrive = psz;
 						sel.ViewType = ConsoleTypeId;
@@ -857,7 +828,7 @@ VOID OpenConsole(HWND hWnd,UINT ConsoleTypeId,PCWSTR Param,UINT ParamType,BOOL b
 	switch( ConsoleTypeId )
 	{
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
-		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
+//		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 			NavigationPane::SelectTreeItem(VOLUME_CONSOLE_VOLUME,Param);
 			break;
 		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
@@ -1423,11 +1394,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					switch( ConsoleTypeId )
 					{
 						case VOLUME_CONSOLE_VOLUMEINFORMAION:
-						case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
+//						case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 							g_DefaultVolumeConsole = ConsoleTypeId;
 							break;
 						case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
-						case VOLUME_CONSOLE_DISKLAYOUT:
+//						case VOLUME_CONSOLE_DISKLAYOUT:
 							g_DefaultPhysicalDriveConsole = ConsoleTypeId;
 							break;
 					}
@@ -1518,7 +1489,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	HACCEL hAccelTable;
 	hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDR_MAINFRAME));
 
-	MSG msg;
+	MSG msg = {0};
 	INT ret;
 	MSG msgDblClk = {0};
 
@@ -1557,7 +1528,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 					msgDblClk.hwnd = NULL;
 					continue;
 				}
-				msgDblClk.hwnd = NULL;
 			}
 #endif
 			//
