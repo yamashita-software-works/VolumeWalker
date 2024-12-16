@@ -406,7 +406,9 @@ BOOL CColumnList::MakeColumnString(COLUMN_TABLE *pColTblPtr,INT idSort,INT sortD
 			}
 	
 			PWSTR pszBuf = (PWSTR)CoTaskMemAlloc( msz.GetBufferSize() );
-	
+			if( pszBuf == NULL )
+				throw ERROR_NOT_ENOUGH_MEMORY;
+
 			ZeroMemory(pszBuf,msz.GetBufferSize());
 	
 			PCWSTR psz = msz.GetTop();
@@ -425,20 +427,26 @@ BOOL CColumnList::MakeColumnString(COLUMN_TABLE *pColTblPtr,INT idSort,INT sortD
 
 		if( idSort != -1 && ppszSortColumn )
 		{
+			*ppszSortColumn = L'\0';
+
 			pszName = IdToName(idSort);
 		
 			if( pszName )
 			{
 				if( StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s,%d",pszName,sortDirection) == S_OK )
 				{
-					*ppszSortColumn = (PWSTR)CoTaskMemAlloc( (wcslen(szInfo) + 1) * sizeof(WCHAR) );
+					SIZE_T cch = (wcslen(szInfo) + 1);
+					*ppszSortColumn = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );
+					if( *ppszSortColumn == NULL )
+						throw ERROR_NOT_ENOUGH_MEMORY;
+					StringCchCopy(*ppszSortColumn,cch,szInfo);
 				}
 			}
 		}
 
 		bSuccess = TRUE;
 	}
-	catch( DWORD err )
+	catch( LONG err )
 	{
 		SetLastError(err);
 	}

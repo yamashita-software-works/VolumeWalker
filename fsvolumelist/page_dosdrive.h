@@ -1096,7 +1096,7 @@ public:
 			if( GetKeyState(VK_CONTROL) < 0 )
 				Open |= 0x8000;
 
-			OpenVolumeLocation(GetActiveWindow(),Open,pItem->szDrive,pItem->pszVolumeGuid);
+			OpenVolumeLocationByShell(GetActiveWindow(),Open,pItem->szDrive,pItem->pszVolumeGuid);
 		}
 	}
 

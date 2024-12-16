@@ -136,11 +136,6 @@ GetRetrievalPointerBase(
     RETRIEVAL_POINTER_BASE *RetrievalPointerBase
     );
 
-LONG
-VolumeMemFree(
-	PVOID pv
-	);
-
 BOOL
 GetDiskExtents(
     HANDLE hVolume,
@@ -212,6 +207,12 @@ StorageGetDeviceCapacity(
 ULONG
 WINAPI
 StorageMemFree(
+	PVOID pv
+	);
+
+LONG
+WINAPI
+VolumeMemFree(
 	PVOID pv
 	);
 

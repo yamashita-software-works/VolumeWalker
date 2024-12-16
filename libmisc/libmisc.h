@@ -464,6 +464,12 @@ StringFindNumber(
     PCWSTR psz
     );
 
+BOOL
+WINAPI
+IsStringBackslashEnd(
+	PCWSTR pszPath
+	);
+
 //
 // ListView Helper
 //
@@ -678,4 +684,22 @@ HICON
 WINAPI
 GetShellStockIcon(
 	SHSTOCKICONID StockIconId
+	);
+
+enum {
+	OpenVolumeLocationWithExplorer=0,
+	OpenVolumeLocationWithCommandPrompt=1,
+	OpenVolumeLocationWithPowerShell=2,
+	OpenVolumeLocationWithTerminal=3,
+	OpenVolumeLocationWithBash=4,
+	OpenVolumeLocationWithAdmin=0x8000,
+};
+
+HRESULT
+WINAPI
+OpenVolumeLocationByShell(
+	HWND hWnd,
+	UINT Open,
+	PCWSTR pszDosDrive,
+	PCWSTR pszVolumeGuid
 	);

@@ -36,6 +36,7 @@ EnumFiles(
     HANDLE hRoot,
     PCWSTR pszDirectoryPath,
     PCWSTR pszFileName,
+    ULONG Flags,
     ENUMFILESCALLBACK pfnCallback,
     ULONG_PTR CallbackContext
     )
@@ -45,12 +46,12 @@ EnumFiles(
     BOOLEAN bRestartScan = TRUE;
     OBJECT_ATTRIBUTES ObjectAttributes;
     IO_STATUS_BLOCK IoStatus;
-    UNICODE_STRING NtPathName;
-    UNICODE_STRING FileName;
+    UNICODE_STRING NtPathName = {0};
+    UNICODE_STRING FileName = {0};
     PVOID pBuffer = NULL;
     ULONG cbBuffer = _PAGESIZE * 16;
 
-    if( pszDirectoryPath == NULL )
+    if( hRoot == NULL && pszDirectoryPath == NULL )
         return STATUS_INVALID_PARAMETER;
     
     if( pfnCallback == NULL )
@@ -66,28 +67,41 @@ EnumFiles(
     if( pBuffer == NULL )
         return STATUS_NO_MEMORY;
 
-    RtlInitUnicodeString(&NtPathName,pszDirectoryPath);
+    if( pszDirectoryPath != NULL )
+    {
+        RtlInitUnicodeString(&NtPathName,pszDirectoryPath);
 
-    InitializeObjectAttributes(&ObjectAttributes,&NtPathName,0,hRoot,NULL);
+        InitializeObjectAttributes(&ObjectAttributes,&NtPathName,0,hRoot,NULL);
 
-    Status = NtOpenFile(&hDirectory,
-                FILE_LIST_DIRECTORY|FILE_TRAVERSE|SYNCHRONIZE,
-                &ObjectAttributes,
-                &IoStatus,
-                FILE_SHARE_READ|FILE_SHARE_WRITE,
-                FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT
-                // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 
-                );
+        Status = NtOpenFile(&hDirectory,
+                    FILE_LIST_DIRECTORY|FILE_TRAVERSE|SYNCHRONIZE,
+                    &ObjectAttributes,
+                    &IoStatus,
+                    FILE_SHARE_READ|FILE_SHARE_WRITE,
+                    FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT
+                    // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 
+                    );
+    }
+    else
+    {
+        hDirectory = hRoot;
+
+        Status = STATUS_SUCCESS;
+    }
 
     if( Status == STATUS_SUCCESS )
     {
+        FILE_INFORMATION_CLASS InfoClass;
+
+        InfoClass = FileIdBothDirectoryInformation;
+
         do
         {
             Status = NtQueryDirectoryFile(hDirectory,
                                 NULL,NULL,NULL,
                                 &IoStatus,
                                 pBuffer,cbBuffer,
-                                FileIdBothDirectoryInformation,
+                                InfoClass,
                                 FALSE,
                                 FileName.Length == 0 ? NULL : & FileName,
                                 bRestartScan
@@ -96,10 +110,10 @@ EnumFiles(
             if( Status == STATUS_SUCCESS )
             {
                 FILE_ID_BOTH_DIR_INFORMATION *pFileInfo = (FILE_ID_BOTH_DIR_INFORMATION *)pBuffer;
-
+    
                 for(;;)
                 {
-                    if( pfnCallback(hDirectory,NtPathName.Buffer,pFileInfo,CallbackContext) == false )
+                    if( pfnCallback(hDirectory,NtPathName.Buffer,0,pFileInfo,CallbackContext) == false )
                     {
                         Status = STATUS_CANCELLED;
                         break;
@@ -122,19 +136,18 @@ EnumFiles(
         if( STATUS_NO_MORE_FILES == Status )
             Status = STATUS_SUCCESS;
 
-        NtClose(hDirectory);
+        if( pszDirectoryPath != NULL )
+            NtClose(hDirectory);
     }
 
     FreeMemory(pBuffer);
 
-    // NOTE:
-    // status STATUS_NO_MORE_FILES is return through as it is.
     return Status;
 }
 
 //---------------------------------------------------------------------------
 //
-//  WinEnumFiles()
+//  EnumFiles_W()
 //
 //---------------------------------------------------------------------------
 typedef struct _INTERNAL_CALLBACK_BUFFER
@@ -150,6 +163,7 @@ CALLBACK
 EnumFilesCallback(
     HANDLE hDirectory,
     PCWSTR DirectoryName,
+    ULONG Flags,
     PVOID FileInfo,
     ULONG_PTR CallbackContext
     )
@@ -167,7 +181,7 @@ EnumFilesCallback(
     usName.Length = usName.MaximumLength = (USHORT)pBoth->FileNameLength;
     usName.Buffer = pBoth->FileName;
 
-    hr = ((FSHELPENUMCALLBACKPROC)pcb->Callback)(0,FileInfo,&fsdecbi,pcb->Context);
+    hr = ((FSDIRENUMCALLBACKPROC)pcb->Callback)(0,FileInfo,&fsdecbi,pcb->Context);
 
     return hr == S_OK ? TRUE : FALSE;
 }
@@ -175,11 +189,11 @@ EnumFilesCallback(
 EXTERN_C
 HRESULT
 NTAPI
-EnumFiles_W(
+EnumDirectoryFiles_W(
     PCWSTR Path,
     PCWSTR FileNameFilter,
     ULONG Flags,
-    FSHELPENUMCALLBACKPROC Callback,
+    FSDIRENUMCALLBACKPROC Callback,
     PVOID Context
     )
 {
@@ -210,7 +224,7 @@ EnumFiles_W(
     cb.Callback = Callback;
     cb.Context  = Context;
 
-    Status = EnumFiles(hRoot,pP,FileNameFilter,&EnumFilesCallback,(ULONG_PTR)&cb);
+    Status = EnumFiles(hRoot,pP,FileNameFilter,Flags,&EnumFilesCallback,(ULONG_PTR)&cb);
 
     NtClose(hRoot);
 

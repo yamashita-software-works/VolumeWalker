@@ -132,12 +132,15 @@ BOOLEAN _UStrMatchI_U(const WCHAR *ptn,const UNICODE_STRING *pus);
 HRESULT GetNtPath(PCWSTR DosPathName,PWSTR *NtPath,PCWSTR *NtFileNamePart);
 HRESULT GetNtPath_U(PCWSTR DosPathName,UNICODE_STRING *NtPath,PCWSTR *NtFileNamePart);
 
-HANDLE SPtrArray_Create(INT InitialSize);
+HANDLE SPtrArray_Create(INT InitialCount);
 INT SPtrArray_Destroy(HANDLE hspa);
 INT SPtrArray_GetCount(HANDLE hspa);
 INT SPtrArray_Add(HANDLE hspa,PVOID Insert);
 PVOID SPtrArray_Get(HANDLE hspa,int iIndex);
 INT SPtrArray_Delete(HANDLE hspa,int iIndex);
+BOOLEAN SPtrArray_DeleteAll(HANDLE hspa);
+BOOLEAN SPtrArray_Reset(HANDLE hspa);
+SIZE_T SPtrArray_GetBufferSize(HANDLE hspa);
 
 #define SPtrArray_GetPWSTR(h,i) ((PWSTR)SPtrArray_Get(h,i))
 #define SPtrArray_GetPtr(h,i) SPtrArray_Get(h,i)
@@ -172,7 +175,6 @@ TraverseDirectory(
     );
 #define DTF_NO_PROCESS_WILDCARD 0x1
 
-
 #define FACILITY_LIBWDK 0x80
 #define NTSTATUS_FROM_LIBWDK(x) ((NTSTATUS)(x) <= 0 ? ((NTSTATUS)(x)) : ((NTSTATUS) (((x) & 0x0000FFFF) | (FACILITY_LIBWDK << 16) | ERROR_SEVERITY_SUCCESS)))
 
@@ -184,6 +186,7 @@ BOOLEAN
 (CALLBACK *ENUMFILESCALLBACK)(
     HANDLE hDirectory,
     PCWSTR DirectoryName,
+	ULONG Flags,
     PVOID pFileInfo,
     ULONG_PTR CallbackContext
     );
@@ -195,8 +198,33 @@ EnumFiles(
     HANDLE hRoot,
     PCWSTR pszDirectoryPath,
     PCWSTR pszFileName,
+	ULONG Flags,
     ENUMFILESCALLBACK pfnCallback,
     ULONG_PTR CallbackContext
+    );
+
+typedef struct _FSDIRENUMCALLBACKINFO
+{
+    HANDLE DirectoryHandle;
+    PCWSTR Path;
+} FSDIRENUMCALLBACKINFO,*PFSDIRENUMCALLBACKINFO;
+
+typedef HRESULT (CALLBACK *FSDIRENUMCALLBACKPROC)(
+    ULONG InformationType,
+    PVOID Information,
+    PFSDIRENUMCALLBACKINFO DirEnumCallbackInfo,
+    PVOID Context
+    );
+
+EXTERN_C
+HRESULT
+NTAPI
+EnumDirectoryFiles_W(
+    PCWSTR Path,
+    PCWSTR FileNameFilter,
+    ULONG Flags,
+    FSDIRENUMCALLBACKPROC Callback,
+    PVOID Context
     );
 
 EXTERN_C

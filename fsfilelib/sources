@@ -104,6 +104,7 @@ INCLUDES=$(INCLUDES);..\inc
 SOURCES = \
 	dllmain.cpp \
 	filelibnt.cpp \
+	filelibw32.cpp \
 	clusterreader.cpp \
 	changejournalhelp.cpp \
 	watchdirectory.cpp \

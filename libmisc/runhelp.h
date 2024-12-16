@@ -363,7 +363,7 @@ public:
 		PathCombine(szWinTerminalPath,szAppDataLocal,L"Microsoft\\WindowsApps\\wt.exe");
 
 		WCHAR szCmdLine[MAX_PATH];
-		if( IsLastCharacterBackslash(pszDirPath) )
+		if( IsStringBackslashEnd(pszDirPath) )
 		{
 			// if tail character backslash, must need to last double backslash.
 			// (If not specified, it is parsed as an escape character on wt.exe)

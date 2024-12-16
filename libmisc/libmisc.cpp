@@ -609,6 +609,17 @@ INT StringFindNumber(PCWSTR psz)
     return -1;
 }
 
+
+BOOL WINAPI IsStringBackslashEnd(PCWSTR pszPath)
+{
+    int cch = (int)wcslen(pszPath);
+    if( cch > 0 )
+    {
+        return ( pszPath[cch-1] == L'\\' );
+    }
+    return FALSE;
+}
+
 //
 // Draw Helper
 //

@@ -749,7 +749,7 @@ BOOLEAN GetVolumeName_U(UNICODE_STRING *pusFullyQualifiedPath)
         pusFullyQualifiedPath->Length = (USHORT)((pRootDirectory - pusFullyQualifiedPath->Buffer) * sizeof(WCHAR));
         bSuccess = TRUE;
     }
-    else if( Status == STATUS_OBJECT_PATH_NOT_FOUND )
+    else if( Status == STATUS_OBJECT_PATH_NOT_FOUND || Status == STATUS_OBJECT_PATH_SYNTAX_BAD )
     {
         // The root directory not found. Specified path is volume name.
         bSuccess = TRUE;
@@ -762,7 +762,7 @@ BOOLEAN GetVolumeName_U(UNICODE_STRING *pusFullyQualifiedPath)
 
 BOOLEAN PathFileExists_U(UNICODE_STRING *pusPath,ULONG *FileAttributes)
 {
-	NTSTATUS Status;
+    NTSTATUS Status;
     OBJECT_ATTRIBUTES oa = {0};
     FILE_NETWORK_OPEN_INFORMATION fi = {0};
 
@@ -775,14 +775,14 @@ BOOLEAN PathFileExists_U(UNICODE_STRING *pusPath,ULONG *FileAttributes)
         return TRUE;
     }
 
-	_SetLastStatusDos( Status );
+    _SetLastStatusDos( Status );
 
     return FALSE;
 }
 
 BOOLEAN PathFileExists_UEx(HANDLE hParentDir,UNICODE_STRING *pusPath,ULONG *FileAttributes)
 {
-	NTSTATUS Status;
+    NTSTATUS Status;
     OBJECT_ATTRIBUTES oa = {0};
     FILE_NETWORK_OPEN_INFORMATION fi = {0};
 
@@ -795,7 +795,7 @@ BOOLEAN PathFileExists_UEx(HANDLE hParentDir,UNICODE_STRING *pusPath,ULONG *File
         return TRUE;
     }
 
-	_SetLastStatusDos( Status );
+    _SetLastStatusDos( Status );
 
     return FALSE;
 }
@@ -826,11 +826,11 @@ BOOLEAN PathFileExists_W(PCWSTR pszPath,ULONG *FileAttributes)
         UNICODE_STRING usPath;
         RtlInitUnicodeString(&usPath,pP);
         bSucceeded = PathFileExists_UEx(hRoot,&usPath,FileAttributes);
-		ULONG Win32Error = RtlGetLastWin32Error();
+        ULONG Win32Error = RtlGetLastWin32Error();
         NtClose(hRoot);
         FreeMemory(pR);
         FreeMemory(pP);
-		RtlSetLastWin32Error(Win32Error);
+        RtlSetLastWin32Error(Win32Error);
 
         return bSucceeded;
     }
@@ -960,21 +960,21 @@ NTSTATUS SplitPathFileName_U(__inout UNICODE_STRING *Path,__out UNICODE_STRING *
             }
         }
 
-		if( i >= 0 )
-		{
-			FileName->Buffer = &Path->Buffer[i + 1];
-	        FileName->Length = (USHORT)WCHAR_BYTES((len - i -1));
+        if( i >= 0 )
+        {
+            FileName->Buffer = &Path->Buffer[i + 1];
+            FileName->Length = (USHORT)WCHAR_BYTES((len - i -1));
 
-		    Path->Length -= FileName->Length;
-			if( Path->Length > sizeof(WCHAR) )
-				Path->Length -= sizeof(WCHAR); // separator
+            Path->Length -= FileName->Length;
+            if( Path->Length > sizeof(WCHAR) )
+                Path->Length -= sizeof(WCHAR); // separator
 
-	        Status = STATUS_SUCCESS;
-		}
-		else
-		{
-			Status = STATUS_INVALID_PARAMETER;
-		}
+            Status = STATUS_SUCCESS;
+        }
+        else
+        {
+            Status = STATUS_INVALID_PARAMETER;
+        }
     }
     else
     {
@@ -1063,12 +1063,12 @@ BOOLEAN SplitVolumeRelativePath_U(UNICODE_STRING *FullPath,UNICODE_STRING *Volum
         return TRUE;
     }
 
-	if( VolumeRelativePath )
-	{
-	    VolumeRelativePath->Length        = (USHORT)(cb - usVolumeName.Length);
-		VolumeRelativePath->MaximumLength = (USHORT)(cb - usVolumeName.MaximumLength);
-		VolumeRelativePath->Buffer        = (PWCH)&FullPath->Buffer[ WCHAR_LENGTH(usVolumeName.Length) ];
-	}
+    if( VolumeRelativePath )
+    {
+        VolumeRelativePath->Length        = (USHORT)(cb - usVolumeName.Length);
+        VolumeRelativePath->MaximumLength = (USHORT)(cb - usVolumeName.MaximumLength);
+        VolumeRelativePath->Buffer        = (PWCH)&FullPath->Buffer[ WCHAR_LENGTH(usVolumeName.Length) ];
+    }
 #ifdef _DEBUG
     UNICODE_STRING us1,us2;
     RtlDuplicateUnicodeString(0x3,VolumeName,&us1);
@@ -1178,10 +1178,10 @@ VOID RemoveFileSpec_W(PWSTR pszPath)
 
 BOOLEAN AppendBackslash_W(PWSTR pszPath,int cchPath)
 {
-	HRESULT hr = S_FALSE;
-	if( !IsLastCharacterBackslash(pszPath) )
-		hr = StringCchCat(pszPath,cchPath,L"\\");
-	return (hr == S_OK);
+    HRESULT hr = S_FALSE;
+    if( !IsLastCharacterBackslash(pszPath) )
+        hr = StringCchCat(pszPath,cchPath,L"\\");
+    return (hr == S_OK);
 }
 
 PWSTR CombinePathBuffer(PWSTR lpszDest,int cchDest,PCWSTR lpszDir,PCWSTR lpszFile)
@@ -1473,17 +1473,19 @@ extern "C" {
 typedef struct _SPA_STRUCT
 {
     INT Count;
-    SIZE_T Size; // Reserved
+    SIZE_T Size;
+    SIZE_T InitialSize;
     PVOID *Array;
 } SPA_STRUCT;
 
-HANDLE SPtrArray_Create(INT InitialSize/*Reserved*/)
+HANDLE SPtrArray_Create(INT InitialCount)
 {
     SPA_STRUCT *pspa = (SPA_STRUCT *)AllocMemory( sizeof(SPA_STRUCT) );
 
     pspa->Count = 0;
-    pspa->Size = 0; // Reserved
-    pspa->Array = (PVOID *)AllocMemory( sizeof(PVOID) );
+    pspa->Size = 0;
+    pspa->InitialSize = InitialCount * sizeof(PVOID);
+    pspa->Array = (PVOID *)AllocMemory( pspa->InitialSize );
 
     return pspa;
 }
@@ -1491,6 +1493,11 @@ HANDLE SPtrArray_Create(INT InitialSize/*Reserved*/)
 INT SPtrArray_GetCount(HANDLE hspa)
 {
     return ((SPA_STRUCT *)hspa)->Count;
+}
+
+SIZE_T SPtrArray_GetBufferSize(HANDLE hspa)
+{
+    return ((SPA_STRUCT *)hspa)->Size;
 }
 
 INT SPtrArray_Destroy(HANDLE hspa)
@@ -1517,6 +1524,7 @@ INT SPtrArray_Add(HANDLE hspa,PVOID ptr)
         pspa->Array = newarray;
         pspa->Array[pspa->Count] = ptr;
         pspa->Count++;
+        pspa->Size = sizeof(PVOID) * pspa->Count;
         return (pspa->Count-1);
     } 
     return -1;
@@ -1547,15 +1555,36 @@ INT SPtrArray_Delete(HANDLE hspa,int iIndex)
         RtlMoveMemory(&pspa->Array[iIndex],&pspa->Array[iIndex+1],cb);
 
     pspa->Count--;
+    pspa->Size = sizeof(PVOID) * pspa->Count;
 
     if( pspa->Count > 0 )
     {
         // If element count is above zero then Shrink memory.
         // Windows XP heap manager: possioble to address moving.
-        pspa->Array = (PVOID*)ReallocMemory(pspa->Array,sizeof(PVOID) * pspa->Count);
+        pspa->Array = (PVOID*)ReallocMemory(pspa->Array,pspa->Size);
     }
 
-    return iIndex;
+    return (pspa->Array != NULL) ? iIndex : -1;
+}
+
+BOOLEAN SPtrArray_DeleteAll(HANDLE hspa)
+{
+    SPA_STRUCT *pspa = (SPA_STRUCT *)hspa;
+    FreeMemory(pspa->Array);
+    pspa->Count = 0;
+    pspa->Size = 0;
+    pspa->Array = (PVOID *)AllocMemory( sizeof(PVOID) );
+    return (pspa->Array != NULL);
+}
+
+BOOLEAN SPtrArray_Reset(HANDLE hspa)
+{
+    SPA_STRUCT *pspa = (SPA_STRUCT *)hspa;
+    FreeMemory(pspa->Array);
+    pspa->Count = 0;
+    pspa->Size = sizeof(PVOID) * pspa->InitialSize;
+    pspa->Array = (PVOID *)AllocMemory(pspa->Size);
+    return (pspa->Array != NULL);
 }
 
 #ifdef __cplusplus

@@ -36,4 +36,6 @@ SOURCES=\
 	find.cpp\
 	darkmode.cpp\
 	viewtab.cpp\
-	menubar.cpp
+	menubar.cpp \
+	openvolumelocation.cpp
+

@@ -1303,7 +1303,7 @@ public:
 			if( GetKeyState(VK_CONTROL) < 0 )
 				Open |= 0x8000;
 
-			OpenVolumeLocation(GetActiveWindow(),Open,pItem->Drive,pItem->GuidName);
+			OpenVolumeLocationByShell(GetActiveWindow(),Open,pItem->Drive,pItem->GuidName);
 		}
 	}
 

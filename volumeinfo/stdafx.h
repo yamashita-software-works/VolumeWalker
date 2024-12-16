@@ -41,18 +41,18 @@
 #include "libmisc.h"
 #include "menu.h"
 #include "multisz.h"
-#include "..\libntwdk\libntwdk.h"
-#include "..\libntwdk\ntvolumenames.h"
-#include "..\libmisc\libmisc.h"
-#include "..\inc\common.h"
-#include "..\inc\common_resid.h"
-#include "..\inc\common_resid_appdef.h"
-#include "..\inc\simplevalarray.h"
-#include "..\fsvolumehelp\volumehelp.h"
-#include "..\fsvolumelist\fsvolumelist.h"
-//#include "..\fsvolumefiles\fsvolumefiles.h"
+#include "simplevalarray.h"
+#include "libntwdk.h"
+#include "libmisc.h"
 #include "common_msg.h"
 #include "common_control_helper.h"
+#include "common.h"
+#include "volumeconsoledef.h"
+#include "common_resid.h"
+#include "common_resid_appdef.h"
+#include "ntvolumenames.h"
+#include "..\fsvolumehelp\volumehelp.h"
+#include "..\fsvolumelist\fsvolumelist.h"
 #undef HMODULE // for switch WDK header to Win32
 
 #include "..\build_switch.inc"
@@ -64,14 +64,6 @@
 
 HINSTANCE _GetResourceInstance();
 HWND _GetMainWnd();
-
-/*inline HICON GetShellStockIcon(SHSTOCKICONID StockIconId)
-{
-	SHSTOCKICONINFO sii = {0};
-	sii.cbSize = sizeof(sii);
-	SHGetStockIconInfo(StockIconId,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
-	return sii.hIcon;
-}*/
 
 inline HICON SetFrameIcon(HWND hWnd,HICON hIcon)
 {

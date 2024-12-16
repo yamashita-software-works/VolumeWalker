@@ -116,41 +116,6 @@ typedef struct _FS_FILE_ID_GLOBAL_TX_DIR_INFORMATION {
 #define FILE_ATTRIBUTE_STRICTLY_SEQUENTIAL   0x20000000  
 #endif
 
-typedef struct _FSDIRENUMCALLBACKINFO
-{
-    HANDLE DirectoryHandle;
-    PCWSTR Path;
-} FSDIRENUMCALLBACKINFO,*PFSDIRENUMCALLBACKINFO;
-
-typedef HRESULT (CALLBACK *FSHELPENUMCALLBACKPROC)(
-    ULONG InformationType,
-    PVOID Information,
-    PFSDIRENUMCALLBACKINFO DirEnumCallbackInfo,
-    PVOID Context
-    );
-
-EXTERN_C
-HRESULT
-NTAPI
-EnumFiles_W(
-    PCWSTR Path,
-    PCWSTR FileNameFilter,
-    ULONG Flags,
-    FSHELPENUMCALLBACKPROC Callback,
-    PVOID Context
-    );
-
-EXTERN_C
-NTSTATUS
-NTAPI
-EnumFiles(
-    HANDLE hRoot,
-    PCWSTR pszDirectoryPath,
-    PCWSTR pszFileName,
-    ENUMFILESCALLBACK pfnCallback,
-    ULONG_PTR CallbackContext
-    );
-
 EXTERN_C
 ULONG
 __cdecl

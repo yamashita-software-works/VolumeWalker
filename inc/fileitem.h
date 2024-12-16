@@ -54,6 +54,15 @@ public:
 	BOOLEAN Wof;                       // Overray File
 	LARGE_INTEGER PhysicalDriveOffset; // First sector offset length on the physical drive.
 	ULONG PhysicalDriveNumber;
+	ULONG ReparseTag;
+	union {
+		struct {
+			GUID ObjectId;
+			GUID BirthVolumeId;
+			GUID BirthObjectId;
+			GUID DomainId;
+		};
+	};
 
 	CFileItem()
 	{
@@ -63,22 +72,39 @@ public:
 	CFileItem(PCWSTR pszDirPath,PCWSTR pszFile)
 	{
 		memset(this,0,sizeof(CFileItem));
+#ifdef _CFILELITEM_NO_MEMORY_DEBUG
+		if( pszDirPath )
+			hdr.Path = StrDupW(pszDirPath);
+		if( pszFile )
+			hdr.FileName = StrDupW(pszFile);
+#else
 		if( pszDirPath )
 			hdr.Path = _MemAllocString(pszDirPath);
 		if( pszFile )
 			hdr.FileName = _MemAllocString(pszFile);
+#endif
 	}
 
 	~CFileItem()
 	{
+#ifdef _CFILELITEM_NO_MEMORY_DEBUG
+		LocalFree(hdr.Path);
+		LocalFree(hdr.FileName);
+#else
 		_SafeMemFree(hdr.Path);
 		_SafeMemFree(hdr.FileName);
+#endif
 	}
 
 	PCWSTR SetFileName(PCWSTR FileName)
 	{
+#ifdef _CFILELITEM_NO_MEMORY_DEBUG
+		LocalFree(hdr.FileName);
+		hdr.FileName = StrDupW(FileName);
+#else
 		_SafeMemFree(hdr.FileName);
 		hdr.FileName = _MemAllocString(FileName);
+#endif
 		if( hdr.FileName )
 			this->FileNameLength = (ULONG)(wcslen(hdr.FileName) * sizeof(WCHAR));
 		else
@@ -88,9 +114,17 @@ public:
 
 	PCWSTR SetFileName(PCWSTR FileName,int cchFileName)
 	{
+#ifdef _CFILELITEM_NO_MEMORY_DEBUG
+		LocalFree(hdr.FileName);
+#else
 		_SafeMemFree(hdr.FileName);
+#endif
 		this->FileNameLength = cchFileName * sizeof(WCHAR);
+#ifdef _CFILELITEM_NO_MEMORY_DEBUG
+		hdr.FileName = (PWSTR)LocalAlloc(LPTR,this->FileNameLength + sizeof(WCHAR));
+#else
 		hdr.FileName = (PWSTR)_MemAllocZero(this->FileNameLength + sizeof(WCHAR));
+#endif
 		if( hdr.FileName )
 		{
 			memcpy(hdr.FileName,FileName,this->FileNameLength);
@@ -104,8 +138,13 @@ public:
 
 	PCWSTR SetPath(PCWSTR Path)
 	{
+#ifdef _CFILELITEM_NO_MEMORY_DEBUG
+		LocalFree(hdr.Path);
+		hdr.Path = StrDupW(Path);
+#else
 		_SafeMemFree(hdr.Path);
 		hdr.Path = _MemAllocString(Path);
+#endif
 		return hdr.Path;
 	}
 };

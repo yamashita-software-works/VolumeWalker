@@ -428,10 +428,13 @@ LRESULT CALLBACK DefLongPathBoxProc(HWND hWnd,UINT uMessage,WPARAM wParam,LPARAM
 		}
 		case WM_SETTEXT:
 		{
-			_SafeMemFree(pBox->pszPath);
-			pBox->pszPath = _MemAllocString((PWSTR)lParam);
-			DefWindowProc(hWnd,uMessage,wParam,lParam); // force SetWindowText()
-			RedrawWindow(hWnd,NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW);
+			if( lParam )
+			{
+				_SafeMemFree(pBox->pszPath);
+				pBox->pszPath = _MemAllocString((PWSTR)lParam);
+				DefWindowProc(hWnd,uMessage,wParam,lParam); // force SetWindowText()
+				RedrawWindow(hWnd,NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW);
+			}
 			return 0;
 		}
 		case WM_SETFONT:

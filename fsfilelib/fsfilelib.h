@@ -183,6 +183,17 @@ NtPathGetLongPathNameFromHandle(
     PULONG pcbLongFileName
     );
 
+EXTERN_C
+HRESULT
+APIENTRY
+NtPathParseDeviceName(
+	PCWSTR pszPath,
+	PWSTR pszDeviceName,
+	int cchDeviceName,
+	PWSTR pszDosDeviceName,
+	int cchDosDeviceName
+	);
+
 //----------------------------------------------------------------------------
 //
 //  Overray File
