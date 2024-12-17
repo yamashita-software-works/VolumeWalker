@@ -2,7 +2,8 @@
  
 Version 0.1 Preview
 
-**2024/12/14 Download ZIPを実行すると、Windows Securityが "Trojan:Script/Sabsik.FL.A!ml" などと誤認識しています。ソースが必要な場合解消するまでReleaseのtar.gzファイルをダウンロードしてください。**
+**2024/12/14 Download ZIPを実行すると、Windows Securityが "Trojan:Script/Sabsik.FL.A!ml" などと誤認識しています。Windows Security(Defender)の不具合が解消するまでソースコードが必要な場合Releasesのtar.gzファイルをダウンロードしてください。    
+または一時的にWindows Securityの\[許可された脅威\]や\[デバイスで許可\]を設定してZIPファイルをダウンロードしてください。zipファイルを展開後にWindows Defenderの設定を元に戻し展開したファイルをスキャンしても脅威は検出されません。Windows SecurityはZIPファイルを誤認している様です。**
 
 **Build 0.1.10.0 からソフトウェア名称を FSVolumeWalker から VolumeWalker に変更しました。**
 
