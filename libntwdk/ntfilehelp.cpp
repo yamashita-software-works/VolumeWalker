@@ -173,13 +173,13 @@ SplitRootPath_W(
     int cchRoot = 0;
     int cchRelativePath = 0;
 
-    if( cchFullPath >= 8 && wcsnicmp(pszFullyQualifiedPath,L"\\Device\\",8) == 0 )
+    if( cchFullPath >= 8 && _wcsnicmp(pszFullyQualifiedPath,L"\\Device\\",8) == 0 )
     {
         pszRoot = wcschr(&pszFullyQualifiedPath[8],L'\\');
     }
     else if( cchFullPath >= 4 && (wcsncmp(pszFullyQualifiedPath,L"\\??\\",4) == 0 || wcsncmp(pszFullyQualifiedPath,L"\\\\?\\",4) == 0) )
     {
-        if( cchFullPath >= 8 && wcsnicmp(&pszFullyQualifiedPath[4],L"unc",3) == 0 )
+        if( cchFullPath >= 8 && _wcsnicmp(&pszFullyQualifiedPath[4],L"unc",3) == 0 )
         {
             pszRoot = wcschr(&pszFullyQualifiedPath[8],L'\\'); // find servername
             if( pszRoot )

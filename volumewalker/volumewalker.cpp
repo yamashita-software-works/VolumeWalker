@@ -72,6 +72,7 @@ CONSOLE_VIEW_ID *GetConsoleId(HWND hwndViewWindow)
 	ASSERT(pcv != NULL);
 	return pcv;
 }
+
 //////////////////////////////////////////////////////////////////////////////
 #include "..\build.h"
 
@@ -671,6 +672,8 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 	if( bVisible )
 		SetRedraw(hWnd,FALSE); // When new MDI child window open maximizing, prevents the mainframe menu flickering.
 
+	SetRedraw(g_hWndMDIClient,FALSE);
+
 	//
 	// Open MDI child frame window
 	//
@@ -735,6 +738,9 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 			DrawMenuBar(hWnd);
 		}
 	}
+
+	SetRedraw(g_hWndMDIClient,TRUE);
+	RedrawWindow(g_hWndMDIClient,NULL,NULL,RDW_FRAME|RDW_UPDATENOW|RDW_INVALIDATE|RDW_ERASE|RDW_ERASENOW|RDW_ALLCHILDREN);
 
 	return hwndMDIChild;
 }
@@ -1125,7 +1131,7 @@ VOID ExitInstance()
 //  PURPOSE: Query command status.
 //
 //----------------------------------------------------------------------------
-INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM Param)
+INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 {
 	HWND hwndMDIChild = MDIGetActive(g_hWndMDIClient);
 	if( hwndMDIChild )
@@ -1467,7 +1473,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 					msgDblClk.hwnd = NULL;
 					continue;
 				}
-				msgDblClk.hwnd = NULL;
 			}
 #endif
 			if( g_hWndActiveMDIChild )

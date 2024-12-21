@@ -2,9 +2,6 @@
  
 Version 0.1 Preview
 
-**2024/12/14 Download ZIPを実行すると、Windows Securityが "Trojan:Script/Sabsik.FL.A!ml" などと誤認識しています。Windows Security(Defender)の不具合が解消するまでソースコードが必要な場合Releasesのtar.gzファイルをダウンロードしてください。    
-または一時的にWindows Securityの\[許可された脅威\]や\[デバイスで許可\]を設定してZIPファイルをダウンロードしてください。zipファイルを展開後にWindows Defenderの設定を元に戻し展開したファイルをスキャンしても脅威は検出されません。Windows SecurityはZIPファイルを誤認している様です。**
-
 **Build 0.1.10.0 からソフトウェア名称を FSVolumeWalker から VolumeWalker に変更しました。**
 
 ボリュームの情報を表示します。
@@ -18,6 +15,8 @@ MDI Win32アプリケーションのひな形を用いて、[FSWorkbench](https:
 <br>
 
 ### 表示できる情報ウィンドウ
+
+※【暫定】と付記されている機能は暫定的で一時的な機能を公開しており、将来削除されるかもしれません。
 
 メニューの File から開きます。
 
@@ -81,13 +80,13 @@ MDI Win32アプリケーションのひな形を用いて、[FSWorkbench](https:
 ### サブツール【暫定】
 
 #### Volumeinfo.exe
-VolumeWalkerウィンドウの一部をSDI Frameに組み込んだ試験的な簡易版です。
-VolumeWalkerと異なりシステムでダークモードを設定した場合、メインウィンドウのみダークモード表示されます（ダイアログボックスは除く）。
+VolumeWalkerウィンドウの一部をSDIフレーム内で表示する、試験的に提供される簡易版です。   
+VolumeWalkerと異なりシステムをダークモードを設定した状態で起動した場合、メインウィンドウのみダークモード表示されます（ダイアログボックスは除く）。
 
+![VolumeInfo](img/image-win10.volumeinfo.png "VolumeInfo")
 
 
 <br>
-※【暫定】と表記されている機能は暫定的で一時的な機能を公開しており、将来削除されるかもしれません。
 
 ### インストール
 

@@ -45,19 +45,20 @@
 #include "common_control_helper.h"
 #include "common_msg.h"
 #include "simplestack.h"
-#include "common_resid.h"
-#include "common_resid_appdef.h"
 #include "listhelp.h"
-#include "appwindowdefs.h"
-#include "interface.h"
-#include "winfsctl.h"
 #include "libntwdk.h"
 #include "ntwin32helper.h"
+#include "winfsctl.h"
+#include "common_resid.h"
+#include "common_resid_appdef.h"
+#include "appwindowdefs.h"
 #include "..\fsvolumehelp\volumehelp.h"
 #include "..\fsvolumehelp\physicaldriveinformationclass.h"
 #include "..\fsvolumehelp\volumedevinfostruct.h"
 #include "..\fsvolumehelp\storagedevice.h"
+#include "volumeconsoledef.h"
 #include "volumeconsoleid.h"
+#include "interface.h"
 #include "column.h"
 #if _ENABLE_DARK_MODE_TEST
 #include "darkmode.h"
@@ -94,7 +95,6 @@ inline VOID _DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus=FALSE)
 HINSTANCE _GetResourceInstance();
 HFONT GetGlobalFont(HWND hWnd);
 HFONT GetIconFont();
-HICON GetShellStockIcon(SHSTOCKICONID StockIconId);
 
 #define DELAY_OPEN_TIMER (120) // 120ms todo:
 

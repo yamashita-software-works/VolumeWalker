@@ -16,4 +16,7 @@ inline CONSOLE_VIEW_ID *_GET_CONSOLE_VIEW_ID(HWND hwndView)
 #else
 #define _GET_CONSOLE_VIEW_ID(hwndView) ((CONSOLE_VIEW_ID *)GetProp(hwndView,_PROP_CONSOLE_VIEW_ID))
 #endif
+
+#define VOLUME_DLL_FLAG_ENABLE_DARK_MODE 0x1
+
 #endif

@@ -421,8 +421,8 @@ static int __cdecl _compare_proc(const void *x, const void *y)
 			return 1;
 		if( !FsPathIsGlobalRootPrefixDosDrive(sz1) && FsPathIsGlobalRootPrefixDosDrive(sz2) )
 			return -1;
-		BOOLEAN bHarddisk1 = (wcsnicmp(sz1,_HARDDISK_VOLUME,_HARDDISK_VOLUME_LENGTH) == 0);
-		BOOLEAN bHarddisk2 = (wcsnicmp(sz2,_HARDDISK_VOLUME,_HARDDISK_VOLUME_LENGTH) == 0);
+		BOOLEAN bHarddisk1 = (_wcsnicmp(sz1,_HARDDISK_VOLUME,_HARDDISK_VOLUME_LENGTH) == 0);
+		BOOLEAN bHarddisk2 = (_wcsnicmp(sz2,_HARDDISK_VOLUME,_HARDDISK_VOLUME_LENGTH) == 0);
 		if( bHarddisk1 && !bHarddisk2 )
 			return -1;
 		else if( !bHarddisk1 && bHarddisk2 )
