@@ -17,14 +17,14 @@
 #include "resource.h"
 #include "dialogs.h"
 
+//////////////////////////////////////////////////////////////////////////////
+// Goto Sector/Cluster Dialog
+
 typedef  struct _DISK_VOLUME_SECTOR_CLUSTER_LOCATION_DIALOG_PARAM
 {
 	HWND hwndOwner;
 	DISK_VOLUME_SECTOR_CLUSTER_LOCATION dvscl;
 } DISK_VOLUME_SECTOR_CLUSTER_LOCATION_DIALOG_PARAM;
-
-/////////////////////////////////////////////////////////////////////////////////
-// Sector/Cluster 
 
 #define MAX_ADDRESS_LENGTH 64
 

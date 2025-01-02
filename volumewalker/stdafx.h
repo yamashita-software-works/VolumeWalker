@@ -46,6 +46,7 @@
 #include "..\fsvolumehelp\volumehelp.h"
 #include "..\fsvolumelist\fsvolumelist.h"
 #include "..\fsfilelib\fsfilelib.h"
+#include "..\fsvolumefilelist\fsvolumefilelist.h"
 #include "common_msg.h"
 #include "volumeconsoledef.h"
 #include "misc.h"

@@ -349,7 +349,7 @@ _ErrorMessageBoxEx(
 		{
 			va_list param[2];
 			param[0] = (va_list)pszMessage;
-			param[1] = (va_list)L"a";
+			param[1] = (va_list)L"";
 
 			va_list *Arguments = param;
 
@@ -561,3 +561,43 @@ _ErrorPrintfMessageBox(
 
 	return nRet;
 }
+
+#if (_WIN32_WINNT >= 0x600)
+
+EXTERN_C
+HRESULT
+WINAPI
+VerificationMessageBox( 
+	HWND hwnd,
+	HINSTANCE hRes,
+	PWSTR pszTitle,
+	PWSTR pszMainInstruction,
+	PWSTR pszContent,
+	PWSTR pszVerificationText,
+	TASKDIALOG_BUTTON *buttons,
+	int buttonsCount,
+	int nDefaultButton,
+	int *pSelectedButton,
+	int *pVerificationFlag
+	)
+{
+	TASKDIALOGCONFIG tc = {0};
+	tc.cbSize              = sizeof(tc);
+	tc.dwFlags             = TDF_POSITION_RELATIVE_TO_WINDOW;
+	tc.hwndParent          = hwnd;
+	tc.hInstance           = hRes;
+	tc.pszWindowTitle      = pszTitle;
+	tc.pszMainInstruction  = pszMainInstruction;
+	tc.pszContent          = pszContent;
+	tc.pszVerificationText = pszVerificationText;
+	tc.nDefaultButton      = nDefaultButton;
+	tc.pButtons            = buttons;
+	tc.cButtons            = buttonsCount;
+
+	if( *pVerificationFlag != 0 )
+		tc.dwFlags |= TDF_VERIFICATION_FLAG_CHECKED;
+
+	return TaskDialogIndirect(&tc, pSelectedButton, NULL, pVerificationFlag);
+}
+
+#endif

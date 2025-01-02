@@ -19,6 +19,7 @@
 #define ID_FILE_CHANGEJOURNAL          41021
 #define ID_FILE_ROOTDIRECTORIES        41022
 
+#define ID_FILE_SIMPLEFILELIST         41028
 
 #define ID_OPEN_LOCATION_EXPLORER         41031
 #define ID_OPEN_LOCATION_CMDPROMPT        41032
@@ -58,7 +59,15 @@
 #define ID_HISTORY_BACKWARD            41214
 #define ID_HISTORY_FORWARD             41215
 #define ID_MENU                        41216
+#define ID_OPEN                        41217
+#define ID_GOTO_DIRECTORY              ID_GOTO
 
 #endif
 
+#ifndef _VOLUME_FILES
+#define _VOLUME_FILES
 
+#define ID_OPEN_APP_FIRST            40200
+#define ID_OPEN_APP_LAST             40299
+
+#endif

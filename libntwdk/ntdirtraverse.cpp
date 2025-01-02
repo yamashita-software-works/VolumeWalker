@@ -63,7 +63,7 @@ NTSTATUS NTAPI IdBothDirName(PVOID ptr,UNICODE_STRING *pFileName,ULONG *pFileAtt
     return 0;
 }
 
-NTSTATUS NTAPI IdBothDirName(PVOID ptr,UNICODE_STRING *pFileName,ULONG *pFileAttributes)
+NTSTATUS NTAPI IdTxDDirName(PVOID ptr,UNICODE_STRING *pFileName,ULONG *pFileAttributes)
 {
     pFileName->Buffer = ((FILE_ID_GLOBAL_TX_DIR_INFORMATION *)ptr)->FileName;
     pFileName->Length = (USHORT)((FILE_ID_GLOBAL_TX_DIR_INFORMATION *)ptr)->FileNameLength;

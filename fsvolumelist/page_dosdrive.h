@@ -181,6 +181,7 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_FILESYSTEMSTATISTICS,L"Open File System &Statistics");
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
+			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Volume &Files");
 			AppendMenu(hMenu,MF_STRING,0,0);
 			hSubMenu = CreatePopupMenu();
 			{
@@ -1107,6 +1108,7 @@ public:
 			case ID_VOLUMEINFORMATION:
 			case ID_FILESYSTEMSTATISTICS:
 			case ID_HEXDUMP:
+			case ID_FILE_SIMPLEFILELIST:
 			case ID_EDIT_COPY:
 			case ID_OPEN_LOCATION_EXPLORER:
 			case ID_OPEN_LOCATION_CMDPROMPT:
@@ -1140,6 +1142,9 @@ public:
 				break;
 			case ID_FILESYSTEMSTATISTICS:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_FILESYSTEMSTATISTICS );
+				break;
+			case ID_FILE_SIMPLEFILELIST:
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST );
 				break;
 			case ID_HEXDUMP:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );

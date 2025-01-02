@@ -400,6 +400,27 @@ _ErrorPrintfMessageBox(
     ...
     );
 
+#if (_WIN32_WINNT >= 0x600)
+
+EXTERN_C
+HRESULT
+WINAPI
+VerificationMessageBox( 
+	HWND hwnd,
+	HINSTANCE hRes,
+	PWSTR pszTitle,
+	PWSTR pszMainInstruction,
+	PWSTR pszContent,
+	PWSTR pszVerificationText,
+	TASKDIALOG_BUTTON *buttons,
+	int buttonsCount,
+	int nDefaultButton,
+	int *pSelectedButton,
+	int *pVerificationFlag
+	);
+
+#endif
+
 //
 // System Error Message Helper
 //

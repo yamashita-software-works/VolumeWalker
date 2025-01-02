@@ -73,6 +73,7 @@ typedef struct _SELECT_ITEM
 
 #define SI_FLAG_NOT_ADD_TO_HISTORY 0x1
 #define SI_FLAG_ROOT_DIRECTORY     0x2
+#define SI_FLAG_NO_UPDATE          0x8
 
 typedef struct _SELECT_OFFSET_ITEM
 {

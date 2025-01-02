@@ -46,16 +46,8 @@ MDI Win32アプリケーションのひな形を用いて、[FSWorkbench](https:
 - File System Statistics   
 選択されたボリュームのファイルシステム統計情報を表示します。
 
-- ~~Volume Contents Browser【暫定】~~   
-
-  - ~~Files【暫定】~~   
-~~選択されたボリュームに含まれるファイルをディレクトリ単位で簡易表示します。~~   
-~~ファイル名と属性情報の表示のみでファイルマネージャとしての機能はありません。~~
-
-  - ~~Change Journal【暫定】~~   
-~~選択されたボリュームの変更ジャーナルの内容を表示します。~~   
-~~管理者モードで実行時（またはFILE_READ_DATAでボリューム/ドライブをオープンできた場合）のみ利用可能です。~~ 
-
+- Volume Files   
+選択されたボリュームに含まれるファイルを表示します。
 
 以下のウィンドウは Physical Drives ウィンドウから項目を選択しダブルクリックまたはメニューから開きます。
 
@@ -80,7 +72,7 @@ MDI Win32アプリケーションのひな形を用いて、[FSWorkbench](https:
 ### サブツール【暫定】
 
 #### Volumeinfo.exe
-VolumeWalkerウィンドウの一部をSDIフレーム内で表示する、試験的に提供される簡易版です。   
+VolumeWalkerウィンドウの一部をSDIフレーム内で表示する、試験的に提供している簡易版です。   
 VolumeWalkerと異なりシステムをダークモードを設定した状態で起動した場合、メインウィンドウのみダークモード表示されます（ダイアログボックスは除く）。
 
 ![VolumeInfo](img/image-win10.volumeinfo.png "VolumeInfo")

@@ -29,7 +29,11 @@ QueryDiskPerformance(
 {
 	HRESULT hr;
 	WCHAR szDeviceName[MAX_PATH];
+#if 0
 	StringCchPrintf(szDeviceName,MAX_PATH,L"\\\\?\\GlobalRoot%s",pszDeviceName);
+#else
+	StringCchCopy(szDeviceName,MAX_PATH,pszDeviceName);
+#endif
 
 	HANDLE hDisk = CreateFile(szDeviceName,0,FILE_SHARE_READ|FILE_SHARE_WRITE,NULL,OPEN_EXISTING,0,NULL);
 

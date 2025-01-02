@@ -1,19 +1,24 @@
 #
 #
-# VolumeWalker
+# fsvolumefilelist
 #
 #
-TARGETTYPE=PROGRAM
-TARGETNAME=volumewalker
+TARGETTYPE=DYNLINK
+TARGETNAME=fsvolumefilelist
 TARGETPATH=obj
-UMENTRY=wwinmain
-UMTYPE=windows
+
+BUILD_PRODUCES=fsvolumefilelist_dll
+BUILD_CONSUMES=libcwh_lib libntwdk_lib libmisc_lib fsvolumehelp_dll fsfilelib_dll
 
 _NT_TARGET_VERSION=$(_NT_TARGET_VERSION_WIN7)
+
+WDK_ROOT=C:\WinDDK\7600.16385.1
+SDK7_ROOT=C:\WinSDK\7.1
 
 #
 # Modify subsystem version (for 64bit runs on Windows Vista, 32 bit Windows XP)
 #
+
 !if $(AMD64)
 SUBSYSTEM_VERSION=6.00
 SUBSYSTEM_CONVER=6.01
@@ -25,7 +30,7 @@ SUBSYSTEM_NATVER=5.01
 !endif
 
 #
-# Run makefile.inc
+# Refers to makefile.inc
 #
 NTTARGETFILES=PostBuildSteps
 
@@ -40,15 +45,20 @@ NOT_LEAN_AND_MEAN=1
 
 #
 # C Runtime Library
-#   fre:msvcrt.dll
-#   chk:libcmtd.lib
-#       (Make it possible to execute even if msvcrtd.dll 
-#        does not exist.)
+#   fre:use msvcrt.dll
+#   chk:use multithread static debug library(libcmtd.lib)
+#       run without msvcrtd.dll.
 #
 !if $(FREEBUILD)
 USE_MSVCRT=1
 !else
 USE_LIBCMT=1
+!endif
+
+#
+# Uses the libcmtd.lib with DEBUG build. 
+#
+!if !$(FREEBUILD)
 DEBUG_CRTS=1
 !endif
 
@@ -74,43 +84,52 @@ C_DEFINES=$(C_DEFINES)
 C_DEFINES=$(C_DEFINES) -D_DEBUG -DDEBUG
 !endif
 
-INCLUDES=$(INCLUDES);C:\WinDDK\7600.16385.1\inc\ddk
-INCLUDES=$(INCLUDES);C:\WinDDK\7600.16385.1\inc\crt
-INCLUDES=$(INCLUDES);C:\WinDDK\7600.16385.1\inc\api
-INCLUDES=$(INCLUDES);C:\WinSDK\7.1\Include
+INCLUDES=$(INCLUDES);$(WDK_ROOT)\inc\ddk
+INCLUDES=$(INCLUDES);$(WDK_ROOT)\inc\crt
+INCLUDES=$(INCLUDES);$(WDK_ROOT)\inc\api
+INCLUDES=$(INCLUDES);$(SDK7_ROOT)\Include
+INCLUDES=$(INCLUDES);$(WDK_ROOT)\inc\atl71
 INCLUDES=$(INCLUDES);..\libcwh
 INCLUDES=$(INCLUDES);..\libmisc
 INCLUDES=$(INCLUDES);..\libntwdk
-INCLUDES=$(INCLUDES);..\inc
 INCLUDES=$(INCLUDES);..\fsfilelib
-INCLUDES=$(INCLUDES);..\fsvolumelist
+INCLUDES=$(INCLUDES);..\inc
 
 #----------------------------------------------------------
 # Sources Files
 #----------------------------------------------------------
 SOURCES = \
-	stdafx.cpp \
-	inifile.cpp \
-	misc.cpp \
-	mdichild.cpp \
-	volumewalker.cpp \
-	volumewalker.rc
-
-_USERLIB=..\lib
-
-!if $(AMD64)
-
-_USERLIB=$(_USERLIB)\x64\lib$(DDKBUILDENV)
-
-!else
-
-_USERLIB=$(_USERLIB)\x86\lib$(DDKBUILDENV)
-
-!endif
+	dllmain.cpp\
+	fileswindow.cpp\
+	gotodialog.cpp\
+	apps.cpp\
+	fsvolumefilelist.rc
 
 #----------------------------------------------------------
 # Library Files
 #----------------------------------------------------------
+IGNORE_LINKLIB_ABUSE=1
+
+DLLDEF=$(TARGETNAME).def
+
+!if $(AMD64)
+_WIN7_SDK_LIB_PATH=$(SDK7_ROOT)\Lib\x64
+!else
+_WIN7_SDK_LIB_PATH=$(SDK7_ROOT)\Lib
+!endif
+
+_LIB_PATH=..\lib
+
+!if $(AMD64)
+
+_LIBNTWDK=$(_LIB_PATH)\x64\lib$(DDKBUILDENV)
+
+!else
+
+_LIBNTWDK=$(_LIB_PATH)\x86\lib$(DDKBUILDENV)
+
+!endif
+
 LINKLIBS=\
 	$(SDK_LIB_PATH)\kernel32.lib \
 	$(SDK_LIB_PATH)\user32.lib \
@@ -129,9 +148,7 @@ LINKLIBS=\
 	$(SDK_LIB_PATH)\uxtheme.lib \
 	$(CRT_LIB_PATH)\delayimp.lib \
 	$(DDK_LIB_PATH)\ntdll.lib \
-	$(_USERLIB)\fsvolumelist.lib \
-	$(_USERLIB)\fsvolumefilelist.lib \
-	$(_USERLIB)\fsfilelib.lib \
-	$(_USERLIB)\libcwh.lib \
-	$(_USERLIB)\libmisc.lib \
-	$(_USERLIB)\libntwdk.lib
+	$(_LIBNTWDK)\fsfilelib.lib \
+	$(_LIBNTWDK)\libntwdk.lib \
+	$(_LIBNTWDK)\libmisc.lib \
+	$(_LIBNTWDK)\libcwh.lib

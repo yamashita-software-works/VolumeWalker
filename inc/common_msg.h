@@ -50,9 +50,9 @@
 
 //
 // PM_MAKECONTEXTMENU
-//   wParam  -
-//   lParam  -
-//   lResult -
+//   wParam  - MAKEWPARAM(ConsoleTypeId,0)
+//   lParam  - Menu handle
+//   lResult - If updated to the menu, return TRUE otherwise FALSE.
 //
 #define PM_MAKECONTEXTMENU (PM_BASE+21)
 
@@ -138,6 +138,7 @@ typedef struct _OPEN_MDI_CHILDFRAME_PARAM
 
 #define QMT_GETVOLUMEPATH     (1)
 #define QMT_GETSTARTOFFSET    (2)
+#define QMT_GETFILEPATH       (3)
 
 typedef struct _QM_PARAM
 {

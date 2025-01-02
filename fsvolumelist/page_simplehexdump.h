@@ -922,6 +922,9 @@ public:
 			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
+			case ID_GOTO:
+				*State = ((m_rd.Size.QuadPart > 0) && (m_rd.Buffer != NULL)) ?  UPDUI_ENABLED : UPDUI_DISABLED;
+				return S_OK;
 		}
 		return S_FALSE;
 	}
@@ -1034,6 +1037,6 @@ private:
 		SetToolbarButtonState(ID_FIRST,FALSE);
 		SetToolbarButtonState(ID_LAST,FALSE);
 		SetToolbarButtonState(ID_HOME,FALSE);
-		SetToolbarButtonState(ID_GOTO,FALSE);
+		SetToolbarButtonState(ID_GOTO,TRUE);
 	}
 };
