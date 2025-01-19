@@ -221,6 +221,25 @@ inline void ListViewEx_InvalidateListColumn(HWND hWndList,int iColumn,BOOL bImag
         ListView_RedrawItems(hWndList,0,cItems-1);
 }
 
+inline int ListViewEx_InsertString(HWND hwndLV,int iItem,PCWSTR String)
+{
+    LVITEM item = {0};
+    item.mask = LVIF_TEXT;
+	item.iItem = iItem;
+    item.pszText = (LPWSTR)String;
+    return (int)SendMessage(hwndLV,LVM_INSERTITEM,0,(LPARAM)&item);
+}
+
+inline int ListViewEx_InsertStringParam(HWND hwndLV,int iItem,PCWSTR String,LPARAM lParam)
+{
+    LVITEM item = {0};
+    item.mask = LVIF_TEXT|LVIF_PARAM;
+	item.iItem = iItem;
+    item.pszText = (LPWSTR)String;
+	item.lParam = lParam;
+    return (int)SendMessage(hwndLV,LVM_INSERTITEM,0,(LPARAM)&item);
+}
+
 typedef struct _LVSORTHOSTPARAM
 {
     PVOID pFunc;

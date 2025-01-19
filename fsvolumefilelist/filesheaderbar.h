@@ -52,7 +52,6 @@ typedef struct _HEADERBARITEM
 
 class CHeaderBar : public CBaseWindow
 {
-	PWSTR m_pszText;
 	HFONT m_hFont;
 	LONG m_cyTextHeight;
 
@@ -81,7 +80,6 @@ class CHeaderBar : public CBaseWindow
 public:
 	CHeaderBar()
 	{
-		m_pszText = NULL;
 		m_hFont = NULL;
 		m_cyTextHeight = 0;
 		m_crBack = 0;
@@ -101,7 +99,6 @@ public:
 
 	~CHeaderBar()
 	{
-		_SafeMemFree( m_pszText );
 		if( m_hFont )
 			DeleteObject(m_hFont);
 	}
@@ -120,8 +117,6 @@ public:
 	{
 		PWSTR pszRoot;
 
-		_SafeMemFree(m_pszText);
-	
 		FindRootDirectory_W(pszPath,&pszRoot);
 		
 		SetWindowText(m_hWndPathBox,pszRoot);
@@ -148,6 +143,13 @@ public:
 		
 		SetWindowText(m_hWndVolumeBox,szText);
 		
+		return S_OK;
+	}
+
+	HRESULT SetText(PCWSTR pszTitle1,PCWSTR pszTitle2)
+	{
+		SetWindowText(m_hWndVolumeBox,pszTitle1);
+		SetWindowText(m_hWndPathBox,pszTitle2);
 		return S_OK;
 	}
 

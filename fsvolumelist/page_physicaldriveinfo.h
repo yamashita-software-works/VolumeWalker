@@ -500,8 +500,6 @@ public:
 		{
 			SetRedraw(m_hWndList,FALSE);
 
-			int c1 = ListView_GetColumnWidth(m_hWndList,0);
-			int c2 = ListView_GetColumnWidth(m_hWndList,1);
 			int cxList = cx;
 			int cyList = cy;
 
@@ -1158,12 +1156,6 @@ public:
 			}
 		}
 
-		//
-		// Adjust column width.
-		//
-		ListView_SetColumnWidth(m_hWndList,0,280);
-		ListView_SetColumnWidth(m_hWndList,1,380);
-
 		SetRedraw(m_hWndList,TRUE);
 
 		return S_OK;
@@ -1223,8 +1215,26 @@ public:
 		return FillItems(pdi,pvi);
 	}
 
-	virtual HRESULT InitLayout(const RECT *prc)
+	virtual HRESULT OnInitPage(PVOID,DWORD,PVOID)
 	{
+		return S_OK;
+	}
+
+	virtual HRESULT OnInitLayout(const RECT *prc)
+	{
+		//
+		// Adjust column width.
+		//
+		RECT rc;
+		GetClientRect(m_hWndList,&rc);
+		int cw0=_DPI_Adjust_X(280),cw1=_DPI_Adjust_X(380);
+		if( _RECT_WIDTH(rc) > (cw0 + cw1) ) {
+			ListView_SetColumnWidth(m_hWndList,1,cw1);
+			ListView_SetColumnWidth(m_hWndList,0,cw0);
+		} else {
+			ListView_SetColumnWidth(m_hWndList,1,cw1);
+			ListView_SetColumnWidth(m_hWndList,0,LVSCW_AUTOSIZE);
+		}
 		return S_OK;
 	}
 

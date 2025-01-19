@@ -1,3 +1,9 @@
+### 0.1.26.0
+
+- Disk Performance ウィンドウを試験的に追加。   
+Volumes,MS-DOS DrivesまたはPhysical Drivesウィンドウからボリュームまたはドライブを選択して開きます。   
+IOCTL_DISK_PERFORMANCE I/Oコントロールで得られた値をそのまま表示します。
+
 ### 0.1.25.0
 
 - ボリューム内のファイルを参照するウィンドウを追加。

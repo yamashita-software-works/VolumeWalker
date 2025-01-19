@@ -14,6 +14,7 @@
 #define ID_FILESYSTEMSTATISTICS        41011
 #define ID_HEXDUMP                     41012
 #define ID_FILTERDRIVER                41013
+#define ID_DISKPERFORMANCE             41014 
 
 #define ID_FILE_VOLUMEFILES            41020
 #define ID_FILE_CHANGEJOURNAL          41021

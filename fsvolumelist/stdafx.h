@@ -79,6 +79,7 @@ HWND CreateDosDriveWindow(HWND hWndParent);
 HWND CreateFileSystemStatisticsWindow(HWND hWndParent);
 HWND CreateSimpleHexDumpWindow(HWND hWndParent);
 HWND CreateFilterDriverWindow(HWND hWndParent);
+HWND CreateDiskPerformanceWindow(HWND hWndParent);
 
 inline VOID _DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus=FALSE)
 {

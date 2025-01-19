@@ -268,3 +268,8 @@ HWND CreateFilterDriverWindow(HWND hWndParent)
 {
 	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_FILTERDRIVER);
 }
+
+HWND CreateDiskPerformanceWindow(HWND hWndParent)
+{
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_DISKPERFORMANCE);
+}

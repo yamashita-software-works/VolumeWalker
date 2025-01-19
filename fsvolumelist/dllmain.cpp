@@ -42,13 +42,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		case DLL_PROCESS_ATTACH:
 			hInstance = (HINSTANCE)hModule;
 			_MemInit();
-
 			InitializeLibMisc(hInstance,GetUserDefaultUILanguage());
-
-			if( GetModuleHandle(L"fltlib.dll") == NULL )	
-			{
-				LoadFltLibDll(NULL);
-			}
 			break;
 		case DLL_PROCESS_DETACH:
 			_MemEnd();
@@ -67,6 +61,13 @@ InitializeVolumeConsole(
 	DWORD dwFlags
 	)
 {
+	if( GetModuleHandle(L"fltlib.dll") == NULL )	
+	{
+		LoadFltLibDll(NULL);
+	}
+
+	_libmisc_set_langage_id(GetThreadUILanguage());
+
 #if _ENABLE_DARK_MODE_TEST
 	if( dwFlags & VOLUME_DLL_FLAG_ENABLE_DARK_MODE )
 	{
@@ -74,10 +75,8 @@ InitializeVolumeConsole(
 		EnableDarkMode(TRUE);
 		return S_OK;
 	}
-	return E_FAIL;
-#else
-	return E_NOTIMPL;
 #endif
+	return S_OK;
 }
 
 EXTERN_C
@@ -128,6 +127,9 @@ CreateVolumeConsoleWindow(
 			break;
 		case VOLUME_CONSOLE_FILTERDRIVER:
 			hwndViewBase = CreateFilterDriverWindow(hwnd);
+			break;
+		case VOLUME_CONSOLE_DISKPERFORMANCE:
+			hwndViewBase = CreateDiskPerformanceWindow(hwnd);
 			break;
 		default:
 			return NULL;

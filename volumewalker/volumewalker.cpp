@@ -280,6 +280,7 @@ HRESULT InitLanguage(LPWSTR pszLangIdOrName)
       - VOLUME_CONSOLE_VOLUMEINFORMAION
       - VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION
       - VOLUME_CONSOLE_DISKLAYOUT
+      - VOLUME_CONSOLE_DISKPERFORMANCE
       - VOLUME_CONSOLE_FILESYSTEMSTATISTICS
       - VOLUME_CONSOLE_SIMPLEHEXDUMP
       - VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST
@@ -390,6 +391,7 @@ VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *O
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
 		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
 		case VOLUME_CONSOLE_DISKLAYOUT:
+		case VOLUME_CONSOLE_DISKPERFORMANCE:
 		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 		case VOLUME_CONSOLE_SIMPLEHEXDUMP:
 		case VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST:
@@ -412,6 +414,7 @@ BOOL IsVolumeNameRequiredConsole(LPGUID pwndGuid,UINT ConsoleId)
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
 		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
 		case VOLUME_CONSOLE_DISKLAYOUT:
+		case VOLUME_CONSOLE_DISKPERFORMANCE:
 		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 		case VOLUME_CONSOLE_SIMPLEHEXDUMP:
 			return TRUE;
@@ -601,15 +604,6 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 	{
 		WCHAR sz[MAX_PATH];
 		GetCurrentDirectory(MAX_PATH,sz);
-/*
-		if( ConsoleTypeId == VOLUME_CONSOLE_FILE_OBJECTID )
-		{
-			PWSTR pRoot;
-			if( FindRootDirectory_W(sz,&pRoot) != 0 )
-				return;
-			*(pRoot+1) = 0;
-		}
-*/
 		pOpenParam->Path = _MemAllocString(sz);
 	}
 
@@ -631,6 +625,7 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 	pg.pszFileName   = NULL;
 	SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
 
+	// set MDI child frame title
 	WCHAR szVolumeName[128];
 	NtPathGetVolumeName(pszPath,szVolumeName,ARRAYSIZE(szVolumeName));
 	SetWindowText(hwndMDIChild,szVolumeName);
@@ -683,6 +678,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		ConsoleTypeId == VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION ||
 		ConsoleTypeId == VOLUME_CONSOLE_FILESYSTEMSTATISTICS ||
 		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP ||
+		ConsoleTypeId == VOLUME_CONSOLE_DISKPERFORMANCE || 
 		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST )
 	{
 		hwndChildFrame = FindSameWindowTitle(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
@@ -1297,7 +1293,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			wmId    = LOWORD(wParam);
 			wmEvent = HIWORD(wParam);
 
-			if( QueryCmdState(wmId,UPDUI_DISABLED,0,0) != UPDUI_ENABLED )
+			if( (QueryCmdState(wmId,UPDUI_DISABLED,0,0) & UPDUI_DISABLED) != 0 )
 				break;
 
 			switch (wmId)
@@ -1564,6 +1560,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 					msgDblClk.hwnd = NULL;
 					continue;
 				}
+			}
+			else if( msg.message == WM_LBUTTONDOWN )
+			{
+				msgDblClk.hwnd = NULL;
 			}
 #endif
 			if( g_hWndActiveMDIChild )

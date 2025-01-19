@@ -918,7 +918,10 @@ public:
 				*State = UPDUI_ENABLED;
 				return S_OK;
 			case ID_VIEW_TOGGLE_GROUPVIEWMODE:
-				return S_OK; // Depends on the state of the menu item.
+				*State = UPDUI_ENABLED;
+				if( ListView_IsGroupViewEnabled(m_hWndList) )
+					*State |= UPDUI_CHECKED;
+				return S_OK;
 		}
 		return S_FALSE;
 	}

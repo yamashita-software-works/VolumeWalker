@@ -233,6 +233,7 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Open &Information");
 			AppendMenu(hMenu,MF_STRING,ID_FILESYSTEMSTATISTICS,L"Open File System &Statistics");
 			AppendMenu(hMenu,MF_STRING,0,0);
+			AppendMenu(hMenu,MF_STRING,ID_DISKPERFORMANCE,L"Disk &Performance");
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
 			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Volume &Files");
 			AppendMenu(hMenu,MF_STRING,0,0);
@@ -1314,6 +1315,7 @@ public:
 		{
 			case ID_VOLUMEINFORMATION:
 			case ID_FILESYSTEMSTATISTICS:
+			case ID_DISKPERFORMANCE:
 			case ID_HEXDUMP:
 			case ID_EDIT_COPY:
 			case ID_OPEN_LOCATION_EXPLORER:
@@ -1355,6 +1357,13 @@ public:
 				break;
 			case ID_HEXDUMP:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );
+				break;
+			case ID_DISKPERFORMANCE:
+#if 0
+				OpenDiskPerformance( ListViewEx_GetCurSel(m_hWndList) );
+#else
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_DISKPERFORMANCE );
+#endif
 				break;
 			case ID_OPEN_LOCATION_EXPLORER:
 				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 0 );

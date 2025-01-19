@@ -29,6 +29,7 @@
 #include "page_statistics.h"
 #include "page_simplehexdump.h"
 #include "page_filterdriver.h"
+#include "page_diskperformance.h"
 
 class CViewBase
 {
@@ -150,6 +151,11 @@ public:
 				pNew = GetOrAllocWndObject<CFilterDriverPage>(nView);
 				break;
 			}
+			case VOLUME_CONSOLE_DISKPERFORMANCE:
+			{
+				pNew = GetOrAllocWndObject<CDiskPerformancePage>(nView);
+				break;
+			}
 			default:
 				return NULL;
 		}
@@ -268,7 +274,11 @@ public:
 			case VOLUME_CONSOLE_FILTERDRIVER:
 				_SelectPage( SelItem );
 				break;
+			case VOLUME_CONSOLE_DISKPERFORMANCE:
+				_SelectPage( SelItem );
+				break;
 			default:
+				ASSERT(FALSE);
 				return E_FAIL;
 		}
 

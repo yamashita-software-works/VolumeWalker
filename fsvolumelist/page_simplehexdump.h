@@ -1037,6 +1037,6 @@ private:
 		SetToolbarButtonState(ID_FIRST,FALSE);
 		SetToolbarButtonState(ID_LAST,FALSE);
 		SetToolbarButtonState(ID_HOME,FALSE);
-		SetToolbarButtonState(ID_GOTO,TRUE);
+		SetToolbarButtonState(ID_GOTO, m_rd.Length ? TRUE : FALSE);
 	}
 };

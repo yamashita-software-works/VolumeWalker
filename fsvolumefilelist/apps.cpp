@@ -22,7 +22,7 @@
 #include "stringbuffer.h"
 #include "common.h"
 #include "libmisc.h"
-#include "..\fsfilebinder\xmlapplications.h"
+#include "xmlapplications.h"
 
 EXTERN_C
 HRESULT
@@ -59,6 +59,7 @@ HRESULT CreateApplicationList(IApplicationsReader **ppApps)
 	PathCombine(szAppFile,szAppFile,L"applications.xml");
 	if( !PathFileExists(szAppFile) )
 	{
+		pApps->Release();
 		return HRESULT_FROM_WIN32( ERROR_FILE_NOT_FOUND );
 	}
 #endif

@@ -197,6 +197,7 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_PHYSICALDRIVEINFORMATION,L"Open &Information");
 			AppendMenu(hMenu,MF_STRING,ID_DRIVELAYOUT,L"Open Drive &Layout");
 			AppendMenu(hMenu,MF_STRING,0,0);
+			AppendMenu(hMenu,MF_STRING,ID_DISKPERFORMANCE,L"Disk &Performance");
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Sector &Dump");
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
@@ -965,6 +966,7 @@ public:
 		{
 			case ID_PHYSICALDRIVEINFORMATION:
 			case ID_DRIVELAYOUT:
+			case ID_DISKPERFORMANCE:
 			case ID_HEXDUMP:
 			case ID_EDIT_COPY:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
@@ -997,6 +999,9 @@ public:
 				break;
 			case ID_HEXDUMP:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );
+				break;
+			case ID_DISKPERFORMANCE:
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_DISKPERFORMANCE );
 				break;
 		}
 		return S_OK;

@@ -3,7 +3,7 @@
 //*                                                                         *
 //*  page_statistics.h                                                      *
 //*                                                                         *
-//*  Fils System Statistics Page                                            *
+//*  File System Statistics Page                                            *
 //*                                                                         *
 //*  Author: YAMASHITA Katsuhiro                                            *
 //*                                                                         *
@@ -420,7 +420,7 @@ public:
 
 		m_hFont = GetGlobalFont(m_hWnd);
 		
-		ListView_SetExtendedListViewStyle(hWndList,LVS_EX_DOUBLEBUFFER|LVS_EX_FULLROWSELECT|LVS_EX_HEADERDRAGDROP|LVS_EX_GRIDLINES);
+		ListView_SetExtendedListViewStyle(hWndList,LVS_EX_DOUBLEBUFFER|LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES);
 
 		HIMAGELIST himl = ImageList_Create(1,18,ILC_COLOR32,1,1);
 		ListView_SetImageList(hWndList,himl,LVSIL_SMALL);
