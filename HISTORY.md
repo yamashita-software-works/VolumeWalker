@@ -1,3 +1,11 @@
+### 0.1.27.0
+
+- Volume Filesウィンドウで検索ダイアログが開かない不具合を修正。
+
+- Aboutダイアログに表示される情報を"Windows Version"から"System Information"に整理・変更。
+
+- その他、ソースコードの整理。
+
 ### 0.1.26.0
 
 - Disk Performance ウィンドウを試験的に追加。   

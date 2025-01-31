@@ -259,11 +259,8 @@ public:
 			case PM_FINDITEM:
 			case PM_GETSELECTEDFILE:
 			case PM_GETWORKINGDIRECTORY:
-#if 0
-			case PM_SET_DESCRIPTION_TEXT:
 				if( m_pView )
 					return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam); // forward to current page
-#endif
 				return 0;
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);

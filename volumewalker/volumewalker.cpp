@@ -186,7 +186,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// OS version:
 			{
-				Edit_AddText(hwndEdit,L"Windows Versison:\r\n");
+				Edit_AddText(hwndEdit,L"System Information:\r\n");
 				OSVersionText(GetDlgItem(hDlg,IDC_EDIT));
 			}
 
@@ -206,12 +206,12 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				StrFromTimeInterval(szBootElapsedTime,_countof(szBootElapsedTime),(DWORD)((liElapsedTime.QuadPart)/10000),3);
 				StrTrim(szBootElapsedTime,L" ");
 
-				StringCchPrintf(szBuf,_countof(szBuf),L"System Boot Time : %s",szBootTime);
+				StringCchPrintf(szBuf,_countof(szBuf),L"System Boot Time: %s",szBootTime);
 				Edit_AddText(hwndEdit,szBuf);
 
 				Edit_AddText(hwndEdit,L"\r\n");
 
-				StringCchPrintf(szBuf,_countof(szBuf),L"Boot Elapsed Time : %s",szBootElapsedTime);
+				StringCchPrintf(szBuf,_countof(szBuf),L"Boot Elapsed Time: %s",szBootElapsedTime);
 				Edit_AddText(hwndEdit,szBuf);
 			}
 
@@ -230,8 +230,8 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				WCHAR sz[64];
 				_GetDateTimeStringEx(t.QuadPart,sz,64,NULL,NULL,FALSE);
 
-				Edit_AddText(hwndEdit,L"\r\n\r\n");
-				Edit_AddText(hwndEdit,L"System Install Date : ");
+				Edit_AddText(hwndEdit,L"\r\n");
+				Edit_AddText(hwndEdit,L"System Install Date: ");
 				Edit_AddText(hwndEdit,sz);
 			}
 
@@ -1273,7 +1273,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				SaveMainFrameConfig(hWnd,g_hWndMDIClient);
 			}
-
+			FindText_Uninitialize();
 			PostQuitMessage(0);
 			break;
 		}

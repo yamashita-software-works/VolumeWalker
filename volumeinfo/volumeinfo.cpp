@@ -559,20 +559,19 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 #else
 					L"x86"
 #endif
-					);
+						);
 				SetDlgItemText(hDlg,IDC_TEXT,sz);
 			}
 
 			// OS version:
 			{
-				Edit_AddText(hwndEdit,L"Windows Versison:\r\n");
+				Edit_AddText(hwndEdit,L"System Information:\r\n");
 				OSVersionText(GetDlgItem(hDlg,IDC_EDIT));
 			}
 
 			// miscellaneous/system information:
 			{
 				Edit_AddText(hwndEdit,L"\r\n\r\n");
-
 				LARGE_INTEGER liBootTime;
 				LARGE_INTEGER liElapsedTime;
 				GetSystemBootTime( &liBootTime, NULL, &liElapsedTime );
@@ -586,12 +585,12 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				StrFromTimeInterval(szBootElapsedTime,_countof(szBootElapsedTime),(DWORD)((liElapsedTime.QuadPart)/10000),3);
 				StrTrim(szBootElapsedTime,L" ");
 
-				StringCchPrintf(szBuf,_countof(szBuf),L"System Boot Time:\t%s",szBootTime);
+				StringCchPrintf(szBuf,_countof(szBuf),L"System Boot Time: %s",szBootTime);
 				Edit_AddText(hwndEdit,szBuf);
 
 				Edit_AddText(hwndEdit,L"\r\n");
 
-				StringCchPrintf(szBuf,_countof(szBuf),L"Boot Elapsed Time:\t%s",szBootElapsedTime);
+				StringCchPrintf(szBuf,_countof(szBuf),L"Boot Elapsed Time: %s",szBootElapsedTime);
 				Edit_AddText(hwndEdit,szBuf);
 			}
 

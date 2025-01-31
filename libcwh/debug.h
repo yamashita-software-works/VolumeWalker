@@ -16,15 +16,15 @@
 #define DebugBreak()  {_asm int 3}
 #endif
 // DEBUG library No use version.
-#ifndef BUFFER_SIZE
-#define BUFFER_SIZE 512
+#ifndef _DEBUG_ASSERT_BUFFER_SIZE
+#define _DEBUG_ASSERT_BUFFER_SIZE 512
 #endif
 
 #define _ASSERTA(exp) \
 {\
   if((exp) == 0)\
   {\
-     CHAR sz[BUFFER_SIZE]; int r;\
+     CHAR sz[_DEBUG_ASSERT_BUFFER_SIZE]; int r;\
      wsprintfA(sz,"Debug Assertion Failed!\n\n%s\nLine : %d",__FILE__,__LINE__);\
      r = MessageBoxA(0,sz,"Assert!",MB_SYSTEMMODAL|MB_ABORTRETRYIGNORE|MB_ICONSTOP);\
      if( r == IDRETRY ) { DebugBreak(); }\
@@ -36,7 +36,7 @@
 {\
   if((exp) == 0)\
   {\
-     CHAR sz[BUFFER_SIZE]; int r;\
+     CHAR sz[_DEBUG_ASSERT_BUFFER_SIZE]; int r;\
      sprintf(sz,"Runtime Assertion Failed!\n\nFile:%s  Line:%d",strrchr((const char*)__FILE__,TEXT('\\'))+1,__LINE__);\
      r = MessageBoxA(0,sz,"Assert!",MB_SYSTEMMODAL|MB_ABORTRETRYIGNORE|MB_ICONSTOP);\
      if( r == IDRETRY ) { DebugBreak(); }\

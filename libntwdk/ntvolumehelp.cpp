@@ -142,8 +142,10 @@ GetVolumeDeviceType(
     Status = NtQueryVolumeInformationFile(Handle,&IoStatus,&di,sizeof(di),FileFsDeviceInformation);
     if( Status == STATUS_SUCCESS )
     {
-        *pDeviceType = di.DeviceType;
-        *pCharacteristics = di.Characteristics;
+        if( pDeviceType )
+            *pDeviceType = di.DeviceType;
+        if( pCharacteristics )
+            *pCharacteristics = di.Characteristics;
     }
     return Status;
 }

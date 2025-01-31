@@ -34,10 +34,10 @@ typedef struct _FS_APPLICATION_ITEM
 	PCWSTR AppendPath;
 } FS_APPLICATION_ITEM;
 
-class CFSApplocationItem : public FS_APPLICATION_ITEM
+class CFSApplicationItem : public FS_APPLICATION_ITEM
 {
 public:
-	CFSApplocationItem()
+	CFSApplicationItem()
 	{
 		Type = 0;
 		ZeroMemory(&Guid,sizeof(Guid));
@@ -51,7 +51,7 @@ public:
 		AppendPath = NULL;
 	}
 
-	~CFSApplocationItem()
+	~CFSApplicationItem()
 	{
 		_SafeMemFree(FriendlyName);
 		_SafeMemFree(CommandLine);
@@ -229,7 +229,7 @@ public:
 	PCWSTR PtrAppendPath() const { return AppendPath; }
 };
 
-class CApplocationPointerArray : protected CValArray<CFSApplocationItem *>
+class CApplocationPointerArray : protected CValArray<CFSApplicationItem *>
 {
 public:
 	CApplocationPointerArray()
@@ -248,12 +248,12 @@ public:
 	}
 
 
-	CFSApplocationItem *operator[](int iIndex) const
+	CFSApplicationItem *operator[](int iIndex) const
 	{
 		return (GetBuffer())[iIndex];
 	}
 
-	int add(CFSApplocationItem *pItem)
+	int add(CFSApplicationItem *pItem)
 	{
 		return Add(pItem);
 	}
@@ -556,7 +556,7 @@ protected:
 		}
 #endif
 
-		CFSApplocationItem *pItem = new CFSApplocationItem;
+		CFSApplicationItem *pItem = new CFSApplicationItem;
 		if( pItem == NULL )
 		{
 			return E_OUTOFMEMORY;
@@ -630,7 +630,7 @@ protected:
 
 	HRESULT InsertSeparator()
 	{
-		CFSApplocationItem *pItem = new CFSApplocationItem;
+		CFSApplicationItem *pItem = new CFSApplicationItem;
 		if( pItem == NULL )
 		{
 			return E_OUTOFMEMORY;
