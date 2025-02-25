@@ -847,7 +847,7 @@ NTSTATUS GetFileNameInformation_U(HANDLE hFile,UNICODE_STRING *pusFileName)
         _SetLastStatusDos(Status);
     }
 
-	FreeMemory(pName);
+    FreeMemory(pName);
 
     return Status;
 }
@@ -1036,52 +1036,52 @@ MakeSureDirectoryPathExists_W(
         HANDLE hCreatedDir = NULL;
         HANDLE hParentDir = NULL;
 
-		Status = NtDuplicateObject(
-					NtCurrentProcess(),
-					hRootDir, 
-					NtCurrentProcess(),
-					&hParentDir, 
-					0,
-					FALSE,
-					DUPLICATE_SAME_ACCESS);
+        Status = NtDuplicateObject(
+                    NtCurrentProcess(),
+                    hRootDir, 
+                    NtCurrentProcess(),
+                    &hParentDir, 
+                    0,
+                    FALSE,
+                    DUPLICATE_SAME_ACCESS);
 
-		if( Status == STATUS_SUCCESS )
-		{
-	        token = wcstok_s((PWSTR)RootRelativePath.Buffer,seps,&next_token);
+        if( Status == STATUS_SUCCESS )
+        {
+            token = wcstok_s((PWSTR)RootRelativePath.Buffer,seps,&next_token);
 
-		    while( token != NULL )
-			{
-				UNICODE_STRING token_u;
-	            RtlInitUnicodeString(&token_u,token);
+            while( token != NULL )
+            {
+                UNICODE_STRING token_u;
+                RtlInitUnicodeString(&token_u,token);
 
-		        if( !PathFileExists_UEx(hParentDir,&token_u,NULL) )
-			    {
-				    Status = CreateDirectory_W(hParentDir,token,NULL);
-					if( Status != STATUS_SUCCESS && Status != STATUS_OBJECT_NAME_COLLISION )
-					{
-						break;
-					}
-				}
+                if( !PathFileExists_UEx(hParentDir,&token_u,NULL) )
+                {
+                    Status = CreateDirectory_W(hParentDir,token,NULL);
+                    if( Status != STATUS_SUCCESS && Status != STATUS_OBJECT_NAME_COLLISION )
+                    {
+                        break;
+                    }
+                }
 
-	            Status = OpenFile_U(&hCreatedDir,hParentDir,&token_u,
-		                    FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE,
-			                FILE_DIRECTORY_FILE);
+                Status = OpenFile_U(&hCreatedDir,hParentDir,&token_u,
+                            FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE,
+                            FILE_DIRECTORY_FILE);
 
-				if( Status != STATUS_SUCCESS )
-				{
-					break;
-				}
+                if( Status != STATUS_SUCCESS )
+                {
+                    break;
+                }
 
-	            NtClose(hParentDir);
-		        hParentDir = hCreatedDir;
-				hCreatedDir = NULL;
+                NtClose(hParentDir);
+                hParentDir = hCreatedDir;
+                hCreatedDir = NULL;
 
-			    token = wcstok_s(NULL,seps,&next_token);
-			}
+                token = wcstok_s(NULL,seps,&next_token);
+            }
 
-			if( hParentDir != NULL )
-				NtClose(hParentDir);
-		}
+            if( hParentDir != NULL )
+                NtClose(hParentDir);
+        }
     }
 
     if( pszFullPath )
@@ -1350,7 +1350,13 @@ GetShortPath_W(
         UNICODE_STRING usFileName;
     
         RtlInitUnicodeString(&usPath,path);
-        SplitPathFileName_U(&usPath,&usFileName);
+        if( SplitPathFileName_U(&usPath,&usFileName) != STATUS_SUCCESS )
+        {
+            // in this case, only filename not path. 
+            // therefore copy usPath to usFileName and clear usPath.
+            usFileName = usPath;
+            RtlInitEmptyUnicodeString(&usPath,NULL,0);
+        }
 
         HANDLE hDir;
         Status = OpenFile_U(&hDir,hRoot,&usPath,
@@ -1470,7 +1476,13 @@ GetLongPath_W(
         UNICODE_STRING usFileName;
     
         RtlInitUnicodeString(&usPath,path);
-        SplitPathFileName_U(&usPath,&usFileName);
+        if( SplitPathFileName_U(&usPath,&usFileName) != STATUS_SUCCESS )
+        {
+            // in this case, only filename not path. 
+            // therefore copy usPath to usFileName and clear usPath.
+            usFileName = usPath;
+            RtlInitEmptyUnicodeString(&usPath,NULL,0);
+        }
 
         HANDLE hDir;
         Status = OpenFile_U(&hDir,hRoot,&usPath,

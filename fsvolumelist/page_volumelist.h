@@ -235,7 +235,7 @@ public:
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_DISKPERFORMANCE,L"Disk &Performance");
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
-			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Volume &Files");
+			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Display &Files in Volume");
 			AppendMenu(hMenu,MF_STRING,0,0);
 			hSubMenu = CreatePopupMenu();
 			{
@@ -397,10 +397,13 @@ public:
 				}
 			}
 
-			UINT State = ListView_GetItemState(m_hWndList,(int)pcd->nmcd.dwItemSpec,LVIS_FOCUSED);
-			if( State & LVIS_FOCUSED )
+			if( IsXpThemeEnabled() )
 			{
-				_DrawFocusFrame(m_hWndList,pcd->nmcd.hdc,&pcd->nmcd.rc);
+				UINT State = ListView_GetItemState(m_hWndList,(int)pcd->nmcd.dwItemSpec,LVIS_FOCUSED);
+				if( State & LVIS_FOCUSED )
+				{
+					_DrawFocusFrame(m_hWndList,pcd->nmcd.hdc,&pcd->nmcd.rc);
+				}
 			}
 		}
 
@@ -1359,11 +1362,7 @@ public:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );
 				break;
 			case ID_DISKPERFORMANCE:
-#if 0
-				OpenDiskPerformance( ListViewEx_GetCurSel(m_hWndList) );
-#else
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_DISKPERFORMANCE );
-#endif
 				break;
 			case ID_OPEN_LOCATION_EXPLORER:
 				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 0 );

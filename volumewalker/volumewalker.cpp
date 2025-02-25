@@ -28,6 +28,7 @@
 #include "inifile.h"
 
 static HINSTANCE g_hInst = NULL;
+static HMODULE g_hInstRes = NULL;
 static HWND g_hWndMain = NULL;
 static HWND g_hWndMDIClient = NULL;
 static HWND g_hWndActiveMDIChild = NULL;
@@ -46,9 +47,19 @@ static BOOL g_bEnableWorkspaceLayout = FALSE;
 
 #define _LAYOUT_FILENAME L"layout.ini"
 
-HINSTANCE _GetResourceInstance()
+HINSTANCE _GetInstanceHandle()
 {
 	return g_hInst;
+}
+
+HINSTANCE _GetResourceInstance()
+{
+	return g_hInstRes;
+}
+
+HMODULE _GetIconResourceModuleHandle()
+{
+	return _GetInstanceHandle();
 }
 
 HWND _GetMainWnd()
@@ -100,7 +111,7 @@ static void OSVersionText(HWND hwndEdit)
 	cb = MAX_PATH;
 	SHRegGetValue(HKEY_LOCAL_MACHINE,L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",L"ProductName",SRRF_RT_REG_DWORD,NULL,szText,&cb);
 
-	Edit_AddText(hwndEdit,L"  ");
+	Edit_AddText(hwndEdit,L"\r\n");
 	Edit_AddText(hwndEdit,szText);
 	Edit_AddText(hwndEdit,L"\r\n");
 
@@ -146,7 +157,6 @@ static void OSVersionText(HWND hwndEdit)
 		StringCchCat(szText,MAX_PATH,L")");
 	}
 
-	Edit_AddText(hwndEdit,L"  ");
 	Edit_AddText(hwndEdit,szText);
 	Edit_AddText(hwndEdit,L"\r\n");
 
@@ -156,7 +166,6 @@ static void OSVersionText(HWND hwndEdit)
 	{
 		if( cb != 0 )
 		{
-			Edit_AddText(hwndEdit,L"  ");
 			Edit_AddText(hwndEdit,szText);
 		}
 	}
@@ -460,11 +469,11 @@ HICON GetConsoleIcon(UINT ConsoleTypeId,PCWSTR pszInitialPath)
 	}
 	else if( ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP )
 	{
-		hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(IDI_BINDUMP),IMAGE_ICON,16,16,LR_DEFAULTSIZE);
+		hIcon = (HICON)LoadImage(_GetIconResourceModuleHandle(),MAKEINTRESOURCE(IDI_BINDUMP),IMAGE_ICON,16,16,LR_DEFAULTSIZE);
 	}
 	else if( ConsoleTypeId == VOLUME_CONSOLE_FILTERDRIVER )
 	{
-		HINSTANCE hmod = LoadLibrary(L"imageres.dll");
+		HMODULE hmod = LoadLibrary(L"imageres.dll");
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
 		FreeLibrary(hmod);
 	}
@@ -1066,8 +1075,16 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 		return 0;
 	}
 
-	if( args.szLangIdOrName[0] )
-		InitLanguage(args.szLangIdOrName);
+	if( _GetOSVersion() >= 0xA00 )
+	{
+		SetProcessPlaceholderCompatibilityMode(PHCM_EXPOSE_PLACEHOLDERS);
+	}
+
+	InitLanguage(args.szLangIdOrName);
+
+#if _ENABLE_MULTI_LANGUAGE
+	LoadResourceModule();
+#endif
 
 	InitializeVolumeConsole(0);
 
@@ -1504,14 +1521,13 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	RegisterMDIFrameClass(hInstance);
 	RegisterMDIChildFrameClass(hInstance);
 
+#if _ENABLE_OLE
+	OleInitialize(NULL);
+#endif
+
 	InitIniFile();
 
 	InitializeLibMisc(hInstance,GetUserDefaultUILanguage());
-
-	if( _GetOSVersion() >= 0xA00 )
-	{
-		SetProcessPlaceholderCompatibilityMode(PHCM_EXPOSE_PLACEHOLDERS);
-	}
 
 	if( (g_hWndMain = InitInstance (hInstance, nCmdShow)) == NULL )
 	{

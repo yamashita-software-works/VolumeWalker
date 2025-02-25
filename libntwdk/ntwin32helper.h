@@ -10,6 +10,10 @@
 #define WINAPI      __stdcall
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define TIME_NOMINUTESORSECONDS   0x00000001  // do not use minutes or seconds
 #define TIME_NOSECONDS            0x00000002  // do not use seconds
 #define TIME_NOTIMEMARKER         0x00000004  // do not use time marker
@@ -51,3 +55,7 @@ PVOID WinLocalAlloc(ULONG Flags, SIZE_T uBytes);
 PVOID WinLocalReAlloc(PVOID pMem,SIZE_T uBytes,ULONG uFlags);
 PVOID WinLocalFree(PVOID pMem);
 SIZE_T WinLocalSize(PVOID pMem);
+
+#ifdef __cplusplus
+};
+#endif

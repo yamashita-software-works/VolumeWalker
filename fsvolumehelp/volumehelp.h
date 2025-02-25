@@ -100,7 +100,7 @@ HANDLE
 WINAPI
 OpenDisk(
     PCWSTR pszDeviceName,
-    DWORD dwDiskNumber,
+    DWORD dwDiskNumber, /* OBSOLETE */
     DWORD dwDesired
     );
 
@@ -204,6 +204,21 @@ StorageGetDeviceCapacity(
 	PSTORAGE_READ_CAPACITY DeviceCapacity
 	);
 
+EXTERN_C
+PVOID
+WINAPI
+StorageMemAlloc(
+	SIZE_T cb
+	);
+
+EXTERN_C
+PVOID
+WINAPI
+StorageMemReAlloc(
+	PVOID ptr,
+	SIZE_T cb
+	);
+
 ULONG
 WINAPI
 StorageMemFree(
@@ -215,6 +230,19 @@ WINAPI
 VolumeMemFree(
 	PVOID pv
 	);
+
+PVOID
+WINAPI
+VolumeMemAlloc(
+	SIZE_T cb
+	);
+
+PWSTR
+WINAPI
+VolumeDuplicateString(
+	PWSTR psz
+	);
+
 
 //
 // pBuffer

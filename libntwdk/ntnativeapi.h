@@ -903,6 +903,61 @@ NtQuerySymbolicLinkObject (
 // Volume Information Native API
 //
 
+//
+// Define the file system information class values
+//
+// WARNING:  The order of the following values are assumed by the I/O system.
+//           Any changes made here should be reflected there as well.
+
+#ifndef _NTIFS_
+typedef enum _FSINFOCLASS {
+    FileFsVolumeInformation       = 1,
+    FileFsLabelInformation,      // 2
+    FileFsSizeInformation,       // 3
+    FileFsDeviceInformation,     // 4
+    FileFsAttributeInformation,  // 5
+    FileFsControlInformation,    // 6
+    FileFsFullSizeInformation,   // 7
+    FileFsObjectIdInformation,   // 8
+    FileFsDriverPathInformation, // 9
+    FileFsVolumeFlagsInformation,// 10
+    FileFsMaximumInformation
+} FS_INFORMATION_CLASS, *PFS_INFORMATION_CLASS;
+
+EXTERN_C
+NTSTATUS
+NTAPI
+NtQueryVolumeInformationFile (
+	IN HANDLE FileHandle,
+	OUT PIO_STATUS_BLOCK IoStatusBlock,
+	OUT PVOID FsInformation,
+	IN ULONG Length,
+	IN FS_INFORMATION_CLASS FsInformationClass
+    );
+
+EXTERN_C
+NTSTATUS
+NTAPI
+NtSetVolumeInformationFile (
+	IN HANDLE FileHandle,
+	OUT PIO_STATUS_BLOCK IoStatusBlock,
+	IN PVOID FsInformation,
+	IN ULONG Length,
+	IN FS_INFORMATION_CLASS FsInformationClass
+    );
+
+typedef struct _FILE_FS_LABEL_INFORMATION {
+    ULONG VolumeLabelLength;
+    WCHAR VolumeLabel[1];
+} FILE_FS_LABEL_INFORMATION, *PFILE_FS_LABEL_INFORMATION;
+
+typedef struct _FILE_FS_OBJECTID_INFORMATION {
+    UCHAR ObjectId[16];
+    UCHAR ExtendedInfo[48];
+} FILE_FS_OBJECTID_INFORMATION, *PFILE_FS_OBJECTID_INFORMATION;
+
+#endif
+
 typedef struct _FILE_FS_SECTOR_SIZE_INFORMATION
 {
     ULONG LogicalBytesPerSector;

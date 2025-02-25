@@ -36,6 +36,11 @@
 
 #define ID_FILE_EXPORT_CHANGE_JOURNAL_RAW_DATA   41051
 #define ID_FILE_LOAD_CHANGE_JOURNAL_RAW_DATA  41052
+#define ID_LOOKUP_VOLUMEMOUNTPOINT               41061
+#define ID_LOOKUP_STREAM_BY_LCN                  41062
+#define ID_CHOOSE_VOLUME                         41063
+#define ID_STOP_DISKPERFORMANCE                  41064
+#define ID_STOP_DISKPERFORMANCE_ALL              41065
 
 #define ID_EDIT_COPY_COUMN_FIRST       41100
 #define ID_EDIT_COPY_COUMN_LAST        41149
@@ -46,8 +51,10 @@
 
 #define ID_NEXT                        41201
 #define ID_BACK                        41202
-#define ID_FORWARD                     41203
-#define ID_BACKWARD                    41204
+#define ID_FORWARD                     ID_NEXT
+#define ID_BACKWARD                    ID_BACK
+#define ID_HISTORY_BACKWARD            ID_BACK
+#define ID_HISTORY_FORWARD             ID_NEXT
 #define ID_HOME                        41205
 #define ID_END                         41206
 #define ID_FIRST                       41207
@@ -57,11 +64,12 @@
 #define ID_GOTO                        41211
 #define ID_UP                          41212
 #define ID_UP_DIR                      41213
-#define ID_HISTORY_BACKWARD            41214
-#define ID_HISTORY_FORWARD             41215
+//                                     41214
+//                                     41215
 #define ID_MENU                        41216
 #define ID_OPEN                        41217
-#define ID_GOTO_DIRECTORY              ID_GOTO
+#define ID_AUTO_NEXT                   41218
+#define ID_AUTO_BACK                   41219
 
 #endif
 

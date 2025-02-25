@@ -87,6 +87,8 @@ class CSimpleHexDumpPage :
 
 	LARGE_INTEGER m_liFileAreaOffsetByte;
 
+	BOOL m_bAuto;
+
 public:
 	HWND GetListView() const { return m_hWndList; }
 
@@ -101,6 +103,7 @@ public:
 		m_rd.ByteWidth = 16;
 		m_liFileAreaOffsetByte.QuadPart = 0;
 		ZeroMemory(&m_rpb,sizeof(m_rpb));
+		m_bAuto = FALSE;
 	}
 
 	~CSimpleHexDumpPage()
@@ -211,6 +214,8 @@ public:
 				return OnGetEmptyMarkup(pnmhdr);
 			case NM_SETFOCUS:
 				return OnNmSetFocus(pnmhdr);
+			case TBN_GETINFOTIP:
+				return OnGetToolbarInfoTip(pnmhdr);
 		}
 		return 0;
 	}
@@ -346,6 +351,30 @@ public:
 		{
 			; // Reserved
 		}
+
+		return 0;
+	}
+
+	LRESULT OnGetToolbarInfoTip(NMHDR *pnmhdr)
+	{
+		NMTBGETINFOTIP *pnmtbit = (NMTBGETINFOTIP *)pnmhdr;
+
+		PWSTR pszText = NULL;
+		switch( pnmtbit->iItem )
+		{
+			case ID_BACK:
+				pszText = L"Ctrl+K";
+				break;
+			case ID_NEXT:
+				pszText = L"Ctrl+L";
+				break;
+			case ID_GOTO:
+				pszText = L"Ctrl+G";
+				break;
+		}
+
+		if( pszText )
+			StringCchCopy(pnmtbit->pszText,pnmtbit->cchTextMax,pszText);
 
 		return 0;
 	}
@@ -675,6 +704,8 @@ public:
 
 		if( Handle != INVALID_HANDLE_VALUE )
 		{
+			AllowExtendedDASDIo( Handle );
+
 			LARGE_INTEGER li;
 			li.QuadPart = CalcSectorTopOffset(m_rd.ReadOffset,m_rd.Length);
 
@@ -759,6 +790,32 @@ public:
 		UpdateToolbarButtons();
 
 		FillItems();
+
+		if( GetKeyState(VK_SHIFT) < 0 )
+		{
+			m_bAuto = true;
+		}
+	
+		if( m_bAuto )	
+		{
+			PBYTE pb = m_rd.Buffer;
+			ULONG i;
+
+			for(i = 0; i < m_rd.Length; i++)
+			{
+				if( *pb != 0 )
+				{
+					m_bAuto = false;
+					break;
+				}
+			}
+			if( i == m_rd.Length )
+			{
+				RedrawWindow(m_hWndList,0,0,RDW_INVALIDATE|RDW_UPDATENOW);
+				DoMessage();
+				PostMessage(m_hWnd,WM_COMMAND,ID_AUTO_NEXT,0);
+			}
+		}
 	}
 
 	void gotoBack()
@@ -774,6 +831,32 @@ public:
 		UpdateToolbarButtons();
 
 		FillItems();
+
+		if( GetKeyState(VK_SHIFT) < 0 )
+		{
+			m_bAuto = true;
+		}
+	
+		if( m_bAuto )	
+		{
+			PBYTE pb = m_rd.Buffer;
+			ULONG i;
+
+			for(i = 0; i < m_rd.Length; i++)
+			{
+				if( *pb != 0 )
+				{
+					m_bAuto = false;
+					break;
+				}
+			}
+			if( i == m_rd.Length )
+			{
+				RedrawWindow(m_hWndList,0,0,RDW_INVALIDATE|RDW_UPDATENOW);
+				DoMessage();
+				PostMessage(m_hWnd,WM_COMMAND,ID_AUTO_BACK,0);
+			}
+		}
 	}
 
 	void gotoLast()
@@ -893,6 +976,12 @@ public:
 			case ID_NEXT:
 				OnCmdNext();
 				break;
+			case ID_AUTO_BACK:
+				OnCmdAutoBack();
+				break;
+			case ID_AUTO_NEXT:
+				OnCmdAutoNext();
+				break;
 			case ID_FIRST:
 				OnCmdFirst();
 				break;
@@ -925,6 +1014,12 @@ public:
 			case ID_GOTO:
 				*State = ((m_rd.Size.QuadPart > 0) && (m_rd.Buffer != NULL)) ?  UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
+			case ID_NEXT:
+			case ID_BACK:
+			case ID_AUTO_NEXT:
+			case ID_AUTO_BACK:
+				*State = ((m_rd.Size.QuadPart > 0) && (m_rd.Buffer != NULL)) ?  UPDUI_ENABLED : UPDUI_DISABLED;
+				return S_OK;
 		}
 		return S_FALSE;
 	}
@@ -953,10 +1048,22 @@ public:
 
 	void OnCmdNext()
 	{
+		m_bAuto = false;
 		gotoNext();
 	}
 
 	void OnCmdBack()
+	{
+		m_bAuto = false;
+		gotoBack();
+	}
+
+	void OnCmdAutoNext()
+	{
+		gotoNext();
+	}
+
+	void OnCmdAutoBack()
 	{
 		gotoBack();
 	}

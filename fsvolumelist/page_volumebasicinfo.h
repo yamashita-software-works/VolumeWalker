@@ -2062,8 +2062,7 @@ public:
 		if( m_pszNtDeviceName )
 		{
 			SELECT_ITEM sel = {0};
-			sel.pszPath = m_pszNtDeviceName;
-			sel.pszName = m_pszNtDeviceName;
+			sel.pszVolume = m_pszNtDeviceName;
 			UpdateData(&sel);
 		}
 	}

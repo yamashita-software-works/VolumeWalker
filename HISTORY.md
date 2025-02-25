@@ -1,3 +1,11 @@
+### 0.1.28.0
+
+- Volume Information,Physical Drive Information,Drive Layoutで更新(Refreshコマンド)できない不具合を修正。
+
+- ソースコードの整理・同期、不具合修正。
+
+- fsvolumehelp.dllのヒープメモリ使用方法の見直し。
+
 ### 0.1.27.0
 
 - Volume Filesウィンドウで検索ダイアログが開かない不具合を修正。

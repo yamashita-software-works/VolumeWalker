@@ -137,12 +137,15 @@ public:
 			if( pcf->pszExecPath == NULL || pcf->pszCmdLine == NULL)
 			{
 				ExpandEnvironmentStrings(pcf->pszExecPath,szExePath,MAX_PATH);
-							PathRemoveArgs(szExePath);
+				PathRemoveArgs(szExePath);
 				PathUnquoteSpaces(szExePath);
-							StringCchCopy(szExecLocationPath,MAX_PATH,szExePath);
+
+				StringCchCopy(szExecLocationPath,MAX_PATH,szExePath);
 				PathRemoveFileSpec(szExecLocationPath);
-							if( pcf->pszStartupDirectory )
-				ExpandEnvironmentStrings(pcf->pszStartupDirectory,szStartupDirectory,MAX_PATH);
+
+				if( pcf->pszStartupDirectory )
+					ExpandEnvironmentStrings(pcf->pszStartupDirectory,szStartupDirectory,MAX_PATH);
+
 				if( ExpandEnvironmentStrings(
 						pcf->pszExecPath,
 						szCmdLine,MAX_PATH) > 0 )

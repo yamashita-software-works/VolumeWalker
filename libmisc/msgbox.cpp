@@ -308,7 +308,7 @@ _ErrorMessageBoxEx(
 				{
 					if( *p == L'%' )
 					{
-							if( iswdigit( *(p+1) ) )
+						if( iswdigit( *(p+1) ) )
 						{
 							PWSTR pNewText = (PWSTR)LocalAlloc(LPTR, wcslen(pMessage) + MAX_PATH + 1 );
 

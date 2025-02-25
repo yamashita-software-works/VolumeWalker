@@ -56,6 +56,16 @@ OpenVolume_U(
                         FILE_SHARE_READ|FILE_SHARE_WRITE,
                         OpenOptions);
 
+    if( (Flags & OPEN_ALLOW_DASD_IO) && (Status == STATUS_SUCCESS) )
+    {
+        Status = AllowExtendedDASDIo(*pHandle);
+        if( Status != STATUS_SUCCESS )
+        {
+            NtClose(*pHandle);
+            *pHandle = INVALID_HANDLE_VALUE;
+        }
+    }
+
     RtlSetLastWin32Error( RtlNtStatusToDosError(Status) );
 
     return Status;
@@ -255,6 +265,32 @@ GetVolumeFsInformation(
         default:
             return STATUS_INVALID_PARAMETER;
     }
+
+    return Status;
+}
+
+EXTERN_C
+NTSTATUS
+NTAPI
+AllowExtendedDASDIo(
+    IN HANDLE Handle
+    )
+{
+    IO_STATUS_BLOCK IoStatus;
+    NTSTATUS Status;
+
+    Status = NtFsControlFile(
+                Handle,       // IN HANDLE  FileHandle,
+                NULL,         // IN HANDLE  Event OPTIONAL,
+                NULL,         // IN PIO_APC_ROUTINE  ApcRoutine OPTIONAL,
+                NULL,         // IN PVOID  ApcContext OPTIONAL,
+                &IoStatus,    // OUT PIO_STATUS_BLOCK  IoStatusBlock,
+                FSCTL_ALLOW_EXTENDED_DASD_IO, // IN ULONG  FsControlCode,
+                NULL,         // IN PVOID  InputBuffer OPTIONAL,
+                0,            // IN ULONG  InputBufferLength,
+                NULL,         // OUT PVOID  OutputBuffer OPTIONAL,
+                0             // IN ULONG  OutputBufferLength
+                );
 
     return Status;
 }

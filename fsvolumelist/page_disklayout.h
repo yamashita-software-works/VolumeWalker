@@ -867,7 +867,8 @@ public:
 	void OnCmdRefresh()
 	{
 		SELECT_ITEM sel = {0};
-		sel.pszPath = m_pszPhysicalDrive;
+		sel.pszPhysicalDrive = _MemAllocString(m_pszPhysicalDrive);
 		UpdateData(&sel);
+		_SafeMemFree(sel.pszPhysicalDrive);
 	}
 };

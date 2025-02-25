@@ -442,6 +442,22 @@ _FreeSystemErrorMessage(
     PWSTR pMessage
     );
 
+PWSTR
+_cdecl
+_MakeMessageString(
+	UINT idFormatRes,
+	LPCWSTR lpszFormat,
+	...
+	);
+
+PWSTR
+FormatNtStatusErrorMessage(
+	PCWSTR NtStatusErrorMessage,
+	PWSTR Buffer,
+	SIZE_T cchBufferLength,
+	ULONG Flags
+	);
+
 //
 // Placeholder Compatibility Mode Funcsion
 //

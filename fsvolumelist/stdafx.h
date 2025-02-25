@@ -60,6 +60,7 @@
 #include "volumeconsoleid.h"
 #include "interface.h"
 #include "column.h"
+#include "themehelp.h"
 #if _ENABLE_DARK_MODE_TEST
 #include "darkmode.h"
 #include "listviewutil.h"

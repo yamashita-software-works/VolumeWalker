@@ -25,6 +25,7 @@ OpenVolume(
 #define OPEN_READ_DATA     0x1
 #define OPEN_GENERIC_READ  0x2
 #define OPEN_BACKUP_INTENT 0x4
+#define OPEN_ALLOW_DASD_IO 0x10000
 
 EXTERN_C
 NTSTATUS
@@ -184,3 +185,13 @@ typedef struct {
 	DWORDLONG RangeTrackChunkSize;
 	LONGLONG  RangeTrackFileSizeThreshold;
 } VOLUME_FS_USN_JOURNAL_DATA, *PVOLUME_FS_USN_JOURNAL_DATA;
+
+//
+// Miscillenious
+//
+EXTERN_C
+NTSTATUS
+NTAPI
+AllowExtendedDASDIo(
+	IN HANDLE Handle
+	);

@@ -1,5 +1,8 @@
 #pragma once
 
+//////////////////////////////////////////////////////////////////////////////
+// Goto Sector/Cluster Dialog
+
 #define DVL_LOC_OFFSET         0x0
 #define DVL_LOC_SECTOR_NUMBER  0x1
 #define DVL_LOC_NUMBER_MASK    0x1

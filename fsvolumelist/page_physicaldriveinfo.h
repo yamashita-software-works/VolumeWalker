@@ -1169,16 +1169,25 @@ public:
 		if( pSel == NULL || pSel->pszPhysicalDrive == NULL )
 			return E_INVALIDARG;
 
+		if( wcsnicmp(pSel->pszPhysicalDrive,L"PhysicalDrive",13) == 0 ||
+			wcsnicmp(pSel->pszPhysicalDrive,L"\\??\\PhysicalDrive",17) == 0 )
+		{
+			wchar_t *pnum = NULL;
+			pnum = wcspbrk(pSel->pszPhysicalDrive,L"0123456789");
+			if( pnum == NULL )
+				return E_INVALIDARG;
+			m_dwDriveNumber = _wtoi( pnum );
+		}
+		else
+		{
+			return E_INVALIDARG;
+		}
+
 		PWSTR pszPhysicalDisk = _MemAllocString(pSel->pszPhysicalDrive);
-
-		int cch = ((sizeof(L"PhysicalDrive")/sizeof(WCHAR))-1);
-		DWORD dwDriveNumber = _wtoi( &pszPhysicalDisk[cch] );
-
-		m_dwDriveNumber = dwDriveNumber;
 
 		CPhysicalDriveInformation *pdi = new CPhysicalDriveInformation;
 
-		if( (hr = pdi->OpenDisk(pszPhysicalDisk,dwDriveNumber)) == S_OK )
+		if( (hr = pdi->OpenDisk(pszPhysicalDisk,m_dwDriveNumber)) == S_OK )
 		{
 			_SafeMemFree(m_pszPhysicalDrive);
 			m_pszPhysicalDrive = _MemAllocString(pszPhysicalDisk);
@@ -1287,8 +1296,7 @@ public:
 		if( m_pszPhysicalDrive )
 		{
 			SELECT_ITEM sel = {0};
-			sel.pszPath = m_pszPhysicalDrive;
-			sel.pszName = m_pszPhysicalDrive;
+			sel.pszPhysicalDrive = m_pszPhysicalDrive;
 			UpdateData(&sel);
 		}
 	}

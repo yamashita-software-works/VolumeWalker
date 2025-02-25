@@ -195,11 +195,13 @@ HWND CreateMDIChildFrame(HWND hWndMDIClient,PCWSTR pszTitle,MDICHILDFRAMEINIT *p
  
 	mcs.szTitle = pszTitle;
 	mcs.szClass = MDICHILD_CLASSNAME;
-	mcs.hOwner  = _GetResourceInstance();
-	mcs.x = mcs.cx = CW_USEDEFAULT; 
-	mcs.y = mcs.cy = CW_USEDEFAULT; 
-	mcs.style = WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CAPTION | WS_CLIPCHILDREN; 
-	mcs.lParam = lParam;
+	mcs.hOwner  = _GetInstanceHandle();
+	mcs.x       = CW_USEDEFAULT; 
+	mcs.y       = CW_USEDEFAULT; 
+	mcs.cx      = CW_USEDEFAULT; 
+	mcs.cy      = CW_USEDEFAULT; 
+	mcs.style   = WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CAPTION | WS_CLIPCHILDREN; 
+	mcs.lParam  = lParam;
 
 	if( !bMaximize )
 	{
@@ -223,8 +225,8 @@ HWND CreateMDIChildFrame(HWND hWndMDIClient,PCWSTR pszTitle,MDICHILDFRAMEINIT *p
 	{
 		RECT rc;
 		GetClientRect(hWndMDIClient,&rc);
-		mcs.x = pmdiInit->pt.x;
-		mcs.y = pmdiInit->pt.y;
+		mcs.x  = pmdiInit->pt.x;
+		mcs.y  = pmdiInit->pt.y;
 		mcs.cx = pmdiInit->size.cx;
 		mcs.cy = pmdiInit->size.cy;
 	}

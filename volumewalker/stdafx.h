@@ -56,7 +56,9 @@
 #define GETINSTANCE(hWnd)   (HINSTANCE)GetWindowLongPtr(hWnd,GWLP_HINSTANCE)
 #define GETCLASSBRUSH(hWnd) (HBRUSH)GetClassLongPtr(hWnd,GCLP_HBRBACKGROUND)
 
+HINSTANCE _GetInstanceHandle();
 HINSTANCE _GetResourceInstance();
+HMODULE _GetIconResourceModuleHandle();
 HWND _GetMainWnd();
 
 inline HICON SetFrameIcon(HWND hWnd,HICON hIcon)

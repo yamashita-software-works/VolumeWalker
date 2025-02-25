@@ -827,17 +827,29 @@ GetVolumeDosName(
 {
 	if( pfnFilterGetDosName == NULL )
 	{
+		NTSTATUS Status;
 		ANSI_STRING ProcName;
 		RtlInitAnsiString(&ProcName,"FilterGetDosName");
-		LdrGetProcedureAddress(hFltLib,&ProcName,0,(PVOID*)&pfnFilterGetDosName);
+		if( (Status = LdrGetProcedureAddress(hFltLib,&ProcName,0,(PVOID*)&pfnFilterGetDosName)) != STATUS_SUCCESS )
+			return HRESULT_FROM_NT(Status);
 	}
+
+	HRESULT hr = E_FAIL;
 
 	if( pfnFilterGetDosName )
 	{
+#if 0
 		return pfnFilterGetDosName(lpVolumeName,lpDosName,dwDosNameBufferSize);
+#else
+		hr = pfnFilterGetDosName(lpVolumeName,lpDosName,dwDosNameBufferSize);
+		if( hr == S_OK )
+		{
+			return *lpDosName ? S_OK : S_FALSE;
+		}
+#endif
 	}
 
-	return E_FAIL;
+	return hr;
 }
 
 //---------------------------------------------------------------------------

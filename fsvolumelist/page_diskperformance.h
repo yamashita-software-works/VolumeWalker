@@ -47,6 +47,7 @@ public:
 		m_pszVolumeDisk = NULL;
 		m_pszErrorMessage = NULL;
 		ZeroMemory(&m_DiskPerf,sizeof(m_DiskPerf));
+		ZeroMemory(m_szVolumeDiskName,sizeof(m_szVolumeDiskName));
 	}
 
 	~CDiskPerformancePage()
@@ -106,6 +107,8 @@ public:
 		HMENU hMenu = CreatePopupMenu();
 
 		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
+		AppendMenu(hMenu,MF_STRING,0,NULL);
+		AppendMenu(hMenu,MF_STRING,ID_STOP_DISKPERFORMANCE,L"&Stop Disk Performance");
 
 		POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 		ListViewEx_SimpleContextMenuHandler(NULL,m_hWndList,(HWND)wParam,hMenu,pt,0);
@@ -338,7 +341,8 @@ public:
 	{
 		HRESULT hr = S_OK;
 
-		UpdateListData(m_hWndList);
+		if( m_szVolumeDiskName[0] )
+			UpdateListData(m_hWndList);
 
 		return hr;
 	}
@@ -415,6 +419,7 @@ public:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 			case ID_VIEW_REFRESH:
+			case ID_STOP_DISKPERFORMANCE:
 			case ID_EDIT_FIND:
 			case ID_EDIT_FIND_NEXT:
 			case ID_EDIT_FIND_PREVIOUS:
@@ -434,18 +439,14 @@ public:
 			case ID_VIEW_REFRESH:
 				OnViewRefresh();
 				break;
-#if 0
 			case ID_STOP_DISKPERFORMANCE:
 			{
-				HRESULT hr = QueryDiskPerformance(pdpParam->pszDeviceName,NULL,0);
-				MsgBox(hDlg,
-					((hr == S_OK) ? L"Succeeded.":L"Faild."),L"Disp Performance",
+				HRESULT hr = QueryDiskPerformance(this->m_szVolumeDiskName,NULL,0);
+				MsgBox(m_hWnd,
+					((hr == S_OK) ? L"Succeeded.":L"Faild."),L"Disk Performance",
 					(MB_OK|((hr == S_OK)?MB_ICONINFORMATION:MB_ICONEXCLAMATION)));
-				if( hr == S_OK )
-					DisableListData(GetDlgItem(hDlg,IDC_LIST));
 				break;
 			}
-#endif
 		}
 		return S_OK;
 	}

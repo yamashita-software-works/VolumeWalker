@@ -484,7 +484,17 @@ static void OSVersionText(HWND hwndEdit)
 	osi.dwOSVersionInfoSize = sizeof(osi);
 	GetVersionEx((LPOSVERSIONINFO)&osi);
 
-	DWORD cb = sizeof(DWORD);
+	DWORD cb;
+
+	cb = MAX_PATH;
+	SHRegGetValue(HKEY_LOCAL_MACHINE,L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",L"ProductName",SRRF_RT_REG_DWORD,NULL,szText,&cb);
+
+	Edit_AddText(hwndEdit,L"\r\n");
+	Edit_AddText(hwndEdit,szText);
+	Edit_AddText(hwndEdit,L"\r\n");
+
+
+	cb = sizeof(DWORD);
 	DWORD UBR = 0;
 	SHRegGetValue(HKEY_LOCAL_MACHINE,L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",L"UBR",SRRF_RT_REG_DWORD,NULL,&UBR,&cb);
 
@@ -525,7 +535,6 @@ static void OSVersionText(HWND hwndEdit)
 		StringCchCat(szText,MAX_PATH,L")");
 	}
 
-	Edit_AddText(hwndEdit,L"  ");
 	Edit_AddText(hwndEdit,szText);
 	Edit_AddText(hwndEdit,L"\r\n");
 
@@ -535,7 +544,6 @@ static void OSVersionText(HWND hwndEdit)
 	{
 		if( cb != 0 )
 		{
-			Edit_AddText(hwndEdit,L"  ");
 			Edit_AddText(hwndEdit,szText);
 		}
 	}

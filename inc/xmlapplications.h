@@ -691,6 +691,8 @@ public:
 		{
 			WCHAR szPath[MAX_PATH];
 
+			StringCchCopy(szPath,MAX_PATH,pszFilename);
+
 			if( PathFileExists(szPath) )
 			{
 				m_pszDefFile = _MemAllocString(szPath);
@@ -761,8 +763,14 @@ public:
 protected:
 	VOID clearImageList()
 	{
-		ImageList_RemoveAll(m_himlSmall);
-		ImageList_RemoveAll(m_himlNormal);
+		if( m_himlSmall )
+		{
+			ImageList_RemoveAll(m_himlSmall);
+		}
+		if( m_himlNormal )
+		{
+			ImageList_RemoveAll(m_himlNormal);
+		}
 	}
 
 	VOID clearAllItems()

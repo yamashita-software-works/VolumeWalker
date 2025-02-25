@@ -923,6 +923,7 @@ NTSTATUS GetFileNamePart_U(__in UNICODE_STRING *FilePath,__out UNICODE_STRING *F
 
 NTSTATUS SplitPathFileName_W(PCWSTR pszPath,UNICODE_STRING *Path,UNICODE_STRING *FileName)
 {
+    NTSTATUS Status;
     UNICODE_STRING usPath = {0};
     UNICODE_STRING usFileName = {0};
 
@@ -930,12 +931,14 @@ NTSTATUS SplitPathFileName_W(PCWSTR pszPath,UNICODE_STRING *Path,UNICODE_STRING 
     // We have limited up to 32767 characters.
     RtlInitUnicodeString(&usPath,pszPath);
 
-    SplitPathFileName_U(&usPath,&usFileName);
+    Status = SplitPathFileName_U(&usPath,&usFileName);
 
-    *Path =	usPath;
-    *FileName = usFileName;
+    if( Path )
+        *Path = usPath;
+    if( FileName )
+        *FileName = usFileName;
 
-    return 0;
+    return Status;
 }
 
 NTSTATUS SplitPathFileName_U(__inout UNICODE_STRING *Path,__out UNICODE_STRING *FileName)
@@ -950,8 +953,10 @@ NTSTATUS SplitPathFileName_U(__inout UNICODE_STRING *Path,__out UNICODE_STRING *
 
     if( IsRelativePath_U(Path) )
     {
+        // Relative path
         int i,len = WCHAR_LENGTH(Path->Length);
 
+        // Find out a backslash for separate filename part.
         for(i = (len - 1) ; i >= 0; i--) 
         {
             if( Path->Buffer[i] == L'\\' )
@@ -962,10 +967,15 @@ NTSTATUS SplitPathFileName_U(__inout UNICODE_STRING *Path,__out UNICODE_STRING *
 
         if( i >= 0 )
         {
-            FileName->Buffer = &Path->Buffer[i + 1];
-            FileName->Length = (USHORT)WCHAR_BYTES((len - i -1));
+            // separator('\') found
+            USHORT cbFileNameLength = (USHORT)WCHAR_BYTES((len - i - 1));
+            if( FileName )
+            {
+                FileName->Buffer = &Path->Buffer[i + 1];
+                FileName->Length = cbFileNameLength;
+            }
 
-            Path->Length -= FileName->Length;
+            Path->Length -= cbFileNameLength;
             if( Path->Length > sizeof(WCHAR) )
                 Path->Length -= sizeof(WCHAR); // separator
 
@@ -973,7 +983,8 @@ NTSTATUS SplitPathFileName_U(__inout UNICODE_STRING *Path,__out UNICODE_STRING *
         }
         else
         {
-            Status = STATUS_INVALID_PARAMETER;
+            // separator('\') not found
+            Status = STATUS_OBJECT_PATH_INVALID;
         }
     }
     else

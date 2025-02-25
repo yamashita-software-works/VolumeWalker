@@ -31,6 +31,26 @@ extern "C" {
 //////////////////////////////////////////////////////////////////////////////
 
 EXTERN_C
+PVOID
+WINAPI
+VolumeMemAlloc(
+	SIZE_T cb
+	)
+{
+	return AllocMemory(cb);
+}
+
+EXTERN_C
+PWSTR
+WINAPI
+VolumeDuplicateString(
+	PWSTR psz
+	)
+{
+	return DuplicateString(psz);
+}
+
+EXTERN_C
 LONG
 WINAPI
 VolumeMemFree(
@@ -39,9 +59,30 @@ VolumeMemFree(
 {
 	if( ptr != NULL )
 	{
-		_MemFree(ptr);
+		FreeMemory(ptr);
 	}
 	return 0;
+}
+
+EXTERN_C
+PVOID
+WINAPI
+StorageMemAlloc(
+	SIZE_T cb
+	)
+{
+	return VolumeMemAlloc(cb);
+}
+
+EXTERN_C
+PVOID
+WINAPI
+StorageMemReAlloc(
+	PVOID ptr,
+	SIZE_T cb
+	)
+{
+	return ReallocMemory(ptr,cb);
 }
 
 EXTERN_C
@@ -688,7 +729,7 @@ LONG MountdevQueryUniqueId(HANDLE hVolume,PMOUNTDEV_UNIQUE_ID *pUniqueId)
 	DWORD cb = 0;
 
 	DWORD cbSize = 256;
-	PVOID puid = _MemAlloc(cbSize);
+	PVOID puid = StorageMemAlloc(cbSize);
 
 	for(;;)
 	{
@@ -704,7 +745,7 @@ LONG MountdevQueryUniqueId(HANDLE hVolume,PMOUNTDEV_UNIQUE_ID *pUniqueId)
 			if(	GetLastError() == ERROR_INSUFFICIENT_BUFFER || GetLastError() == ERROR_MORE_DATA )
 			{
 				cbSize += 256;
-				PVOID pv = _MemReAlloc(puid,cbSize);
+				PVOID pv = StorageMemReAlloc(puid,cbSize);
 				if( pv != NULL )
 				{
 					puid = pv;
@@ -714,14 +755,14 @@ LONG MountdevQueryUniqueId(HANDLE hVolume,PMOUNTDEV_UNIQUE_ID *pUniqueId)
 
 			Status = GetLastError();
 
-			_MemFree(puid);
+			StorageMemFree(puid);
 		}
 		else
 		{
 			Status = ERROR_SUCCESS;
 
 			if( cb < cbSize )
-				puid = _MemReAlloc(puid,cb);
+				puid = StorageMemReAlloc(puid,cb);
 
 			*pUniqueId = (PMOUNTDEV_UNIQUE_ID)puid;
 		}
@@ -789,7 +830,7 @@ EXTERN_C LONG WINAPI StorageGetDeviceIdDescriptor(HANDLE hDevice,PSTORAGE_DEVICE
 
 	if( bSuccess )
 	{
-		STORAGE_DEVICE_DESCRIPTOR *psdd = (STORAGE_DEVICE_DESCRIPTOR *)_MemAlloc(sdh.Size);
+		STORAGE_DEVICE_DESCRIPTOR *psdd = (STORAGE_DEVICE_DESCRIPTOR *)StorageMemAlloc(sdh.Size);
 		if( psdd == NULL )
 			return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -809,7 +850,7 @@ EXTERN_C LONG WINAPI StorageGetDeviceIdDescriptor(HANDLE hDevice,PSTORAGE_DEVICE
 		else
 		{
 			Status = GetLastError();
-			_MemFree(psdd);
+			StorageMemFree(psdd);
 		}
 	}
 	else
@@ -851,7 +892,7 @@ LONG StorageGetDeviceUniqueIdentifier(HANDLE hDevice,PSTORAGE_DEVICE_UNIQUE_IDEN
 
 	if( bSuccess )
 	{
-		STORAGE_DEVICE_UNIQUE_IDENTIFIER *psdd = (STORAGE_DEVICE_UNIQUE_IDENTIFIER *)_MemAlloc(sdh.Size);
+		STORAGE_DEVICE_UNIQUE_IDENTIFIER *psdd = (STORAGE_DEVICE_UNIQUE_IDENTIFIER *)StorageMemAlloc(sdh.Size);
 		if( psdd == NULL )
 			return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -1005,7 +1046,7 @@ ULONG WINAPI StorageDeviceIdDescriptor(HANDLE hDevice, STORAGE_DEVICE_ID_DESCRIP
                              &cb,NULL);
 	if( bSuccess )
 	{
-		pBuffer = (STORAGE_DEVICE_ID_DESCRIPTOR *)_MemAllocZero(hdr.Size);
+		pBuffer = (STORAGE_DEVICE_ID_DESCRIPTOR *)StorageMemAlloc(hdr.Size);
 
 		if( pBuffer == NULL )
 			return ERROR_NOT_ENOUGH_MEMORY;
@@ -1085,7 +1126,7 @@ ULONG WINAPI StorageGetMediaTypes(HANDLE hDevice, PGET_MEDIA_TYPES *pMediaTypes)
     GET_MEDIA_TYPES *pmt;
 	DWORD cbmt = sizeof(GET_MEDIA_TYPES);
 
-	pmt = (GET_MEDIA_TYPES *)_MemAlloc(cbmt);
+	pmt = (GET_MEDIA_TYPES *)StorageMemAlloc(cbmt);
 
 	for(;;)
 	{
@@ -1103,7 +1144,7 @@ ULONG WINAPI StorageGetMediaTypes(HANDLE hDevice, PGET_MEDIA_TYPES *pMediaTypes)
 			if(	GetLastError() == ERROR_INSUFFICIENT_BUFFER )
 			{
 				cbmt += 1024;
-				PVOID pv = _MemReAlloc(pmt,cbmt);
+				PVOID pv = StorageMemReAlloc(pmt,cbmt);
 				if( pv != NULL )
 				{
 					pmt = (GET_MEDIA_TYPES *)pv;
@@ -1113,14 +1154,14 @@ ULONG WINAPI StorageGetMediaTypes(HANDLE hDevice, PGET_MEDIA_TYPES *pMediaTypes)
 
 			Status = GetLastError();
 
-			_MemFree(pmt);
+			StorageMemFree(pmt);
 		}
 		else
 		{
 			Status = ERROR_SUCCESS;
 
 			if( cb < cbmt )
-				pmt = (GET_MEDIA_TYPES*)_MemReAlloc(pmt,cb); // shrink only
+				pmt = (GET_MEDIA_TYPES*)StorageMemReAlloc(pmt,cb); // shrink only
 
 			*pMediaTypes = pmt;
 		}
@@ -1264,7 +1305,7 @@ GetDiskExtents(
 	//
 	for(;;)
 	{
-		pOutBuffer = _MemAllocZero( cbOutBuffer );
+		pOutBuffer = StorageMemAlloc( cbOutBuffer );
 		if( pOutBuffer == NULL )
 			break;
 
@@ -1277,11 +1318,11 @@ GetDiskExtents(
 		DWORD dwError = GetLastError();
 		if( !bRet && (dwError == ERROR_INSUFFICIENT_BUFFER || dwError == ERROR_MORE_DATA) )
 		{
-			_SafeMemFree( pOutBuffer );
+			StorageMemFree( pOutBuffer );
 
 			cbOutBuffer += 4096;
 
-			pOutBuffer = _MemAllocZero( cbOutBuffer );
+			pOutBuffer = StorageMemAlloc( cbOutBuffer );
 			if( pOutBuffer )
 				continue;
 		}
@@ -1297,25 +1338,30 @@ GetDiskExtents(
 		PDISK_GEOMETRY_EX *pDiskGeometryPtrArray = NULL;
 		PDRIVE_LAYOUT_INFORMATION_EX *pDriveLayoutInfoPtrArray = NULL;
 
-		pVolumeDiskExtents = (PVOLUME_DISK_EXTENTS)_MemAllocZero( cb );
+		pVolumeDiskExtents = (PVOLUME_DISK_EXTENTS)StorageMemAlloc( cb );
 
 		if( pVolumeDiskExtents )
 		{
 			CopyMemory(pVolumeDiskExtents,pOutBuffer,cb);
 
 			// allocate PDISK_GEOMETRY_EX pointer array
-			pDiskGeometryPtrArray = (PDISK_GEOMETRY_EX *)_MemAllocZero( sizeof(PDISK_GEOMETRY_EX) * pVolumeDiskExtents->NumberOfDiskExtents );
+			pDiskGeometryPtrArray = (PDISK_GEOMETRY_EX *)StorageMemAlloc( sizeof(PDISK_GEOMETRY_EX) * pVolumeDiskExtents->NumberOfDiskExtents );
 
-			pDriveLayoutInfoPtrArray = (PDRIVE_LAYOUT_INFORMATION_EX *)_MemAllocZero( sizeof(PDRIVE_LAYOUT_INFORMATION_EX) * pVolumeDiskExtents->NumberOfDiskExtents );
+			pDriveLayoutInfoPtrArray = (PDRIVE_LAYOUT_INFORMATION_EX *)StorageMemAlloc( sizeof(PDRIVE_LAYOUT_INFORMATION_EX) * pVolumeDiskExtents->NumberOfDiskExtents );
 
 			HANDLE hDisk;
 			PDISK_GEOMETRY_EX pGeometry;
 			ULONG cbGeometry;
+			WCHAR szPhysicalDrive[64];
 			DWORD i;
 			for(i = 0; i < pVolumeDiskExtents->NumberOfDiskExtents; i++)
 			{
+#if 0
 				hDisk = OpenDisk(NULL,pVolumeDiskExtents->Extents[i].DiskNumber,0);
-
+#else
+				swprintf_s(szPhysicalDrive,_countof(szPhysicalDrive),L"PhysicalDrive%u",pVolumeDiskExtents->Extents[i].DiskNumber);
+				hDisk = OpenDisk(szPhysicalDrive,0,0);
+#endif
 				if( INVALID_HANDLE_VALUE != hDisk )
 				{
 					// Geometry information
@@ -1339,7 +1385,7 @@ GetDiskExtents(
 		bSuccess = TRUE;
 	}
 	
-	_SafeMemFree( pOutBuffer );
+	StorageMemFree( pOutBuffer );
 
 	return bSuccess;
 }
@@ -1357,14 +1403,14 @@ FreeDiskExtents(
 	for(DWORD dw = 0; dw < DiskExtents->NumberOfDiskExtents; dw++)
 	{
 		if( DiskGeometryPtrArray )
-			_SafeMemFree(DiskGeometryPtrArray[dw]);
+			StorageMemFree(DiskGeometryPtrArray[dw]);
 		if( DriveLayoutInfoPtrArray )
-			_SafeMemFree(DriveLayoutInfoPtrArray[dw]);
+			StorageMemFree(DriveLayoutInfoPtrArray[dw]);
 	}
 
-	_SafeMemFree(DiskGeometryPtrArray);
-	_SafeMemFree(DriveLayoutInfoPtrArray);
-	_SafeMemFree(DiskExtents);
+	StorageMemFree(DiskGeometryPtrArray);
+	StorageMemFree(DriveLayoutInfoPtrArray);
+	StorageMemFree(DiskExtents);
 
 	return TRUE;
 }
@@ -1414,7 +1460,12 @@ EXTERN_C HANDLE WINAPI OpenDisk(PCWSTR pszDeviceName,DWORD dwDiskNumber,DWORD dw
 	}
 	else
 	{
+#if 0
 		swprintf_s(szOpenDevice,_countof(szOpenDevice),L"\\\\.\\PhysicalDrive%u",dwDiskNumber);
+#else
+		SetLastError( ERROR_INVALID_PARAMETER );
+		return NULL;
+#endif
 	}
 
 	if( dwDesired == 0 )
@@ -1465,7 +1516,7 @@ EXTERN_C LONG WINAPI GetDiskDriveGeometryEx(HANDLE hDisk, PDISK_GEOMETRY_EX *pGe
     DISK_GEOMETRY_EX *pg;
 	DWORD cbSize = sizeof(DISK_GEOMETRY_EX) + ((sizeof(DISK_PARTITION_INFO) + sizeof(PDISK_DETECTION_INFO)) * 64);
 
-	pg = (DISK_GEOMETRY_EX *)_MemAlloc(cbSize);
+	pg = (DISK_GEOMETRY_EX *)StorageMemAlloc(cbSize);
 	if( pg == NULL )
 		cbSize = 0;
 
@@ -1485,7 +1536,7 @@ EXTERN_C LONG WINAPI GetDiskDriveGeometryEx(HANDLE hDisk, PDISK_GEOMETRY_EX *pGe
 			if(	GetLastError() == ERROR_INSUFFICIENT_BUFFER )
 			{
 				cbSize += 4096;
-				PVOID pv = _MemReAlloc(pg,cbSize);
+				PVOID pv = StorageMemReAlloc(pg,cbSize);
 				if( pv != NULL )
 				{
 					pg = (DISK_GEOMETRY_EX *)pv;
@@ -1495,7 +1546,7 @@ EXTERN_C LONG WINAPI GetDiskDriveGeometryEx(HANDLE hDisk, PDISK_GEOMETRY_EX *pGe
 
 			Status = GetLastError();
 
-			_MemFree(pg);
+			StorageMemFree(pg);
 
 			*pGeometry = NULL;
 			if( pcb )
@@ -1506,7 +1557,7 @@ EXTERN_C LONG WINAPI GetDiskDriveGeometryEx(HANDLE hDisk, PDISK_GEOMETRY_EX *pGe
 			Status = ERROR_SUCCESS;
 
 			if( cb < cbSize )
-				pg = (DISK_GEOMETRY_EX *)_MemReAlloc(pg,cb); // shrink only
+				pg = (DISK_GEOMETRY_EX *)StorageMemReAlloc(pg,cb); // shrink only
 
 			*pGeometry = pg;
 			if( pcb )
@@ -1528,7 +1579,7 @@ BOOL GetDiskDriveLayoutEx(HANDLE hDisk,PDRIVE_LAYOUT_INFORMATION_EX *DriveLayout
 	*DriveLayoutBuffer = NULL;
 
 	cbOutBufferSize = sizeof(DRIVE_LAYOUT_INFORMATION_EX) + sizeof(PARTITION_INFORMATION_EX) + 4096;
-	pDriveLayout = (DRIVE_LAYOUT_INFORMATION_EX*)_MemAllocZero(cbOutBufferSize);
+	pDriveLayout = (DRIVE_LAYOUT_INFORMATION_EX*)StorageMemAlloc(cbOutBufferSize);
 
 	for(;;)
 	{
@@ -1544,11 +1595,11 @@ BOOL GetDiskDriveLayoutEx(HANDLE hDisk,PDRIVE_LAYOUT_INFORMATION_EX *DriveLayout
 		DWORD dwError = GetLastError();
 		if( !bRet && (dwError == ERROR_INSUFFICIENT_BUFFER || dwError == ERROR_MORE_DATA) )
 		{
-			_SafeMemFree( pDriveLayout );
+			StorageMemFree( pDriveLayout );
 
 			cbOutBufferSize += 4096;
 
-			pDriveLayout = (DRIVE_LAYOUT_INFORMATION_EX*)_MemAllocZero( cbOutBufferSize );
+			pDriveLayout = (DRIVE_LAYOUT_INFORMATION_EX*)StorageMemAlloc( cbOutBufferSize );
 			if( pDriveLayout )
 				continue;
 		}
@@ -1557,7 +1608,7 @@ BOOL GetDiskDriveLayoutEx(HANDLE hDisk,PDRIVE_LAYOUT_INFORMATION_EX *DriveLayout
 
 	if( pDriveLayout != NULL )
 	{
-		*DriveLayoutBuffer = (DRIVE_LAYOUT_INFORMATION_EX*)_MemReAlloc(pDriveLayout,cbReturned);
+		*DriveLayoutBuffer = (DRIVE_LAYOUT_INFORMATION_EX*)StorageMemReAlloc(pDriveLayout,cbReturned);
 	}
 
 	return ((*DriveLayoutBuffer) != NULL);
@@ -1889,9 +1940,9 @@ DestroyVolumeInformationBuffer(
 		pVolumeInfo->pDriveLayoutPtrList
 		);
 
-	_SafeMemFree( pVolumeInfo->pDeviceDescriptor );
-	_SafeMemFree( pVolumeInfo->pMediaTypes );
-	_SafeMemFree( pVolumeInfo->pUniqueId );
+	StorageMemFree( pVolumeInfo->pDeviceDescriptor );
+	StorageMemFree( pVolumeInfo->pMediaTypes );
+	StorageMemFree( pVolumeInfo->pUniqueId );
 
 	LocalFree( pVolumeInfo->VirtualHardDiskInformation );
 

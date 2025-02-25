@@ -27,6 +27,8 @@ EXPORTS
 	FreeQuotaInformation
 	GetVolumeUsnJornalDataInformation
 	VolumeMemFree
+	VolumeMemAlloc
+	VolumeDuplicateString
 
 	;
 	; Utility
@@ -60,7 +62,10 @@ EXPORTS
 ;	StorageAdapterDescriptor
 ;	StorageDeviceIdDescriptor
 ;-- reserved
+	StorageMemAlloc
+	StorageMemReAlloc
 	StorageMemFree
+	StorageGetMediaTypes
 
 	;
 	; Mounted Device

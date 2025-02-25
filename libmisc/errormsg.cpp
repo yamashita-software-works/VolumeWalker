@@ -57,6 +57,38 @@ void _FreeSystemErrorMessage(PWSTR pMessage)
 	LocalFree(pMessage);
 }
 
+PWSTR FormatNtStatusErrorMessage(PCWSTR NtStatusErrorMessage,PWSTR Buffer,SIZE_T cchBufferLength,ULONG Flags)
+{
+	if( NtStatusErrorMessage == NULL || Buffer == NULL )
+		return NULL;
+
+	WCHAR *pbe = NULL;
+	WCHAR *pbs = wcschr(NtStatusErrorMessage,L'{');
+	if( pbs )
+	{
+		pbs++;
+		pbe = wcschr(pbs,L'}');
+		if( pbe )
+		{
+			*pbe = L'\0';
+			StringCchCopy(Buffer,cchBufferLength,pbs);
+			pbe++;
+		}
+		else
+		{
+			pbe = (PWSTR)NtStatusErrorMessage; // invalid format
+		}
+
+		StringCchCat(Buffer,cchBufferLength,pbe);
+	}
+	else
+	{
+		// Bracket not found
+		StringCchCopy(Buffer,cchBufferLength,NtStatusErrorMessage);
+	}
+	return Buffer;
+}
+
 PWSTR _cdecl _MakeMessageString(UINT idFormatRes, LPCWSTR lpszFormat, ...)
 {
 	BOOLEAN bLoadFormatString = FALSE;

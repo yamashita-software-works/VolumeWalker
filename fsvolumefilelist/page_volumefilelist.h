@@ -2205,7 +2205,8 @@ public:
 			ListView_EnsureVisible(m_hWndList,iItem,FALSE);
 		}
 
-		SetWatchDirectory(m_hWatchHandle,pSel->pszPath);
+		if( m_hWatchHandle )
+			SetWatchDirectory(m_hWatchHandle,pSel->pszPath);
 
 		m_LastErrorCode = S_OK;
 
@@ -2871,7 +2872,7 @@ public:
 				*puState = NtPathIsRootDirectory(m_pszCurDir) ? UPDUI_DISABLED : UPDUI_ENABLED;
 #endif
 				break;
-			case ID_GOTO_DIRECTORY:
+			case ID_GOTO:
 			case ID_VIEW_REFRESH:
 				*puState = UPDUI_ENABLED;
 				break;
@@ -3072,7 +3073,7 @@ public:
 			case ID_VIEW_REFRESH:
 				OnRefresh();
 				break;
-			case ID_GOTO_DIRECTORY:
+			case ID_GOTO:
 				OnGotoDirectory();
 				break;
 			case ID_OPEN_LOCATION_EXPLORER:
