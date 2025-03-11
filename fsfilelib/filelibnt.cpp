@@ -1296,6 +1296,115 @@ GetReparsePointInformation(
 	return bSuccess;
 }
 
+EXTERN_C
+ULONG
+WINAPI
+GetReparseTagFriendlyName(
+	ULONG ReparseTag,
+	LPWSTR String,
+	ULONG cchString
+	)
+{
+	PWSTR p = NULL;
+	switch( ReparseTag )
+	{
+		case IO_REPARSE_TAG_SYMLINK:
+			p = L"Symlink";
+			break;
+		case IO_REPARSE_TAG_MOUNT_POINT:
+			p = L"Mount Point";
+			break;
+		case IO_REPARSE_TAG_HSM:
+			p = L"HSM";
+			break;
+		case IO_REPARSE_TAG_HSM2:
+			p = L"HSM2";
+			break;
+		case IO_REPARSE_TAG_SIS:
+			p = L"SIS";
+			break;
+		case IO_REPARSE_TAG_WIM:
+			p = L"WIM";
+			break;
+		case IO_REPARSE_TAG_CSV:
+			p = L"CSV";
+			break;
+		case IO_REPARSE_TAG_DFS:
+			p = L"DFS";
+			break;
+		case IO_REPARSE_TAG_DFSR:
+			p = L"DFSR";
+			break;
+		case IO_REPARSE_TAG_DEDUP:
+			p = L"DEDUP";
+			break;
+		case IO_REPARSE_TAG_NFS:
+			p = L"NFS";
+			break;
+		case IO_REPARSE_TAG_FILE_PLACEHOLDER:
+			p = L"PLACEHOLDER";
+			break;
+		case IO_REPARSE_TAG_WOF:
+			p = L"WOF";
+			break;
+		case IO_REPARSE_TAG_APPEXECLINK:
+			p = L"App Exec Link";
+			break;
+		case IO_REPARSE_TAG_WCI_LINK:
+			p = L"WCI Link";
+			break;
+		case IO_REPARSE_TAG_WCI_LINK_1:
+			p = L"WCI Link(1)";
+			break;
+		case IO_REPARSE_TAG_WCI:
+			p = L"WCI";
+			break;
+		case IO_REPARSE_TAG_WCI_1:
+			p = L"WCI(1)";
+			break;
+		case IO_REPARSE_TAG_LX_SYMLINK:
+			p = L"Lx SymLink";
+			break;
+		case IO_REPARSE_TAG_LX_CHR:
+			p = L"Lx Chr";
+			break;
+		case IO_REPARSE_TAG_LX_BLK:
+			p = L"Lx Blk";
+			break;
+		case IO_REPARSE_TAG_WCI_TOMBSTONE:
+			p = L"WCI Tombstone";
+			break;
+		case IO_REPARSE_TAG_AF_UNIX:
+			p = L"AF Unix";
+			break;
+		default:
+		{
+			if( ((ReparseTag & 0x1A) == 0x1A) && ((ReparseTag & IO_REPARSE_TAG_CLOUD_MASK) != 0) )
+			{
+				if( ReparseTag == IO_REPARSE_TAG_CLOUD )
+					p = L"Cloud";
+				else
+				{
+					StringCchPrintf(String,cchString,L"Cloud(%d)",((ReparseTag&IO_REPARSE_TAG_CLOUD_MASK)>>12));
+					return (int)wcslen(String);
+				}
+			}
+			break;
+		}
+	}
+
+	if( p != NULL )
+	{
+		StringCchCopy(String,cchString,p);
+		return (int)wcslen(String);
+	}
+	else
+	{
+		*String = L'\0';
+	}
+	return 0;
+}
+
 //----------------------------------------------------------------------------
 //
 //  GetObjectIdInformation()
@@ -1736,4 +1845,334 @@ GetAttributeString(
 	)
 {
 	return NTFile_GetAttributeString(Attributes,String,cchString);
+}
+
+//---------------------------------------------------------------------------
+//
+//  EnumDirectoryObjectIds()
+//
+//  PURPOSE:
+//
+//---------------------------------------------------------------------------
+EXTERN_C
+HRESULT
+APIENTRY
+EnumDirectoryObjectIds(
+	PCWSTR pszVolumeName,
+	PFNENNUMDIRCALLBACK pfnCallback,
+	PVOID DirectoryEntryInformation,
+	PVOID Context1,
+	PVOID Context2
+	)
+{
+	HRESULT hr = E_FAIL;
+	OBJECT_ATTRIBUTES oa;
+	IO_STATUS_BLOCK IoStatus;
+	NTSTATUS Status;
+	HANDLE hVolume = NULL;
+	UNICODE_STRING usVolumeName;
+
+	RtlInitUnicodeString(&usVolumeName,pszVolumeName);
+
+	InitializeObjectAttributes(&oa,&usVolumeName,OBJ_CASE_INSENSITIVE,NULL,NULL);
+
+	Status = NtOpenFile(&hVolume,GENERIC_READ,&oa,&IoStatus,FILE_SHARE_READ|FILE_SHARE_WRITE,0);
+	if( Status != S_OK )
+	{
+		return HRESULT_FROM_WIN32( RtlNtStatusToDosError(Status) );
+	}
+
+	HANDLE hFile = NULL;
+	UNICODE_STRING usFileName;
+	RtlInitUnicodeString(&usFileName, L"$Extend\\$ObjId:$O:$INDEX_ALLOCATION");
+	InitializeObjectAttributes(&oa,&usFileName,OBJ_CASE_INSENSITIVE,hVolume,NULL);
+
+	Status = NtOpenFile(&hFile,GENERIC_READ|SYNCHRONIZE,&oa,&IoStatus,FILE_SHARE_READ,FILE_SYNCHRONOUS_IO_NONALERT);
+
+	if( Status == STATUS_SUCCESS )
+	{
+//		FILE_BASIC_INFORMATION basicInfo = {0};
+//		FILE_STANDARD_INFORMATION sizeInfo = {0};
+//		NtQueryInformationFile(hFile,&IoStatus,&sizeInfo,sizeof(sizeInfo),FileStandardInformation);
+//		NtQueryInformationFile(hFile,&IoStatus, &basicInfo, sizeof(basicInfo), FileBasicInformation);
+
+		FILE_OBJECTID_INFORMATION *retbuf = NULL;
+		ULONG_PTR retbuf_len = 0;
+
+		ULONG cb = sizeof(FILE_OBJECTID_INFORMATION) * (4096 * 4);
+
+		FILE_OBJECTID_INFORMATION* pbuf = (FILE_OBJECTID_INFORMATION*)AllocMemory(cb);
+		if( pbuf == NULL )
+		{
+			hr = E_OUTOFMEMORY;
+			goto _exit;
+		}
+
+		if( pfnCallback == NULL && DirectoryEntryInformation != NULL)
+		{
+			retbuf = (FILE_OBJECTID_INFORMATION *)AllocMemory(sizeof(FILE_OBJECTID_INFORMATION));
+			if( retbuf == NULL )
+			{
+				hr = E_OUTOFMEMORY;
+				goto _exit;
+			}
+		}
+
+		ULONG ItemCount = 0;
+		for(;;)
+		{
+	        Status = NtQueryDirectoryFile(hFile,NULL,NULL,NULL,&IoStatus,pbuf,cb,FileObjectIdInformation,0,NULL,FALSE);
+
+			if( Status != 0 )
+			{
+				if( STATUS_NO_MORE_FILES == Status )
+					hr = S_OK;
+				else
+					hr = HRESULT_FROM_NT(Status);
+				break;
+			}
+
+			ULONG cItems = (ULONG)(IoStatus.Information / sizeof(FILE_OBJECTID_INFORMATION));
+
+			if( pfnCallback )
+			{
+			    for(ULONG i = 0; i < cItems; i++)
+				{
+					FILE_OBJECTID_INFORMATION *pItem = &pbuf[i];
+					hr = pfnCallback(DirCbObjectId,(DIR_OBJECTID*)pItem,Context1,Context2);
+					if( hr != S_OK )
+						break;
+				}
+				if( hr != S_OK )
+					break;
+			}
+			else
+			{
+				ULONG_PTR copy_pos = retbuf_len;
+				retbuf_len += IoStatus.Information;
+
+				FILE_OBJECTID_INFORMATION *ptr;
+				ptr = (FILE_OBJECTID_INFORMATION *)ReallocMemory(retbuf,retbuf_len);
+				if( ptr != NULL )
+				{
+					memcpy(&((UCHAR*)ptr)[copy_pos],pbuf,IoStatus.Information);
+				}
+				else
+				{
+					hr = E_OUTOFMEMORY;
+					break;
+				}
+				retbuf = ptr;
+			}
+
+	        ItemCount += cItems;
+		}
+
+		if( DirectoryEntryInformation )
+		{
+			if( hr == S_OK )
+			{
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->ItemCount = ItemCount;
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->Buffer    = retbuf;
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->cbBuffer  = retbuf_len;
+			}
+			else
+			{
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->ItemCount = 0;
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->Buffer    = NULL;
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->cbBuffer  = 0;
+			}
+		}
+_exit:
+		if( hr != S_OK )
+		{
+			if( retbuf )
+				FreeMemory(retbuf);
+		}
+
+		FreeMemory(pbuf);
+
+		NtClose(hFile);
+	}
+	else
+	{
+		hr = HRESULT_FROM_NT(Status);
+	}
+
+	if( FACILITY_NT_BIT & hr )
+		hr = HRESULT_FROM_WIN32(  RtlNtStatusToDosError(hr & ~FACILITY_NT_BIT) );
+
+	return hr;
+}
+
+//---------------------------------------------------------------------------
+//
+//  EnumDirectoryReparseTags()
+//
+//  PURPOSE:
+//
+//---------------------------------------------------------------------------
+EXTERN_C
+HRESULT
+APIENTRY
+EnumDirectoryReparseTags(
+	PCWSTR pszVolumeName,
+	PFNENNUMDIRCALLBACK pfnCallback,
+	PVOID DirectoryEntryInformation,
+	PVOID Context1,
+	PVOID Context2
+	)
+{
+	HRESULT hr = E_FAIL;
+	OBJECT_ATTRIBUTES oa;
+	IO_STATUS_BLOCK IoStatus;
+	NTSTATUS Status;
+	HANDLE hVolume = NULL;
+	UNICODE_STRING usVolumeName;
+
+	RtlInitUnicodeString(&usVolumeName,pszVolumeName);
+
+	InitializeObjectAttributes(&oa,&usVolumeName,OBJ_CASE_INSENSITIVE,NULL,NULL);
+
+	Status = NtOpenFile(&hVolume,GENERIC_READ,&oa,&IoStatus,FILE_SHARE_READ|FILE_SHARE_WRITE,0);
+	if( Status != S_OK )
+	{
+		return HRESULT_FROM_WIN32( RtlNtStatusToDosError(Status) );
+	}
+
+	HANDLE hFile = NULL;
+	UNICODE_STRING usFileName;
+	RtlInitUnicodeString(&usFileName, L"$Extend\\$Reparse:$R:$INDEX_ALLOCATION");
+	InitializeObjectAttributes(&oa,&usFileName,OBJ_CASE_INSENSITIVE,hVolume,NULL);
+
+	Status = NtOpenFile(&hFile,GENERIC_READ|SYNCHRONIZE,&oa,&IoStatus,FILE_SHARE_READ,FILE_SYNCHRONOUS_IO_NONALERT);
+
+	if( Status == STATUS_SUCCESS )
+	{
+//		FILE_BASIC_INFORMATION basicInfo = {0};
+//		FILE_STANDARD_INFORMATION sizeInfo = {0};
+//		NtQueryInformationFile(hFile,&IoStatus,&sizeInfo,sizeof(sizeInfo),FileStandardInformation);
+//		NtQueryInformationFile(hFile,&IoStatus, &basicInfo, sizeof(basicInfo), FileBasicInformation);
+
+		DIR_REPARSE_POINT *retbuf = NULL;
+		ULONG_PTR retbuf_len = 0;
+
+		ULONG cb = sizeof(FILE_REPARSE_POINT_INFORMATION) * (4096 * 4);
+
+		FILE_REPARSE_POINT_INFORMATION* pbuf = (FILE_REPARSE_POINT_INFORMATION*)AllocMemory(cb);
+		if( pbuf == NULL )
+		{
+			hr = E_OUTOFMEMORY;
+			goto _exit;
+		}
+
+		retbuf = (DIR_REPARSE_POINT *)AllocMemory(sizeof(DIR_REPARSE_POINT));
+		if( retbuf == NULL )
+		{
+			hr = E_OUTOFMEMORY;
+			goto _exit;
+		}
+
+		ULONG ItemCount = 0;
+		for(;;)
+		{
+	        Status = NtQueryDirectoryFile(hFile,NULL,NULL,NULL,&IoStatus,pbuf,cb,FileReparsePointInformation,0,NULL,FALSE);
+
+			if( Status != 0 )
+			{
+				if( STATUS_NO_MORE_FILES == Status )
+					hr = S_OK;
+				else
+					hr = HRESULT_FROM_NT(Status);
+				break;
+			}
+
+			ULONG cItems = (ULONG)(IoStatus.Information / sizeof(FILE_REPARSE_POINT_INFORMATION));
+
+			if( pfnCallback )
+			{
+			    for(ULONG i = 0; i < cItems; i++)
+				{
+					FILE_REPARSE_POINT_INFORMATION *pItem = &pbuf[i];
+					hr = pfnCallback(DirCbObjectId,(DIR_OBJECTID*)pItem,Context1,Context2);
+					if( hr != S_OK )
+						break;
+				}
+				if( hr != S_OK )
+					break;
+			}
+			else
+			{
+				ULONG_PTR copy_pos = retbuf_len;
+				retbuf_len += IoStatus.Information;
+
+				DIR_REPARSE_POINT *ptr;
+				ptr = (DIR_REPARSE_POINT *)ReallocMemory(retbuf,retbuf_len);
+				if( ptr != NULL )
+				{
+					memcpy(&((UCHAR*)ptr)[copy_pos],pbuf,IoStatus.Information);
+				}
+				else
+				{
+					FreeMemory(retbuf);
+					hr = E_OUTOFMEMORY;
+					break;
+				}
+				retbuf = ptr;
+			}
+
+	        ItemCount += cItems;
+		}
+
+		if( DirectoryEntryInformation )
+		{
+			if( hr == S_OK )
+			{
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->ItemCount = ItemCount;
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->Buffer    = retbuf;
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->cbBuffer  = retbuf_len;
+			}
+			else
+			{
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->ItemCount = 0;
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->Buffer    = NULL;
+				((DIR_RET_BUFFER *)DirectoryEntryInformation)->cbBuffer  = 0;
+			}
+		}
+_exit:
+		if( hr != S_OK )
+		{
+			if( retbuf )
+				FreeMemory(retbuf);
+		}
+
+		FreeMemory(pbuf);
+
+		NtClose(hFile);
+	}
+	else
+	{
+		hr = HRESULT_FROM_NT(Status);
+	}
+
+	if( FACILITY_NT_BIT & hr )
+		hr = HRESULT_FROM_WIN32(  RtlNtStatusToDosError(hr & ~FACILITY_NT_BIT) );
+
+	return hr;
+}
+
+EXTERN_C
+HRESULT
+WINAPI
+FreeDirectoryReturnBuffer(
+	PVOID DirectoryEntryInformation
+	)
+{
+	FreeMemory( ((DIR_RET_BUFFER *)DirectoryEntryInformation)->Buffer );
+
+	((DIR_RET_BUFFER *)DirectoryEntryInformation)->ItemCount = 0;
+	((DIR_RET_BUFFER *)DirectoryEntryInformation)->Buffer    = NULL;
+	((DIR_RET_BUFFER *)DirectoryEntryInformation)->cbBuffer  = 0;
+
+	return S_OK;
 }

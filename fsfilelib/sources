@@ -109,6 +109,8 @@ SOURCES = \
 	changejournalhelp.cpp \
 	watchdirectory.cpp \
 	ntfsrecord.cpp \
+	fileitemlist.cpp \
+	reparsepointinfo.cpp \
 	fsfilelib.rc
 
 #----------------------------------------------------------

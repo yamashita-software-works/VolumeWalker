@@ -31,6 +31,12 @@ template< class T, class C > struct COMPARE_HANDLER_PROC_DEF
 	int (T::*proc)(C *p1,C *p2, const void *p);
 };
 
+template< class T > struct COMPARE_HANDLER_PROC_DEF_EX
+{
+	int colid;
+	int (T::*proc)(int item1,int item2, const void *p);
+};
+
 #define _COMP(n1,n2)  (n1 < n2 ? -1 : n1 > n2 ? 1 : 0)
 
 // compare helper
@@ -99,6 +105,16 @@ template <class T>struct SORT_PARAM
 	int direction;
 	int directory_align;
 };
+
+template <class T>struct SORT_PARAM_EX
+{
+	T* pThis;
+	UINT id;
+	int direction;
+	int directory_align;
+	int iSubItem;
+};
+
 #define _COMP(n1,n2)  (n1 < n2 ? -1 : n1 > n2 ? 1 : 0)
 #define _IS_DIRECTORY(d) (d & FILE_ATTRIBUTE_DIRECTORY)
 

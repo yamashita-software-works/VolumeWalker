@@ -8,7 +8,7 @@ TARGETNAME=fsvolumelist
 TARGETPATH=obj
 
 BUILD_PRODUCES=fsvolumelist_dll
-BUILD_CONSUMES=libcwh_lib libntwdk_lib libmisc_lib fsvolumehelp_dll
+BUILD_CONSUMES=libcwh_lib libntwdk_lib libmisc_lib fsvolumehelp_dll fsfilelib_dll
 
 _NT_TARGET_VERSION=$(_NT_TARGET_VERSION_WIN7)
 
@@ -88,7 +88,6 @@ INCLUDES=$(INCLUDES);$(SDK7_ROOT)\Include
 INCLUDES=$(INCLUDES);..\libcwh
 INCLUDES=$(INCLUDES);..\libmisc
 INCLUDES=$(INCLUDES);..\libntwdk
-INCLUDES=$(INCLUDES);..\fsvolumeinfo
 INCLUDES=$(INCLUDES);..\inc
 
 #----------------------------------------------------------
@@ -100,9 +99,9 @@ SOURCES = \
 	physicaldrivewindow.cpp\
 	disklayoutwindow.cpp\
 	listwindow.cpp\
-	dialogs.cpp\
 	flthelp.cpp\
 	misc.cpp\
+	dialogs.cpp\
 	fsvolumelist.rc
 
 #----------------------------------------------------------

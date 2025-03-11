@@ -30,6 +30,7 @@
 #include "page_simplehexdump.h"
 #include "page_filterdriver.h"
 #include "page_diskperformance.h"
+#include "page_volumemountpoint.h"
 
 class CViewBase
 {
@@ -156,6 +157,11 @@ public:
 				pNew = GetOrAllocWndObject<CDiskPerformancePage>(nView);
 				break;
 			}
+			case VOLUME_CONSOLE_VOLUMEMOUNTPOINT:
+			{
+				pNew = GetOrAllocWndObject<CVolumeMountPointPage>(nView);
+				break;
+			}
 			default:
 				return NULL;
 		}
@@ -275,6 +281,9 @@ public:
 				_SelectPage( SelItem );
 				break;
 			case VOLUME_CONSOLE_DISKPERFORMANCE:
+				_SelectPage( SelItem );
+				break;
+			case VOLUME_CONSOLE_VOLUMEMOUNTPOINT:
 				_SelectPage( SelItem );
 				break;
 			default:

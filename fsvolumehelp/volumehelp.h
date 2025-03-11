@@ -118,6 +118,12 @@ GetDiskDriveLayoutEx(
     PDRIVE_LAYOUT_INFORMATION_EX *DriveLayoutBuffer
     );
 
+BOOL
+GetCacheInformation(
+    HANDLE hDisk,
+    PDISK_CACHE_INFORMATION CacheInformaion
+    );
+
 LONG
 GetRecognitionInformation(
     HANDLE hVolume,
@@ -396,6 +402,24 @@ VirtualDisk_GetDependencyInformation(
 #ifndef VIRTUAL_STORAGE_TYPE_DEVICE_VHDX
 #define VIRTUAL_STORAGE_TYPE_DEVICE_VHDX  3
 #endif
+
+EXTERN_C
+ULONG
+WINAPI
+AttachVirtualDiskFile(
+	HANDLE *phVhd,
+	PCWSTR pszFilename,
+	ULONG AccessMask,
+	ULONG AttachFlags
+	);
+
+EXTERN_C
+ULONG
+WINAPI
+DetachVirtualDiskFile(
+	HANDLE hVhd,
+	PCWSTR pszFilename
+	);
 
 //
 // MS-DOS drive information helper

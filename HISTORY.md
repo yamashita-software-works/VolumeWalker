@@ -1,3 +1,10 @@
+### 0.1.29.0
+
+- Volume Mount Point ウィンドウを追加。   
+各ボリュームのマウントポイント一覧を表示します。通常、管理者モードで実行した場合のみ情報を表示できます。
+
+- ソースコードの整理。
+
 ### 0.1.28.0
 
 - Volume Information,Physical Drive Information,Drive Layoutで更新(Refreshコマンド)できない不具合を修正。

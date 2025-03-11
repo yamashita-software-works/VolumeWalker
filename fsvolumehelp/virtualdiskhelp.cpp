@@ -2,7 +2,9 @@
 //*                                                                         *
 //*  virtualdiskhelp.cpp                                                    *
 //*                                                                         *
-//*  Author: YAMASHITA Katsuhiro                                            *
+//*  Author:  YAMASHITA Katsuhiro                                           *
+//*                                                                         *
+//*  History: 2023-10-26 Created.                                           *
 //*                                                                         *
 //***************************************************************************
 //
@@ -124,4 +126,173 @@ VirtualDisk_GetDependencyInformation(
 	}
 
 	return bResult;
+}
+
+//----------------------------------------------------------------------------
+//
+//  AttachVirtualDiskFile()
+//
+//  PURPOSE:
+//
+//----------------------------------------------------------------------------
+EXTERN_C
+ULONG
+WINAPI
+AttachVirtualDiskFile(
+	HANDLE *phVhd,
+	PCWSTR pszFilename,
+	ULONG AccessMask,
+	ULONG AttachFlags
+	)
+{
+	HANDLE hVhd = NULL;
+
+	DWORD Status = 0;
+
+	VIRTUAL_STORAGE_TYPE storageType;
+	VIRTUAL_DISK_ACCESS_MASK accessMask;
+
+	BOOL bReadOnly = FALSE;
+	BOOL bNoDriveLetter = FALSE;
+
+	storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_UNKNOWN;
+
+	if( AccessMask != 0 )
+	{
+		accessMask = (VIRTUAL_DISK_ACCESS_MASK)AccessMask;
+	}
+	else
+	{
+		// CurrentallyCurrently, checks only the extension.
+		PCWSTR pszExtension;
+		pszExtension = PathFindExtension(pszFilename);
+
+		if( wcsicmp(pszExtension,L".vhd") == 0 )
+		{
+			accessMask = VIRTUAL_DISK_ACCESS_ALL;
+		}
+		else if( wcsicmp(pszExtension,L".vhdx") == 0 )
+		{
+			accessMask = VIRTUAL_DISK_ACCESS_ALL;
+		}
+		else if( wcsicmp(pszExtension,L".iso") == 0 )
+		{
+			accessMask = VIRTUAL_DISK_ACCESS_ATTACH_RO|VIRTUAL_DISK_ACCESS_DETACH|VIRTUAL_DISK_ACCESS_GET_INFO;
+			bReadOnly = TRUE;
+		}
+		else
+		{
+			accessMask = VIRTUAL_DISK_ACCESS_ALL;
+		}
+	}
+
+	storageType.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT;
+
+	OPEN_VIRTUAL_DISK_FLAG flags;
+	flags = OPEN_VIRTUAL_DISK_FLAG_NONE;
+
+    OPEN_VIRTUAL_DISK_PARAMETERS parameters;
+	parameters.Version = OPEN_VIRTUAL_DISK_VERSION_1;
+	parameters.Version1.RWDepth = OPEN_VIRTUAL_DISK_RW_DEPTH_DEFAULT;
+
+	Status = OpenVirtualDisk(&storageType,pszFilename,accessMask,flags,&parameters,&hVhd);
+
+	if( Status == ERROR_SUCCESS )
+	{
+		*phVhd = hVhd;
+
+		ATTACH_VIRTUAL_DISK_FLAG Flags = ATTACH_VIRTUAL_DISK_FLAG_NONE;
+
+		if( AttachFlags != 0 )
+		{
+			Flags = (ATTACH_VIRTUAL_DISK_FLAG)AttachFlags;
+		}
+		else
+		{
+			ULONG Option = 0;
+
+			if( 1 )
+				Flags |= ATTACH_VIRTUAL_DISK_FLAG_PERMANENT_LIFETIME;
+
+			if( bReadOnly )
+				Flags |= ATTACH_VIRTUAL_DISK_FLAG_READ_ONLY;
+
+			if( bNoDriveLetter )
+				Flags |= ATTACH_VIRTUAL_DISK_FLAG_NO_DRIVE_LETTER;
+
+			if( 0 )
+				Flags |= ATTACH_VIRTUAL_DISK_FLAG_NO_LOCAL_HOST;
+		}
+
+		Status = AttachVirtualDisk(hVhd,NULL,Flags,0,0,NULL);
+	}
+
+	return Status;
+}
+
+//----------------------------------------------------------------------------
+//
+//  DetachVirtualDiskFile()
+//
+//  PURPOSE:
+//
+//----------------------------------------------------------------------------
+EXTERN_C
+ULONG
+WINAPI
+DetachVirtualDiskFile(
+	HANDLE hVhd,
+	PCWSTR pszFilename
+	)
+{
+	DWORD Status = 0;
+
+	if( hVhd == NULL && pszFilename != NULL )
+	{
+		VIRTUAL_STORAGE_TYPE storageType;
+#if 0
+		PCWSTR pszExtension;
+		pszExtension = FsPathFindExtension(pszFilename);
+
+		if( wcsicmp(pszExtension,L".vhd") == 0 )
+			storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHD;
+		else if( wcsicmp(pszExtension,L".vhdx") == 0 )
+			storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHDX;
+		else if( wcsicmp(pszExtension,L".iso") == 0 )
+			storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_ISO;
+		else
+			storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHD;
+#else
+		storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_UNKNOWN;
+#endif
+		storageType.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT;
+
+		VIRTUAL_DISK_ACCESS_MASK accessMask;
+		accessMask = VIRTUAL_DISK_ACCESS_DETACH;
+
+		OPEN_VIRTUAL_DISK_FLAG flags;
+		flags = OPEN_VIRTUAL_DISK_FLAG_NONE;
+
+		OPEN_VIRTUAL_DISK_PARAMETERS parameters;
+		parameters.Version = OPEN_VIRTUAL_DISK_VERSION_1;
+		parameters.Version1.RWDepth = OPEN_VIRTUAL_DISK_RW_DEPTH_DEFAULT;
+
+		Status = OpenVirtualDisk(&storageType,pszFilename,accessMask,flags,&parameters,&hVhd);
+	}
+	else
+	{
+		Status = ERROR_SUCCESS;
+	}
+
+	if( Status == ERROR_SUCCESS )
+	{
+		Status = DetachVirtualDisk(hVhd,DETACH_VIRTUAL_DISK_FLAG_NONE,0);
+	}
+
+	if( hVhd != NULL && pszFilename != NULL )
+	{
+		CloseHandle(hVhd);
+	}
+
+	return Status;
 }

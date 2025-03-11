@@ -554,7 +554,7 @@ public:
 				}
 				break;
 			case diObjectId:
-				if( !IsEqualGUID(*((GUID*)m_pvdi->ObjectId.ObjectId),GUID_NULL) )
+				if( m_pvdi->State.ObjectId )
 				{
 					// GUID Style
 					LPOLESTR pszGuid;

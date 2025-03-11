@@ -45,7 +45,6 @@ public:
 		VolumeName = NULL;
 		VolumeDevice = NULL;
 		GuidName = NULL;
-		VolInfoBuffer = NULL;
 		Drive = NULL;
 		DrivePaths = NULL;
 		DiskUsage = 0.0;

@@ -273,3 +273,8 @@ HWND CreateDiskPerformanceWindow(HWND hWndParent)
 {
 	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_DISKPERFORMANCE);
 }
+
+HWND CreateVolumeMountPointWindow(HWND hWndParent)
+{
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_VOLUMEMOUNTPOINT);
+}

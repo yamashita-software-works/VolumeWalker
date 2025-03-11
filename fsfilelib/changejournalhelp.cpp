@@ -365,7 +365,7 @@ typedef struct _SHIM
 	UCHAR signature[4];
 	DWORD length;
 	DWORD block_length;
-	DWORD reserved;
+	DWORD actual_length;
 } DATA_SHIM;
 #pragma pack()
 
@@ -984,7 +984,15 @@ EXTERN_C BOOL WINAPI ReadChangeJournalDumpFile(PCWSTR pszFileName,PVOID *ppData)
 		if( rd == 0 )
 			throw ERROR_INVALID_DATA;
 
-		ReadFile(hVol,Buffer,rd,&dwBytes,NULL);
+		if( !ReadFile(hVol,Buffer,rd,&dwBytes,NULL) )
+			throw ERROR_INVALID_DATA;
+
+		if( dwBytes < rd )
+			throw ERROR_INVALID_DATA;
+
+		if( shim.actual_length == 0 )
+			shim.actual_length = sizeof(USN_JOURNAL_DATA);
+		pJournalBuffer->SetJournalData((USN_JOURNAL_DATA*)Buffer,shim.actual_length);
 
 		ULONG cRecords = 0;
 		SIZE_T cbTotalRecordSize = 0;
@@ -1112,6 +1120,7 @@ EXTERN_C BOOL WINAPI QueryJournalInformation(PCWSTR pszVolumeName,FS_USN_JOURNAL
 		{	
 			throw GetLastError();
 		}
+
 
 		if( !DeviceIoControl( hVol, 
 				FSCTL_QUERY_USN_JOURNAL, 

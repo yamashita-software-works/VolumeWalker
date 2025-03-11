@@ -26,6 +26,8 @@
 #include "resource.h"
 #include "find.h"
 #include "inifile.h"
+#include "..\fsvolumelist\fsvolumelist.h"
+#include "..\fsvolumefilelist\fsvolumefilelist.h"
 
 static HINSTANCE g_hInst = NULL;
 static HMODULE g_hInstRes = NULL;
@@ -259,11 +261,50 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 HRESULT InitLanguage(LPWSTR pszLangIdOrName)
 {
-	ULONG lang = wcstoul(pszLangIdOrName,NULL,0);
-	g_langId = MAKELANGID(lang,SUBLANG_DEFAULT);
-	SetThreadUILanguage(g_langId);
-	g_lcid = MAKELCID(MAKELANGID(g_langId,SUBLANG_DEFAULT),SORT_DEFAULT);
-	SetThreadLocale(g_lcid);
+	HRESULT hr = E_FAIL;
+	if( pszLangIdOrName != NULL && *pszLangIdOrName != L'\0' )
+	{
+		ULONG lang = wcstoul(pszLangIdOrName,NULL,0);
+
+		g_langId = MAKELANGID(lang,SUBLANG_DEFAULT);
+		if( !SetThreadUILanguage(g_langId) )
+		{
+			return HRESULT_FROM_WIN32( GetLastError() );
+		}
+
+		g_lcid = MAKELCID(MAKELANGID(g_langId,SUBLANG_DEFAULT),SORT_DEFAULT);
+		if( !SetThreadLocale(g_lcid) )
+		{
+			return HRESULT_FROM_WIN32( GetLastError() );
+		}
+
+		hr = S_OK;
+	}
+	else
+	{
+		hr = E_INVALIDARG;
+	}
+	return hr;
+}
+
+HRESULT	LoadResourceModule()
+{
+	WCHAR szResModule[MAX_PATH];
+
+	ULONG numLocaleName = 0;
+	WCHAR szzLocaleName[256];
+	ULONG cchLocaleName = ARRAYSIZE(szzLocaleName);
+
+	GetThreadPreferredUILanguages(MUI_LANGUAGE_NAME,&numLocaleName,szzLocaleName,&cchLocaleName);
+
+	GetModuleFileName(NULL,szResModule,MAX_PATH);
+
+	StringCchCat(szResModule,MAX_PATH,L".");
+	StringCchCat(szResModule,MAX_PATH,szzLocaleName);
+	StringCchCat(szResModule,MAX_PATH,L".uilib");
+
+	g_hInstRes = LoadLibraryEx(szResModule,NULL,LOAD_LIBRARY_AS_DATAFILE|LOAD_LIBRARY_AS_IMAGE_RESOURCE);
+
 	return S_OK;
 }
 
@@ -283,6 +324,7 @@ HRESULT InitLanguage(LPWSTR pszLangIdOrName)
       - VOLUME_CONSOLE_MOUNTEDDEVICE
       - VOLUME_CONSOLE_DOSDRIVELIST
       - VOLUME_CONSOLE_FILTERDRIVER
+      - VOLUME_CONSOLE_VOLUMEMOUNTPOINT
 
     These consoles are allow create instances per volume:
 
@@ -310,6 +352,7 @@ static MDICHILDFRAMETABLE table[]= {
 	{VOLUME_CONSOLE_MOUNTEDDEVICE,     0},
 	{VOLUME_CONSOLE_DOSDRIVELIST,      0},
 	{VOLUME_CONSOLE_FILTERDRIVER,      0},
+	{VOLUME_CONSOLE_VOLUMEMOUNTPOINT,  0},
 };
 
 int ClearWindowHandle(UINT_PTR ConsoleTypeId,HWND hwnd)
@@ -395,6 +438,7 @@ VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *O
 		case VOLUME_CONSOLE_MOUNTEDDEVICE:
 		case VOLUME_CONSOLE_DOSDRIVELIST:
 		case VOLUME_CONSOLE_FILTERDRIVER:
+		case VOLUME_CONSOLE_VOLUMEMOUNTPOINT:
 			Guid.Data1 = (ULONG)ConsoleId;
 			break;
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
@@ -444,6 +488,7 @@ PCWSTR GetConsoleTitle(UINT ConsoleTypeId)
 		{VOLUME_CONSOLE_MOUNTEDDEVICE,      L"Mounted Devices"},
 		{VOLUME_CONSOLE_DOSDRIVELIST,       L"Dos Drives"},
 		{VOLUME_CONSOLE_FILTERDRIVER,       L"Minifilter Driver"},
+		{VOLUME_CONSOLE_VOLUMEMOUNTPOINT,   L"Volume Mount Point"},
 	};
 
 	PCWSTR pszTitle = L"";
@@ -480,6 +525,13 @@ HICON GetConsoleIcon(UINT ConsoleTypeId,PCWSTR pszInitialPath)
 	else if( ConsoleTypeId == VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST )
 	{
 		hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
+	}
+	else if( ConsoleTypeId == VOLUME_CONSOLE_VOLUMEMOUNTPOINT )
+	{
+		SHSTOCKICONINFO shsi = {0};
+		shsi.cbSize = sizeof(shsi);
+		SHGetStockIconInfo(SIID_DRIVEFIXED,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_LINKOVERLAY,&shsi);
+		hIcon = shsi.hIcon;
 	}
 	else
 	{
@@ -1249,6 +1301,7 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 		case ID_VOLUMESHADOWCOPY:
 		case ID_MSDOSDRIVES:
 		case ID_FILTERDRIVER:
+		case ID_VOLUMEMOUNTPOINT:
 		case ID_ABOUT:
 		case ID_EXIT:
 			return UPDUI_ENABLED;
@@ -1335,6 +1388,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 				case ID_FILTERDRIVER:
 					OpenConsole(hWnd,VOLUME_CONSOLE_FILTERDRIVER);
+					break;
+				case ID_VOLUMEMOUNTPOINT:
+					OpenConsole(hWnd,VOLUME_CONSOLE_VOLUMEMOUNTPOINT);
+					break;
 					break;
 				case ID_FILE_CLOSE:
 					CloseConsole();
@@ -1464,22 +1521,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		case PM_UPDATETITLE:
 		{
-			HWND hwndViewWindow = (HWND)wParam;
-			PWSTR pszPath = (PWSTR)lParam;
-
-			if( pszPath )
+			PWSTR pszText = (PWSTR)lParam;
+			if( pszText )
 			{
-				CONSOLE_VIEW_ID *pcv;
-				if( hwndViewWindow == NULL )
+				HWND hwndMDIChildActive = MDIGetActive(g_hWndMDIClient);
+				if( hwndMDIChildActive == NULL )
 				{
-					MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(MDIGetActive(g_hWndMDIClient),GWLP_USERDATA);
-					if( pd )
-						hwndViewWindow = pd->hWndView;
-				}
-
-				pcv = GetConsoleId(hwndViewWindow);
-				if( pcv == NULL )
 					return 0;
+				}
+				SetWindowText(hwndMDIChildActive,pszText);
 			}
 			return 0;
 		}
@@ -1616,6 +1666,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	}
 
 	ExitInstance();
+
+#if _ENABLE_OLE
+	OleUninitialize();
+#endif
 
 	_MemEnd();
 

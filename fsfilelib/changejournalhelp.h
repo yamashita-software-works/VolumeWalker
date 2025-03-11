@@ -101,6 +101,23 @@ typedef struct {
 
 EXTERN_C BOOL WINAPI QueryJournalInformation(PCWSTR pszVolumeName,FS_USN_JOURNAL_DATA *pInfo);
 
+typedef struct {
+    DWORDLONG UsnJournalID;
+    USN       FirstUsn;
+    USN       NextUsn;
+    USN       LowestValidUsn;
+    USN       MaxUsn;
+    DWORDLONG MaximumSize;
+    DWORDLONG AllocationDelta;
+    WORD      MinSupportedMajorVersion;
+    WORD      MaxSupportedMajorVersion;
+    DWORD     Flags;
+    DWORDLONG RangeTrackChunkSize;
+    LONGLONG  RangeTrackFileSizeThreshold;
+} FS_USN_JOURNAL_DATA_V2, *PFS_USN_JOURNAL_DATA_V2;
+
+EXTERN_C BOOL WINAPI QueryJournalInformationEx(HANDLE Reserved,PCWSTR pszVolumeName,FS_USN_JOURNAL_DATA *pInfo,ULONG cbInfo);
+
 typedef struct _FS_FILE_USN_INFORMATION
 {
 	USN Usn;

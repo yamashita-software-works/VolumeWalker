@@ -22,10 +22,11 @@ EXPORTS
 	GetVolumeAttributeFlag
 	GetVolumeAttributeString
 	GetStorageBusTypeDescString
-	QueryDiskPerformance
+	GetCacheInformation
 	GetQuotaInformation
 	FreeQuotaInformation
 	GetVolumeUsnJornalDataInformation
+	QueryDiskPerformance
 	VolumeMemFree
 	VolumeMemAlloc
 	VolumeDuplicateString
@@ -89,3 +90,9 @@ EXPORTS
 	FreeStatisticsData
 	CalcStatisticsDiffEx
 	CalcStatisticsDiffNtfsEx
+
+	;
+	; Virtual Disk Helper
+	;
+	AttachVirtualDiskFile
+	DetachVirtualDiskFile

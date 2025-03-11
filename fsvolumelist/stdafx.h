@@ -45,6 +45,7 @@
 #include "common_control_helper.h"
 #include "common_msg.h"
 #include "simplestack.h"
+#include "stringbuffer.h"
 #include "listhelp.h"
 #include "libntwdk.h"
 #include "ntwin32helper.h"
@@ -67,6 +68,7 @@
 #else
 inline BOOL _IsDarkModeEnabled() { return FALSE; }
 #endif
+#include "dialogs.h"
 
 HWND CreateVolumeInformationWindow(HWND hWnd);
 HWND CreateDiskLayoutWindow(HWND hWnd);
@@ -81,6 +83,7 @@ HWND CreateFileSystemStatisticsWindow(HWND hWndParent);
 HWND CreateSimpleHexDumpWindow(HWND hWndParent);
 HWND CreateFilterDriverWindow(HWND hWndParent);
 HWND CreateDiskPerformanceWindow(HWND hWndParent);
+HWND CreateVolumeMountPointWindow(HWND hWndParent);
 
 inline VOID _DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus=FALSE)
 {
@@ -194,6 +197,8 @@ enum {
 	COLUMN_FirstInstallDate,
 	COLUMN_LastArrivalDate,
 	COLUMN_LastRemovalDate,
+	COLUMN_Volume,
+	COLUMN_Device,
 	COLUMN_MaxItem,
 	COLUMN_MaxCount=COLUMN_MaxItem,
 };

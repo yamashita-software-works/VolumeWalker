@@ -25,6 +25,9 @@
 #pragma comment(lib, "uxtheme.lib")
 #endif
 
+#define UILAYOUT_IMPL
+#include "uilayout.h"
+
 HINSTANCE hInstance = NULL;
 
 HINSTANCE _GetResourceInstance()
@@ -130,6 +133,9 @@ CreateVolumeConsoleWindow(
 			break;
 		case VOLUME_CONSOLE_DISKPERFORMANCE:
 			hwndViewBase = CreateDiskPerformanceWindow(hwnd);
+			break;
+		case VOLUME_CONSOLE_VOLUMEMOUNTPOINT:
+			hwndViewBase = CreateVolumeMountPointWindow(hwnd);
 			break;
 		default:
 			return NULL;

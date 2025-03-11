@@ -1614,6 +1614,20 @@ BOOL GetDiskDriveLayoutEx(HANDLE hDisk,PDRIVE_LAYOUT_INFORMATION_EX *DriveLayout
 	return ((*DriveLayoutBuffer) != NULL);
 }
 
+BOOL GetCacheInformation(HANDLE hDisk,PDISK_CACHE_INFORMATION CacheInformaion)
+{
+	BOOL bRet;
+	DWORD cbReturned;
+
+	bRet = DeviceIoControl(hDisk,
+				IOCTL_DISK_GET_CACHE_INFORMATION,
+				NULL,0,
+				CacheInformaion,sizeof(DISK_CACHE_INFORMATION),
+				&cbReturned,NULL);
+
+	return bRet;
+}
+
 //---------------------------------------------------------------------------
 //
 //  GetVolumeUsnJornalDataInformation()

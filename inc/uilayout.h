@@ -33,8 +33,6 @@ public:
       BOOL fRedraw, ...);
 
    BOOL AdjustControls(int cx, int cy);
-   BOOL AdjustControls2(int cx, int cy);
-   BOOL AdjustControls3(int cx, int cy,int ExceptCtrlId);
    void HandleMinMax(PMINMAXINFO pMinMax) 
       { pMinMax->ptMinTrackSize = m_ptMinParentDims; }
 
@@ -66,14 +64,9 @@ private:
    POINT   m_ptMinParentDims; 
 }; 
 
-
 ///////////////////////////////////////////////////////////////////////////////
-
 
 #ifdef UILAYOUT_IMPL
-
-
-///////////////////////////////////////////////////////////////////////////////
 
 void CUILayout::Initialize(HWND hwndParent, int nMinWidth, int nMinHeight)
 {
@@ -90,8 +83,6 @@ void CUILayout::Initialize(HWND hwndParent, int nMinWidth, int nMinHeight)
    if (nMinWidth  != 0) m_ptMinParentDims.x = nMinWidth;
    if (nMinHeight != 0) m_ptMinParentDims.y = nMinHeight; 
 }
-
-///////////////////////////////////////////////////////////////////////////////
 
 BOOL CUILayout::AnchorControl(ANCHORPOINT apUpperLeft,ANCHORPOINT apLowerRight,int nID,BOOL fRedraw)
 {
@@ -176,9 +167,6 @@ int CUILayout::IdToIndex(int Id)
     return -1;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
-
 BOOL CUILayout::AnchorControls(ANCHORPOINT apUpperLeft, 
    ANCHORPOINT apLowerRight, BOOL fRedraw, ...) {
    
@@ -195,30 +183,10 @@ BOOL CUILayout::AnchorControls(ANCHORPOINT apUpperLeft,
    return(fOk);
 }
 
-
-///////////////////////////////////////////////////////////////////////////////
-
-
 BOOL CUILayout::AdjustControls(int cx, int cy)
 {
-   BOOL fOk = FALSE;
+    BOOL fOk = FALSE;
     int n;
-   // Create region consisting of all areas occupied by controls
-#if 0
-   HRGN hrgnPaint = CreateRectRgn(0, 0, 0, 0);
-   for (n = 0; n < m_nNumControls; n++) {
-
-      HWND hwndControl = GetDlgItem(m_hwndParent, m_CtrlInfo[n].m_nID);
-      RECT rcControl; 
-      GetWindowRect(hwndControl, &rcControl);  // Screen coords of control
-      // Convert coords to parent-relative coordinates
-      MapWindowPoints(HWND_DESKTOP, m_hwndParent, (PPOINT) &rcControl, 2);
-
-      HRGN hrgnTemp = CreateRectRgnIndirect(&rcControl);
-      CombineRgn(hrgnPaint, hrgnPaint, hrgnTemp, RGN_OR);
-      DeleteObject(hrgnTemp);
-   }
-#endif
     for (n = 0; n < m_nNumControls; n++)
     {
 
@@ -247,114 +215,10 @@ BOOL CUILayout::AdjustControls(int cx, int cy)
             InvalidateRect(hwndControl, NULL, FALSE);
             UpdateWindow(hwndControl);
         }
-#if 0
-        else
-        {
-         // Remove the regions occupied by the control's new position
-         HRGN hrgnTemp = CreateRectRgnIndirect(&rcControl);
-         CombineRgn(hrgnPaint, hrgnPaint, hrgnTemp, RGN_DIFF);
-         DeleteObject(hrgnTemp);
-         // Make the control repaint itself
-         InvalidateRect(hwndControl, NULL, TRUE);
-         SendMessage(hwndControl, WM_NCPAINT, 1, 0);
-         UpdateWindow(hwndControl);
-        }
-#endif
    }
 
-   // Paint the newly exposed portion of the dialog box's client area
-#if 0
-   HDC hdc = GetDC(m_hwndParent);
-   HBRUSH hbrColor = CreateSolidBrush(GetSysColor(COLOR_3DFACE));
-   FillRgn(hdc, hrgnPaint, hbrColor);
-   DeleteObject(hbrColor);
-   ReleaseDC(m_hwndParent, hdc);
-   DeleteObject(hrgnPaint);
-#endif
    return(fOk);
 }
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-
-BOOL CUILayout::AdjustControls2(int cx, int cy)
-{
-    BOOL fOk = FALSE;
-    int n;
-    for (n = 0; n < m_nNumControls; n++)
-    {
-        // Get control's upper/left position w/respect to parent's width/height
-        RECT rcControl; 
-        PixelFromAnchorPoint(m_CtrlInfo[n].m_apUpperLeft, 
-            cx, cy, (PPOINT) &rcControl);
-        rcControl.left   -= m_CtrlInfo[n].m_ptULDelta.x; 
-        rcControl.top    -= m_CtrlInfo[n].m_ptULDelta.y; 
-
-        // Get control's lower/right position w/respect to parent's width/height
-        PixelFromAnchorPoint(m_CtrlInfo[n].m_apLowerRight, 
-            cx, cy, (PPOINT) &rcControl.right);
-        rcControl.right  -= m_CtrlInfo[n].m_ptLRDelta.x;
-        rcControl.bottom -= m_CtrlInfo[n].m_ptLRDelta.y;
-
-        // Position/size the control
-        HWND hwndControl = GetDlgItem(m_hwndParent, m_CtrlInfo[n].m_nID);
-        SetWindowPos(hwndControl,0,rcControl.left, rcControl.top,
-            rcControl.right - rcControl.left, 
-            rcControl.bottom - rcControl.top,
-            SWP_DRAWFRAME|SWP_NOZORDER);
-        
-        RedrawWindow(hwndControl,NULL,NULL,RDW_INVALIDATE|RDW_INTERNALPAINT|RDW_FRAME|RDW_UPDATENOW);
-    }
-    return fOk;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-// Special version
-
-BOOL CUILayout::AdjustControls3(int cx, int cy,int ExceptCtrlId)
-{
-    BOOL fOk = FALSE;
-    int n;
-    for (n = 0; n < m_nNumControls; n++)
-    {
-        if( m_CtrlInfo[n].m_nID != ExceptCtrlId )
-        {
-            // Get control's upper/left position w/respect to parent's width/height
-            RECT rcControl; 
-            PixelFromAnchorPoint(m_CtrlInfo[n].m_apUpperLeft, 
-                cx, cy, (PPOINT) &rcControl);
-            rcControl.left   -= m_CtrlInfo[n].m_ptULDelta.x; 
-            rcControl.top    -= m_CtrlInfo[n].m_ptULDelta.y; 
-
-            // Get control's lower/right position w/respect to parent's width/height
-            PixelFromAnchorPoint(m_CtrlInfo[n].m_apLowerRight, 
-                cx, cy, (PPOINT) &rcControl.right);
-            rcControl.right  -= m_CtrlInfo[n].m_ptLRDelta.x;
-            rcControl.bottom -= m_CtrlInfo[n].m_ptLRDelta.y;
-
-            // Position/size the control
-            HWND hwndControl = GetDlgItem(m_hwndParent, m_CtrlInfo[n].m_nID);
-            SetWindowPos(hwndControl,0,rcControl.left, rcControl.top,
-                rcControl.right - rcControl.left, 
-                rcControl.bottom - rcControl.top,
-                SWP_NOZORDER);
-
-            if (m_CtrlInfo[n].m_fRedraw)
-            {
-                InvalidateRect(hwndControl, NULL, FALSE);
-                UpdateWindow(hwndControl);
-            }
-        }
-    }
-    return fOk;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-
 
 void CUILayout::PixelFromAnchorPoint(ANCHORPOINT ap, 
    int cxParent, int cyParent, PPOINT ppt) {
@@ -390,11 +254,8 @@ void CUILayout::PixelFromAnchorPoint(ANCHORPOINT ap,
    }
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
 
-
 #endif   // UILAYOUT_IMPL
-
 
 ///////////////////////////////// End of File /////////////////////////////////

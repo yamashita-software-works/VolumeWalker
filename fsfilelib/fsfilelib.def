@@ -48,3 +48,21 @@ EXPORTS
 	NTFile_FreeFileInformation
 	NTFile_GetAttributeString
 	GetAttributeString
+
+	FILCreate
+	FILDestroy
+	FILRemoveAllItems
+	FILAddItem
+	FILAddFileName
+	FILGetItemCount
+	FILGetItem
+	FILGetItemPtr
+	FILDebugDump
+
+	EnumDirectoryObjectIds
+	EnumDirectoryReparseTags
+	FreeDirectoryReturnBuffer
+
+	GetReparseTagFriendlyName
+	GetReparsePointInformation
+

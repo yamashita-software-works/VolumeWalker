@@ -68,8 +68,18 @@ _HasPrefix(
     PCWSTR pszPath
     );
 //
-// Reparse Point
+// Reparse Point Information
 //
+typedef struct _FS_REPARSE_POINT_INFORMATION
+{
+	ULONG ReparseTag;
+	ULONG Flags;
+	PWSTR TargetPath;
+	ULONG TargetPathLength;
+	PWSTR PrintPath;
+	ULONG PrintPathLength;
+} FS_REPARSE_POINT_INFORMATION;
+
 typedef struct _FS_REPARSE_POINT_INFORMATION_EX
 {
     ULONG Flags;
@@ -107,6 +117,54 @@ typedef struct _FS_REPARSE_POINT_INFORMATION_EX
         } GenericReparse;
     };
 } FS_REPARSE_POINT_INFORMATION_EX;
+
+#if 0
+//
+// App Exec Link Information
+//
+typedef struct _REPARSE_APPEXECLINK_READ_BUFFER { // For tag IO_REPARSE_TAG_APPEXECLINK
+	ULONG  ReparseTag;
+	USHORT ReparseDataLength;
+	USHORT Reserved;
+	ULONG  Version;	        // Currently version 3
+	WCHAR  StringList[1];	// Multistring (Consecutive strings each ending with a NUL)
+  /* There are normally 4 strings here. Ex:
+	Package ID:	    L"Microsoft.WindowsTerminal_8wekyb3d8bbwe"
+	Entry Point:	L"Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"
+	Executable:	    L"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.4.3243.0_x64__8wekyb3d8bbwe\wt.exe"
+	Applic. Type:	l"0" Integer as ASCII. "0" = Desktop bridge application; Else sandboxed UWP application
+  */     
+} APPEXECLINK_READ_BUFFER, *PAPPEXECLINK_READ_BUFFER;
+#endif
+
+EXTERN_C
+BOOL
+NTAPI
+GetReparsePointInformation(
+	HANDLE hRoot,
+	PCWSTR FilePath,
+	ULONG InformationClass,
+	PVOID InformationBuffer,
+	ULONG InformationBufferLength
+	);
+
+enum {
+	FsReparsePointTargetPath = 0,
+	FsReparsePointDetail = 1,
+	FsReparsePointPrintPath = 2,
+	ReparsePointTargetPath = FsReparsePointTargetPath,
+	ReparsePointDetail = FsReparsePointDetail,
+	ReparsePointPrintPath = FsReparsePointPrintPath,
+};
+
+EXTERN_C
+ULONG
+WINAPI
+GetReparseTagFriendlyName(
+	ULONG ReparseTag,
+	LPWSTR String,
+	ULONG cchString
+	);
 
 //
 // NT/DOS Path Helper
@@ -568,4 +626,68 @@ GetAttributeString(
 	DWORD Attributes,
 	LPWSTR String,
 	int cchString
+	);
+	
+typedef enum {
+	DirCbNone=0,
+	DirCbObjectId,
+	DirCbReparsePoint,
+} DIRCALLBACKCLASS;
+
+typedef struct _DIR_OBJECTID
+{
+    LONGLONG FileReference;
+    UCHAR ObjectId[16];
+    union {
+        struct {
+            UCHAR BirthVolumeId[16];
+            UCHAR BirthObjectId[16];
+            UCHAR DomainId[16];
+        } DUMMYSTRUCTNAME;
+        UCHAR ExtendedInfo[48];
+    } DUMMYUNIONNAME;
+} DIR_OBJECTID;
+
+typedef struct _DIR_REPARSE_POINT
+{
+    LONGLONG FileReference;
+    ULONG Tag;
+} DIR_REPARSE_POINT;
+
+typedef struct _DIR_RET_BUFFER
+{
+	ULONG ItemCount;
+	PVOID Buffer;
+	SIZE_T cbBuffer;
+} DIR_RET_BUFFER;
+
+typedef HRESULT (CALLBACK *PFNENNUMDIRCALLBACK)(DIRCALLBACKCLASS,PVOID,PVOID Context1,PVOID Context2);
+
+EXTERN_C
+HRESULT
+APIENTRY
+EnumDirectoryObjectIds(
+	PCWSTR pszVolumeName,
+	PFNENNUMDIRCALLBACK pfnCallback,
+	PVOID DirectoryEntryInformation,
+	PVOID Context1,
+	PVOID Coneext2
+	);
+
+EXTERN_C
+HRESULT
+APIENTRY
+EnumDirectoryReparseTags(
+	PCWSTR pszVolumeName,
+	PFNENNUMDIRCALLBACK pfnCallback,
+	PVOID DirectoryEntryInformation,
+	PVOID Context1,
+	PVOID Coneext2
+	);
+
+EXTERN_C
+HRESULT
+WINAPI
+FreeDirectoryReturnBuffer(
+	PVOID DirectoryEntryInformation
 	);
