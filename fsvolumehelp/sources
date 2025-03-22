@@ -101,6 +101,7 @@ SOURCES = \
 	dosdrivehelp.cpp \
 	statistics.cpp \
 	disk.cpp \
+	shell.cpp \
 	guiddef.cpp \
 	volumehelp.rc
 

@@ -1,3 +1,20 @@
+### 0.1.30.0
+
+- VolumeListウィンドウに以下のコマンドを追加。   
+  - Edit Volume Label   
+ボリュームラベルを編集します。
+  - Edit Object Id   
+ボリュームのオブジェクトIDを編集します。ボリュームIDではありません。また編集はお勧めできません。
+  - Lookup Stream Name By LCN   
+ファイルのLCNからボリューム上のストリーム名を検索します。
+
+  項目を選択して右クリックで表示されるメニューの\[Action\]から選択します。   
+通常は管理者モード下でコマンドを実行できます。
+
+- Volume Drive Relation Viewウィンドウを追加。
+
+- BitLocker ウィンドウを追加。
+
 ### 0.1.29.0
 
 - Volume Mount Point ウィンドウを追加。   

@@ -130,7 +130,6 @@ LINKLIBS=\
 	$(CRT_LIB_PATH)\delayimp.lib \
 	$(DDK_LIB_PATH)\ntdll.lib \
 	$(_USERLIB)\fsvolumelist.lib \
-	$(_USERLIB)\fsvolumefilelist.lib \
 	$(_USERLIB)\fsfilelib.lib \
 	$(_USERLIB)\libcwh.lib \
 	$(_USERLIB)\libmisc.lib \

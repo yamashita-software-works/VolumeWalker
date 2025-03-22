@@ -236,6 +236,7 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
 			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Display &Files in Volume");
 			AppendMenu(hMenu,MF_STRING,0,0);
+
 			hSubMenu = CreatePopupMenu();
 			{
 				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"&Explorer");
@@ -245,6 +246,15 @@ public:
 				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"&Bash");
 			}
 			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Open &Location");
+
+			hSubMenu = CreatePopupMenu();
+			{
+				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_LABEL,        L"Edit &Volume Label...");
+				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_OBJECT_ID,    L"Edit Volume &Object Id...");
+				AppendMenu(hSubMenu,MF_STRING,0,NULL);
+				AppendMenu(hSubMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream Name by LCN...");
+			}
+			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Action");
 
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
@@ -971,7 +981,7 @@ public:
 		return iItem;
 	}
 
-#if _ENABLE_INSERT_SHADOWCOPY_ITEMS
+#if _ENABLE_VOLUMELIST_INSERT_SHADOWCOPY_ITEMS
 	int InsertShadowCopy(int iItem,PCWSTR pszVolumeName,int GroupId=0)
 	{
 		VOLUME_DEVICE_INFORMATION *VolInfoBufferPtr;
@@ -1075,7 +1085,7 @@ public:
 
 		FreeVolumeNames(pVolNames);
 
-#if _ENABLE_INSERT_SHADOWCOPY_ITEMS
+#if _ENABLE_VOLUMELIST_INSERT_SHADOWCOPY_ITEMS
 		HANDLE hHardwareProduct;
 		if( GetKnownHardwareProducts(&hHardwareProduct,&GUID_DEVCLASS_VOLUMESNAPSHOT,0) )
 		{
@@ -1334,6 +1344,11 @@ public:
 			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
+			case ID_SET_VOLUME_LABEL:
+			case ID_SET_VOLUME_OBJECT_ID:
+			case ID_LOOKUP_STREAM_BY_LCN:
+				*State = ((ListView_GetSelectedCount(m_hWndList) == 1) ? UPDUI_ENABLED : UPDUI_DISABLED);
+				return S_OK;
 		}
 		return S_FALSE;
 	}
@@ -1378,6 +1393,15 @@ public:
 			case ID_OPEN_LOCATION_BASH:
 				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 4 );
 				break;
+			case ID_SET_VOLUME_LABEL:
+				OnCmdEditVolumeLabel();
+				break;
+			case ID_SET_VOLUME_OBJECT_ID:
+				OnCmdEditVolumeObjectId();
+				break;
+			case ID_LOOKUP_STREAM_BY_LCN:
+				OnCmdLookupStreamByLCN();
+				break;
 		}
 		return S_OK;
 	}
@@ -1398,5 +1422,69 @@ public:
 	{
 		SELECT_ITEM sel = {0};
 		FillItems(&sel);
+	}
+
+	CVolumeItem *GetCurItem(int *piItem=NULL)
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( piItem )
+			*piItem = iItem;
+		if( iItem == -1 )
+			return NULL;
+		return (CVolumeItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+	}
+
+	void OnCmdEditVolumeLabel()
+	{
+		int iItem;
+		CVolumeItem *pItem = GetCurItem(&iItem);
+		if( pItem )
+		{
+			WCHAR szNewVolumeLabel[MAX_PATH];
+			if( VolumeLabelEditDialog(GetActiveWindow(),pItem->VolumeName,0,pItem->VolInfoBuffer->VolumeLabel,szNewVolumeLabel,ARRAYSIZE(szNewVolumeLabel)) == S_OK )
+			{
+				VolumeMemFree(pItem->VolInfoBuffer->VolumeLabel);
+				pItem->VolInfoBuffer->VolumeLabel = VolumeDuplicateString( szNewVolumeLabel );
+				InvalidateListItem(iItem);
+			}
+		}
+	}
+
+	void OnCmdEditVolumeObjectId()
+	{
+		CVolumeItem *pItem = GetCurItem();
+		if( pItem )
+		{
+			VolumeObjectIdEditDialog(GetActiveWindow(),pItem->VolumeName,0);
+		}
+	}
+
+	void OnCmdLookupStreamByLCN()
+	{
+		CVolumeItem *pItem = GetCurItem();
+		if( pItem )
+		{
+			LookupStreamNameDialog(GetActiveWindow(),pItem->VolumeDevice,0);
+		}
+	}
+
+	void InvalidateListItem(int iItem)
+	{
+		int i,cColumns;
+		cColumns = ListViewEx_GetColumnCount(m_hWndList);
+		for(i = 0; i < cColumns; i++)
+			ListView_SetItemText(m_hWndList,iItem,i,LPSTR_TEXTCALLBACK);
+	
+		LVITEM lvi={0};
+		lvi.mask      = LVIF_TEXT|LVIF_IMAGE|LVIF_STATE;
+		lvi.iItem     = iItem;
+		lvi.iImage    = I_IMAGECALLBACK;
+		lvi.state     = 0;
+		lvi.stateMask = LVIS_OVERLAYMASK;
+		lvi.pszText   = LPSTR_TEXTCALLBACK;
+	
+		ListView_SetItem(m_hWndList,&lvi);
+	
+		ListView_RedrawItems(m_hWndList,iItem,iItem);
 	}
 };

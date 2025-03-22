@@ -9,7 +9,7 @@
 //*    YAMASHITA Katsuhiro                                                   *
 //*                                                                          *
 //*  HISTORY:                                                                *
-//+    2022.04.02 SDI frame ver created.                                     *
+//*    2022.04.02 SDI frame ver created.                                     *
 //*    2022.12.24 MDI frame ver with based on VC++ generated code created.   *
 //*    2023.02.24 MDI frame ver with new main frame created.                 *
 //*    2024.04.15 Experimentally implemented Volume Contents Console.        *
@@ -26,6 +26,9 @@
 #include "resource.h"
 #include "find.h"
 #include "inifile.h"
+#if _ENABLE_TOOLS
+#include "command.h"
+#endif
 #include "..\fsvolumelist\fsvolumelist.h"
 #include "..\fsvolumefilelist\fsvolumefilelist.h"
 
@@ -40,14 +43,17 @@ static HMENU g_hMainMenu = NULL;
 static HMENU g_hMdiMenu = NULL;
 static LCID g_lcid = LOCALE_USER_DEFAULT;
 static LANGID g_langId = LANG_USER_DEFAULT;
+static BOOL g_bEnableWorkspaceLayout = FALSE;
+static PWSTR g_pszFilerModuleName = L"fsvolumefilelist.dll";
 #ifdef _DEBUG
 static PCWSTR g_pszIniFileName = L"";  // for debug only
 #else
 static PCWSTR g_pszIniFileName = L"";
 #endif
-static BOOL g_bEnableWorkspaceLayout = FALSE;
-
 #define _LAYOUT_FILENAME L"layout.ini"
+#if _ENABLE_TOOLS
+static HANDLE g_hCommand;
+#endif
 
 HINSTANCE _GetInstanceHandle()
 {
@@ -76,7 +82,7 @@ MDICHILDWNDDATA *GetMDIChildWndData(HWND hwndMDIChildFrame)
 
 CONSOLE_VIEW_ID *GetMDIConsoleId(HWND hwndMDIChildFrame)
 {
-	MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndMDIChildFrame,GWLP_USERDATA);
+	MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetMDIChildWndData(hwndMDIChildFrame);
 	ASSERT(pd != NULL);
 	ASSERT(pd->hWndView != NULL);
 	CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(pd->hWndView,_PROP_CONSOLE_VIEW_ID);
@@ -325,6 +331,8 @@ HRESULT	LoadResourceModule()
       - VOLUME_CONSOLE_DOSDRIVELIST
       - VOLUME_CONSOLE_FILTERDRIVER
       - VOLUME_CONSOLE_VOLUMEMOUNTPOINT
+      - VOLUME_CONSOLE_ENCRYPTIONVOLUME
+      - VOLUME_CONSOLE_RELATIONVIEW
 
     These consoles are allow create instances per volume:
 
@@ -337,7 +345,7 @@ HRESULT	LoadResourceModule()
       - VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST
 
 --*/
-// stl::map<> is the preferred using.
+// stl::map<> is preferred using.
 typedef struct {
 	UINT ConsoleId;
 	HWND hWnd;
@@ -353,6 +361,8 @@ static MDICHILDFRAMETABLE table[]= {
 	{VOLUME_CONSOLE_DOSDRIVELIST,      0},
 	{VOLUME_CONSOLE_FILTERDRIVER,      0},
 	{VOLUME_CONSOLE_VOLUMEMOUNTPOINT,  0},
+	{VOLUME_CONSOLE_ENCRYPTIONVOLUME,  0},
+	{VOLUME_CONSOLE_RELATIONVIEW,      0},
 };
 
 int ClearWindowHandle(UINT_PTR ConsoleTypeId,HWND hwnd)
@@ -420,7 +430,41 @@ HWND FindSameWindowTitle(UINT ConsoleType,PCWSTR pszName)
 
 		} while( hwnd = GetWindow(hwnd,GW_HWNDNEXT) );
 	}
+	return NULL;
+}
 
+HWND FindSameVolumeWindow(UINT ConsoleType,PCWSTR pszVolumeName)
+{
+	CStringBuffer sVolumeName(32768);
+	NtPathGetVolumeName(pszVolumeName,sVolumeName,sVolumeName.GetBufferSize());
+
+	HWND hwnd;
+	hwnd = GetWindow(g_hWndMDIClient,GW_CHILD);
+	if( hwnd )
+	{
+		WCHAR szCurrentVolumeName[MAX_PATH];
+		do
+		{
+			MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwnd,GWLP_USERDATA);
+			CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(pd->hWndView,_PROP_CONSOLE_VIEW_ID);
+			if( pcv->wndId == ConsoleType )
+			{
+				const int cchPath = 32768;
+				WCHAR *szPath = new WCHAR[cchPath];
+				SendMessage(pd->hWndView,PM_GETWORKINGDIRECTORY,cchPath,(LPARAM)szPath);
+
+				NtPathGetVolumeName(szPath,szCurrentVolumeName,MAX_PATH);
+
+				delete[] szPath;
+
+				if( _wcsicmp(szCurrentVolumeName,sVolumeName) == 0 )
+				{
+					return hwnd;
+				}
+			}
+
+		} while( hwnd = GetWindow(hwnd,GW_HWNDNEXT) );
+	}
 	return NULL;
 }
 
@@ -439,6 +483,8 @@ VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *O
 		case VOLUME_CONSOLE_DOSDRIVELIST:
 		case VOLUME_CONSOLE_FILTERDRIVER:
 		case VOLUME_CONSOLE_VOLUMEMOUNTPOINT:
+		case VOLUME_CONSOLE_ENCRYPTIONVOLUME:
+		case VOLUME_CONSOLE_RELATIONVIEW:
 			Guid.Data1 = (ULONG)ConsoleId;
 			break;
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
@@ -489,6 +535,8 @@ PCWSTR GetConsoleTitle(UINT ConsoleTypeId)
 		{VOLUME_CONSOLE_DOSDRIVELIST,       L"Dos Drives"},
 		{VOLUME_CONSOLE_FILTERDRIVER,       L"Minifilter Driver"},
 		{VOLUME_CONSOLE_VOLUMEMOUNTPOINT,   L"Volume Mount Point"},
+		{VOLUME_CONSOLE_ENCRYPTIONVOLUME,   L"BitLocker Drives"},
+		{VOLUME_CONSOLE_RELATIONVIEW,       L"Volume Drive Relation View"},
 	};
 
 	PCWSTR pszTitle = L"";
@@ -590,6 +638,29 @@ void InitIniFile()
 	_SafeMemFree(pszIniFileName);
 }
 
+HMENU _LoadMenu(UINT idMenu)
+{
+	HMENU hMenu;
+
+	hMenu = LoadMenu(_GetResourceInstance(),MAKEINTRESOURCE(idMenu));
+	if( hMenu == NULL )
+		return NULL;
+
+#if _ENABLE_TOOLS
+	MakeVolumeCommandMenu(hMenu,idMenu);
+#else
+	HMENU hSubMenu = GetSubMenu(hMenu,0);
+	int iPos = -1;
+	if( idMenu == IDR_MDICHILDFRAME )
+		iPos = GetMenuItemCount(hSubMenu) - 3;
+	else if(idMenu == IDR_MAINFRAME )
+		iPos = GetMenuItemCount(hSubMenu) - 1;
+	InsertMenu(hSubMenu,iPos,MF_BYPOSITION|MF_STRING,ID_ATTACH_VIRTUALDISK_IMAGE,L"Attach Virtual Disk Image...");
+	InsertMenu(hSubMenu,iPos+1,MF_BYPOSITION|MF_SEPARATOR,0,0);
+#endif
+	return hMenu;
+}
+
 VOID SendUIInitLayout(HWND hwndMDIChild,HWND hWndView)
 {
 	RECT rc;
@@ -652,8 +723,8 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 {
 	ASSERT( pOpenParam != NULL );
 
-	PWSTR pszPath;
-	SIZE_T cchPathLength;
+	PWSTR pszPath = NULL;
+	SIZE_T cchPathLength = 0;
 
 	if( pOpenParam == NULL )
 	{
@@ -664,19 +735,21 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 	if( pOpenParam->Path == NULL )
 	{
 		WCHAR sz[MAX_PATH];
-		GetCurrentDirectory(MAX_PATH,sz);
-		pOpenParam->Path = _MemAllocString(sz);
-	}
-
-	cchPathLength = wcslen(pOpenParam->Path);
-
-	if( cchPathLength < MAX_PATH && FindRootDirectory_W(pOpenParam->Path,NULL) == 0 )
-	{
-		pszPath = _MemAllocString(pOpenParam->Path);
+		ZeroMemory(sz,sizeof(sz));
+		pszPath = pOpenParam->Path = _MemAllocString(sz);
 	}
 	else
 	{
-		pszPath = _MemAllocStringCat(pOpenParam->Path,L"\\");
+		cchPathLength = wcslen(pOpenParam->Path);
+
+		if( cchPathLength < MAX_PATH && FindRootDirectory_W(pOpenParam->Path,NULL) == 0 )
+		{
+			pszPath = _MemAllocString(pOpenParam->Path);
+		}
+		else
+		{
+			pszPath = _MemAllocStringCat(pOpenParam->Path,L"\\");
+		}
 	}
 
 	UIS_PAGE pg = {0};
@@ -684,14 +757,22 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 	pg.ConsoleGuid   = pd->wndGuid;
 	pg.pszPath       = pszPath;
 	pg.pszFileName   = NULL;
+
+	// root directories
+	if( *pg.pszPath == L'\0' )
+		pg.dwFlags |= SI_FLAG_ROOT_DIRECTORY;
+
 	SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
 
 	// set MDI child frame title
-	WCHAR szVolumeName[128];
-	NtPathGetVolumeName(pszPath,szVolumeName,ARRAYSIZE(szVolumeName));
-	SetWindowText(hwndMDIChild,szVolumeName);
+	if( pszPath && *pszPath )
+	{
+		WCHAR szVolumeName[64];
+		NtPathGetVolumeName(pszPath,szVolumeName,ARRAYSIZE(szVolumeName));
+		SetWindowText(hwndMDIChild,szVolumeName);
+	}
 
-	_MemFree(pszPath);
+	_SafeMemFree(pszPath);
 }
 
 //----------------------------------------------------------------------------
@@ -739,10 +820,13 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		ConsoleTypeId == VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION ||
 		ConsoleTypeId == VOLUME_CONSOLE_FILESYSTEMSTATISTICS ||
 		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP ||
-		ConsoleTypeId == VOLUME_CONSOLE_DISKPERFORMANCE || 
-		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST )
+		ConsoleTypeId == VOLUME_CONSOLE_DISKPERFORMANCE )
 	{
 		hwndChildFrame = FindSameWindowTitle(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
+	}
+	else if( ConsoleTypeId == VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST )
+	{
+		hwndChildFrame = FindSameVolumeWindow(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
 	}
 	else
 	{
@@ -814,7 +898,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 			SetWindowPos(hwndMDIChild,0,0,0,0,0,SWP_SHOWWINDOW|SWP_NOZORDER|SWP_NOMOVE|SWP_NOSIZE|SWP_FRAMECHANGED|SWP_DRAWFRAME);
 
 		if( g_hMdiMenu == NULL )
-			g_hMdiMenu = LoadMenu(_GetResourceInstance(),MAKEINTRESOURCE(IDR_MDICHILDFRAME));
+			g_hMdiMenu = _LoadMenu(IDR_MDICHILDFRAME);
 
 		SendMessage(g_hWndMDIClient,WM_MDISETMENU,(WPARAM)g_hMdiMenu,0);
 		DrawMenuBar(hWnd);
@@ -844,13 +928,35 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 				}
 				case VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST:
 				{
-					pd->hWndView = CreateVolumeFileList(hwndMDIChild,ConsoleTypeId,0,0);
+					static HWND (WINAPI *pfnCreateVolumeFileList)(
+							HWND hwnd,
+							UINT ConsoleId,
+							DWORD dwOptionFlags,
+							LPARAM lParam
+							) = NULL;
 
-					InitViewType(pd,ConsoleTypeId,pwndGuid);
+					ASSERT(g_pszFilerModuleName != NULL);
 
-					SendUIInitLayout(hwndMDIChild,pd->hWndView);
+					HMODULE hModule = GetModuleHandle( g_pszFilerModuleName );
+					if( hModule == NULL )
+					{
+						hModule = LoadLibrary( g_pszFilerModuleName );
+						if( hModule )
+						{
+							(FARPROC&)pfnCreateVolumeFileList = GetProcAddress(hModule,"CreateVolumeFileList");
+						}
+					}
 
-					SendFileListPath(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
+					if( pfnCreateVolumeFileList )
+					{
+						pd->hWndView = pfnCreateVolumeFileList(hwndMDIChild,ConsoleTypeId,0,0);
+
+						InitViewType(pd,ConsoleTypeId,pwndGuid);
+
+						SendUIInitLayout(hwndMDIChild,pd->hWndView);
+
+						SendFileListPath(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
+					}
 					break;
 				}
 				default:
@@ -1150,7 +1256,7 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 	}
 
 	// Load MainFrame menu
-	g_hMainMenu = LoadMenu(_GetResourceInstance(),MAKEINTRESOURCE(IDR_MAINFRAME));
+	g_hMainMenu = _LoadMenu(IDR_MAINFRAME);
 	SetMenu(hWnd,g_hMainMenu);
 
 	// Open initial MDI child windows
@@ -1302,6 +1408,9 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 		case ID_MSDOSDRIVES:
 		case ID_FILTERDRIVER:
 		case ID_VOLUMEMOUNTPOINT:
+		case ID_ENCRYPTIONVOLUME:
+		case ID_RELATIONVIEW:
+			return UPDUI_ENABLED;
 		case ID_ABOUT:
 		case ID_EXIT:
 			return UPDUI_ENABLED;
@@ -1319,6 +1428,17 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 
 //----------------------------------------------------------------------------
 //
+//  Command Handler
+//
+//----------------------------------------------------------------------------
+
+/* todo: */
+
+
+//////////////////////////////////////////////////////////////////////////////
+
+//----------------------------------------------------------------------------
+//
 //  WndProc()
 //
 //  PURPOSE: Main frame window procedure.
@@ -1332,10 +1452,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			g_hWndMDIClient = CreateMDIClient(hWnd);
 			FindText_Initialize();
+#if _ENABLE_TOOLS
+			g_hCommand = CreateCommandHandler(hWnd);
+#endif
 			break; 
 		} 
 		case WM_DESTROY:
 		{
+#if _ENABLE_TOOLS
+			CloseCommandHandler(g_hCommand);
+#endif
 			//
 			// Save configuration main frame and each MDI MDI child/view/page window.
 			//
@@ -1366,6 +1492,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if( (QueryCmdState(wmId,UPDUI_DISABLED,0,0) & UPDUI_DISABLED) != 0 )
 				break;
 
+#if _ENABLE_TOOLS
+			ForwardCommand(g_hCommand,wmId);
+#else
+			switch (wmId)
+			{
+				case ID_ATTACH_VIRTUALDISK_IMAGE:
+					VirtualDiskAttachDialog(hWnd,nullptr,0);
+					break;
+			}
+#endif
+
 			switch (wmId)
 			{
 				case ID_VOLUMELIST:
@@ -1392,6 +1529,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				case ID_VOLUMEMOUNTPOINT:
 					OpenConsole(hWnd,VOLUME_CONSOLE_VOLUMEMOUNTPOINT);
 					break;
+				case ID_ENCRYPTIONVOLUME:
+					OpenConsole(hWnd,VOLUME_CONSOLE_ENCRYPTIONVOLUME);
+					break;
+				case ID_RELATIONVIEW:
+					OpenConsole(hWnd,VOLUME_CONSOLE_RELATIONVIEW);
 					break;
 				case ID_FILE_CLOSE:
 					CloseConsole();

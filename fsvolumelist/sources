@@ -88,6 +88,7 @@ INCLUDES=$(INCLUDES);$(SDK7_ROOT)\Include
 INCLUDES=$(INCLUDES);..\libcwh
 INCLUDES=$(INCLUDES);..\libmisc
 INCLUDES=$(INCLUDES);..\libntwdk
+INCLUDES=$(INCLUDES);..\fsvolumehelp
 INCLUDES=$(INCLUDES);..\inc
 
 #----------------------------------------------------------
@@ -102,6 +103,11 @@ SOURCES = \
 	flthelp.cpp\
 	misc.cpp\
 	dialogs.cpp\
+	dialog_lookupstreaminfo.cpp\
+	dialog_guideditor.cpp\
+	dialog_volumelabeleditor.cpp\
+	dialog_volumeobjectideditor.cpp\
+	dialog_virtualdisk_attach.cpp\
 	fsvolumelist.rc
 
 #----------------------------------------------------------
@@ -153,6 +159,8 @@ LINKLIBS=\
 	$(SDK_LIB_PATH)\oldnames.lib \
 	$(SDK_LIB_PATH)\strsafe.lib \
 	$(SDK_LIB_PATH)\uxtheme.lib \
+	$(SDK_LIB_PATH)\wbemuuid.lib \
+	$(SDK_LIB_PATH)\propsys.lib \
 	$(CRT_LIB_PATH)\delayimp.lib \
 	$(DDK_LIB_PATH)\fltlib.lib \
 	$(DDK_LIB_PATH)\ntdll.lib \

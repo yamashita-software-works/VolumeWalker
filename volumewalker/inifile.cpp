@@ -254,6 +254,14 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 				SendMessage(hwndView,WM_QUERY_MESSAGE,QMT_GETVOLUMEPATH,(LPARAM)&wqp);
 				break;
 			}
+			case VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST:
+			{
+				QM_PARAM wqp = {0};
+				wqp.dwLength = cch;
+				wqp.VolumePath = sz;
+				SendMessage(hwndView,WM_QUERY_MESSAGE,QMT_GETVOLUMEPATH,(LPARAM)&wqp);
+				break;
+			}
 			default:
 			{
 				GetWindowText(hwndMDIChildFrame,sz,cch);

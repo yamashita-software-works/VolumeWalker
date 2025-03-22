@@ -427,6 +427,12 @@ public:
 			{
 				case TBN_DROPDOWN:
 					return OnDropdown((LPNMTOOLBAR)pnmhdr);
+				case TBN_GETINFOTIP:
+				{
+					NMTBGETINFOTIP *ptbit = (NMTBGETINFOTIP *)lParam;
+					LoadString(_GetResourceInstance(),ptbit->iItem,ptbit->pszText,ptbit->cchTextMax);
+					return 0;
+				}
 			}
 		}
 		return 0;
@@ -557,7 +563,7 @@ private:
 		HWND hWndToolbar = CreateWindowEx(0, TOOLBARCLASSNAME, NULL, 
 				WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS |
 				CCS_NODIVIDER | CCS_NORESIZE | CCS_NOPARENTALIGN | 
-				TBSTYLE_FLAT | TBSTYLE_LIST | TBSTYLE_TRANSPARENT |TBSTYLE_AUTOSIZE,
+				TBSTYLE_FLAT | TBSTYLE_LIST | TBSTYLE_TRANSPARENT |TBSTYLE_AUTOSIZE | TBSTYLE_TOOLTIPS,
 				0, 0, 0, 0,
 				hWndParent, NULL, 
 				_GetResourceInstance(),

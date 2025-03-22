@@ -278,3 +278,13 @@ HWND CreateVolumeMountPointWindow(HWND hWndParent)
 {
 	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_VOLUMEMOUNTPOINT);
 }
+
+HWND CreateEncryptionVolumeWindow(HWND hWndParent)
+{
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_ENCRYPTIONVOLUME);
+}
+
+HWND CreateMountedDriveWindow(HWND hWndParent)
+{
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_RELATIONVIEW);
+}

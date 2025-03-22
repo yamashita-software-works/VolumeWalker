@@ -520,6 +520,27 @@ ListViewEx_SimpleContextMenuHandler(
     UINT uFlags
     );
 
+int
+ListViewEx_SetColumnWidthByHeaderText(
+	HWND hwndLV,
+	int iColumn,
+	DWORD dwFlags
+	);
+
+#define LVEXCHTF_ADJUST_WIDTH_BY_COLUMN_ITEM_TEXT (0x1)
+
+int
+ListViewEx_SetLastColumnWidth(
+	HWND hwndLV,
+	DWORD dwFlags
+	);
+
+int
+ListViewEx_GetColumnIndexFromColumnId(
+	HWND hwndLV,
+	INT_PTR ColumnId
+	);
+
 VOID
 DrawListViewColumnMeter(
     HDC hdc,

@@ -38,3 +38,12 @@ GetDeviceClassIcon(
 enum {
 	DEVICE_ICON_VOLUMESNAPSHOT = 1,
 };
+
+EXTERN_C
+HRESULT
+WINAPI
+VirtualDiskAttachDialog(
+	__in HWND hWnd,
+	__in PCWSTR pszImageFileName,
+	__in DWORD dwFlags
+	);

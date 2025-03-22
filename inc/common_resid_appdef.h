@@ -16,6 +16,8 @@
 #define ID_FILTERDRIVER                41013
 #define ID_DISKPERFORMANCE             41014
 #define ID_VOLUMEMOUNTPOINT            40015 
+#define ID_ENCRYPTIONVOLUME            40016
+#define ID_RELATIONVIEW                40017
 
 #define ID_FILE_VOLUMEFILES            41020
 #define ID_FILE_CHANGEJOURNAL          41021
@@ -36,12 +38,23 @@
 #define ID_OPEN_LOCATION_POWERSHELL_ADMIN       41040 
 
 #define ID_FILE_EXPORT_CHANGE_JOURNAL_RAW_DATA   41051
-#define ID_FILE_LOAD_CHANGE_JOURNAL_RAW_DATA  41052
+#define ID_FILE_LOAD_CHANGE_JOURNAL_RAW_DATA     41052
+#define ID_FILE_CLOSE_CHANGE_JOURNAL_RAW_DATA    41053
+
 #define ID_LOOKUP_VOLUMEMOUNTPOINT               41061
 #define ID_LOOKUP_STREAM_BY_LCN                  41062
 #define ID_CHOOSE_VOLUME                         41063
 #define ID_STOP_DISKPERFORMANCE                  41064
-#define ID_STOP_DISKPERFORMANCE_ALL              41065
+//#define ID_STOP_DISKPERFORMANCE_ALL              41065
+#define ID_SET_VOLUME_LABEL                      41066
+#define ID_SET_VOLUME_OBJECT_ID                  41067
+//#define ID_MOUNTVOLUMEMAP                        41068
+#define ID_CREATE_DISK_IMAGEFILE                 41069
+#define ID_LAUNCHPAD_WINDOW                      41070
+#define ID_TOOLPAD_WINDOW                        41071
+#define ID_ATTACH_VIRTUALDISK_IMAGE              41072
+#define ID_DETTACH_VIRTUALDISK                   41073
+#define ID_VIRTUALDISKFILES                      41074
 
 #define ID_EDIT_COPY_COUMN_FIRST       41100
 #define ID_EDIT_COPY_COUMN_LAST        41149

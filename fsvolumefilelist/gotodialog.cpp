@@ -354,13 +354,14 @@ static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wPa
 			{
 				GTRDIRDLG_PARAM *pgp = (GTRDIRDLG_PARAM *)GetWindowLongPtr(hDlg,DWLP_USER);
 
+				*pgp->Buffer = L'\0';
+
 				int cchPath = _NT_PATH_FULL_LENGTH;
 				CStringBuffer szPath(_NT_PATH_FULL_LENGTH);
 				GetDlgItemText(hDlg,IDC_EDIT,szPath,cchPath);
 
 				if( wcscmp(szPath,L"..") == 0 )
 				{
-					*pgp->Buffer = L'\0';
 					PWSTR pszTempBuffer = _MemAllocString(pgp->pcacs->GetCurrentDirectory());
 					if( pszTempBuffer )
 					{

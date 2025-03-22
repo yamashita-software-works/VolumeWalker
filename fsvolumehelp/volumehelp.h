@@ -301,6 +301,7 @@ IsSetDirtyBit(
 //
 // IOCTL wrapper functions
 //
+EXTERN_C
 HRESULT
 WINAPI
 QueryDiskPerformance(
@@ -308,6 +309,24 @@ QueryDiskPerformance(
 	DISK_PERFORMANCE *DiskPerf,
 	INT cbDiskPerf
 	);
+
+EXTERN_C
+HRESULT
+WINAPI
+StopDiskPerformance(
+	PCWSTR pszDeviceName
+	);
+
+EXTERN_C
+HRESULT
+WINAPI
+StopDiskPerformanceAll(
+	ULONG Flags
+	);
+
+#define SDPF_STOP_VOLUMES          0x0
+#define SDPF_STOP_PHYSICAL_DRIVES  0x1
+#define SDPF_NO_BREAK_ON_ERROR     0x2
 
 //
 // Legacy Product Compatible API
@@ -550,6 +569,17 @@ GetVolumeUsnJornalDataInformation(
 	HANDLE Handle,
 	__in VOLUME_FS_USN_JOURNAL_DATA *QuataInfoList,
 	__inout ULONG *pcbQuataInfoList
+	);
+
+
+//
+// Volume related Shell Helper Functions
+//
+EXTERN_C
+HICON 
+WINAPI
+GetDiskDeviceIcon(
+	__in PCWSTR DeviceName
 	);
 
 #ifdef __cplusplus

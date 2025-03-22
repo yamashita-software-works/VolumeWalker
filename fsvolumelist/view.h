@@ -31,6 +31,8 @@
 #include "page_filterdriver.h"
 #include "page_diskperformance.h"
 #include "page_volumemountpoint.h"
+#include "page_encryptionvolume.h"
+#include "page_relationview.h"
 
 class CViewBase
 {
@@ -71,6 +73,29 @@ public:
 		if( m_pPageTable[ wndId ] == NULL )
 		{
 			pobj = (CPageWndBase*)new T ;
+			m_pPageTable[ wndId ] = pobj;
+			pobj->Create(m_hWnd,wndId,0,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN,WS_EX_CONTROLPARENT);
+		}
+		else
+		{
+			pobj = NULL;
+		}
+		return pobj;
+	}
+
+	template <class T>
+	CPageWndBase *GetOrAllocWndObjectEx(int wndId,int Type)
+	{
+		ASSERT( wndId >= 0 );
+		ASSERT( wndId < VOLUME_CONSOLE_MAX_ID );
+
+		if( wndId >= VOLUME_CONSOLE_MAX_ID || wndId < 0 )
+			return NULL;
+
+		CPageWndBase *pobj;
+		if( m_pPageTable[ wndId ] == NULL )
+		{
+			pobj = (CPageWndBase*)new T(Type);
 			m_pPageTable[ wndId ] = pobj;
 			pobj->Create(m_hWnd,wndId,0,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN,WS_EX_CONTROLPARENT);
 		}
@@ -160,6 +185,17 @@ public:
 			case VOLUME_CONSOLE_VOLUMEMOUNTPOINT:
 			{
 				pNew = GetOrAllocWndObject<CVolumeMountPointPage>(nView);
+				break;
+			}
+			case VOLUME_CONSOLE_ENCRYPTIONVOLUME:
+			{
+				pNew = GetOrAllocWndObject<CEncryptionVolumePage>(nView);
+				break;
+			}
+			case VOLUME_CONSOLE_RELATIONVIEW:
+			{
+				pNew = GetOrAllocWndObject<CVolumeDriveRelationViewPage>(nView);
+//				pNew = GetOrAllocWndObjectEx<CVolumeDriveRelationViewPage>(nView,PAGE_RELATIONVIEW_MOUNTEDDRIVE);
 				break;
 			}
 			default:
@@ -284,6 +320,12 @@ public:
 				_SelectPage( SelItem );
 				break;
 			case VOLUME_CONSOLE_VOLUMEMOUNTPOINT:
+				_SelectPage( SelItem );
+				break;
+			case VOLUME_CONSOLE_ENCRYPTIONVOLUME:
+				_SelectPage( SelItem );
+				break;
+			case VOLUME_CONSOLE_RELATIONVIEW:
 				_SelectPage( SelItem );
 				break;
 			default:

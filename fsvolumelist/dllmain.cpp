@@ -137,6 +137,12 @@ CreateVolumeConsoleWindow(
 		case VOLUME_CONSOLE_VOLUMEMOUNTPOINT:
 			hwndViewBase = CreateVolumeMountPointWindow(hwnd);
 			break;
+		case VOLUME_CONSOLE_ENCRYPTIONVOLUME:
+			hwndViewBase = CreateEncryptionVolumeWindow(hwnd);
+			break;
+		case VOLUME_CONSOLE_RELATIONVIEW:
+			hwndViewBase = CreateMountedDriveWindow(hwnd);
+			break;
 		default:
 			return NULL;
 	}

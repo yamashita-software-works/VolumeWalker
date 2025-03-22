@@ -14,7 +14,6 @@
 //***************************************************************************
 #include "stdafx.h"
 #include "fsvolumefilelist.h"
-#include "fileswindow.h"
 #include "ntobjecthelp.h"
 #if _ENABLE_DARK_MODE_TEST
 #include "darkmode.h"
@@ -104,19 +103,4 @@ HFONT GetIconFont()
 	SystemParametersInfo(SPI_GETICONTITLELOGFONT,sizeof(LOGFONT),&lf,0);
 	hFontIcon = CreateFontIndirect(&lf);
 	return hFontIcon;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-
-EXTERN_C
-HWND
-WINAPI
-CreateVolumeFileList(
-	HWND hwnd,
-	UINT ConsoleId,
-	DWORD dwOptionFlags,
-	LPARAM lParam
-	)
-{
-	return _CreateVolumeFileListWindow(hwnd,ConsoleId,dwOptionFlags,lParam);
 }

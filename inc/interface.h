@@ -33,4 +33,17 @@ interface __declspec(novtable) IApplicationsReader
 	virtual HRESULT GetAppendPath(ULONG ulIndex,PWSTR pszAppendPath,int cchAppendPath) const = 0;
 	virtual HRESULT GetType(ULONG ulIndex,PULONG pulType) const = 0;
 	virtual HRESULT IsSeparator(ULONG ulIndex) const = 0;
+	virtual HRESULT GetGroupName(ULONG ulIndex,PWSTR pszExecPath,int cchExecPath) const = 0;
+};
+
+interface __declspec(novtable) IExternalTools
+{
+	virtual ULONG __stdcall AddRef() = 0;
+	virtual ULONG __stdcall Release() = 0;
+	virtual HRESULT GetCount(PINT pulToolCount) const = 0;
+	virtual HRESULT GetIcon(INT Index,INT Size,HICON *phIcon) const = 0;
+	virtual PCWSTR GetName(int posMenu) const = 0;
+	virtual	PCWSTR GetPath(int posMenu) const = 0;
+	virtual	PCWSTR GetStartupDirectory(int Index) const = 0;
+	virtual PCWSTR GetGroupName(int Index) const = 0;
 };

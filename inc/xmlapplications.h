@@ -32,6 +32,7 @@ typedef struct _FS_APPLICATION_ITEM
 	PCWSTR AppPath;
 	PCWSTR Parameters;
 	PCWSTR AppendPath;
+	PCWSTR GroupName;
 } FS_APPLICATION_ITEM;
 
 class CFSApplicationItem : public FS_APPLICATION_ITEM
@@ -49,6 +50,7 @@ public:
 		AppPath = NULL;
 		Parameters = NULL;
 		AppendPath = NULL;
+		GroupName = NULL;
 	}
 
 	~CFSApplicationItem()
@@ -130,6 +132,13 @@ public:
 		_SafeMemFree(AppendPath);
 		if( psz != NULL )
 			AppendPath = _MemAllocString(psz);
+	}
+
+	VOID SetGroupName(PCWSTR psz)
+	{
+		_SafeMemFree(GroupName);
+		if( psz != NULL )
+			GroupName = _MemAllocString(psz);
 	}
 
 	VOID MakeExecPath()
@@ -227,6 +236,7 @@ public:
 	PCWSTR PtrAppPath() const { return AppPath; }
 	PCWSTR PtrParameters() const { return Parameters; }
 	PCWSTR PtrAppendPath() const { return AppendPath; }
+	PCWSTR PtrGroupName() const { return GroupName; }
 };
 
 class CApplocationPointerArray : protected CValArray<CFSApplicationItem *>
@@ -344,6 +354,16 @@ public:
 	}
 
 	HRESULT GetAppendPath(ULONG ulIndex,PWSTR pszAppendPath,int cchAppendPath) const
+	{
+		if( m_apps[(int)ulIndex]->PtrAppendPath() == NULL )
+		{
+			*pszAppendPath = L'\0';
+			return S_FALSE;
+		}
+		return StringCchCopy(pszAppendPath,cchAppendPath,m_apps[(int)ulIndex]->PtrAppendPath());
+	}
+
+	HRESULT GetGroupName(ULONG ulIndex,PWSTR pszAppendPath,int cchAppendPath) const
 	{
 		if( m_apps[(int)ulIndex]->PtrAppendPath() == NULL )
 		{
@@ -618,6 +638,15 @@ protected:
 			node->Release();
 		}
 
+		hr = nodeApp->selectSingleNode( L"Group", &node );
+		if( hr == S_OK )
+		{
+			CComBSTR GroupName;
+			if( node->get_text( &GroupName ) == S_OK )
+				pItem->SetGroupName( GroupName );
+			node->Release();
+		}
+
 		pItem->MakeExecPath();
 
 		if( pItem->PtrCommandLine() == NULL )
@@ -644,8 +673,6 @@ protected:
 	}
 };
 
-#if _ENABLE_EXTERNAL_TOOLS
-
 //
 // External Toolsmenu implement
 //
@@ -661,6 +688,7 @@ class CExternalToolsMenu : public IExternalTools
 		PWSTR DisplayName;
 		PWSTR Path;
 		PWSTR Directory;
+		PWSTR GroupName;
 		int indexImage;
 		BOOL bSeparator;
 	} EXTERNAL_TOOLS_MENU_ITEM;
@@ -783,6 +811,7 @@ protected:
 			_SafeMemFree(mdmi.DisplayName);
 			_SafeMemFree(mdmi.Path);
 			_SafeMemFree(mdmi.Directory);
+			_SafeMemFree(mdmi.GroupName);
 		}
 		m_menuItem.RemoveAll();
 	}
@@ -836,15 +865,23 @@ protected:
 			// command line
 			//
 			pApps->GetCommandLine(i,szBuffer,MAX_PATH);
-			mdmi.Path = _MemAllocString( szBuffer  );
+			mdmi.Path = _MemAllocString( szBuffer );
 
 			//
 			// startup directory
 			//
 			if( pApps->GetStartupDirectory(i,szBuffer,MAX_PATH) == S_OK )
-				mdmi.Directory = _MemAllocString( szBuffer  );
+				mdmi.Directory = _MemAllocString( szBuffer );
 			else
 				mdmi.Directory = NULL;
+
+			//
+			// group name
+			//
+			if( pApps->GetGroupName(i,szBuffer,MAX_PATH) == S_OK )
+				mdmi.GroupName = _MemAllocString( szBuffer );
+			else
+				mdmi.GroupName = NULL;
 
 			// app icon 
 			mdmi.indexImage = I_IMAGENONE;
@@ -994,9 +1031,13 @@ public:
 		return (PCWSTR)m_menuItem[Index].Directory;
 	}
 
+	PCWSTR GetGroupName(int Index) const
+	{
+		return (PCWSTR)m_menuItem[Index].GroupName;
+	}
+
 	BOOL IsSeparator(int iIndex) const 
 	{
 		return m_menuItem[iIndex].bSeparator;
 	}
 };
-#endif

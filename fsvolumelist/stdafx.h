@@ -84,6 +84,8 @@ HWND CreateSimpleHexDumpWindow(HWND hWndParent);
 HWND CreateFilterDriverWindow(HWND hWndParent);
 HWND CreateDiskPerformanceWindow(HWND hWndParent);
 HWND CreateVolumeMountPointWindow(HWND hWndParent);
+HWND CreateEncryptionVolumeWindow(HWND hWndParent);
+HWND CreateMountedDriveWindow(HWND hWndParent);
 
 inline VOID _DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus=FALSE)
 {
@@ -199,6 +201,10 @@ enum {
 	COLUMN_LastRemovalDate,
 	COLUMN_Volume,
 	COLUMN_Device,
+	COLUMN_Status,
+	COLUMN_EncryptionMethod,
+	COLUMN_ConversionStatus,
+	COLUMN_PersistentVolumeID,
 	COLUMN_MaxItem,
 	COLUMN_MaxCount=COLUMN_MaxItem,
 };

@@ -27,6 +27,7 @@ EXPORTS
 	FreeQuotaInformation
 	GetVolumeUsnJornalDataInformation
 	QueryDiskPerformance
+	StopDiskPerformanceAll
 	VolumeMemFree
 	VolumeMemAlloc
 	VolumeDuplicateString
@@ -43,6 +44,8 @@ EXPORTS
 	VirtualDisk_GetDependencyInformationByHandle
 	VirtualDisk_GetDependencyInformation
 	GetDependentDiskFlagString
+	AttachVirtualDiskFile
+	DetachVirtualDiskFile
 
 	;
 	; Storage Device
@@ -92,7 +95,6 @@ EXPORTS
 	CalcStatisticsDiffNtfsEx
 
 	;
-	; Virtual Disk Helper
+	; Shell helper
 	;
-	AttachVirtualDiskFile
-	DetachVirtualDiskFile
+	GetDiskDeviceIcon

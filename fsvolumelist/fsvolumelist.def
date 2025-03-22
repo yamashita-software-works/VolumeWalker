@@ -1,6 +1,13 @@
 LIBRARY "fsvolumelist"
 
 EXPORTS
+	InitializeVolumeConsole
 	CreateVolumeConsoleWindow
 	GetDeviceClassIcon
-	InitializeVolumeConsole
+;
+; Volume Tools Funcsions
+;
+	VolumeLabelEditDialog
+	VolumeObjectIdEditDialog
+	LookupStreamNameDialog
+	VirtualDiskAttachDialog

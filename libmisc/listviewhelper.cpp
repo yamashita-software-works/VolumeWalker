@@ -87,6 +87,105 @@ ListViewEx_SimpleContextMenuHandler(
 	return Result;
 }
 
+
+int
+ListViewEx_SetColumnWidthByHeaderText(
+	HWND hwndLV,
+	int iColumn,
+	DWORD dwFlags
+	)
+{
+	WCHAR sz[MAX_PATH];
+
+    HWND hwndHD = ListView_GetHeader(hwndLV);
+	if( hwndHD == NULL )
+		return -1;
+
+	HDITEM hdi = {0};
+	hdi.mask = HDI_TEXT;
+	hdi.pszText = sz;
+	hdi.cchTextMax = MAX_PATH;
+	Header_GetItem(hwndHD,iColumn,&hdi);
+
+	HDC hdc;
+	hdc = GetWindowDC(hwndHD);
+
+	HFONT hFont,hFontOld;
+	hFont = (HFONT)SendMessage(hwndHD,WM_GETFONT,0,0);
+	hFontOld = (HFONT)SelectObject(hdc,hFont);
+
+	SIZE size = {0};
+	GetTextExtentPoint32(hdc,sz,(int)wcslen(sz),&size);
+
+	SelectObject(hdc,hFontOld);
+
+	ReleaseDC(hwndHD,hdc);
+
+	// +------------------+
+	// |<-6->|<-cx->|<-6->|
+	// +------------------+
+	size.cx = size.cx + 6 + 6;
+	int cx;
+	if( dwFlags & LVEXCHTF_ADJUST_WIDTH_BY_COLUMN_ITEM_TEXT )
+	{
+		cx = size.cx;
+		ListView_SetColumnWidth(hwndLV,iColumn,LVSCW_AUTOSIZE);
+		int cxCol = 0;
+		int cItems = ListView_GetItemCount(hwndLV);
+		for(int i = 0; i < cItems; i++)
+		{
+	        cxCol = ListView_GetColumnWidth(hwndLV,iColumn);
+
+			if( cxCol > size.cx )
+			{
+				cx = LVSCW_AUTOSIZE;
+				break;
+			}
+		}
+	}
+	else
+	{
+		cx = size.cx;
+	}
+
+	ListView_SetColumnWidth(hwndLV,iColumn,cx);
+
+	return cx;
+}
+
+int
+ListViewEx_SetLastColumnWidth(
+	HWND hwndLV,
+	DWORD dwFlags
+	)
+{
+    HWND hwndHD = ListView_GetHeader(hwndLV);
+    int cHeaders = Header_GetItemCount(hwndHD);
+	if( cHeaders == 0 )
+		return false;
+	return ListViewEx_SetColumnWidthByHeaderText(hwndLV,(cHeaders - 1),dwFlags);
+}
+
+int
+ListViewEx_GetColumnIndexFromColumnId(
+	HWND hwndLV,
+	INT_PTR ColumnId
+	)
+{
+    HWND hwndHD = ListView_GetHeader(hwndLV);
+	int i,cColumns = Header_GetItemCount(hwndHD);
+
+	for(i = 0; i < cColumns; i++)
+	{
+		INT_PTR id = (INT_PTR)ListViewEx_GetHeaderItemData(hwndHD,i);
+		if( id == ColumnId )
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
 VOID
 DrawListViewColumnMeter(
 	HDC hdc,

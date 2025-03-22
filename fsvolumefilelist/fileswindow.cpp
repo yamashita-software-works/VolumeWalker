@@ -16,7 +16,6 @@
 #include "stdafx.h"
 #include "resource.h"
 #include "basewindow.h"
-#include "fileswindow.h"
 #include "filesview.h"
 #include "simplesplitwindow.h"
 #include "volumeconsoledef.h"
@@ -356,7 +355,6 @@ public:
 			sel.pszPath   = NULL;
 			sel.pszName   = ppg->pszFileName;
 			m_pView->SelectView(&sel);
-
 			SetTitle(NULL);
 		}
 
@@ -464,4 +462,19 @@ HWND _CreateVolumeFileListWindow(HWND hWndParent,UINT ConsoleType,DWORD dwOption
 	HWND hwndView = pWnd->Create(hWndParent,0,L"SimpleVolumeFileList",WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,WS_EX_CONTROLPARENT);
 
 	return hwndView;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+EXTERN_C
+HWND
+WINAPI
+CreateVolumeFileList(
+	HWND hwnd,
+	UINT ConsoleId,
+	DWORD dwOptionFlags,
+	LPARAM lParam
+	)
+{
+	return _CreateVolumeFileListWindow(hwnd,ConsoleId,dwOptionFlags,lParam);
 }
