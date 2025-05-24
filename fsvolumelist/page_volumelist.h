@@ -234,7 +234,7 @@ public:
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_DISKPERFORMANCE,L"Disk &Performance");
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
-			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Display &Files in Volume");
+			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"View &Files in Volume");
 			AppendMenu(hMenu,MF_STRING,0,0);
 
 			hSubMenu = CreatePopupMenu();
@@ -327,7 +327,8 @@ public:
 
 	LRESULT OnNmSetFocus(NMHDR *pnmhdr)
 	{
-		SendMessage(m_hWndList,WM_UPDATEUISTATE,MAKELPARAM(UIS_SET,UISF_HIDEFOCUS),0);
+		if( IsXpThemeEnabled() )
+			SendMessage(m_hWndList,WM_UPDATEUISTATE,MAKELPARAM(UIS_SET,UISF_HIDEFOCUS),0);
 		pnmhdr->hwndFrom = m_hWnd;
 		pnmhdr->idFrom = GetWindowLong(m_hWnd,GWL_ID);
 		SendMessage(GetParent(m_hWnd),WM_NOTIFY,0,(LPARAM)pnmhdr);
@@ -1370,7 +1371,7 @@ public:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_FILESYSTEMSTATISTICS );
 				break;
 			case ID_FILE_SIMPLEFILELIST:
-				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST );
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_VOLUMEFILELIST );
 				break;
 			case ID_HEXDUMP:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );

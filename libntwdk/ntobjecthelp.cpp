@@ -70,11 +70,11 @@ GetNtDeviceNameAssignedDosDrive(
 
                     if( QuerySymbolicLinkObject_U(hObjDir,DosDeviceName,&usNtDeviceName,FALSE) == 0 )
                     {
-						int iIndex = (int)RtlUpcaseUnicodeChar( DosDeviceName[0] ) - L'A';
-						ASSERT( ptr_array[ iIndex ] == NULL );
+                        int iIndex = (int)RtlUpcaseUnicodeChar( DosDeviceName[0] ) - L'A';
+                        ASSERT( ptr_array[ iIndex ] == NULL );
 
-						if( ptr_array[ iIndex ] == NULL )
-							ptr_array[ iIndex ] = AllocateSzFromUnicodeString( &usNtDeviceName );
+                        if( ptr_array[ iIndex ] == NULL )
+                            ptr_array[ iIndex ] = AllocateSzFromUnicodeString( &usNtDeviceName );
                     }
                 }
             }
@@ -159,68 +159,68 @@ EXTERN_C
 NTSTATUS
 NTAPI
 EnumDosDeviceTargetNames(
-	HANDLE *phspa,
+    HANDLE *phspa,
     PCWSTR NtDevicePath,
-	ULONG Flags
+    ULONG Flags
     )
 {
     HANDLE hObjDir;
     LONG Status;
     ULONG Index = 0;
     UNICODE_STRING usNtDeviceName;
-	WCHAR NtDeviceName[WIN32_MAX_PATH];
-	WCHAR DosDeviceName[WIN32_MAX_PATH];
-	UNICODE_STRING usNtDevicePath;
+    WCHAR NtDeviceName[WIN32_MAX_PATH];
+    WCHAR DosDeviceName[WIN32_MAX_PATH];
+    UNICODE_STRING usNtDevicePath;
 
-	if( phspa == NULL || NtDevicePath == NULL )
-		return STATUS_INVALID_PARAMETER;
+    if( phspa == NULL || NtDevicePath == NULL )
+        return STATUS_INVALID_PARAMETER;
 
-	HANDLE hspa = SPtrArray_Create(0);
-	if( hspa == NULL )
-		return STATUS_NO_MEMORY;
+    HANDLE hspa = SPtrArray_Create(0);
+    if( hspa == NULL )
+        return STATUS_NO_MEMORY;
 
-	RtlInitUnicodeString(&usNtDevicePath,NtDevicePath);
+    RtlInitUnicodeString(&usNtDevicePath,NtDevicePath);
 
     Status = OpenObjectDirectory( 
-					(Flags & EDDTNF_LOCAL) ? L"\\??" : L"\\GLOBAL??",
-					&hObjDir
-					);
+                    (Flags & EDDTNF_LOCAL) ? L"\\??" : L"\\GLOBAL??",
+                    &hObjDir
+                    );
 
     if( Status == STATUS_SUCCESS )
     {
         while( QueryObjectDirectory(hObjDir,&Index,DosDeviceName,WIN32_MAX_PATH,NULL,0) == 0)
         {
-			usNtDeviceName.Length = 0;
-			usNtDeviceName.MaximumLength = sizeof(NtDeviceName);
-			usNtDeviceName.Buffer = NtDeviceName;
+            usNtDeviceName.Length = 0;
+            usNtDeviceName.MaximumLength = sizeof(NtDeviceName);
+            usNtDeviceName.Buffer = NtDeviceName;
 
-			if( QuerySymbolicLinkObject_U(hObjDir,DosDeviceName,&usNtDeviceName,FALSE) == 0 )
-			{
-				// As Prefix:
-				// "\Device\HareddiskVolume1"
-				//
-				// Target String:
-				// "\Device\HareddiskVolume1"       Yes
-				// "\Device\HareddiskVolume1\"      Yes
-				// "\Device\HareddiskVolume1\foo"   Yes
-				// "\Device\HareddiskVolume10"      No
-				// "\Device\HareddiskVolume10\"     No
-				// "\Device\HareddiskVolume10\foo"  No
-				//
-				if( usNtDeviceName.Length > 0 &&  RtlPrefixUnicodeString(&usNtDeviceName,&usNtDevicePath,TRUE) )
-				{
-					if( usNtDeviceName.Length <= usNtDevicePath.Length )
-					{
-						WCHAR ch;
-						if( usNtDeviceName.Length < usNtDevicePath.Length )
-							ch = usNtDevicePath.Buffer[ WCHAR_LENGTH(usNtDeviceName.Length) ];
-						else
-							ch = UNICODE_NULL;
-				
-						if( ch == UNICODE_NULL || ch == L'\\' || ch == L'/' )
-						{
-							SPtrArray_Add(hspa,DuplicateString(DosDeviceName));
-						}
+            if( QuerySymbolicLinkObject_U(hObjDir,DosDeviceName,&usNtDeviceName,FALSE) == 0 )
+            {
+                // As Prefix:
+                // "\Device\HareddiskVolume1"
+                //
+                // Target String:
+                // "\Device\HareddiskVolume1"       Yes
+                // "\Device\HareddiskVolume1\"      Yes
+                // "\Device\HareddiskVolume1\foo"   Yes
+                // "\Device\HareddiskVolume10"      No
+                // "\Device\HareddiskVolume10\"     No
+                // "\Device\HareddiskVolume10\foo"  No
+                //
+                if( usNtDeviceName.Length > 0 &&  RtlPrefixUnicodeString(&usNtDeviceName,&usNtDevicePath,TRUE) )
+                {
+                    if( usNtDeviceName.Length <= usNtDevicePath.Length )
+                    {
+                        WCHAR ch;
+                        if( usNtDeviceName.Length < usNtDevicePath.Length )
+                            ch = usNtDevicePath.Buffer[ WCHAR_LENGTH(usNtDeviceName.Length) ];
+                        else
+                            ch = UNICODE_NULL;
+                
+                        if( ch == UNICODE_NULL || ch == L'\\' || ch == L'/' )
+                        {
+                            SPtrArray_Add(hspa,DuplicateString(DosDeviceName));
+                        }
                     }
                 }
             }
@@ -228,17 +228,17 @@ EnumDosDeviceTargetNames(
 
         CloseObjectDirectory( hObjDir );
 
-		if( SPtrArray_GetCount(hspa) == 0 )
-		{
-			SPtrArray_Destroy(hspa);
-			*phspa = NULL;
-			Status = STATUS_OBJECT_NAME_NOT_FOUND;
-		}
-		else
-		{
-			*phspa = hspa;
-			Status = STATUS_SUCCESS;
-		}
+        if( SPtrArray_GetCount(hspa) == 0 )
+        {
+            SPtrArray_Destroy(hspa);
+            *phspa = NULL;
+            Status = STATUS_OBJECT_NAME_NOT_FOUND;
+        }
+        else
+        {
+            *phspa = hspa;
+            Status = STATUS_SUCCESS;
+        }
     }
 
     return Status;
@@ -255,10 +255,10 @@ EXTERN_C
 INT
 NTAPI
 GetDosDeviceTargetNamesCount(
-	HANDLE hspa
-	)
+    HANDLE hspa
+    )
 {
-	return SPtrArray_GetCount(hspa);
+    return SPtrArray_GetCount(hspa);
 }
 
 //---------------------------------------------------------------------------
@@ -272,13 +272,13 @@ EXTERN_C
 PCWSTR
 NTAPI
 GetDosDeviceTargetNamesItem(
-	HANDLE hspa,
-	int iIndex,	
-	PDOSDEVICEITEMHINT ItemHint // Reserved
-	)
+    HANDLE hspa,
+    int iIndex, 
+    PDOSDEVICEITEMHINT ItemHint // Reserved
+    )
 {
-	return (PWSTR)SPtrArray_Get(hspa,iIndex);
-}	
+    return (PWSTR)SPtrArray_Get(hspa,iIndex);
+}   
 
 //---------------------------------------------------------------------------
 //
@@ -291,16 +291,16 @@ EXTERN_C
 NTSTATUS
 NTAPI
 FreeDosDeviceTargetNames(
-	HANDLE hspa
+    HANDLE hspa
     )
 {
-	int i,c = SPtrArray_GetCount(hspa);
-	for(i = 0; i < c; i++)
-	{
-		FreeMemory(SPtrArray_Get(hspa,i));
-	}
-	SPtrArray_Destroy(hspa);
-	return STATUS_SUCCESS;
+    int i,c = SPtrArray_GetCount(hspa);
+    for(i = 0; i < c; i++)
+    {
+        FreeMemory(SPtrArray_Get(hspa,i));
+    }
+    SPtrArray_Destroy(hspa);
+    return STATUS_SUCCESS;
 }
 
 //---------------------------------------------------------------------------
@@ -681,7 +681,7 @@ NTAPI
 QuerySymbolicLinkObject(
     HANDLE hRootDirectory,
     PCWSTR pszSymbolicName,
-	UNICODE_STRING *pusSymbolicName OPTIONAL,
+    UNICODE_STRING *pusSymbolicName OPTIONAL,
     PWSTR ObjectName,
     int cchObjectName
     )
@@ -691,10 +691,10 @@ QuerySymbolicLinkObject(
     OBJECT_ATTRIBUTES ObjectAttributes;
     UNICODE_STRING Name;
 
-	if( pusSymbolicName )
-		Name = *pusSymbolicName;
-	else
-		RtlInitUnicodeString(&Name,pszSymbolicName);
+    if( pusSymbolicName )
+        Name = *pusSymbolicName;
+    else
+        RtlInitUnicodeString(&Name,pszSymbolicName);
 
     InitializeObjectAttributes(
                 &ObjectAttributes,
@@ -785,13 +785,13 @@ QuerySymbolicLinkObjectName(
         return 0;
     }
 
-	if( SymbolicLinkPath && *SymbolicLinkPath != L'\0' )
-	{
-	    RtlAppendUnicodeToString(&usSymLinkPath,SymbolicLinkPath);
+    if( SymbolicLinkPath && *SymbolicLinkPath != L'\0' )
+    {
+        RtlAppendUnicodeToString(&usSymLinkPath,SymbolicLinkPath);
 
-		if( !IsLastCharacterBackslash_U(&usSymLinkPath) )
-			RtlAppendUnicodeToString(&usSymLinkPath,L"\\");
-	}
+        if( !IsLastCharacterBackslash_U(&usSymLinkPath) )
+            RtlAppendUnicodeToString(&usSymLinkPath,L"\\");
+    }
 
     RtlAppendUnicodeToString(&usSymLinkPath,SymbolicLinkName);
 
@@ -829,4 +829,107 @@ QuerySymbolicLinkObjectName(
     _SetLastNtStatus(Status);
 
     return RtlNtStatusToDosError(Status);
+}
+
+//---------------------------------------------------------------------------
+//
+//  LookupDeviceNameFromPath()
+//
+//  PURPOSE:
+//
+//---------------------------------------------------------------------------
+EXTERN_C
+ULONG
+NTAPI
+LookupDeviceNameFromPath(
+    HANDLE *phspa,
+    PCWSTR Path,
+    BOOLEAN LocalNameSpace
+    )
+{
+    HANDLE hObjDir;
+    LONG Status;
+    ULONG Index = 0;
+    UNICODE_STRING usNtDeviceName;
+    WCHAR NtDeviceName[WIN32_MAX_PATH];
+    WCHAR DosDeviceName[WIN32_MAX_PATH];
+    UNICODE_STRING usPath;
+
+    if( phspa == NULL || Path == NULL )
+        return STATUS_INVALID_PARAMETER;
+
+    HANDLE hspa = SPtrArray_Create(0);
+    if( hspa == NULL )
+        return STATUS_NO_MEMORY;
+
+    RtlInitUnicodeString(&usPath,Path);
+
+    Status = OpenObjectDirectory( 
+                    LocalNameSpace ? L"\\??" : L"\\GLOBAL??",
+                    &hObjDir
+                    );
+
+    if( Status == STATUS_SUCCESS )
+    {
+        while( QueryObjectDirectory(hObjDir,&Index,DosDeviceName,WIN32_MAX_PATH,NULL,0) == 0)
+        {
+            usNtDeviceName.Length = 0;
+            usNtDeviceName.MaximumLength = sizeof(NtDeviceName);
+            usNtDeviceName.Buffer = NtDeviceName;
+
+            if( QuerySymbolicLinkObject_U(hObjDir,DosDeviceName,&usNtDeviceName,FALSE) == 0 )
+            {
+                // e.g.
+                //
+                // path:        "\Device\Foo\Bar\Xxx\Yyy"
+                // device name: "\Device\Foo\Bar"
+                // -> true
+                //
+                // path:        "\Device\Foo\Bar\Xxx\Yyy"
+                // device name: "\Device\Zzz
+                // -> false
+                //
+                if( usNtDeviceName.Length > 0 )
+                {
+                    if( RtlPrefixUnicodeString(&usNtDeviceName,&usPath,TRUE) )
+                    {
+#if 0
+                        PWSTR pwsz = DuplicateString(usNtDeviceName.Buffer);
+                        if( pwsz )
+                            SPtrArray_Add(hspa,pwsz);
+#else
+                        PWSTR pwsz;
+                        SIZE_T cb;
+                        SIZE_T cchDosDeviceName;
+                        cchDosDeviceName = wcslen(DosDeviceName);
+                        cb = (usNtDeviceName.Length + sizeof(WCHAR)) + WCHAR_BYTES(cchDosDeviceName + 1 + 1);
+                        pwsz = (PWSTR)AllocMemory( cb );
+                        if( pwsz )
+                        {
+                            memcpy(pwsz,usNtDeviceName.Buffer,usNtDeviceName.Length);
+                            memcpy(&pwsz[WCHAR_LENGTH(usNtDeviceName.Length) + 1],DosDeviceName,WCHAR_BYTES(cchDosDeviceName));
+                            SPtrArray_Add(hspa,pwsz);
+                        }                       
+#endif
+                    }
+                }
+            }
+        }
+
+        CloseObjectDirectory( hObjDir );
+
+        if( SPtrArray_GetCount(hspa) == 0 )
+        {
+            SPtrArray_Destroy(hspa);
+            *phspa = NULL;
+            Status = STATUS_OBJECT_NAME_NOT_FOUND;
+        }
+        else
+        {
+            *phspa = hspa;
+            Status = STATUS_SUCCESS;
+        }
+    }
+
+    return Status;
 }

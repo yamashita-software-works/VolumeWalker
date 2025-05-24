@@ -15,30 +15,31 @@
 //  Licensed under the MIT License.
 //
 
-#define _ENABLE_SHOW_ICONS  0
+#define _ENABLE_ITEM_ICON  0
 #define _ENABLE_SHOW_FULLDEVICEPATH  0
 
 enum {
-	MPI_ROOT=0,
-	MPI_DEVICE,
-	MPI_VOLUMEGUID,
-	MPI_DRIVE,
-	MPI_DIRECTORY,
+	RTI_ROOT=0,
+	RTI_DEVICE,
+	RTI_VOLUMEGUID,
+	RTI_DRIVE,
+	RTI_DIRECTORY,
+	RTI_SYMBOLNAME
 };
 
-class CMountPointItem
+class CRelationTreeItem
 {
 	PWSTR m_pszItemText;
 public:
 	UINT m_ItemType;
 
-	CMountPointItem(UINT Type)
+	CRelationTreeItem(UINT Type)
 	{
 		m_ItemType = Type;
 		m_pszItemText = NULL;
 	}
 
-	~CMountPointItem()
+	~CRelationTreeItem()
 	{
 		_SafeMemFree(m_pszItemText);
 	}
@@ -65,14 +66,14 @@ class CVolumeDriveRelationViewPage :
 {
 	HWND m_hWndTree;
 	HFONT m_hFont;
-#if _ENABLE_SHOW_ICONS
+#if _ENABLE_ITEM_ICON
 	HIMAGELIST m_himl;
 #endif
 	BOOL m_bEnableThemeStyle;
 public:
 	CVolumeDriveRelationViewPage(int nPageType=0)
 	{
-#if _ENABLE_SHOW_ICONS
+#if _ENABLE_ITEM_ICON
 		m_himl = NULL;
 #endif
 		m_bEnableThemeStyle = FALSE;
@@ -103,7 +104,7 @@ public:
 
 			TreeView_SetExtendedStyle(hwndTree,TVS_EX_DOUBLEBUFFER,TVS_EX_DOUBLEBUFFER);
 
-#if _ENABLE_SHOW_ICONS
+#if _ENABLE_ITEM_ICON
 			int cyItem = TreeView_GetItemHeight(hwndTree);
 			cyItem += 4;
 			TreeView_SetItemHeight(hwndTree,cyItem);
@@ -153,7 +154,7 @@ public:
 
 	LRESULT OnDestroy(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-#if _ENABLE_SHOW_ICONS
+#if _ENABLE_ITEM_ICON
 		if( m_himl )
 			ImageList_Destroy(m_himl);
 #endif
@@ -188,7 +189,7 @@ public:
 	LRESULT OnDeleteItem(NMTREEVIEW* pnmtv)
 	{
 		if( pnmtv->itemOld.lParam )
-			delete (CMountPointItem *)pnmtv->itemOld.lParam;
+			delete (CRelationTreeItem *)pnmtv->itemOld.lParam;
 		return 0;
 	}
 
@@ -242,6 +243,8 @@ public:
 				UINT uFlags = TPM_LEFTALIGN|TPM_TOPALIGN;
 
 				AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
+				AppendMenu(hMenu,MF_STRING,ID_VIEW_FILELIST,L"Open File List");
+
 				TrackPopupMenuEx(hMenu,uFlags,pt.x,pt.y,GetActiveWindow(),NULL);
 
 				DestroyMenu(hMenu);
@@ -304,10 +307,10 @@ public:
 	{
 		PCWSTR pszRootName = L"PC";
 
-		CMountPointItem *pItem = new CMountPointItem(MPI_ROOT);
+		CRelationTreeItem *pItem = new CRelationTreeItem(RTI_ROOT);
 		pItem->SetText( pszRootName );
 
-#if _ENABLE_SHOW_ICONS
+#if _ENABLE_ITEM_ICON
 		SHSTOCKICONINFO sii = {0};
 		sii.cbSize = sizeof(sii);
 		SHGetStockIconInfo(SIID_SERVER,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
@@ -321,7 +324,7 @@ public:
 
 	HTREEITEM InsertDevice(HTREEITEM hParent,LPCWSTR pszDeviceName)
 	{
-		CMountPointItem *pItem = new CMountPointItem(MPI_DEVICE);
+		CRelationTreeItem *pItem = new CRelationTreeItem(RTI_DEVICE);
 		pItem->SetText( pszDeviceName );
 
 		WCHAR szDisplayText[MAX_PATH];
@@ -337,7 +340,7 @@ public:
 
 	HTREEITEM InsertVolume(HTREEITEM hParent,LPCWSTR pszVolumeName)
 	{
-		CMountPointItem *pItem = new CMountPointItem(MPI_VOLUMEGUID);
+		CRelationTreeItem *pItem = new CRelationTreeItem(RTI_VOLUMEGUID);
 		pItem->SetText( pszVolumeName );
 
 		WCHAR szDisplayText[MAX_PATH];
@@ -356,13 +359,13 @@ public:
 
 	HTREEITEM InsertPath(HTREEITEM hParent,LPCWSTR pszPath)
 	{
-		CMountPointItem *pItem = new CMountPointItem( PathIsRoot(pszPath) ? MPI_DRIVE : MPI_DIRECTORY );
+		CRelationTreeItem *pItem = new CRelationTreeItem( PathIsRoot(pszPath) ? RTI_DRIVE : RTI_DIRECTORY );
 		pItem->SetText( pszPath );
 
 		WCHAR szDisplayText[MAX_PATH];
 		StringCchCopy(szDisplayText,MAX_PATH,pszPath);
 
-#if _ENABLE_SHOW_ICONS
+#if _ENABLE_ITEM_ICON
 		SHSTOCKICONINFO sii = {0};
 		sii.cbSize = sizeof(sii);
 		SHGetStockIconInfo(SIID_FOLDER,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
@@ -375,9 +378,22 @@ public:
 		return Insert(hParent,TVI_LAST,szDisplayText,pItem,iImage);
 	}
 
+	HTREEITEM InsertSymbolName(HTREEITEM hParent,LPCWSTR pszSymbolName)
+	{
+		CRelationTreeItem *pItem = new CRelationTreeItem(RTI_SYMBOLNAME);
+		pItem->SetText( pszSymbolName );
+
+		WCHAR szDisplayText[MAX_PATH];
+		StringCchCopy(szDisplayText,MAX_PATH,pszSymbolName);
+
+		int iImage = GetDiskDeviceImageIndex(pszSymbolName);
+
+		return Insert(hParent,TVI_LAST,pszSymbolName,pItem,iImage,1);
+	}
+
 	int GetDiskDeviceImageIndex(PCWSTR DeviceName)
 	{
-#if _ENABLE_SHOW_ICONS
+#if _ENABLE_ITEM_ICON
 		int iImage;
 		HICON hIcon;
 		hIcon = GetDiskDeviceIcon(DeviceName);
@@ -556,17 +572,63 @@ public:
 		return;
 	}
 
+	void EnumDeviceObjectSymbolNames()
+	{
+		HTREEITEM hItem;
+		HTREEITEM hRoot;
+		WCHAR sz[MAX_PATH];
+
+		hRoot = InsertRoot();
+
+		VOLUME_NAME_STRING_ARRAY *pVolNames;
+		EnumVolumeNames(&pVolNames);
+
+		for(ULONG i = 0; i < pVolNames->Count; i++)
+		{
+			hItem = InsertDevice(hRoot,pVolNames->Volume[i].NtVolumeName);
+
+			TreeView_GetItemText(m_hWndTree,hItem,sz,_countof(sz));
+
+			HANDLE hspa;
+			EnumDosDeviceTargetNames(&hspa,pVolNames->Volume[i].NtVolumeName,0);
+			INT idx,c = GetDosDeviceTargetNamesCount(hspa);
+			for(idx = 0; idx < c; idx++)
+			{
+				DOSDEVICEITEMHINT dos;
+				PCWSTR pszName = GetDosDeviceTargetNamesItem(hspa,idx,&dos);
+				if( wcsicmp(pszName,sz) != 0 )
+				{
+					InsertSymbolName(hItem,	GetDosDeviceTargetNamesItem(hspa,idx,&dos));
+				}
+			}
+
+			FreeDosDeviceTargetNames(hspa);
+
+			TVSORTCB tsc = {0};
+			tsc.hParent = hItem;
+			tsc.lpfnCompare = &CompareSymbolNameProc;
+			tsc.lParam  = 0;
+			TreeView_SortChildrenCB(m_hWndTree,&tsc,FALSE);
+		}
+
+		FreeVolumeNames(pVolNames);
+	}
+
 	HRESULT FillItems(SELECT_ITEM *pSel)
 	{
 		CWaitCursor wait;
 		SetRedraw(m_hWndTree,FALSE);
 
 		TreeView_DeleteAllItems(m_hWndTree);
-#if _ENABLE_SHOW_ICONS
+#if _ENABLE_ITEM_ICON
 		ImageList_RemoveAll(m_himl);
 #endif
 
+#if 1
 		EnumDevicesAndVolumes();
+#else
+		EnumDeviceObjectSymbolNames();
+#endif
 
 		SetRedraw(m_hWndTree,TRUE);
 		return S_OK;
@@ -579,8 +641,8 @@ public:
 
 	static int CALLBACK CompareProc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort)
 	{
-		LPCWSTR psz1 = (LPCWSTR)((CMountPointItem*)lParam1)->GetText();
-		LPCWSTR psz2 = (LPCWSTR)((CMountPointItem*)lParam2)->GetText();
+		LPCWSTR psz1 = (LPCWSTR)((CRelationTreeItem*)lParam1)->GetText();
+		LPCWSTR psz2 = (LPCWSTR)((CRelationTreeItem*)lParam2)->GetText();
 		if( 0 ) {
 			if( _wcsnicmp(psz1,L"HarddiskVolume",14) == 0 && _wcsnicmp(psz2,L"HarddiskVolume",14) != 0 )
 				return -1;
@@ -592,6 +654,28 @@ public:
 			if( _wcsnicmp(psz1,L"\\Device\\HarddiskVolume",22) != 0 && _wcsnicmp(psz2,L"\\Device\\HarddiskVolume",22) == 0 )
 				return 1;
 		}
+		return StrCmpLogicalW(psz1,psz2);
+	}
+
+	static int CALLBACK CompareSymbolNameProc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort)
+	{
+		LPCWSTR psz1 = (LPCWSTR)((CRelationTreeItem*)lParam1)->GetText();
+		LPCWSTR psz2 = (LPCWSTR)((CRelationTreeItem*)lParam2)->GetText();
+
+		if( _wcsnicmp(psz1,L"Volume{",7) == 0 && _wcsnicmp(psz2,L"Volume{",7) != 0 )
+			return -1;
+		if( _wcsnicmp(psz1,L"Volume{",7) != 0 && _wcsnicmp(psz2,L"Volume{",7) == 0 )
+			return 1;
+		if( _wcsnicmp(psz1,L"Volume{",7) == 0 && _wcsnicmp(psz2,L"Volume{",7) == 0 )
+			return StrCmpI(psz1,psz2);
+
+		if( psz1[1] == L':' && psz2[1] != L':' )
+			return -1;
+		if( psz1[1] != L':' && psz2[1] == L':' )
+			return 1;
+		if( psz1[1] == L':' && psz2[1] == L':' )
+			return _COMP(CharUpper((LPWSTR)psz1[0]),CharUpper((LPWSTR)psz2[0]));
+
 		return StrCmpLogicalW(psz1,psz2);
 	}
 
@@ -614,6 +698,16 @@ public:
 			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_DISABLED; // currentary, not supported.
 				return S_OK;
+			case ID_VIEW_FILELIST:
+			{
+				HTREEITEM hItem = TreeView_GetSelection(m_hWndTree);
+				if( hItem )
+				{
+					return *State = ((((CRelationTreeItem *)TreeView_GetItemData(m_hWndTree,hItem))->m_ItemType == RTI_ROOT)
+									 ? UPDUI_DISABLED : UPDUI_ENABLED);
+				}
+				break;
+			}
 		}
 		return S_FALSE;
 	}
@@ -628,8 +722,28 @@ public:
 			case ID_VIEW_REFRESH:
 				OnCmdRefresh();
 				break;
+			case ID_VIEW_FILELIST:
+				OnCmdOpenFilelist();
+				break;
 		}
 		return S_OK;
+	}
+
+	void OnCmdOpenFilelist()
+	{
+		HTREEITEM hItem = TreeView_GetSelection(m_hWndTree);
+		if( hItem )
+		{
+			WCHAR wsz[MAX_PATH];
+			TreeView_GetItemText(m_hWndTree,hItem,wsz,MAX_PATH);
+
+			WCHAR szRootPath[MAX_PATH];
+			StringCchPrintf(szRootPath,_countof(szRootPath),L"\\??\\%s",wsz);
+			if( !IsLastCharacterBackslash(szRootPath) )
+			AppendBackslash_W(szRootPath,_countof(szRootPath));
+
+			OpenConsole_SendMessage(VOLUME_CONSOLE_VOLUMEFILELIST,szRootPath);
+		}
 	}
 
 	void OnCmdEditCopy()
@@ -638,7 +752,7 @@ public:
 		if( hItem )
 		{
 			WCHAR wsz[MAX_PATH];
-			TreeView_GetItemText(m_hWnd,hItem,wsz,MAX_PATH);
+			TreeView_GetItemText(m_hWndTree,hItem,wsz,MAX_PATH);
 			SetClipboardText(m_hWndTree,wsz,SCTEXT_UNICODE);
 
 			CHAR asz[MAX_PATH];

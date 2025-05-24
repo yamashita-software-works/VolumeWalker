@@ -1,21 +1,21 @@
-//****************************************************************************
-//*                                                                          *
-//*  volumewalker.cpp                                                        *
-//*                                                                          *
-//*  PURPOSE:                                                                *
-//*    Implements the main procedure and main frame window.                  *
-//*                                                                          *
-//*  AUTHOR:                                                                 *
-//*    YAMASHITA Katsuhiro                                                   *
-//*                                                                          *
-//*  HISTORY:                                                                *
-//*    2022.04.02 SDI frame ver created.                                     *
-//*    2022.12.24 MDI frame ver with based on VC++ generated code created.   *
-//*    2023.02.24 MDI frame ver with new main frame created.                 *
-//*    2024.04.15 Experimentally implemented Volume Contents Console.        *
-//*    2024.10.24 Volume Contents Console has been obsoleted.                *
-//*                                                                          *
-//****************************************************************************
+//*****************************************************************************
+//*                                                                           *
+//*  volumewalker.cpp                                                         *
+//*                                                                           *
+//*  PURPOSE:                                                                 *
+//*    Implements the main procedure and main frame window.                   *
+//*                                                                           *
+//*  AUTHOR:                                                                  *
+//*    YAMASHITA Katsuhiro                                                    *
+//*                                                                           *
+//*  HISTORY:                                                                 *
+//*    2022.04.02 SDI frame ver created.                                      *
+//*    2022.12.24 MDI frame ver with based on VC++ generated code created.    *
+//*    2023.02.24 MDI frame ver with new main frame created.                  *
+//*    2024.04.15 Experimentally implemented Volume Contents Console.         *
+//*    2024.10.24 Volume Contents Console has been obsoleted.                 *
+//*                                                                           *
+//*****************************************************************************
 //
 //  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.
 //  Licensed under the MIT License.
@@ -30,7 +30,6 @@
 #include "command.h"
 #endif
 #include "..\fsvolumelist\fsvolumelist.h"
-#include "..\fsvolumefilelist\fsvolumefilelist.h"
 
 static HINSTANCE g_hInst = NULL;
 static HMODULE g_hInstRes = NULL;
@@ -44,7 +43,7 @@ static HMENU g_hMdiMenu = NULL;
 static LCID g_lcid = LOCALE_USER_DEFAULT;
 static LANGID g_langId = LANG_USER_DEFAULT;
 static BOOL g_bEnableWorkspaceLayout = FALSE;
-static PWSTR g_pszFilerModuleName = L"fsvolumefilelist.dll";
+static PWSTR g_pszDirViewerName = L"fsvolumefilelist.dll";
 #ifdef _DEBUG
 static PCWSTR g_pszIniFileName = L"";  // for debug only
 #else
@@ -197,7 +196,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 #else
 					L"x86"
 #endif
-						);
+					);
 				SetDlgItemText(hDlg,IDC_TEXT,sz);
 			}
 
@@ -342,7 +341,7 @@ HRESULT	LoadResourceModule()
       - VOLUME_CONSOLE_DISKPERFORMANCE
       - VOLUME_CONSOLE_FILESYSTEMSTATISTICS
       - VOLUME_CONSOLE_SIMPLEHEXDUMP
-      - VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST
+      - VOLUME_CONSOLE_VOLUMEFILELIST
 
 --*/
 // stl::map<> is preferred using.
@@ -493,7 +492,7 @@ VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *O
 		case VOLUME_CONSOLE_DISKPERFORMANCE:
 		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 		case VOLUME_CONSOLE_SIMPLEHEXDUMP:
-		case VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST:
+		case VOLUME_CONSOLE_VOLUMEFILELIST:
 		{
 			Guid.Data1 = (ULONG)ConsoleId;
 			GetSystemTimeAsFileTime( (LPFILETIME)Guid.Data4 );
@@ -570,9 +569,11 @@ HICON GetConsoleIcon(UINT ConsoleTypeId,PCWSTR pszInitialPath)
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
 		FreeLibrary(hmod);
 	}
-	else if( ConsoleTypeId == VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST )
+	else if( ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILELIST )
 	{
-		hIcon = GetShellStockIcon(SIID_DRIVEFIXED);
+		HMODULE hmod = LoadLibrary(L"shell32.dll");
+		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(16776),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
+		FreeLibrary(hmod);
 	}
 	else if( ConsoleTypeId == VOLUME_CONSOLE_VOLUMEMOUNTPOINT )
 	{
@@ -580,6 +581,12 @@ HICON GetConsoleIcon(UINT ConsoleTypeId,PCWSTR pszInitialPath)
 		shsi.cbSize = sizeof(shsi);
 		SHGetStockIconInfo(SIID_DRIVEFIXED,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_LINKOVERLAY,&shsi);
 		hIcon = shsi.hIcon;
+	}
+	else if( ConsoleTypeId == VOLUME_CONSOLE_ENCRYPTIONVOLUME && _GetOSVersion() >= 0xA00 )
+	{
+		HMODULE hmod = LoadLibrary(L"imageres.dll");
+		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(1031),IMAGE_ICON,16,16,LR_DEFAULTCOLOR); // Win10,Win11 only
+		FreeLibrary(hmod);
 	}
 	else
 	{
@@ -647,7 +654,7 @@ HMENU _LoadMenu(UINT idMenu)
 		return NULL;
 
 #if _ENABLE_TOOLS
-	MakeVolumeCommandMenu(hMenu,idMenu);
+	MakeVolumeCommandMenu(g_hCommand,hMenu,idMenu);
 #else
 	HMENU hSubMenu = GetSubMenu(hMenu,0);
 	int iPos = -1;
@@ -738,6 +745,11 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 		ZeroMemory(sz,sizeof(sz));
 		pszPath = pOpenParam->Path = _MemAllocString(sz);
 	}
+	else if( FindRootDirectory_W(pOpenParam->Path,NULL) != STATUS_SUCCESS )
+	{
+		// Name is volume device not volume Root.
+		pszPath = _MemAllocString(pOpenParam->Path);
+	}
 	else
 	{
 		cchPathLength = wcslen(pOpenParam->Path);
@@ -765,12 +777,13 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 	SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
 
 	// set MDI child frame title
-	if( pszPath && *pszPath )
+/*	if( pszPath && *pszPath )
 	{
 		WCHAR szVolumeName[64];
 		NtPathGetVolumeName(pszPath,szVolumeName,ARRAYSIZE(szVolumeName));
 		SetWindowText(hwndMDIChild,szVolumeName);
-	}
+	} */
+
 
 	_SafeMemFree(pszPath);
 }
@@ -815,22 +828,28 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 {
 	HWND hwndChildFrame = NULL;
 
-	if( ConsoleTypeId == VOLUME_CONSOLE_DISKLAYOUT || 
-		ConsoleTypeId == VOLUME_CONSOLE_VOLUMEINFORMAION || 
-		ConsoleTypeId == VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION ||
-		ConsoleTypeId == VOLUME_CONSOLE_FILESYSTEMSTATISTICS ||
-		ConsoleTypeId == VOLUME_CONSOLE_SIMPLEHEXDUMP ||
-		ConsoleTypeId == VOLUME_CONSOLE_DISKPERFORMANCE )
+	switch( ConsoleTypeId )
 	{
-		hwndChildFrame = FindSameWindowTitle(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
-	}
-	else if( ConsoleTypeId == VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST )
-	{
-		hwndChildFrame = FindSameVolumeWindow(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
-	}
-	else
-	{
-		hwndChildFrame = GetOpenedWindowHandle(ConsoleTypeId);
+		case VOLUME_CONSOLE_DISKLAYOUT:
+		case VOLUME_CONSOLE_VOLUMEINFORMAION:
+		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
+		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
+		case VOLUME_CONSOLE_SIMPLEHEXDUMP:
+		case VOLUME_CONSOLE_DISKPERFORMANCE:
+		{
+			hwndChildFrame = FindSameWindowTitle(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
+			break;
+		}
+		case VOLUME_CONSOLE_VOLUMEFILELIST:
+		{
+			hwndChildFrame = FindSameVolumeWindow(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
+			break;
+		}
+		default:
+		{
+			hwndChildFrame = GetOpenedWindowHandle(ConsoleTypeId);
+			break;
+		}
 	}
 
 	if( hwndChildFrame != NULL )
@@ -865,12 +884,10 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 	}
 
 	MDICREATEPARAM mcp;
+	PWSTR pszInitialPath = NULL;
 	if( pOpenParam )
-		mcp.pszInitialPath = pOpenParam->Path;
-	else
-		mcp.pszInitialPath = NULL;
-
-	mcp.hIcon = GetConsoleIcon(ConsoleTypeId,mcp.pszInitialPath);
+		pszInitialPath = pOpenParam->Path;
+	mcp.hIcon = GetConsoleIcon(ConsoleTypeId,pszInitialPath);
 
 	MDICHILDFRAMEINIT mcinit = { {CW_USEDEFAULT,CW_USEDEFAULT},{CW_USEDEFAULT,CW_USEDEFAULT}, 0 }; // reserved
 
@@ -908,7 +925,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 			SetWindowHandle(ConsoleTypeId,hwndMDIChild);
 
 			VOLUME_CONSOLE_CREATE_PARAM param = {0};
-			param.pszReserved = (PWSTR)mcp.pszInitialPath;
+			param.pszInitialDeviceName = pszInitialPath;
 
 			//
 			// Open Console View Window
@@ -926,7 +943,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 					SendHexDumpInformation(hwndMDIChild,pd->hWndView,pOpenParam);
 					break;
 				}
-				case VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST:
+				case VOLUME_CONSOLE_VOLUMEFILELIST:
 				{
 					static HWND (WINAPI *pfnCreateVolumeFileList)(
 							HWND hwnd,
@@ -935,12 +952,12 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 							LPARAM lParam
 							) = NULL;
 
-					ASSERT(g_pszFilerModuleName != NULL);
+					ASSERT(g_pszDirViewerName != NULL);
 
-					HMODULE hModule = GetModuleHandle( g_pszFilerModuleName );
+					HMODULE hModule = GetModuleHandle( g_pszDirViewerName );
 					if( hModule == NULL )
 					{
-						hModule = LoadLibrary( g_pszFilerModuleName );
+						hModule = LoadLibrary( g_pszDirViewerName );
 						if( hModule )
 						{
 							(FARPROC&)pfnCreateVolumeFileList = GetProcAddress(hModule,"CreateVolumeFileList");
@@ -1291,7 +1308,7 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 			// Load MDI child windows layout
 			//
 			HRESULT hr;
-			MDICHILDFRAMEINIT_DIRFILES *pFrames = NULL;
+			MDICHILDFRAMEINIT_VOLUMEWALKER *pFrames = NULL;
 			DWORD dwFrames;
 	
 			hr = LoadLayout(hWnd,g_hWndMDIClient,&pFrames,&dwFrames);
@@ -1305,19 +1322,12 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 					if( IsVolumeNameRequiredConsole(&pFrames[i].Guid,(UINT)pFrames[i].Guid.Data1) && pFrames[i].Path == NULL )
 						continue;
 
-/*					switch( pFrames[i].Guid.Data1 ) // console type id
+					if( pFrames[i].Guid.Data1 == VOLUME_CONSOLE_VOLUMEFILELIST )
 					{
-						case VOLUME_CONSOLE_VOLUMEINFORMAION:
-						case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
-						case VOLUME_CONSOLE_DISKLAYOUT:
-						case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
-							if( pFrames[i].Path && !IsValidDevicePath(pFrames[i].Path) )
-								continue;
-							break;
-						case 0x1e: // obsoleted contents browser console.
-						case 0x1f: // obsoleted contents browser console.
-							continue; // prevent open the blank console.
-					} */
+						if( pFrames[i].Path == NULL ) {
+							continue;
+						}
+					}
 
 					op.Path = pFrames[i].Path;
 					op.StartOffset.QuadPart = pFrames[i].liStartOffset.QuadPart;
@@ -1411,6 +1421,11 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 		case ID_ENCRYPTIONVOLUME:
 		case ID_RELATIONVIEW:
 			return UPDUI_ENABLED;
+		case ID_ATTACH_VIRTUALDISK_IMAGE:
+#if _ENABLE_TOOLS
+		case ID_CREATE_DISK_IMAGEFILE:
+#endif
+			return UPDUI_ENABLED;
 		case ID_ABOUT:
 		case ID_EXIT:
 			return UPDUI_ENABLED;
@@ -1502,7 +1517,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 			}
 #endif
-
 			switch (wmId)
 			{
 				case ID_VOLUMELIST:

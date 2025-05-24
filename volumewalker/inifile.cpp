@@ -193,7 +193,7 @@ DWORD GetPrivateProfileString(PCWSTR pszSection,PCWSTR pszEntry,PWSTR psz,DWORD 
 
 //////////////////////////////////////////////////////////////////////////////
 
-static BOOL GetSectionInfo(PWSTR pszSection,MDICHILDFRAMEINIT_DIRFILES *pmdidoc)
+static BOOL GetSectionInfo(PWSTR pszSection,MDICHILDFRAMEINIT_VOLUMEWALKER *pmdidoc)
 {
 	DWORD dwRet;
 	WCHAR buf[MAX_PATH];
@@ -229,7 +229,7 @@ static BOOL GetSectionInfo(PWSTR pszSection,MDICHILDFRAMEINIT_DIRFILES *pmdidoc)
 	return TRUE;
 }
 
-static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndView,UINT wndId,GUID& wndGuid,MDICHILDFRAMEINIT_DIRFILES *pmdidoc)
+static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndView,UINT wndId,GUID& wndGuid,MDICHILDFRAMEINIT_VOLUMEWALKER *pmdidoc)
 {
 	int cch = 32768 + MAX_PATH;
 	WCHAR *sz = new WCHAR[ cch ];
@@ -254,7 +254,7 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 				SendMessage(hwndView,WM_QUERY_MESSAGE,QMT_GETVOLUMEPATH,(LPARAM)&wqp);
 				break;
 			}
-			case VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST:
+			case VOLUME_CONSOLE_VOLUMEFILELIST:
 			{
 				QM_PARAM wqp = {0};
 				wqp.dwLength = cch;
@@ -285,7 +285,7 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 	return TRUE;
 }
 
-HRESULT LoadLayout(HWND hWnd,HWND hWndMDIClient,MDICHILDFRAMEINIT_DIRFILES **pFrames,DWORD *pdwFrames)
+HRESULT LoadLayout(HWND hWnd,HWND hWndMDIClient,MDICHILDFRAMEINIT_VOLUMEWALKER **pFrames,DWORD *pdwFrames)
 {
 	if( !PathFileExists(g_pszIniFile) )
 	{
@@ -326,8 +326,8 @@ HRESULT LoadLayout(HWND hWnd,HWND hWndMDIClient,MDICHILDFRAMEINIT_DIRFILES **pFr
 		pszLine = (pszLine + wcslen(pszLine) + 1);
 	}
 
-	MDICHILDFRAMEINIT_DIRFILES *pChildFrames = 
-			(MDICHILDFRAMEINIT_DIRFILES *)_MemAllocZero(cChildFrameCount*sizeof(MDICHILDFRAMEINIT_DIRFILES));
+	MDICHILDFRAMEINIT_VOLUMEWALKER *pChildFrames = 
+			(MDICHILDFRAMEINIT_VOLUMEWALKER *)_MemAllocZero(cChildFrameCount*sizeof(MDICHILDFRAMEINIT_VOLUMEWALKER));
 	int i = 0;
 	WCHAR szSection[100];
 	WCHAR szGuid[38+1];
@@ -374,7 +374,7 @@ HRESULT LoadLayout(HWND hWnd,HWND hWndMDIClient,MDICHILDFRAMEINIT_DIRFILES **pFr
 	return S_OK;
 }
 
-HRESULT FreeLayout(MDICHILDFRAMEINIT_DIRFILES *mdiFrames,DWORD dwFrames)
+HRESULT FreeLayout(MDICHILDFRAMEINIT_VOLUMEWALKER *mdiFrames,DWORD dwFrames)
 {
 	for( DWORD i = 0; i < dwFrames; i++ )
 	{
@@ -492,7 +492,7 @@ static VOID SaveLayout(HWND hWnd,HWND hWndMDIClient)
 	hwnd = GetWindow(hWndMDIClient,GW_CHILD);
 	if( hwnd )
 	{
-		MDICHILDFRAMEINIT_DIRFILES mdidoc = {0};
+		MDICHILDFRAMEINIT_VOLUMEWALKER mdidoc = {0};
 		WCHAR szEntry[MAX_PATH];
 		WCHAR szSection[MAX_PATH];
 
@@ -502,22 +502,22 @@ static VOID SaveLayout(HWND hWnd,HWND hWndMDIClient)
 			MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwnd,GWLP_USERDATA);
 			if( pd )
 			{
-				RECT rc;
-				WINDOWPLACEMENT wndpl = {0};
-				wndpl.length = sizeof(wndpl);
-				GetWindowPlacement(hwnd,&wndpl);
-
-				rc = wndpl.rcNormalPosition;
-
-				mdidoc.hdr.pt.x = rc.left;
-				mdidoc.hdr.pt.y = rc.top;
-				mdidoc.hdr.size.cx = (rc.right - rc.left);
-				mdidoc.hdr.size.cy = (rc.bottom - rc.top);
-				mdidoc.hdr.show = wndpl.showCmd;
-
 				CONSOLE_VIEW_ID *pcv = _GET_CONSOLE_VIEW_ID(pd->hWndView);
 				if( pcv )
 				{
+					RECT rc;
+					WINDOWPLACEMENT wndpl = {0};
+					wndpl.length = sizeof(wndpl);
+					GetWindowPlacement(hwnd,&wndpl);
+
+					rc = wndpl.rcNormalPosition;
+
+					mdidoc.hdr.pt.x    = rc.left;
+					mdidoc.hdr.pt.y    = rc.top;
+					mdidoc.hdr.size.cx = (rc.right - rc.left);
+					mdidoc.hdr.size.cy = (rc.bottom - rc.top);
+					mdidoc.hdr.show    = wndpl.showCmd;
+
 					GUID Guid = pcv->wndGuid;
 					StringFromGUID( &Guid, szSection, _countof(szSection) );
 					GUIDStringRemoveBrackets(szSection);
@@ -616,7 +616,7 @@ HRESULT LoadMainFrameConfig(HWND hWnd,INT *pnCmdShow)
 	return S_OK;
 }
 
-#if 0
+#if 0 // reserved
 //----------------------------------------------------------------------------
 //
 //  WriteSectionRect()
@@ -629,7 +629,8 @@ BOOL WriteSectionRect(PCWSTR pszSection,PCWSTR pszEntry,const RECT *prc)
 	WCHAR sz[128];
 
 	StringCchPrintf(sz,ARRAYSIZE(sz),L"%d,%d,%d,%d",
-		prc->left, prc->top,
+		prc->left,
+		prc->top,
 		prc->right - prc->left,
 		prc->bottom - prc->top);
 
@@ -660,7 +661,7 @@ BOOL ReadSectionRect(PCWSTR pszSection,PCWSTR pszEntry,RECT *prc)
 #endif
 
 //
-// simple determine macro
+// simple macro for determine string type.
 //
 //  0         1         2         3     
 //  012345678901234567890123456789012345678

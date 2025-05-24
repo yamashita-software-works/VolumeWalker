@@ -164,6 +164,14 @@ SetFileBasicInformation(
 EXTERN_C
 NTSTATUS
 NTAPI
+QueryFileBasicInformation(
+    HANDLE hFile,
+    NT_FILE_BASIC_INFORMATION *pfbi
+    );
+
+EXTERN_C
+NTSTATUS
+NTAPI
 QueryAttributesFile(
 	HANDLE hRoot,
 	PCWSTR pszFileName,

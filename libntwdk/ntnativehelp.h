@@ -132,6 +132,8 @@ BOOLEAN _UStrMatchI_U(const WCHAR *ptn,const UNICODE_STRING *pus);
 HRESULT GetNtPath(PCWSTR DosPathName,PWSTR *NtPath,PCWSTR *NtFileNamePart);
 HRESULT GetNtPath_U(PCWSTR DosPathName,UNICODE_STRING *NtPath,PCWSTR *NtFileNamePart);
 
+INT FindDeviceNameFromPath(PCWSTR pszPath,PWSTR Buffer,int cchBuffer,PWSTR DosNameBuffer,int cchDosNameBuffer);
+
 HANDLE SPtrArray_Create(INT InitialCount);
 INT SPtrArray_Destroy(HANDLE hspa);
 INT SPtrArray_GetCount(HANDLE hspa);
@@ -144,6 +146,10 @@ SIZE_T SPtrArray_GetBufferSize(HANDLE hspa);
 
 #define SPtrArray_GetPWSTR(h,i) ((PWSTR)SPtrArray_Get(h,i))
 #define SPtrArray_GetPtr(h,i) SPtrArray_Get(h,i)
+#define SPtrArray_FreePtrAll(hspa,free_func) {\
+    int c = SPtrArray_GetCount(hspa);\
+    for(int i = 0; i < c; i++) { free_func( SPtrArray_Get(hspa,i) ); }\
+    }
 
 typedef
 NTSTATUS
@@ -585,7 +591,6 @@ SetFileDateTime_W(
     __in PCWSTR FilePath,
     __in FS_FILE_DATE_TIME *pfdt
     );
-
 #ifdef __cplusplus
 }
 #endif

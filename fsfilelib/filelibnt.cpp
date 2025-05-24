@@ -358,9 +358,8 @@ NtPathToGuidPath(
 			pszPath,cchPath);
 }
 
-
 EXTERN_C
-DWORD
+ULONG
 APIENTRY
 NtPathGetLongPathNameFromHandle(
 	HANDLE hFile,

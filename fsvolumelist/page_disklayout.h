@@ -860,7 +860,7 @@ public:
 
 		if( pli )
 		{
-			OpenConsole_SendMessage(VOLUME_CONSOLE_SIMPLEHEXDUMP,m_pszPhysicalDrive,pli->StartOffset.QuadPart);
+			OpenHexDumpConsole(VOLUME_CONSOLE_SIMPLEHEXDUMP,m_pszPhysicalDrive,pli->StartOffset.QuadPart);
 		}
 	}
 

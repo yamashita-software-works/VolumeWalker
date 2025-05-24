@@ -20,6 +20,7 @@
 #include "ntnativeapi.h"
 #include "ntnativehelp.h"
 #include "ntvolumehelp.h"
+#include "ntobjecthelp.h"
 
 #define PRIVATE static
 
@@ -573,6 +574,60 @@ BOOLEAN IsRootDirectory_W(__in PCWSTR pszFullyQualifiedPath)
     return IsRootDirectory_U(&usPath);
 }
 
+INT FindDeviceNameFromPath(PCWSTR pszPath,PWSTR Buffer,int cchBuffer,PWSTR DosNameBuffer,int cchDosNameBuffer)
+{
+    int len = -1;
+    HANDLE hspa;
+    if( LookupDeviceNameFromPath(&hspa,pszPath,TRUE) == STATUS_SUCCESS )
+    {
+        PWSTR pwmsz = (PWSTR)SPtrArray_Get(hspa,0);
+
+        if( Buffer )
+        {
+            if( StringCchCopy(Buffer,cchBuffer,pwmsz) == S_OK )
+                len = (int)wcslen(Buffer);
+        }
+        else
+        {
+            len = (int)wcslen(pwmsz);
+        }
+
+        if( DosNameBuffer )
+        {
+            pwmsz += (wcslen(pwmsz) + 1);
+            StringCchCopy(DosNameBuffer,cchDosNameBuffer,pwmsz);
+        }
+
+        SPtrArray_FreePtrAll(hspa,FreeMemory);
+        SPtrArray_Destroy(hspa);
+    }
+    else if( LookupDeviceNameFromPath(&hspa,pszPath,FALSE) == STATUS_SUCCESS )
+    {
+        PWSTR pwmsz = (PWSTR)SPtrArray_Get(hspa,0);
+
+        if( Buffer )
+        {
+            if( StringCchCopy(Buffer,cchBuffer,pwmsz) == S_OK )
+                len = (int)wcslen(Buffer);
+        }
+        else
+        {
+            len = (int)wcslen(pwmsz);
+        }
+
+        if( DosNameBuffer )
+        {
+            pwmsz += (wcslen(pwmsz) + 1);
+            StringCchCopy(DosNameBuffer,cchDosNameBuffer,pwmsz);
+        }
+
+        SPtrArray_FreePtrAll(hspa,FreeMemory);
+        SPtrArray_Destroy(hspa);
+    }
+
+    return len;
+}
+
 NTSTATUS FindRootDirectory_U(UNICODE_STRING *pusFullyQualifiedPath,PWSTR *pRootDirectory)
 {
     if( pusFullyQualifiedPath == NULL || pusFullyQualifiedPath->Buffer == NULL || pusFullyQualifiedPath->Length == 0 )
@@ -626,11 +681,24 @@ NTSTATUS FindRootDirectory_U(UNICODE_STRING *pusFullyQualifiedPath,PWSTR *pRootD
 
         if( RtlPrefixUnicodeString(&usPrefix,pusFullyQualifiedPath,TRUE) )
         {
-            //
-            // Find root directory from NT device path.
-            // "\Device\HarddiskVolume1\", "\Device\CdRom1\"
-            //
-            ParseStartPos = 8;
+            if( _wcsnicmp(&pusFullyQualifiedPath->Buffer[8],L"LanmanRedirector",16) == 0 )
+            {
+                //
+                // check LanmanRedirector device
+                //
+                WCHAR szBuffer[260];
+                ParseStartPos = FindDeviceNameFromPath(pusFullyQualifiedPath->Buffer,szBuffer,ARRAYSIZE(szBuffer),NULL,0);
+                if( ParseStartPos == -1 )
+                    return STATUS_OBJECT_PATH_INVALID; // This path is does not support parsing.
+            }
+            else
+            {
+                //
+                // Find root directory from NT device path.
+                // "\Device\HarddiskVolume1\", "\Device\CdRom1\"
+                //
+                ParseStartPos = 8;
+            }
         }
         else
         {
@@ -696,11 +764,13 @@ NTSTATUS FindRootDirectory_U(UNICODE_STRING *pusFullyQualifiedPath,PWSTR *pRootD
         }
         if( pRootDirectory )
             *pRootDirectory = NULL;
+
         return STATUS_OBJECT_PATH_NOT_FOUND; // root not found
     }
 
     if( pRootDirectory )
         *pRootDirectory = NULL;
+
     return STATUS_OBJECT_PATH_SYNTAX_BAD; // invalid path
 }
 
@@ -907,7 +977,7 @@ NTSTATUS GetFileNamePart_U(__in UNICODE_STRING *FilePath,__out UNICODE_STRING *F
         Status = STATUS_SUCCESS;
     }
     else
-    {		
+    {
         // "C:\foo\bar.txt", get length of "C:\foo\"
         Status = RtlGetLengthWithoutLastFullDosOrNtPathElement(0,FilePath,&cch);
 

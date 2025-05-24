@@ -135,3 +135,12 @@ NTAPI
 GetNtDeviceNameAssignedDosDrive(
     PCWSTR **DriveLetters
     );
+
+EXTERN_C
+ULONG
+NTAPI
+LookupDeviceNameFromPath(
+    HANDLE *phspa,
+    PCWSTR Path,
+    BOOLEAN LocalNameSpace
+    );

@@ -707,7 +707,7 @@ HWND OpenViewPage(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget = NULL,PVOID
 		pszInitialPath = NULL;
 
 	VOLUME_CONSOLE_CREATE_PARAM param = {0};
-	param.pszReserved = (PWSTR)pszInitialPath;
+	param.pszInitialDeviceName = (PWSTR)pszInitialPath;
 
 	hWndView = CreateVolumeConsoleWindow(hWnd,ConsoleTypeId,&param);
 

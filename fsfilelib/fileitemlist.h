@@ -27,14 +27,14 @@ FILAddItem(
 EXTERN_C
 BOOL
 WINAPI
-FileList_RemoveAllItems(
+FILRemoveAllItems(
 	HANDLE hfl
 	);
 
 EXTERN_C
 INT
 WINAPI
-FileList_AddFileName(
+FILAddFileName(
 	HANDLE hfl,
 	PCWSTR FileName
 	);

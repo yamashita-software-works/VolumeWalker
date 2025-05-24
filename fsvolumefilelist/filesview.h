@@ -111,7 +111,7 @@ public:
 
 		switch( nView )
 		{
-			case VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST:
+			case VOLUME_CONSOLE_VOLUMEFILELIST:
 			{
 				pNew = GetOrAllocWndObjct<CFileLocationPage>(nView);
 				ASSERT(pNew != NULL);
@@ -190,7 +190,7 @@ public:
 		BOOL bCreate;
 		switch( Path->ViewType )
 		{
-			case VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST:
+			case VOLUME_CONSOLE_VOLUMEFILELIST:
 				nPrevView = m_nView;
 				pPrev = _SelectPage( Path, bCreate );
 				if( bCreate || ((Path->Flags & 0x8)== 0) )

@@ -1,30 +1,56 @@
 #pragma once
 //*****************************************************************************
-//
-//  CFileLocationPage
-//
-//  PURPOSE: File location viewer page class
-//
-//  AUTHOR:  YAMASHITA Katsuhiro
-//
-//  HISTORY: 2024-11-22 Created
-//
+//*                                                                           *
+//*  page_volumefilelist_location.h                                           *
+//*                                                                           *
+//*  NT simple file location viewer page for VolumeWalker                     *
+//*                                                                           *
+//*  Author:  YAMASHITA Katsuhiro                                             *
+//*                                                                           *
+//*  History: 2024-11-22 Created.                                             *
+//*                                                                           *
 //*****************************************************************************
 //
 //  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.
 //  Licensed under the MIT License.
 //
-#define _ENABLE_OPEN_APPLICATIONS  1
-
+#define _USE_SHELL_ICON         1
+ 
 #include "page_volumefilelist.h"
 #include "runhelp.h"
 
+//*****************************************************************************
+//
+//  CFileLocationPage
+//
+//  PURPOSE: File location viewer page class
+//
+//*****************************************************************************
 class CFileLocationPage : public CFileListPage
 {
 	IApplicationsReader *m_pApps;
 
 protected:
-	virtual UINT GetConsoleId() const { return VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST; }
+	virtual UINT GetConsoleId() const { return VOLUME_CONSOLE_VOLUMEFILELIST; }
+
+	int AddIcon(HIMAGELIST himl,int id,int cxcy)
+	{
+		int iIndex = I_IMAGENONE;
+
+		HICON hIcon;
+		hIcon = (HICON)LoadImage(_GetResourceInstance(),
+							MAKEINTRESOURCE(id),
+							IMAGE_ICON,
+							cxcy,
+							cxcy,
+							LR_DEFAULTCOLOR);
+		if( hIcon )
+		{
+			iIndex = ImageList_AddIcon(himl,hIcon);
+			DestroyIcon(hIcon);
+		}
+		return iIndex;
+	}
 
 	void InitListView()
 	{
@@ -49,7 +75,15 @@ protected:
 #endif
 		if( m_bEnableIconImage )
 		{
+#if _USE_SHELL_ICON
 			HIMAGELIST himl = GetGlobalShareImageList(0);
+#else
+			int cxcy = 16;
+			HIMAGELIST himl = ImageList_Create(cxcy,cxcy,ILC_COLOR32|ILC_MASK,8, 0);
+
+			AddIcon(himl,IDI_FOLDER,cxcy);
+			AddIcon(himl,IDI_UPWARD,cxcy);
+#endif
 			ListView_SetImageList(m_hWndList,himl,LVSIL_SMALL);
 		}
 
@@ -58,9 +92,36 @@ protected:
 
 		InitColumnDefinitions();
 
-#if _ENABLE_OPEN_APPLICATIONS
 		CreateApplicationList(&m_pApps);
+	}
+
+	virtual LRESULT OnGetDispImage(int id,NMLVDISPINFO *pdi, CFileInfoItem *pItem)
+	{
+#if _USE_SHELL_ICON
+		pdi->item.iImage = GetShellFileImageListIndex(NULL,pItem->pFI->hdr.FileName,pItem->pFI->FileAttributes);
+#else
+		if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+		{
+			if( wcscmp(pItem->pFI->hdr.FileName,L"..") == 0 )
+				pdi->item.iImage = 1;
+			else
+				pdi->item.iImage = 0;
+		}
+		else
+			pdi->item.iImage = I_IMAGENONE;
 #endif
+		if( pdi->item.iImage & 0xff000000 )
+		{
+			pdi->item.state = INDEXTOOVERLAYMASK(pdi->item.iImage >> 24);
+			pdi->item.stateMask = LVIS_OVERLAYMASK;
+			pdi->item.mask |= LVIF_STATE;
+		}
+
+		pdi->item.iImage = pdi->item.iImage & ~0xFF000000;
+
+		pdi->item.mask |= LVIF_DI_SETITEM;
+
+		return 0;
 	}
 
 	virtual BOOL LoadColumns(HWND hWndList,PCWSTR pszSectionName)
@@ -111,7 +172,6 @@ protected:
 		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
 		SetMenuDefaultItem(hMenu,ID_OPEN,FALSE);
 
-#if _ENABLE_OPEN_APPLICATIONS
 		if( m_pApps )
 		{
 			HMENU hAppMenu = CreatePopupMenu();
@@ -136,7 +196,7 @@ protected:
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hAppMenu,L"Open with Application");
 		}
-#endif
+
 		return S_OK;
 	}
 
@@ -153,15 +213,44 @@ protected:
 
 	virtual HRESULT InvokeCommand(UINT CmdId)
 	{
-#if _ENABLE_OPEN_APPLICATIONS
 		if( ID_OPEN_APP_FIRST <= CmdId && CmdId <= ID_OPEN_APP_LAST )
 		{
 			return OnOpenFileWithApplication(m_hWnd,CmdId);
 		}
-#endif
 		return CFileListPage::InvokeCommand(CmdId);
 	}
 
+	LRESULT OnDestroy(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		if( m_pApps )
+		{
+			m_pApps->Release();
+			m_pApps = NULL;
+		}
+		return CFileListPage::OnDestroy(hWnd,uMsg,wParam,lParam);
+	}
+
+	virtual LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		switch(uMsg)
+		{
+			case WM_DESTROY:
+				return OnDestroy(hWnd,uMsg,wParam,lParam);
+		}
+		return CFileListPage::WndProc(hWnd,uMsg,wParam,lParam);
+	}
+
+public:
+	CFileLocationPage()
+	{
+		m_pApps = NULL;
+		m_bEnumShadowCopyVolumes = FALSE;
+	}
+
+	virtual ~CFileLocationPage()
+	{
+	}
+	
 	HRESULT OnOpenFileWithApplication(HWND hWnd,UINT uCmdId)
 	{
 		HRESULT hr;
@@ -228,38 +317,5 @@ protected:
 	{
 		_SafeMemFree(FilePath->pszPath);
 		return S_OK;
-	}
-
-	LRESULT OnDestroy(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-	{
-#if _ENABLE_OPEN_APPLICATIONS
-		if( m_pApps )
-		{
-			m_pApps->Release();
-			m_pApps = NULL;
-		}
-#endif
-		return CFileListPage::OnDestroy(hWnd,uMsg,wParam,lParam);
-	}
-
-	virtual LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-	{
-		switch(uMsg)
-		{
-			case WM_DESTROY:
-				return OnDestroy(hWnd,uMsg,wParam,lParam);
-		}
-		return CFileListPage::WndProc(hWnd,uMsg,wParam,lParam);
-	}
-
-public:
-	CFileLocationPage()
-	{
-		m_pApps = NULL;
-		m_bEnumShadowCopyVolumes = FALSE;
-	}
-
-	virtual ~CFileLocationPage()
-	{
 	}
 };

@@ -1,7 +1,7 @@
 #pragma once
 //***************************************************************************
 //*                                                                         *
-//*  gotodialog.cpp                                                         *
+//*  dialog_traverse_directory.cpp                                          *
 //*                                                                         *
 //*  Goto Dialog Box Implements.                                            *
 //*                                                                         *
@@ -10,6 +10,8 @@
 //*  History: 2024-04-22 Created                                            *
 //*           2024-12-07 Modified                                           *
 //*           2024-12-12 GotoDirectoryOnSameVolumeDialog()                  *
+//*           2025-03-19 Renamed filename from gotodialog.cpp               *
+//*           2024-03-19 Renamed to TraverseDirectoryDialog()               *
 //*                                                                         *
 //***************************************************************************
 //
@@ -17,13 +19,14 @@
 //  Licensed under the MIT License.
 //
 #include "stdafx.h"
-#include "gotodialog.h"
+#include "dialog_traverse_directory.h"
 #include "resource.h"
 
 typedef struct _CALLBACKPARAM {
 	HANDLE hpa;
 } CALLBACKPARAM;
 
+static
 BOOLEAN
 CALLBACK
 EnumFilesCallback(
@@ -338,12 +341,14 @@ static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wPa
 			pgp->autoComplete->SetOptions( ACO_AUTOSUGGEST | ACO_UPDOWNKEYDROPSLIST | ACO_AUTOAPPEND );
 
 			WCHAR szText[MAX_PATH];
-
+#if 0
 			if( pgp->szDosDrive[0] )
 				StringCchPrintf(szText,ARRAYSIZE(szText),L"%s (%s)",pgp->szDosDeviceName,pgp->szDosDrive);
 			else
 				StringCchPrintf(szText,ARRAYSIZE(szText),L"%s",pgp->szDosDeviceName);
-
+#else
+			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s",pgp->szDosDeviceName);
+#endif
 			SetDlgItemText(hDlg,IDC_VOLUME_NAME,szText);
 
 			return (INT_PTR)TRUE;
@@ -418,7 +423,7 @@ static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wPa
 
 //----------------------------------------------------------------------------
 //
-//  GotoDirectoryOnSameVolumeDialog
+//  TraverseDirectoryDialog
 //
 //  PURPOSE: Dialog box for specifying a relative directory.
 //
@@ -447,7 +452,7 @@ static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wPa
 //----------------------------------------------------------------------------
 HRESULT
 WINAPI
-GotoDirectoryOnSameVolumeDialog(
+TraverseDirectoryDialog(
 	HWND hWnd,
 	PCWSTR pszCurDir,
 	PWSTR *ppszNewPath,
@@ -493,7 +498,11 @@ GotoDirectoryOnSameVolumeDialog(
 	//
 	// Get NT device path and Dos device name
 	//
+#if 0
 	NtPathParseDeviceName(pszCurDir,gp.szNtDevicePath,ARRAYSIZE(gp.szNtDevicePath),gp.szDosDeviceName,ARRAYSIZE(gp.szDosDeviceName));
+#else
+	NtPathGetVolumeName(pszCurDir,gp.szNtDevicePath,ARRAYSIZE(gp.szNtDevicePath));
+#endif
 
 	pcacs->pszNtDevice = gp.szNtDevicePath;
 
@@ -515,7 +524,7 @@ GotoDirectoryOnSameVolumeDialog(
 	//
 	// Start DialogBox
 	//
-	if( DialogBoxParamW(_GetResourceInstance(), MAKEINTRESOURCE(IDD_GOTODIRECTORY),
+	if( DialogBoxParamW(_GetResourceInstance(), MAKEINTRESOURCE(IDD_TRAVERSEDIRECTORY),
 			hWnd, &GotoDirectoryDlgProc,(LPARAM)&gp) == IDOK )
 	{
 		if( wcscmp(pszBuffer,L".") == 0 )

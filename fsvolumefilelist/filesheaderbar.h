@@ -120,7 +120,7 @@ public:
 		FindRootDirectory_W(pszPath,&pszRoot);
 		
 		SetWindowText(m_hWndPathBox,pszRoot);
-		
+#if 0
 		WCHAR szText[MAX_PATH];
 		WCHAR szDevice[MAX_PATH];
 		WCHAR szDosDrive[8];
@@ -140,8 +140,24 @@ public:
 			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s (%s)",pszDeviceName,szDosDrive);
 		else
 			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s",pszDeviceName);
-		
+
 		SetWindowText(m_hWndVolumeBox,szText);
+#else
+		WCHAR szVolumeName[MAX_PATH];
+		ZeroMemory(szVolumeName,sizeof(szVolumeName));
+
+		if( NtPathGetVolumeName(pszPath,szVolumeName,ARRAYSIZE(szVolumeName)) )
+		{
+			if( HasPrefix(L"\\??\\",szVolumeName) )
+			{
+				if( szVolumeName[4] != L'\0' && szVolumeName[5] == L':' )
+					szVolumeName[4] = towupper(szVolumeName[4]);
+			}
+		}
+
+		SetWindowText(m_hWndVolumeBox,szVolumeName);
+#endif
+		
 		
 		return S_OK;
 	}
@@ -604,8 +620,6 @@ private:
 		LoadToolbarIcon(hImageList,IDI_FOLDER_OPEN,cxcyIcon);
 		LoadToolbarIcon(himlDisabled,IDI_FOLDER_OPEN_DISABLED,cxcyIcon);
 
-		SendMessage(hWndToolbar, TB_SETBUTTONWIDTH, 16,32);
-
 		if( BarType == 0 )
 		{
 			TBBUTTON tbButtons[] = 
@@ -633,8 +647,6 @@ private:
 			SendMessage(hWndToolbar, TB_BUTTONSTRUCTSIZE,(WPARAM)sizeof(TBBUTTON), 0);
 			SendMessage(hWndToolbar, TB_ADDBUTTONS, (WPARAM)ARRAYSIZE(tbButtons),(LPARAM)&tbButtons);
 		}
-
-		SendMessage(hWndToolbar, TB_SETBUTTONSIZE, 28,28); 
 
 	    return hWndToolbar;
 	}

@@ -134,7 +134,7 @@ public:
 				case ID_FILE_VOLUMEFILES:
 				{
 					SELECT_ITEM sel = {0};
-					sel.ViewType  = VOLUME_CONSOLE_SIMPLEVOLUMEFILELIST;
+					sel.ViewType  = VOLUME_CONSOLE_VOLUMEFILELIST;
 					sel.pszCurDir = NULL;
 					sel.pszPath   = NULL;
 					sel.pszName   = NULL;
@@ -328,34 +328,73 @@ public:
 		if( ppg->pszPath != NULL && *ppg->pszPath != L'\0' )
 		{
 			PWSTR pszPath;
-			if( IsNtDevicePath(ppg->pszPath) )
-				pszPath = DuplicateString(ppg->pszPath);
-			else
-				pszPath = DosPathNameToNtPathName(ppg->pszPath);
 
-			if( pszPath )
+			if( FindRootDirectory_W(ppg->pszPath,NULL) != STATUS_SUCCESS )
 			{
-				sel.ViewType  = ppg->ConsoleTypeId;
-				sel.pszCurDir = NULL;
-				sel.pszPath   = pszPath;
-				sel.pszName   = ppg->pszFileName;
-				m_pView->SelectView(&sel);
+				//
+				// NT volume/drive name without root directory.
+				//
+#if 0 // ***If Accept Volume Name in Root directory list***
+				pszPath = DuplicateString(ppg->pszPath);
+#else
+				pszPath = CombinePath(ppg->pszPath,L"\\");
+#endif
 
-				this->m_ConsoleTypeId = ppg->ConsoleTypeId;
+				if( pszPath )
+				{
+#if 0 // ***If Accept Volume Name in Root directory list***
+					sel.ViewType  = ppg->ConsoleTypeId;
+					sel.pszPath   = NULL;
+					sel.pszName   = NULL;
+					sel.pszCurDir = pszPath;
+					sel.Flags     = SI_FLAG_ROOT_DIRECTORY;
+#else
+					sel.ViewType  = ppg->ConsoleTypeId;
+					sel.pszPath   = pszPath;
+					sel.pszName   = NULL;
+					sel.pszCurDir = NULL;
+					sel.Flags     = 0;
+#endif
+					m_pView->SelectView(&sel);
 
-				SetTitle(pszPath);
+					m_ConsoleTypeId = ppg->ConsoleTypeId;
+	
+					FreeMemory(pszPath);
+				}
+
 			}
+			else
+			{
+				//
+				// NT volume/drive name with directory path.
+				//
+				pszPath = DuplicateString(ppg->pszPath);
 
-			FreeMemory(pszPath);
+				if( pszPath )
+				{
+					sel.ViewType  = ppg->ConsoleTypeId;
+					sel.pszCurDir = NULL;
+					sel.pszPath   = pszPath;
+					sel.pszName   = ppg->pszFileName;
+					m_pView->SelectView(&sel);
+
+					m_ConsoleTypeId = ppg->ConsoleTypeId;
+	
+					FreeMemory(pszPath);
+				}
+			}
 		}
 		else
 		{
+			//
+			// Root Directories
+			//
 			sel.ViewType  = ppg->ConsoleTypeId;
 			sel.pszCurDir = NULL;
 			sel.pszPath   = NULL;
 			sel.pszName   = ppg->pszFileName;
+			sel.Flags     = ppg->dwFlags;
 			m_pView->SelectView(&sel);
-			SetTitle(NULL);
 		}
 
 		CONSOLE_VIEW_ID *pcv = _GET_CONSOLE_VIEW_ID(m_hWnd);
@@ -387,8 +426,6 @@ public:
 				sel.pszPath   = pszPath;
 				sel.pszName   = pszName;
 				m_pView->SelectView(&sel);
-
-				SetTitle(sel.pszPath);
 			}
 			_SafeMemFree(pszPath);
 			_SafeMemFree(pszName);
@@ -416,29 +453,9 @@ public:
 
 			m_pView->SelectView( &sel );
 
-			SetTitle(sel.pszPath);
-
 			FreeMemory(pszPath);
 		}
 		return 0;
-	}
-
-	VOID SetTitle(PCWSTR pszPath)
-	{
-#if 0
-		if( m_pView )
-		{
-			WCHAR szSubText[MAX_PATH];
-			ZeroMemory(szSubText,sizeof(szSubText));
-			if( pszPath )
-				StringCchCopy(szSubText,ARRAYSIZE(szSubText),pszPath);
-			if( m_pView->GetString(VIEW_STR_TITLE,szSubText,MAX_PATH) == S_OK )
-			{
-				HWND hwndMainFrame = GetActiveWindow();
-				SendMessage(hwndMainFrame,PM_UPDATETITLE,(WPARAM)m_hWnd,(LPARAM)szSubText);
-			}
-		}
-#endif
 	}
 };
 

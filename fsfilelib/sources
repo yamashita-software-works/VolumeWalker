@@ -111,6 +111,7 @@ SOURCES = \
 	ntfsrecord.cpp \
 	fileitemlist.cpp \
 	reparsepointinfo.cpp \
+	util.cpp \
 	fsfilelib.rc
 
 #----------------------------------------------------------

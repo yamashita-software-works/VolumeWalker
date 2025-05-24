@@ -109,7 +109,7 @@ HFONT GetIconFont();
 #define _COLOR_TEXT_DIRTY_VOLUME    RGB(180,0,0)
 #define _COLOR_TEXT_VIRTUALDISK     RGB(0,32,180)
 
-inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz,LONGLONG StartOffset)
+inline VOID OpenHexDumpConsole(UINT ConsoleId,PCWSTR psz,LONGLONG StartOffset)
 {
 #if 0
 	SIZE_T cch = (wcslen(psz) + 1);
@@ -134,7 +134,7 @@ inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz)
 {
 	if( ConsoleId == VOLUME_CONSOLE_SIMPLEHEXDUMP )
 	{
-		OpenConsole_SendMessage(ConsoleId,psz,0);
+		OpenHexDumpConsole(ConsoleId,psz,0);
 	}
 	else
 	{	

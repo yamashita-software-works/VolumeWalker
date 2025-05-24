@@ -2,7 +2,7 @@
 
 HRESULT
 WINAPI
-GotoDirectoryOnSameVolumeDialog(
+TraverseDirectoryDialog(
 	HWND hWnd,
 	PCWSTR pszCurDir,
 	PWSTR *ppszNewPath,

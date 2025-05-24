@@ -13,7 +13,7 @@ InitializeVolumeConsole(
 #define _VOLUME_CONSOLE_CREATE_PARAM
 typedef struct _VOLUME_CONSOLE_CREATE_PARAM
 {
-	PWSTR pszReserved;
+	PWSTR pszInitialDeviceName;
 } VOLUME_CONSOLE_CREATE_PARAM,*PVOLUME_CONSOLE_CREATE_PARAM;
 #endif
 

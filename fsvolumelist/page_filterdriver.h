@@ -357,11 +357,14 @@ public:
 	{
 		NMLVCUSTOMDRAW *pnmlvcd = (NMLVCUSTOMDRAW *)pnmhdr;
 
-		int iGroup = (int)ListView_GetFocusedGroup(m_hWndList);
-		if( iGroup == -1 )
-			SendMessage(m_hWndList,WM_UPDATEUISTATE,MAKELPARAM(UIS_SET,UISF_HIDEFOCUS),0);
-		else
-			SendMessage(m_hWndList,WM_UPDATEUISTATE,MAKELPARAM(UIS_CLEAR,UISF_HIDEFOCUS),0);
+		if( IsXpThemeEnabled() )
+		{
+			int iGroup = (int)ListView_GetFocusedGroup(m_hWndList);
+			if( iGroup == -1 )
+				SendMessage(m_hWndList,WM_UPDATEUISTATE,MAKELPARAM(UIS_SET,UISF_HIDEFOCUS),0);
+			else
+				SendMessage(m_hWndList,WM_UPDATEUISTATE,MAKELPARAM(UIS_CLEAR,UISF_HIDEFOCUS),0);
+		}
 
 		if( pnmlvcd->nmcd.hdr.hwndFrom != m_hWndList )
 			return CDRF_DODEFAULT;
@@ -379,10 +382,13 @@ public:
 
 		if( pnmlvcd->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT )
 		{
-			UINT State = ListView_GetItemState(m_hWndList,(int)pnmlvcd->nmcd.dwItemSpec,LVIS_FOCUSED);
-			if( State & LVIS_FOCUSED )
+			if( IsXpThemeEnabled() )
 			{
-				_DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&pnmlvcd->nmcd.rc);
+				UINT State = ListView_GetItemState(m_hWndList,(int)pnmlvcd->nmcd.dwItemSpec,LVIS_FOCUSED);
+				if( State & LVIS_FOCUSED )
+				{
+					_DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&pnmlvcd->nmcd.rc);
+				}
 			}
 		}
 

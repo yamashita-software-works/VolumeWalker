@@ -558,7 +558,7 @@ TraverseDirectory(
     {
         FILE_ID_BOTH_DIR_INFORMATION *pd;
 
-        if( NT_SUCCESS(QueryDirectoryEntryInformation(NULL,&DirectoryFullPath,pTDP->FileInformationClass,pTDP->FileInformationSize,(PVOID*)&pd)) )
+        if( NT_SUCCESS((Status = QueryDirectoryEntryInformation(NULL,&DirectoryFullPath,pTDP->FileInformationClass,pTDP->FileInformationSize,(PVOID*)&pd))) )
         {
             Status = _TraverseDirectoryImpl(NULL,&DirectoryFullPath,pTDP);
 

@@ -31,6 +31,12 @@ NtPathParseDeviceName(
 	SIZE_T cch;
 
 	cch = wcslen(pszPath);
+
+	if( pszDeviceName )
+		*pszDeviceName = L'\0';
+
+	if( pszDosDeviceName )
+		*pszDosDeviceName = L'\0';
 	
 	if( (cch >= 4 && pszPath[0] == L'\\' && pszPath[1] == L'?' && pszPath[2] == L'?' && pszPath[3] == L'\\') ||
 		(cch >= 4 && pszPath[0] == L'\\' && pszPath[1] == L'\\' && (pszPath[2] == L'.' || pszPath[2] == L'?') && pszPath[3] == L'\\') ||
@@ -63,8 +69,24 @@ NtPathParseDeviceName(
 		}
 		else if( pszPath[2] != L'?' )
 		{
-			// "\Device\xxxxxxxx"
-			pHead = (WCHAR*)&pszPath[8];
+			if( _wcsnicmp(&pszPath[8],L"LanmanRedirector",16) == 0 )
+			{
+				// "\Device\LanmanRedirector\xxxxxxxx"
+				if( pszDeviceName )
+				{
+					if( FindDeviceNameFromPath(pszPath,pszDeviceName,cchDeviceName,pszDosDeviceName,cchDosDeviceName) != -1 )
+					{
+						pHead = NULL;
+						pSep  = NULL;
+						hr = S_OK;
+					}
+				}
+			}
+			else
+			{
+				// "\Device\xxxxxxxx"
+				pHead = (WCHAR*)&pszPath[8];
+			}
 		}
 		else
 		{
@@ -72,29 +94,33 @@ NtPathParseDeviceName(
 			pHead = (WCHAR*)pszPath;
 		}
 
-		pSep = wcspbrk(pHead,L"\\/");
+		if( pHead != NULL )
+		{
+			pSep = wcspbrk(pHead,L"\\/");
 
-		if( pSep )
-		{
-			SIZE_T cb = (((SIZE_T)(pSep - pHead)) * sizeof(WCHAR));
-			memcpy_s(szVolume,sizeof(szVolume),pHead,cb);
-			szVolume[ WCHAR_LENGTH(cb) ] = L'\0';
-		}
-		else
-		{
-			StringCchCopy(szVolume,MAX_PATH,pHead);
-		}
+			if( pSep )
+			{
+				SIZE_T cb = (((SIZE_T)(pSep - pHead)) * sizeof(WCHAR));
+				memcpy_s(szVolume,sizeof(szVolume),pHead,cb);
+				szVolume[ WCHAR_LENGTH(cb) ] = L'\0';
+			}
+			else
+			{
+				StringCchCopy(szVolume,MAX_PATH,pHead);
+			}
 
-		if( QueryDosDevice(szVolume,pszDeviceName,cchDeviceName) == 0 )
-		{
-			memset(pszDeviceName,0,WCHAR_BYTES(cchDeviceName));
-		}
+			if( QueryDosDevice(szVolume,pszDeviceName,cchDeviceName) == 0 )
+			{
+				memset(pszDeviceName,0,WCHAR_BYTES(cchDeviceName));
+			}
 
-		if( pszDosDeviceName )
-		{
-			StringCchCopy(pszDosDeviceName,cchDosDeviceName,szVolume);
+			if( pszDosDeviceName )
+			{
+				StringCchCopy(pszDosDeviceName,cchDosDeviceName,szVolume);
+			}
+
+			hr = S_OK;
 		}
-		hr = S_OK;
 	}
 	else
 	{

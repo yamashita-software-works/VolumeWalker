@@ -1614,8 +1614,6 @@ GetLongPathNameFromHandle(
     return Status;
 }
 
-
-
 EXTERN_C
 NTSTATUS
 NTAPI
@@ -1627,6 +1625,20 @@ SetFileBasicInformation(
     NTSTATUS Status;
     IO_STATUS_BLOCK IoStatus={0};
     Status = NtSetInformationFile(hFile,&IoStatus,pfbi,sizeof(FILE_BASIC_INFORMATION),FileBasicInformation);
+    return Status;
+}
+
+EXTERN_C
+NTSTATUS
+NTAPI
+QueryFileBasicInformation(
+    HANDLE hFile,
+    NT_FILE_BASIC_INFORMATION *pfbi
+    )
+{
+    NTSTATUS Status;
+    IO_STATUS_BLOCK IoStatus={0};
+    Status = NtQueryInformationFile(hFile,&IoStatus,pfbi,sizeof(FILE_BASIC_INFORMATION),FileBasicInformation);
     return Status;
 }
 

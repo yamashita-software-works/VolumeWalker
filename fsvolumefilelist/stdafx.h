@@ -56,6 +56,7 @@
 #include "fsfilelib.h"
 #include "fileitem.h"
 #include "basewindow.h"
+#include "themehelp.h"
 
 #if _ENABLE_DARK_MODE_TEST
 #include "darkmode.h"

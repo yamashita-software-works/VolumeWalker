@@ -6,6 +6,13 @@
 #pragma once
 
 #include "targetver.h"
+#include "..\build_switch.inc"
+
+#undef WIN32_NO_STATUS        // Defines STATUS_XXX in ntddk.
+#include <ntstatus.h>
+
+#define WIN32_LEAN_AND_MEAN
+#define WIN32_NO_STATUS       // Does not defines STATUS_XXX in winnt.h
 
 // C RunTime Header Files
 #include <stdlib.h>

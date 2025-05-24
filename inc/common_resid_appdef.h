@@ -63,6 +63,7 @@
 
 #define ID_VIEW_TOGGLE_GROUPVIEWMODE   41200
 
+#define ID_VIEW_FILELIST               41133
 #define ID_NEXT                        41201
 #define ID_BACK                        41202
 #define ID_FORWARD                     ID_NEXT

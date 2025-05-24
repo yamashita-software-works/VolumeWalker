@@ -233,7 +233,7 @@ DosPathToNtDevicePath(
     );
 
 EXTERN_C
-DWORD
+ULONG
 APIENTRY
 NtPathGetLongPathNameFromHandle(
     HANDLE hFile,
@@ -251,6 +251,15 @@ NtPathParseDeviceName(
 	PWSTR pszDosDeviceName,
 	int cchDosDeviceName
 	);
+
+EXTERN_C
+ULONG
+APIENTRY
+NtPathLookupDeviceNameFromPath(
+	HANDLE *phspa,
+    PCWSTR Path,
+	ULONG Flags
+    );
 
 //----------------------------------------------------------------------------
 //

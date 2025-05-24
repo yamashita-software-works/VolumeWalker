@@ -5,7 +5,6 @@
 
 typedef struct _MDICREATEPARAM
 {
-	PCWSTR pszInitialPath;
 	HICON hIcon;
 } MDICREATEPARAM;
 

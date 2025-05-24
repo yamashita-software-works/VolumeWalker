@@ -150,7 +150,7 @@ CreateVolumeConsoleWindow(
 	if( hwndViewBase != NULL )
 	{
 		CConsoleWindow *pWnd = (CConsoleWindow *)GetBaseWindowObject(hwndViewBase);
-		pWnd->InitData( pParam->pszReserved );
+		pWnd->InitData( pParam->pszInitialDeviceName );
 	}
 
 	return hwndViewBase;

@@ -261,7 +261,8 @@ public:
 
 	LRESULT OnNmSetFocus(NMHDR *pnmhdr)
 	{
-		SendMessage(m_hWndList,WM_UPDATEUISTATE,MAKELPARAM(UIS_SET,UISF_HIDEFOCUS),0);
+		if( IsXpThemeEnabled() )
+			SendMessage(m_hWndList,WM_UPDATEUISTATE,MAKELPARAM(UIS_SET,UISF_HIDEFOCUS),0);
 		pnmhdr->hwndFrom = m_hWnd;
 		pnmhdr->idFrom = GetWindowLong(m_hWnd,GWL_ID);
 		SendMessage(GetParent(m_hWnd),WM_NOTIFY,0,(LPARAM)pnmhdr);
@@ -288,10 +289,13 @@ public:
 
 		if( pnmlvcd->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT )
 		{
-			UINT State = ListView_GetItemState(m_hWndList,(int)pnmlvcd->nmcd.dwItemSpec,LVIS_FOCUSED);
-			if( State & LVIS_FOCUSED )
+			if( IsXpThemeEnabled() )
 			{
-				_DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&pnmlvcd->nmcd.rc);
+				UINT State = ListView_GetItemState(m_hWndList,(int)pnmlvcd->nmcd.dwItemSpec,LVIS_FOCUSED);
+				if( State & LVIS_FOCUSED )
+				{
+					_DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&pnmlvcd->nmcd.rc);
+				}
 			}
 		}
 

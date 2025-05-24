@@ -240,6 +240,22 @@ inline int ListViewEx_InsertStringParam(HWND hwndLV,int iItem,PCWSTR String,LPAR
     return (int)SendMessage(hwndLV,LVM_INSERTITEM,0,(LPARAM)&item);
 }
 
+inline BOOL ListViewEx_GetCheckState(HWND hwndLV,int nIndex)
+{
+	UINT uRet = ListView_GetItemState(hwndLV, nIndex, LVIS_STATEIMAGEMASK);
+	return (uRet >> 12) - 1;
+}
+
+inline VOID ListViewEx_SetCheckState(HWND hwndLV,int nItem, BOOL bCheck)
+{
+	int nCheck = bCheck ? 2 : 1;   // one based index
+	LV_ITEM lvi = {0};
+	lvi.mask = LVIF_STATE;
+	lvi.stateMask = LVIS_STATEIMAGEMASK;
+	lvi.state = INDEXTOSTATEIMAGEMASK(nCheck);
+	SendMessage((hwndLV),LVM_SETITEMSTATE,(WPARAM)(nItem),(LPARAM)(LV_ITEM *)&lvi);
+}
+
 typedef struct _LVSORTHOSTPARAM
 {
     PVOID pFunc;
