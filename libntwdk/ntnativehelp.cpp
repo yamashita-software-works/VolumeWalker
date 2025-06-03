@@ -164,6 +164,13 @@ EXTERN_C NTSTATUS NTAPI FreeUnicodeString(UNICODE_STRING *pus)
     return 0;
 }
 
+EXTERN_C NTSTATUS NTAPI FreeUnicodeStringBuffer(PWSTR psz)
+{
+	UNICODE_STRING us;
+	RtlInitUnicodeString(&us,psz);
+    return FreeUnicodeString(&us);
+}
+
 EXTERN_C PWCH _AllocUnicodeStringMemory(ULONG cb)
 {
     return (PWCH)RtlAllocateHeap(_GetProcessHeap(),HEAP_ZERO_MEMORY,cb);

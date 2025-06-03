@@ -55,6 +55,7 @@ NTSTATUS NTAPI AllocateUnicodeStringCchBuffer(UNICODE_STRING *pus,ULONG cch);
 NTSTATUS NTAPI AllocateUnicodeStringCb(UNICODE_STRING *pus,PCWSTR String,ULONG cb,BOOLEAN NullTerminate);
 NTSTATUS CombineUnicodeStringPath(UNICODE_STRING *CombinedPath,UNICODE_STRING *Path,UNICODE_STRING *FileName);
 NTSTATUS NTAPI FreeUnicodeString(UNICODE_STRING *pus);
+NTSTATUS NTAPI FreeUnicodeStringBuffer(PWSTR psz);
 
 LONG NTAPI CompareUnicodeString(__in PUNICODE_STRING  String1,__in PUNICODE_STRING  String2,__in BOOLEAN  CaseInSensitive);
 
@@ -130,7 +131,9 @@ BOOLEAN _UStrMatch_U(const WCHAR *ptn,const UNICODE_STRING *pus);
 BOOLEAN _UStrMatchI_U(const WCHAR *ptn,const UNICODE_STRING *pus);
 
 HRESULT GetNtPath(PCWSTR DosPathName,PWSTR *NtPath,PCWSTR *NtFileNamePart);
+#define FreeNtPath(psz) FreeUnicodeStringBuffer(psz);
 HRESULT GetNtPath_U(PCWSTR DosPathName,UNICODE_STRING *NtPath,PCWSTR *NtFileNamePart);
+#define FreeNtPath_U(pus) FreeUnicodeString(pus);
 
 INT FindDeviceNameFromPath(PCWSTR pszPath,PWSTR Buffer,int cchBuffer,PWSTR DosNameBuffer,int cchDosNameBuffer);
 

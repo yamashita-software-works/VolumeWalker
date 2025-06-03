@@ -16,9 +16,8 @@
 #include "stdafx.h"
 #include "resource.h"
 #include "basewindow.h"
-#include "filesview.h"
-#include "simplesplitwindow.h"
 #include "volumeconsoledef.h"
+#include "filelistview.h"
 #include "page_volumefilelist.h"
 #include "page_volumefilelist_location.h"
 
@@ -182,17 +181,6 @@ public:
 		return 0;
 	}
 
-	LRESULT OnInitView(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
-	{
-		SELECT_ITEM sel = {0};
-		sel.ViewType  = m_ConsoleTypeId;
-		sel.pszCurDir = (PWSTR)0;
-		sel.pszPath   = (PWSTR)0;
-		sel.pszName   = (PWSTR)NULL;
-		m_pView->SelectView(&sel);
-		return 0;
-	}
-
 	LRESULT OnQueryMessage(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		switch( LOWORD(wParam) )
@@ -213,8 +201,6 @@ public:
 				return OnChangeDirectory( (SELECT_ITEM*)lParam );
 			case UI_SELECT_PAGE:
 				return OnSelectPage(hWnd,0,0,lParam);
-			case UI_INIT_VIEW:
-				return OnInitView(hWnd,0,0,lParam);
 			case UI_SET_TITLE:
 				SetWindowText(GetParent(hWnd),(LPCWSTR)lParam);
 				break;

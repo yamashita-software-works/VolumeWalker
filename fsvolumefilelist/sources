@@ -100,7 +100,7 @@ INCLUDES=$(INCLUDES);..\inc
 #----------------------------------------------------------
 SOURCES = \
 	dllmain.cpp\
-	fileswindow.cpp\
+	filelistwindow.cpp\
 	dialog_traverse_directory.cpp\
 	apps.cpp\
 	fsvolumefilelist.rc

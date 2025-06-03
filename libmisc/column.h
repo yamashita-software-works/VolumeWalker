@@ -26,6 +26,12 @@ typedef struct _COLUMN_NAME
 	UINT dummy;
 } COLUMN_NAME;
 
+int ColumnList_GetMszColumnStringSizeCch(PCWSTR pmsz);
+int ColumnList_GetMszColumnStringSizeCb(PCWSTR pmsz);
+PWSTR ColumnList_MszColumnStringReplaceChar(PWSTR psz);
+PWSTR ColumnList_ConvertAllocSzToMszColumnString(PCWSTR psz);
+BOOL ColumnList_FreeString(PWSTR psz);
+
 class CColumnList
 {
 	COLUMN *m_columns;
@@ -62,7 +68,7 @@ public:
 		return m_column_count;
 	}
 
-	VOID SetColumnNameMap(int NamesCount, COLUMN_NAME *ColumnNames)
+	VOID SetColumnNameMap(int NamesCount, const COLUMN_NAME *ColumnNames)
 	{
 		m_column_name_map = new COLUMN_NAME[ NamesCount ];
 		if( m_column_name_map == NULL )
@@ -85,12 +91,6 @@ public:
 	BOOL SaveColumns(HWND hWndList,LPCWSTR SectionName);
 #endif
 	PCWSTR GetIniFilePath();
-private:
-	int findColumnItem(UINT id);
-	BOOL PaeseLine(PWSTR pszLine,COLUMN *pcol);
-	DSArray<COLUMN> *GetColumnLayout(PCWSTR pszSectionName,PCWSTR pszSectionText=NULL,int cbSectionText=0);
-	LARGE_INTEGER GetSortInfo(PWSTR sz);
-
 	UINT NameToId(PCWSTR pszName)
 	{
 		for(int i = 0; i < m_column_name_map_size; i++)
@@ -110,4 +110,9 @@ private:
 		}
 		return NULL;
 	}
+private:
+	int findColumnItem(UINT id);
+	BOOL PaeseLine(PWSTR pszLine,COLUMN *pcol);
+	DSArray<COLUMN> *GetColumnLayout(PCWSTR pszSectionName,PCWSTR pszSectionText=NULL,int cbSectionText=0);
+	LARGE_INTEGER GetSortInfo(PWSTR sz);
 };

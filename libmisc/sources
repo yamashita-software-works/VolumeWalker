@@ -37,6 +37,7 @@ SOURCES=\
 	darkmode.cpp\
 	viewtab.cpp\
 	menubar.cpp \
+	imagehelp.cpp \
 	themehelp.cpp \
 	openvolumelocation.cpp
 

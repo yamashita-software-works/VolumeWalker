@@ -107,9 +107,10 @@ BOOL CColumnList::PaeseLine(PWSTR pszLine,COLUMN *pcol)
 				pcol->Name   = pdef->Name;
 				pcol->cx     = pdef->cx;
 				pcol->fmt    = pdef->fmt;
+				pcol->field  = pdef->field;
 				pcol->iOrder = pdef->iOrder;
 
-				// =width[,reserved]
+				// =width[,columnfieldtype]
 				tok = wcstok_s(++sep,delim,&context);
 
 				if( tok != NULL )
@@ -118,7 +119,9 @@ BOOL CColumnList::PaeseLine(PWSTR pszLine,COLUMN *pcol)
 
 					while( tok )
 					{	
-						tok = wcstok_s(NULL,delim,&context); // reserved
+						tok = wcstok_s(NULL,delim,&context); // ",field"
+						if( tok )
+							pcol->field = wcstoul(tok,NULL,10);
 					}
 				}
 			}
@@ -140,6 +143,11 @@ DSArray<COLUMN> *CColumnList::GetColumnLayout(PCWSTR pszSectionName,PCWSTR pszSe
 	if( pszSectionName != NULL )
 	{
 		szIniFileName = GetIniFilePath();
+		if( szIniFileName == NULL || *szIniFileName == L'\0' )
+		{
+			delete[] buf;
+			return NULL;
+		}
 		ret = GetPrivateProfileSection(pszSectionName,buf,cch,szIniFileName);
 	}
 	else
@@ -212,11 +220,23 @@ LARGE_INTEGER CColumnList::GetSortInfo(PWSTR sz)
 			if( id != 0 )
 			{
 				int iDirection = _wtoi(pSep);
+#if 0
 				if( iDirection == -1 || iDirection == 0 || iDirection == 1 )
 				{
 					liRet.HighPart = iDirection;
 					liRet.LowPart = id;
 				}
+#else
+				if( iDirection == 0 || iDirection == 1 )
+				{
+					switch( iDirection )
+					{
+						case 0: liRet.HighPart = 1; break;
+						case 1: liRet.HighPart = -1; break;
+					}
+					liRet.LowPart  = id;
+				}
+#endif
 			}
 		}
 	}
@@ -399,7 +419,10 @@ BOOL CColumnList::MakeColumnString(COLUMN_TABLE *pColTblPtr,INT idSort,INT sortD
 				{
 					COLUMN *pcol = &pColTblPtr->column[i];
 	
-					StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s=%d",pszName,pcol->cx);
+					if( pcol->field )
+						StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s=%d,%d",pszName,pcol->cx,pcol->field);
+					else
+						StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s=%d",pszName,pcol->cx);
 	
 					msz.Add(szInfo);
 				}
@@ -414,12 +437,13 @@ BOOL CColumnList::MakeColumnString(COLUMN_TABLE *pColTblPtr,INT idSort,INT sortD
 			PCWSTR psz = msz.GetTop();
 			if( psz && *psz )
 			{
-				do
-				{	
+				for(;;)
+				{
 					StringCbCat(pszBuf,msz.GetBufferSize(),psz);
+					if( msz.Next(&psz) == FALSE )
+						break;
 					StringCbCat(pszBuf,msz.GetBufferSize(),L";");
 				}
-				while( msz.Next(&psz) );
 			}
 	
 			*ppszColumns = pszBuf;
@@ -491,3 +515,56 @@ BOOL CColumnList::SaveColumns(HWND hWndList,LPCWSTR SectionName)
 	return bSuccess;
 }
 #endif
+
+int ColumnList_GetMszColumnStringSizeCch(PCWSTR pmsz)
+{
+	int cchTotal = 0;
+	int cch = 0;
+	PCWSTR p = pmsz;
+	while( *p )
+	{
+		cch = ((int)wcslen(p) + 1);
+		p += cch;
+		cchTotal += cch;
+	}
+	cchTotal++; // double terminate null
+	return cchTotal;
+}
+
+int ColumnList_GetMszColumnStringSizeCb(PCWSTR pmsz)
+{
+	int cch = ColumnList_GetMszColumnStringSizeCch(pmsz);
+	return (cch * sizeof(WCHAR));
+}
+
+PWSTR ColumnList_MszColumnStringReplaceChar(PWSTR psz)
+{
+	PWSTR p = psz;
+	while( *p )
+	{
+		if( *p == L'|' ||  *p == L';' )
+		{
+			*p = L'\0';	
+		}
+		p++;
+	}
+	return psz;
+}
+
+PWSTR ColumnList_ConvertAllocSzToMszColumnString(PCWSTR psz)
+{
+	SIZE_T cch = wcslen(psz);
+	PWSTR pszAlloc = (PWSTR)_MemAllocZero( (cch + 1) * sizeof(WCHAR) ); // double terminate null
+	if( pszAlloc == NULL )
+		return NULL;
+	memcpy(pszAlloc,psz,cch*sizeof(WCHAR));
+	return ColumnList_MszColumnStringReplaceChar(pszAlloc);
+}
+
+BOOL ColumnList_FreeString(PWSTR psz)
+{
+	if( psz == NULL )
+		return FALSE;
+	_MemFree(psz);
+	return TRUE;
+}

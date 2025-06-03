@@ -577,6 +577,13 @@ inline PWSTR _CoTaskMemStrDup(PCWSTR psz) {
     return pszNew;
 }
 
+inline PVOID _CoTaskMemAllocZero(SIZE_T cb) {
+    PVOID ptr = (PWSTR)CoTaskMemAlloc( cb );
+    if( ptr )
+        ZeroMemory(ptr,cb);
+    return ptr;
+}
+
 inline void WINAPI DoMessage(HWND hWnd=NULL) {
     MSG msg;
     while( PeekMessage(&msg,hWnd,0,0,PM_REMOVE) )
@@ -761,3 +768,35 @@ OpenVolumeLocationByShell(
 	PCWSTR pszDosDrive,
 	PCWSTR pszVolumeGuid
 	);
+
+#define WINUSER_ICON_APPLICATION 100
+#define WINUSER_ICON_EXCLAMATION 101
+#define WINUSER_ICON_QUESTION    102
+#define WINUSER_ICON_STOP        103
+#define WINUSER_ICON_INFORMATION 104
+#define WINUSER_ICON_WINLOGO     105 // same as Application
+#define WINUSER_ICON_SHIELD      106
+
+#define WINUSER_ICON_SMALL       16
+#define WINUSER_ICON_LARGE       32
+
+HICON
+WINAPI
+_GetUser32Icon(
+    int idIconType,
+    int cSize
+    );
+
+HBITMAP _CreateBitmapARGB(int nWidth, int nHeight);
+HBITMAP _IconToBitmap(HICON hIcon);
+HBITMAP _IconToBitmap16(HICON hIcon); /* Backwards Compatible function */
+HBITMAP _IconToBitmap16(HICON hIcon); /* Backwards Compatible function */
+
+BOOL
+WINAPI
+_SetMenuIcon(
+    HMENU hMenu,
+    UINT idMenu,
+    HICON hIcon
+    );
+

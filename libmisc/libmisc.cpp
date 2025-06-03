@@ -666,3 +666,49 @@ VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus,COLORREF crActiv
         }
     }
 }
+
+//
+// Icon Helper
+//
+HICON
+WINAPI
+_GetUser32Icon(
+    int idIconType,
+    int cSize
+    )
+{
+#if (_WIN32_WINNT >= 0x0600)
+    HICON hIcon;
+    int lims;
+    if( cSize == 16 )
+        lims = LIM_SMALL;
+    else
+        lims = LIM_LARGE;
+    LoadIconMetric(NULL, MAKEINTRESOURCE(IDI_SHIELD), lims, &hIcon);
+    return hIcon;
+#else
+    HICON hIcon = (HICON)LoadImage(NULL, MAKEINTRESOURCE(idIconType), IMAGE_ICON, cSize, cSize, 0);
+    return hIcon;
+#endif
+}
+
+BOOL
+WINAPI
+_SetMenuIcon(
+    HMENU hMenu,
+    UINT idMenu,
+    HICON hIcon
+    )
+{
+    HBITMAP hBitmap;
+    hBitmap = _IconToBitmap( hIcon );
+    if( hBitmap == NULL )
+    {
+        return FALSE;
+    }
+    MENUITEMINFO mii = {0};
+    mii.cbSize   = sizeof(mii);
+    mii.fMask    = MIIM_BITMAP;
+    mii.hbmpItem = hBitmap;
+    return SetMenuItemInfo(hMenu,idMenu,FALSE,&mii);
+}
