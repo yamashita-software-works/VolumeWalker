@@ -193,15 +193,20 @@ public:
 		m_pView->UpdateData(pVolume);
 	}
 
-	VOID InitData(PCWSTR pszParam)
+	virtual VOID InitDataEx(PVOID ptr,ULONG cb)
 	{
+		VOLUME_CONSOLE_CREATE_PARAM *pvccp = (VOLUME_CONSOLE_CREATE_PARAM *)ptr;
+		ASSERT(cb == sizeof(VOLUME_CONSOLE_CREATE_PARAM));
+
 		SELECT_ITEM sel = {0};
 		sel.ViewType = m_ConsoleTypeId;
-		sel.pszPath = (PWSTR)pszParam;
+		sel.pszPath  = (PWSTR)pvccp->pszInitialDeviceName;
+		sel.Context  = pvccp->Context;
+
 		m_pView->SelectView(&sel);
 	}
 
-	VOID InitLayout(const RECT *prcDesktopWorkArea)
+	virtual VOID InitLayout(const RECT *prcDesktopWorkArea)
 	{
 		RECT rc;
 		GetClientRect(m_hWnd,&rc);

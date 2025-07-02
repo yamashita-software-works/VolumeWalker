@@ -129,3 +129,71 @@ NtPathParseDeviceName(
 
 	return hr;
 }
+
+#define _MAX_TARGET_PATH_BUFFER_SIZE 32768
+
+EXTERN_C
+HRESULT
+APIENTRY
+DosDriveFromNtDevicePath(
+	PCWSTR NtDevicePath,
+	PWSTR DosDrive,
+	ULONG cchDosDrive,
+	ULONG Flags,
+	PCWSTR *RootDirectoryPart
+	)
+{
+	WCHAR drive_buffer[ (26 * (3 + 1)) + 1 ]; // "'A:\'\0 ... 'Z:\'\0\0"
+	WCHAR *drive;
+	const DWORD cchTargetPathBuffer = _MAX_TARGET_PATH_BUFFER_SIZE;
+	WCHAR szTargetPath[_MAX_TARGET_PATH_BUFFER_SIZE];
+	DWORD cchTargetPath;
+	HRESULT hr = S_FALSE;
+
+	GetLogicalDriveStrings(ARRAYSIZE(drive_buffer),drive_buffer);
+
+	*DosDrive = L'\0';
+
+	drive = drive_buffer;
+
+	while( *drive )
+	{
+		// "C:\" -> "C:"
+		drive[2] = L'\0';
+		cchTargetPath = QueryDosDevice(drive,szTargetPath,cchTargetPathBuffer);
+		drive[2] = L'\\';
+
+		int iret;
+		if( Flags & DDNTF_DEVICENAME_COMPARE )
+		{
+			iret = HasPrefix(szTargetPath,NtDevicePath) ? 0 : 1;
+
+			if( iret == 0 && RootDirectoryPart && (Flags && DDNTF_RETURN_ROOTDIRECTORY_POINT) )
+			{
+				SIZE_T cchTargetPath = wcslen(szTargetPath);
+				SIZE_T cchNtDevicePath = wcslen(NtDevicePath);
+
+				if( cchNtDevicePath >= cchTargetPath )
+				{
+					*RootDirectoryPart = &NtDevicePath[ cchTargetPath ];
+				}
+			}
+		}
+		else
+		{
+			iret = wcsicmp(szTargetPath,NtDevicePath);
+		}
+
+		if( iret == 0 )
+		{
+			if( (Flags & DDNTF_RETURN_DRIVE_ROOT) == 0 )
+				drive[2] = L'\0';
+			hr = StringCchCopy(DosDrive,cchDosDrive,drive);
+			break;
+		}
+
+		drive += (wcslen(drive) + 1);
+	}
+
+	return hr;
+}

@@ -124,9 +124,12 @@ FILDestroy(
 		return FALSE;
 	}
 
-	// todo: FILRemoveAllItems()
+#if 0
 #ifdef _DEBUG
 	ASSERT( DPA_GetPtrCount(ps->hdpa) == 0 );
+#endif
+#else
+	DPA_DeleteAllPtrs(ps->hdpa);
 #endif
 
 	// ps->hHeap: currentaly process heap. no need free.
@@ -303,4 +306,40 @@ FILGetItemPtr(
 	}
 
 	return &pfli->Item;
+}
+
+EXTERN_C
+FILEITEMEX *
+WINAPI
+FILGetItemExPtr(
+	HANDLE hfl,
+	INT Index
+	)
+{
+	FILELISTSTRUCT *ps = (FILELISTSTRUCT*)hfl;
+	if( ps == NULL )
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+
+	return (FILEITEMEX*)DPA_GetPtr(ps->hdpa,Index);
+}
+
+EXTERN_C
+INT
+WINAPI
+FILAddItemExPtr(
+	HANDLE hfl,
+	FILEITEMEX *ItemEx
+	)
+{
+	FILELISTSTRUCT *ps = (FILELISTSTRUCT*)hfl;
+	if( ps == NULL )
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return -1;
+	}
+
+	return DPA_AppendPtr(ps->hdpa,ItemEx);
 }

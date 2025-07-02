@@ -220,7 +220,6 @@ typedef struct _PMS_DESCRIPTION_TEXT
 
 typedef struct _OPEN_MDI_CHILDFRAME_PARAM
 {
-	HWND hwndFrom;
 	UINT Flags;
 	union {
 		PWSTR Path;
@@ -238,6 +237,9 @@ typedef struct _OPEN_MDI_CHILDFRAME_PARAM
 #define QMT_GETVOLUMEPATH     (1)
 #define QMT_GETSTARTOFFSET    (2)
 #define QMT_GETFILEPATH       (3)
+#define QMT_VOLUMEPATH        QMT_GETVOLUMEPATH
+#define QMT_STARTOFFSET       QMT_GETSTARTOFFSET
+#define QMT_FILEPATH          QMT_GETFILEPATH
 
 typedef struct _QM_PARAM
 {
@@ -254,4 +256,16 @@ typedef struct _QM_PARAM
 enum {
 	VIEW_STR_TITLE=1,
 };
+
+//////////////////////////////////////////////////////////////////////////////
+// Configuration
+
+#define PM_GETCONFIGOBJECT    (PM_BASE+50)
+#define PM_LOADCONFIG         (PM_BASE+51)
+#define PM_SAVECONFIG         (PM_BASE+52)
+
+#define C_KEY_VOLUME                  L"Volume"
+#define C_KEY_COLUMNLAYOUTSTRING      L"Columns"
+#define C_KEY_CURRENTSORTCOLUMN       L"CurrentSortColumn"
+
 #endif

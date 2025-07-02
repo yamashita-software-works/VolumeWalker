@@ -16,7 +16,7 @@
 //
 #include "pagewbdbase.h"
 #include "page_volumefilelist.h"
-#include "page_volumefilelist_location.h"
+#include "page_volumefilelist_search_result.h"
 #include "interface.h"
 
 class CFilesPageHost
@@ -46,7 +46,7 @@ public:
 	{
 	}
 
-	VOID UpdateLayout(int cx,int cy,BOOL absSplitPos=FALSE)
+	HRESULT UpdateLayout(int cx,int cy,BOOL absSplitPos=FALSE)
 	{
 		int cyHeaderBar = 0;
 		HDWP hdwp = BeginDeferWindowPos(2);
@@ -55,6 +55,7 @@ public:
 			DeferWindowPos(hdwp,m_pPage->GetHwnd(),NULL,0,cyHeaderBar,cx,cy-cyHeaderBar,SWP_NOZORDER);
 		}
 		EndDeferWindowPos(hdwp);
+		return S_OK;
 	}
 
 public:
@@ -113,7 +114,13 @@ public:
 		{
 			case VOLUME_CONSOLE_VOLUMEFILELIST:
 			{
-				pNew = GetOrAllocWndObjct<CFileLocationPage>(nView);
+				pNew = GetOrAllocWndObjct<CFileListPage>(nView);
+				ASSERT(pNew != NULL);
+				break;
+			}
+			case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
+			{
+				pNew = GetOrAllocWndObjct<CFileSearchResultPage>(nView);
 				ASSERT(pNew != NULL);
 				break;
 			}
@@ -187,10 +194,20 @@ public:
 		CPageWndBase *pPrev=NULL;
 		int nPrevView = -1;
 
-		BOOL bCreate;
+		// todo: check range of Path->ViewType
+		BOOL bCreate = ( m_pPageTable[ Path->ViewType ] == NULL ) ? TRUE : FALSE;
+
 		switch( Path->ViewType )
 		{
 			case VOLUME_CONSOLE_VOLUMEFILELIST:
+				nPrevView = m_nView;
+				pPrev = _SelectPage( Path, bCreate );
+				if( bCreate || ((Path->Flags & 0x8)== 0) )
+				{
+					UpdateFileList(Path);
+				}
+				break;
+			case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 				nPrevView = m_nView;
 				pPrev = _SelectPage( Path, bCreate );
 				if( bCreate || ((Path->Flags & 0x8)== 0) )

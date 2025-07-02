@@ -103,6 +103,9 @@ SOURCES = \
 	filelistwindow.cpp\
 	dialog_traverse_directory.cpp\
 	apps.cpp\
+	filelist_filesearchparamdialog.cpp\
+	filelist_directorytraverse.cpp\
+	filelist_filesearch.cpp\
 	fsvolumefilelist.rc
 
 #----------------------------------------------------------

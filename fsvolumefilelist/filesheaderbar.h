@@ -75,8 +75,6 @@ class CHeaderBar : public CBaseWindow
 
 	DWORD m_dwStyleFlags;
 
-	HIMAGELIST m_himl;
-
 public:
 	CHeaderBar()
 	{
@@ -94,7 +92,6 @@ public:
 		m_crBoxInactiveBack = m_crBoxBack;
 		m_crBoxInactiveBorder = m_crBoxInactiveBack;
 		m_dwStyleFlags = 0;
-		m_himl = NULL;
 	}
 
 	~CHeaderBar()
@@ -113,52 +110,39 @@ public:
 		m_dwStyleFlags = dwStyle;
 	}
 
-	HRESULT SetPath(PCWSTR pszPath)
+	HRESULT SetPathEx(PCWSTR pszVolume,PCWSTR pszPath,PCWSTR pszDosDrive)
 	{
-		PWSTR pszRoot;
-
-		FindRootDirectory_W(pszPath,&pszRoot);
-		
-		SetWindowText(m_hWndPathBox,pszRoot);
-#if 0
 		WCHAR szText[MAX_PATH];
 		WCHAR szDevice[MAX_PATH];
-		WCHAR szDosDrive[8];
 		PWSTR pszDeviceName;
-		
+	
 		memset(szDevice,0,sizeof(szDevice));
 		
-		NtPathParseDeviceName(pszPath,szDevice,ARRAYSIZE(szDevice),NULL,0);
-		
-		pszDeviceName = wcsrchr(szDevice,L'\\');
-		if( pszDeviceName )
-			pszDeviceName++;
+		if( 0 )
+		{
+			NtPathParseDeviceName(pszVolume,szDevice,ARRAYSIZE(szDevice),NULL,0);
+
+			pszDeviceName = wcsrchr(szDevice,L'\\');
+			if( pszDeviceName )
+				pszDeviceName++;
+			else
+				pszDeviceName = szDevice;
+
+		}
 		else
-			pszDeviceName = szDevice;
-		
-		if( NtPathToDosPath(szDevice,szDosDrive,ARRAYSIZE(szDosDrive)) )
-			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s (%s)",pszDeviceName,szDosDrive);
+		{
+			pszDeviceName = (PWSTR)pszVolume;
+		}
+
+		if( pszDosDrive )
+			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s (%s)",pszDeviceName,pszDosDrive);
 		else
 			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s",pszDeviceName);
 
 		SetWindowText(m_hWndVolumeBox,szText);
-#else
-		WCHAR szVolumeName[MAX_PATH];
-		ZeroMemory(szVolumeName,sizeof(szVolumeName));
 
-		if( NtPathGetVolumeName(pszPath,szVolumeName,ARRAYSIZE(szVolumeName)) )
-		{
-			if( HasPrefix(L"\\??\\",szVolumeName) )
-			{
-				if( szVolumeName[4] != L'\0' && szVolumeName[5] == L':' )
-					szVolumeName[4] = towupper(szVolumeName[4]);
-			}
-		}
+		SetWindowText(m_hWndPathBox,pszPath);
 
-		SetWindowText(m_hWndVolumeBox,szVolumeName);
-#endif
-		
-		
 		return S_OK;
 	}
 
@@ -249,8 +233,13 @@ public:
 
 	int GetHeight()
 	{
+#if 1
 		DWORD dw = (DWORD)SendMessage(m_hWndToolbar,TB_GETBUTTONSIZE,0,0);
 		return (HIWORD(dw) + DPI_SIZE_CY(4)) * 2;
+#else
+		DWORD dw = (DWORD)SendMessage(m_hWndToolbar,TB_GETBUTTONSIZE,0,0);
+		return (HIWORD(dw) + DPI_SIZE_CY(0)) * 2;
+#endif
 	}
 
 	int GetToolbarButtonHeight()
@@ -273,21 +262,6 @@ public:
 			SetWindowTheme(m_hWndMenubar,L"DarkMode",NULL);
 		}
 #endif
-		m_himl = ImageList_Create(
-							GetSystemMetrics(SM_CXSMICON),
-							GetSystemMetrics(SM_CYSMICON),
-							ILC_COLOR32 | ILC_MASK, // ensures transparent background.
-							8, 0);
-
-		SHSTOCKICONINFO sii = {0};
-		sii.cbSize = sizeof(sii);
-
-		SHGetStockIconInfo(SIID_DRIVEFIXED,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
-		ImageList_AddIcon(m_himl,sii.hIcon);
-
-		SHGetStockIconInfo(SIID_DRIVEREMOVE,SHGSI_ICON|SHGSI_SMALLICON|SHGSI_SHELLICONSIZE,&sii);
-		ImageList_AddIcon(m_himl,sii.hIcon);
-
 		m_hWndVolumeBox = CreateWindowEx(0,LPBC_LONGPATHBOX_NAME,L"",
 							WS_VISIBLE|WS_CHILD|LPBS_FLAT_BORDER|LPBS_NO_TEXTSELECTION|LPBS_NO_FOCUS,
 							0,0,0,0,m_hWnd,(HMENU)ID_PATHBOX,_GetResourceInstance(),0);
@@ -409,21 +383,21 @@ public:
 
 		SetWindowPos(m_hWndPathBox,NULL,
 				cxPathBoxMargin + cxMargin + cxMargin,
-				cyTopMargin + cytbMenu + cyMargin,
+				cy - cytbMenu,
 				cx-cxtb-cxtbMenu-(cxMargin*2)-cxMargin - cxPathBoxMargin,
 				cyPathBox,
 				SWP_NOZORDER);
 
 		SetWindowPos(m_hWndToolbar,NULL,
 				cx-cxtb-cxtbMenu,
-				cyTopMargin + cytbMenu + cyMargin,
+				cy - cytbMenu,
 				cxtb,
 				cyPathBox,
 				SWP_NOZORDER);
 
 		SetWindowPos(m_hWndMenubar,NULL,
 				cx-cxtbMenu,
-				cyTopMargin + cytbMenu + cyMargin,
+				cy - cytbMenu,
 				cxtbMenu,
 				cytbMenu,
 				SWP_NOZORDER);
@@ -468,9 +442,6 @@ public:
 				return OnEraseBkGnd(hWnd,uMsg,wParam,lParam);
 			case WM_SIZE:
 				return OnSize(hWnd,uMsg,wParam,lParam);
-			case WM_SETTEXT:
-				SetPath((PCWSTR)lParam);
-				return 0;
 			case WM_NOTIFY:
 				return OnNotify(hWnd,uMsg,wParam,lParam);
 			case WM_COMMAND:

@@ -96,6 +96,33 @@ CONSOLE_VIEW_ID *GetConsoleId(HWND hwndViewWindow)
 	return pcv;
 }
 
+struct CApplication : public  IApplication
+{
+	virtual VOID Release(void)
+	{
+		delete this;
+	}
+
+	virtual HRESULT QueryInterface(UINT InterfaceId,void **pv)
+	{
+		if( pv == NULL )
+			return E_INVALIDARG;
+
+		switch(InterfaceId)
+		{
+			case I_LOADCONFIG:
+				*pv = new CLoadViewConfig;
+				break;
+			case I_SAVECONFIG:
+				*pv = new CSaveViewConfig;
+				break;
+		}
+		return S_OK;
+	}
+};
+
+CApplication *g_pMainApp = NULL;
+
 //////////////////////////////////////////////////////////////////////////////
 #include "..\build.h"
 
@@ -332,6 +359,7 @@ HRESULT	LoadResourceModule()
       - VOLUME_CONSOLE_VOLUMEMOUNTPOINT
       - VOLUME_CONSOLE_ENCRYPTIONVOLUME
       - VOLUME_CONSOLE_RELATIONVIEW
+      - VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT
 
     These consoles are allow create instances per volume:
 
@@ -432,6 +460,25 @@ HWND FindSameWindowTitle(UINT ConsoleType,PCWSTR pszName)
 	return NULL;
 }
 
+HWND FindSameWindowType(UINT ConsoleType,PCWSTR pszName)
+{
+	HWND hwnd;
+	hwnd = GetWindow(g_hWndMDIClient,GW_CHILD);
+	if( hwnd )
+	{
+		do
+		{
+			CONSOLE_VIEW_ID *pcv = GetMDIConsoleId(hwnd);
+			if( pcv->wndId == ConsoleType )
+			{
+				return hwnd;
+			}
+
+		} while( hwnd = GetWindow(hwnd,GW_HWNDNEXT) );
+	}
+	return NULL;
+}
+
 HWND FindSameVolumeWindow(UINT ConsoleType,PCWSTR pszVolumeName)
 {
 	CStringBuffer sVolumeName(32768);
@@ -484,6 +531,7 @@ VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *O
 		case VOLUME_CONSOLE_VOLUMEMOUNTPOINT:
 		case VOLUME_CONSOLE_ENCRYPTIONVOLUME:
 		case VOLUME_CONSOLE_RELATIONVIEW:
+		case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 			Guid.Data1 = (ULONG)ConsoleId;
 			break;
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
@@ -569,7 +617,7 @@ HICON GetConsoleIcon(UINT ConsoleTypeId,PCWSTR pszInitialPath)
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
 		FreeLibrary(hmod);
 	}
-	else if( ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILELIST )
+	else if( ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILELIST || ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT )
 	{
 		HMODULE hmod = LoadLibrary(L"shell32.dll");
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(16776),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
@@ -618,6 +666,7 @@ BOOL IsValidDevicePath( PWSTR Path )
 	return FALSE;
 }
 
+#if 0
 void InitConfigFile()
 {
 	PWSTR pszConfogFileName = _MemAllocStringBuffer( MAX_PATH );
@@ -626,6 +675,7 @@ void InitConfigFile()
 	_SetConfigFileName(pszConfogFileName);
 	_SafeMemFree(pszConfogFileName);
 }
+#endif
 
 void InitIniFile()
 {
@@ -769,6 +819,12 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 	pg.ConsoleGuid   = pd->wndGuid;
 	pg.pszPath       = pszPath;
 	pg.pszFileName   = NULL;
+	if( pOpenParam )
+	{
+		pg.Context = (PAGE_CONTEXT *)_MemAllocZero( sizeof(PAGE_CONTEXT) );
+		pg.Context->MainApp = g_pMainApp;
+		pg.dwFlags |= SI_FLAG_CREATE_PAGE;
+	}
 
 	// root directories
 	if( *pg.pszPath == L'\0' )
@@ -776,16 +832,21 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 
 	SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
 
-	// set MDI child frame title
-/*	if( pszPath && *pszPath )
-	{
-		WCHAR szVolumeName[64];
-		NtPathGetVolumeName(pszPath,szVolumeName,ARRAYSIZE(szVolumeName));
-		SetWindowText(hwndMDIChild,szVolumeName);
-	} */
-
-
+	_SafeMemFree(pg.Context);
 	_SafeMemFree(pszPath);
+}
+
+VOID SendFileSearchResult(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam)
+{
+	ASSERT( pOpenParam != NULL );
+
+	UIS_PAGE pg = {0};
+	pg.ConsoleTypeId = ConsoleTypeId;
+	pg.ConsoleGuid   = pd->wndGuid;
+	pg.pszPath       = pOpenParam->Path;
+	pg.pszFileName   = NULL;
+
+	SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
 }
 
 //----------------------------------------------------------------------------
@@ -845,6 +906,11 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 			hwndChildFrame = FindSameVolumeWindow(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
 			break;
 		}
+		case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
+		{
+			hwndChildFrame = FindSameWindowType(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
+			break;
+		}
 		default:
 		{
 			hwndChildFrame = GetOpenedWindowHandle(ConsoleTypeId);
@@ -873,6 +939,10 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		{
 			SendHexDumpInformation(hwndChildFrame,pd->hWndView,pOpenParam);
 		}
+		else if( VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT == ConsoleTypeId && pOpenParam )
+		{
+			SendFileSearchResult(hwndChildFrame,ConsoleTypeId,pd,pOpenParam);
+		}
 
 		if( bMaximized )
 		{
@@ -887,6 +957,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 	PWSTR pszInitialPath = NULL;
 	if( pOpenParam )
 		pszInitialPath = pOpenParam->Path;
+
 	mcp.hIcon = GetConsoleIcon(ConsoleTypeId,pszInitialPath);
 
 	MDICHILDFRAMEINIT mcinit = { {CW_USEDEFAULT,CW_USEDEFAULT},{CW_USEDEFAULT,CW_USEDEFAULT}, 0 }; // reserved
@@ -944,6 +1015,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 					break;
 				}
 				case VOLUME_CONSOLE_VOLUMEFILELIST:
+				case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 				{
 					static HWND (WINAPI *pfnCreateVolumeFileList)(
 							HWND hwnd,
@@ -966,13 +1038,16 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 
 					if( pfnCreateVolumeFileList )
 					{
-						pd->hWndView = pfnCreateVolumeFileList(hwndMDIChild,ConsoleTypeId,0,0);
+						pd->hWndView = pfnCreateVolumeFileList(hwndMDIChild,ConsoleTypeId,0,(LPARAM)&param);
 
 						InitViewType(pd,ConsoleTypeId,pwndGuid);
 
 						SendUIInitLayout(hwndMDIChild,pd->hWndView);
 
-						SendFileListPath(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
+						if( VOLUME_CONSOLE_VOLUMEFILELIST == ConsoleTypeId )
+							SendFileListPath(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
+						else
+							SendFileSearchResult(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
 					}
 					break;
 				}
@@ -1308,40 +1383,43 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 			// Load MDI child windows layout
 			//
 			HRESULT hr;
-			MDICHILDFRAMEINIT_VOLUMEWALKER *pFrames = NULL;
+			MDICHILDFRAMEINIT_VOLUMEWALKER *pLoadedFrames = NULL;
 			DWORD dwFrames;
 	
-			hr = LoadLayout(hWnd,g_hWndMDIClient,&pFrames,&dwFrames);
+			hr = LoadLayout(hWnd,g_hWndMDIClient,&pLoadedFrames,&dwFrames);
+
 			if( hr == S_OK )
 			{
-				OPEN_MDI_CHILDFRAME_PARAM op = {0};
+				OPEN_MDI_CHILDFRAME_PARAM open_mdi_child_param = {0};
 
 				HWND hwndMDIChild = NULL;
 				for(int i = ((int)dwFrames-1); i >= 0; i--)
 				{
-					if( IsVolumeNameRequiredConsole(&pFrames[i].Guid,(UINT)pFrames[i].Guid.Data1) && pFrames[i].Path == NULL )
+					MDICHILDFRAMEINIT_VOLUMEWALKER& frame = pLoadedFrames[i];
+
+					if( IsVolumeNameRequiredConsole(&frame.Guid,(UINT)frame.Guid.Data1) && frame.Path == NULL )
 						continue;
 
-					if( pFrames[i].Guid.Data1 == VOLUME_CONSOLE_VOLUMEFILELIST )
+					if( frame.Guid.Data1 == VOLUME_CONSOLE_VOLUMEFILELIST )
 					{
-						if( pFrames[i].Path == NULL ) {
+						if( frame.Path == NULL ) {
 							continue;
 						}
 					}
 
-					op.Path = pFrames[i].Path;
-					op.StartOffset.QuadPart = pFrames[i].liStartOffset.QuadPart;
+					open_mdi_child_param.Path = frame.Path;
+					open_mdi_child_param.StartOffset.QuadPart = frame.liStartOffset.QuadPart;
 
 					hwndMDIChild = OpenMDIChild(hWnd,
-							(UINT)pFrames[i].Guid.Data1, // console type id
-							&pFrames[i].Guid,
-							&op,
-							pFrames[i].hdr.show == SW_MAXIMIZE ? TRUE : FALSE,
-							&pFrames[i].hdr);
+							(UINT)frame.Guid.Data1, // console type id
+							&frame.Guid,
+							&open_mdi_child_param,
+							frame.hdr.show == SW_MAXIMIZE ? TRUE : FALSE,
+							&frame.hdr);
 
 					if( hwndMDIChild )
 					{
-						ShowWindow(hwndMDIChild,pFrames[i].hdr.show);
+						ShowWindow(hwndMDIChild,frame.hdr.show);
 
 						//
 						// Measures to avoid the phenomenon where the top edge of the window
@@ -1350,7 +1428,7 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 						SetWindowPos(hwndMDIChild,0,0,0,0,0,SWP_NOZORDER|SWP_NOMOVE|SWP_NOSIZE|SWP_FRAMECHANGED|SWP_DRAWFRAME);
 					}
 				}
-				FreeLayout(pFrames,dwFrames);
+				FreeLayout(pLoadedFrames,dwFrames);
 			}
 		}
 	}
@@ -1470,10 +1548,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 #if _ENABLE_TOOLS
 			g_hCommand = CreateCommandHandler(hWnd);
 #endif
+			g_pMainApp = new CApplication;
 			break; 
 		} 
 		case WM_DESTROY:
 		{
+			delete g_pMainApp;
+
 #if _ENABLE_TOOLS
 			CloseCommandHandler(g_hCommand);
 #endif
@@ -1517,6 +1598,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 			}
 #endif
+
 			switch (wmId)
 			{
 				case ID_VOLUMELIST:

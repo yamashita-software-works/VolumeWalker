@@ -443,12 +443,12 @@ public:
 				{
 					QM_PARAM *pParam = (QM_PARAM *)lParam;
 
-					if( wParam == QMT_GETVOLUMEPATH && lParam != 0 )
+					if( wParam == QMT_VOLUMEPATH && lParam != 0 )
 					{
 						StringCchCopy(pParam->VolumePath,pParam->dwLength,m_rd.Name);
 						return (LRESULT)TRUE;
 					}
-					else if( wParam == QMT_GETSTARTOFFSET && lParam != 0 )
+					else if( wParam == QMT_STARTOFFSET && lParam != 0 )
 					{
 						pParam->liValue.QuadPart = m_rd.BaseOffset.QuadPart;
 						return (LRESULT)TRUE;

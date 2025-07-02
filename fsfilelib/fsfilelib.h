@@ -233,6 +233,22 @@ DosPathToNtDevicePath(
     );
 
 EXTERN_C
+HRESULT
+APIENTRY
+DosDriveFromNtDevicePath(
+	__in PCWSTR NtDevicePath,
+	__inout PWSTR DosDrive,
+	__in ULONG cchDosDrive,
+	__in ULONG Flags,
+	__inout_opt PCWSTR *RootDirectoryPart
+	);
+
+#define DDNTF_RETURN_DRIVE                 (0x0000)
+#define DDNTF_RETURN_DRIVE_ROOT            (0x0001)
+#define DDNTF_RETURN_ROOTDIRECTORY_POINT   (0x0002)
+#define DDNTF_DEVICENAME_COMPARE           (0x0004)
+
+EXTERN_C
 ULONG
 APIENTRY
 NtPathGetLongPathNameFromHandle(

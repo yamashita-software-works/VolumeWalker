@@ -20,8 +20,6 @@
 #include <malloc.h>
 #include "libntwdk.h"
 #include "ntnativeapi.h"
-//#include "ntobjecthelp.h"
-//#include "wfswof.h"
 #include "fsfilelib.h"
 #include "..\libntwdk\ntnativeapi.h"
 #include "..\libntwdk\ntpathcomponent.h"

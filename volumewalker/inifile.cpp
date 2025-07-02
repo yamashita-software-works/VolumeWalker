@@ -36,6 +36,7 @@ VOID _SetIniFileName(PCWSTR pszIniFile)
 		g_pszIniFile = _MemAllocString(pszIniFile);
 }
 
+/*
 PCWSTR _GetConfigFileName()
 {
 	return g_pszConfigFile;
@@ -47,6 +48,7 @@ VOID _SetConfigFileName(PCWSTR pszConfigFile)
 	if( pszConfigFile )
 		g_pszConfigFile = _MemAllocString(pszConfigFile);
 }
+*/
 
 BOOL HasValidIniFile()
 {
@@ -218,9 +220,19 @@ static BOOL GetSectionInfo(PWSTR pszSection,MDICHILDFRAMEINIT_VOLUMEWALKER *pmdi
 
 	if( psz != NULL )
 	{
-		if( GetPrivateProfileString(pszSection,L"Volume",NULL,psz,cch,g_pszIniFile) > 0 )
+		if( GetPrivateProfileString(pszSection,C_KEY_VOLUME,NULL,psz,cch,g_pszIniFile) > 0 )
 		{
 			pmdidoc->Path = _MemAllocString( psz );
+		}
+
+		if( GetPrivateProfileString(pszSection,C_KEY_COLUMNLAYOUTSTRING,NULL,psz,cch,g_pszIniFile) > 0 )
+		{
+			pmdidoc->ColumnLayoutString =  _MemAllocString( psz );
+		}
+
+		if( GetPrivateProfileString(pszSection,C_KEY_CURRENTSORTCOLUMN,NULL,psz,cch,g_pszIniFile) > 0 )
+		{
+			pmdidoc->CurrentSortColumn =  _MemAllocString( psz );
 		}
 
 		delete[] psz;
@@ -242,8 +254,13 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 	StringCchPrintf(sz,cch,L"%d",pmdidoc->hdr.show);
 	WriteSectionString(pszSection,L"Show",sz);
 
+	CSaveViewConfig svc;
+
 	if( wndGuid.Data4[0] != 0 || wndGuid.Data2 == 0x1 )
 	{
+		//
+		// Save the current treated volume name.
+		//
 		switch( wndId )
 		{
 			case VOLUME_CONSOLE_SIMPLEHEXDUMP:
@@ -251,23 +268,21 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 				QM_PARAM wqp = {0};
 				wqp.dwLength = cch;
 				wqp.VolumePath = sz;
-				SendMessage(hwndView,WM_QUERY_MESSAGE,QMT_GETVOLUMEPATH,(LPARAM)&wqp);
+				SendMessage(hwndView,WM_QUERY_MESSAGE,QMT_VOLUMEPATH,(LPARAM)&wqp);
+				WriteSectionString(pszSection,L"Volume",sz);
 				break;
 			}
 			case VOLUME_CONSOLE_VOLUMEFILELIST:
 			{
-				QM_PARAM wqp = {0};
-				wqp.dwLength = cch;
-				wqp.VolumePath = sz;
-				SendMessage(hwndView,WM_QUERY_MESSAGE,QMT_GETVOLUMEPATH,(LPARAM)&wqp);
+				SendMessage(hwndView,PM_SAVECONFIG,0,(LPARAM)&svc);
 				break;
 			}
 			default:
 			{
 				GetWindowText(hwndMDIChildFrame,sz,cch);
+				WriteSectionString(pszSection,L"Volume",sz);
 			}
 		}
-		WriteSectionString(pszSection,L"Volume",sz);
 	}
 
 	if( wndGuid.Data1 == VOLUME_CONSOLE_SIMPLEHEXDUMP )
@@ -275,7 +290,7 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 		QM_PARAM wqp = {0};
 		wqp.dwLength = sizeof(LARGE_INTEGER);
 		wqp.liValue.QuadPart = 0;
-		SendMessage(hwndView,WM_QUERY_MESSAGE,QMT_GETSTARTOFFSET,(LPARAM)&wqp);
+		SendMessage(hwndView,WM_QUERY_MESSAGE,QMT_STARTOFFSET,(LPARAM)&wqp);
 		StringCchPrintf(sz,cch,L"0x%I64x",wqp.liValue.QuadPart);
 		WriteSectionString(pszSection,L"Offset",sz);
 	}
@@ -378,7 +393,9 @@ HRESULT FreeLayout(MDICHILDFRAMEINIT_VOLUMEWALKER *mdiFrames,DWORD dwFrames)
 {
 	for( DWORD i = 0; i < dwFrames; i++ )
 	{
-		_MemFree( mdiFrames[i].Path );
+		_SafeMemFree( mdiFrames[i].Path );
+		_SafeMemFree( mdiFrames[i].ColumnLayoutString );
+		_SafeMemFree( mdiFrames[i].CurrentSortColumn );
 	}
 
 	_MemFree( mdiFrames );
@@ -505,6 +522,9 @@ static VOID SaveLayout(HWND hWnd,HWND hWndMDIClient)
 				CONSOLE_VIEW_ID *pcv = _GET_CONSOLE_VIEW_ID(pd->hWndView);
 				if( pcv )
 				{
+					if( pcv->wndId == VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT ) 
+						continue; // no save
+
 					RECT rc;
 					WINDOWPLACEMENT wndpl = {0};
 					wndpl.length = sizeof(wndpl);
@@ -616,7 +636,6 @@ HRESULT LoadMainFrameConfig(HWND hWnd,INT *pnCmdShow)
 	return S_OK;
 }
 
-#if 0 // reserved
 //----------------------------------------------------------------------------
 //
 //  WriteSectionRect()
@@ -658,7 +677,6 @@ BOOL ReadSectionRect(PCWSTR pszSection,PCWSTR pszEntry,RECT *prc)
 	}
 	return FALSE;
 }
-#endif
 
 //
 // simple macro for determine string type.
@@ -753,4 +771,46 @@ BOOL DeleteMDIChildFrameSections()
 	_MemFree(pszSectionNames);
 
 	return TRUE;
+}
+
+EXTERN_C INT GetConfigValue(HWND hWnd,UINT,LPCWSTR KeyName,PVOID Value,UINT cbValue)
+{
+	CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(hWnd,_PROP_CONSOLE_VIEW_ID);
+
+	if( pcv == NULL )
+		return 0;
+
+	WCHAR szSection[MAX_PATH];
+
+	StringFromGUID( &pcv->wndGuid, szSection, _countof(szSection) );
+	GUIDStringRemoveBrackets(szSection);
+
+	return (INT)GetPrivateProfileString(szSection,KeyName,(PWSTR)Value,cbValue);
+}
+
+EXTERN_C INT WINAPI GetConfigValueInt(HWND hWnd,UINT,LPCWSTR KeyName,INT Default)
+{
+	WCHAR val[64];
+	if( GetConfigValue(hWnd,0,KeyName,val,ARRAYSIZE(val)) > 0 )
+	{
+		INT iRet;
+		if( StrToIntEx(val,STIF_SUPPORT_HEX,&iRet) )
+			return iRet;
+	}
+	return Default;
+}
+
+EXTERN_C INT SetConfigValue(HWND hWnd,UINT,LPCWSTR KeyName,PWSTR psz)
+{
+	CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(hWnd,_PROP_CONSOLE_VIEW_ID);
+
+	if( pcv == NULL )
+		return 0;
+
+	WCHAR szSection[MAX_PATH];
+
+	StringFromGUID( &pcv->wndGuid, szSection, _countof(szSection) );
+	GUIDStringRemoveBrackets(szSection);
+
+	return WriteSectionString(szSection,KeyName,psz);
 }

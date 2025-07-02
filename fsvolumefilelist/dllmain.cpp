@@ -23,6 +23,12 @@
 #define UILAYOUT_IMPL
 #include "UILayout.h"
 
+#include "interface.h"
+#include "pagewbdbase.h"
+#include "page_volumefilelist.h"
+#include "page_volumefilelist_search_result.h"
+#include "filelistview.h"
+
 HINSTANCE hInstance = NULL;
 
 HINSTANCE _GetResourceInstance()

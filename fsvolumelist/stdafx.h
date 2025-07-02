@@ -103,31 +103,17 @@ HINSTANCE _GetResourceInstance();
 HFONT GetGlobalFont(HWND hWnd);
 HFONT GetIconFont();
 
-#define DELAY_OPEN_TIMER (120) // 120ms todo:
-
 #define _COLOR_BKGD_DIRTY_VOLUME    RGB(255,220,0)
 #define _COLOR_TEXT_DIRTY_VOLUME    RGB(180,0,0)
 #define _COLOR_TEXT_VIRTUALDISK     RGB(0,32,180)
 
 inline VOID OpenHexDumpConsole(UINT ConsoleId,PCWSTR psz,LONGLONG StartOffset)
 {
-#if 0
-	SIZE_T cch = (wcslen(psz) + 1);
-	OPEN_MDI_CHILDFRAME_STARTOFFSET *popen_mdi = (OPEN_MDI_CHILDFRAME_STARTOFFSET *)CoTaskMemAlloc( sizeof(OPEN_MDI_CHILDFRAME_STARTOFFSET) + (cch * sizeof(WCHAR)) );
-	popen_mdi->hdr.flags    = 0;
-	popen_mdi->hdr.hwndFrom = 0;
-	popen_mdi->hdr.Path     = (PWSTR)(((UINT_PTR)popen_mdi)+sizeof(OPEN_MDI_CHILDFRAME_STARTOFFSET));
-	popen_mdi->StartOffset.QuadPart = StartOffset;
-	StringCchCopy(popen_mdi->hdr.Path,cch,psz);
-	PostMessage(GetActiveWindow(),WM_OPEM_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,1),(LPARAM)popen_mdi);
-#else
 	OPEN_MDI_CHILDFRAME_PARAM open_mdi = {0};
 	open_mdi.Flags    = 0;
-	open_mdi.hwndFrom = 0;
 	open_mdi.Path     = (PWSTR)psz;
 	open_mdi.StartOffset.QuadPart = StartOffset;
 	SendMessage(GetActiveWindow(),WM_OPEN_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,0),(LPARAM)&open_mdi);
-#endif
 }
 
 inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz)
@@ -138,24 +124,12 @@ inline VOID OpenConsole_SendMessage(UINT ConsoleId,PCWSTR psz)
 	}
 	else
 	{	
-		if( 1 )
-		{
-			SIZE_T cch = (wcslen(psz) + 1);
-			OPEN_MDI_CHILDFRAME_PARAM *popen_mdi = (OPEN_MDI_CHILDFRAME_PARAM *)CoTaskMemAlloc( sizeof(OPEN_MDI_CHILDFRAME_PARAM) + (cch * sizeof(WCHAR)) );
-			popen_mdi->Flags    = 0;
-			popen_mdi->hwndFrom = 0;
-			popen_mdi->Path     = (PWSTR)(((UINT_PTR)popen_mdi)+sizeof(OPEN_MDI_CHILDFRAME_PARAM));
-			StringCchCopy(popen_mdi->Path,cch,psz);
-			PostMessage(GetActiveWindow(),WM_OPEN_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,1),(LPARAM)popen_mdi);
-		}
-		else
-		{
-			OPEN_MDI_CHILDFRAME_PARAM open_mdi = {0};
-			open_mdi.Flags    = 0;
-			open_mdi.hwndFrom = 0;
-			open_mdi.Path     = (PWSTR)psz;
-			SendMessage(GetActiveWindow(),WM_OPEN_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,0),(LPARAM)&open_mdi);
-		}
+		SIZE_T cch = (wcslen(psz) + 1);
+		OPEN_MDI_CHILDFRAME_PARAM *popen_mdi = (OPEN_MDI_CHILDFRAME_PARAM *)CoTaskMemAlloc( sizeof(OPEN_MDI_CHILDFRAME_PARAM) + (cch * sizeof(WCHAR)) );
+		popen_mdi->Flags    = 0;
+		popen_mdi->Path     = (PWSTR)(((UINT_PTR)popen_mdi)+sizeof(OPEN_MDI_CHILDFRAME_PARAM));
+		StringCchCopy(popen_mdi->Path,cch,psz);
+		PostMessage(GetActiveWindow(),WM_OPEN_MDI_CHILDFRAME,MAKEWPARAM(ConsoleId,1),(LPARAM)popen_mdi);
 	}
 }
 
@@ -211,4 +185,10 @@ enum {
 
 extern const COLUMN_NAME *GetColumnNameTable();
 extern const int GetColumnNameTableItemCount();
-extern const int GetColumnNameTableInfo(COLUMN_NAME **Names,SIZE_T *BufferSize);
+
+EXTERN_C
+HIMAGELIST
+WINAPI
+CreateVolumeImageList(
+	int iImageList
+	);

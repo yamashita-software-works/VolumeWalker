@@ -22,7 +22,11 @@
 #define ID_FILE_VOLUMEFILES            41020
 #define ID_FILE_CHANGEJOURNAL          41021
 #define ID_FILE_ROOTDIRECTORIES        41022
-
+//                                     41023
+//                                     41024
+//                                     41025
+//                                     41026
+#define ID_FILE_CHANGEJOURNAL_VOLUMES  41027
 #define ID_FILE_SIMPLEFILELIST         41028
 
 #define ID_OPEN_LOCATION_EXPLORER         41031
@@ -79,7 +83,7 @@
 #define ID_GOTO                        41211
 #define ID_UP                          41212
 #define ID_UP_DIR                      41213
-//                                     41214
+#define ID_SEARCH                      41214
 //                                     41215
 #define ID_MENU                        41216
 #define ID_OPEN                        41217
@@ -90,6 +94,7 @@
 
 #ifndef _VOLUME_FILES
 #define _VOLUME_FILES
+#define ID_FILE_SIMPLECHECK          40112
 
 #define ID_OPEN_APP_FIRST            40200
 #define ID_OPEN_APP_LAST             40299

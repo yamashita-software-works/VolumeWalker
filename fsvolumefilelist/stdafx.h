@@ -57,6 +57,7 @@
 #include "fileitem.h"
 #include "basewindow.h"
 #include "themehelp.h"
+#include "column.h"
 
 #if _ENABLE_DARK_MODE_TEST
 #include "darkmode.h"
@@ -104,6 +105,37 @@ enum {
     COLUMN_BirthObjectId,       /* 35 */ 
     COLUMN_DomainId,            /* 36 */
 	COLUMN_Drive,               /* 37 */
-    COLUMN_MaxItem,             /* 38 */
+	COLUMN_RelativePath,        /* 39 */
+	COLUMN_VolumeRelativePath,  /* 40 */
+    COLUMN_MaxItem,             /* 41 */
     COLUMN_MaxCount=COLUMN_MaxItem,
 };
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+//
+// FTM_FILEOPERATION
+//
+//
+// wParam - Pointer to a FO_PARAM structure.
+//
+// lParam - A command dependent parameter.
+//
+// Return - Returns HRESULT code.
+//
+#define FTM_FILEOPERATION   (WM_USER+_TFM_FIRST+10)  
+
+typedef struct _FO_PARAM {
+	HWND hwnd;
+	UINT cmd;
+	UINT Flags;
+	HRESULT hr;
+} FO_PARAM;
+
+enum {
+	FO_SEARCH,
+};
+
+#define FOF_FILEOPERATIONLIST  0x0
+#define FOF_SELECTEDFILELIST   0x1

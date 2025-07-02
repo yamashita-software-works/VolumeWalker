@@ -88,7 +88,7 @@ WINAPI
 CreateVolumeConsoleWindow(
 	HWND hwnd,
 	UINT ConsoleType,
-	PVOLUME_CONSOLE_CREATE_PARAM pParam
+	PVOLUME_CONSOLE_CREATE_PARAM ConsoleCreateParam
 	)
 {
 	HWND hwndViewBase = NULL;
@@ -150,7 +150,8 @@ CreateVolumeConsoleWindow(
 	if( hwndViewBase != NULL )
 	{
 		CConsoleWindow *pWnd = (CConsoleWindow *)GetBaseWindowObject(hwndViewBase);
-		pWnd->InitData( pParam->pszInitialDeviceName );
+		pWnd->InitData( ConsoleCreateParam->pszInitialDeviceName );
+		pWnd->InitDataEx( ConsoleCreateParam, sizeof(VOLUME_CONSOLE_CREATE_PARAM) );
 	}
 
 	return hwndViewBase;
@@ -235,6 +236,20 @@ GetDeviceClassIcon(
 	return hIcon;
 }
 
+//	ListView_SetImageList(m_hWndList,himl,LVSIL_SMALL);
+//	ImageList_AddIcon( himl, GetShellStockIcon(SIID_DRIVEFIXED) );
+EXTERN_C
+HIMAGELIST
+WINAPI
+CreateVolumeImageList(
+	int iImageList
+	)
+{
+	HIMAGELIST himl = NULL;
+	himl = ImageList_Create(GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON),ILC_COLOR32|ILC_MASK,8,8);
+	return himl;
+}
+
 static COLUMN_NAME column_name_map[] = {
 	{ COLUMN_Name,               L"Name",               0 },
 	{ COLUMN_CreationTime,       L"CreationTime",       0 }, 
@@ -286,6 +301,7 @@ const int GetColumnNameTableItemCount()
 	return _countof(column_name_map);
 }
 
+/*++ Reserved
 const int GetColumnNameTableInfo(COLUMN_NAME **Names,SIZE_T *BufferSize)
 {
 	*Names = column_name_map;
@@ -293,3 +309,4 @@ const int GetColumnNameTableInfo(COLUMN_NAME **Names,SIZE_T *BufferSize)
 		*BufferSize = GetColumnNameTableItemCount() * sizeof(COLUMN_NAME);
 	return GetColumnNameTableItemCount();
 }
+--*/

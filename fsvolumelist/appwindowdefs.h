@@ -20,6 +20,10 @@ public:
 	{
 	}
 
+	virtual VOID InitDataEx(PVOID,ULONG)
+	{
+	}
+
 	virtual VOID InitLayout(const RECT *prcDesktopWorkArea)
 	{
 	}

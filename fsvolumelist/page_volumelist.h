@@ -119,8 +119,10 @@ public:
 
 	HWND GetListView() const { return m_hWndList; }
 
-	virtual HRESULT OnInitPage(PVOID,DWORD,PVOID)
+	virtual HRESULT OnInitPage(PVOID ptr,DWORD,PVOID)
 	{
+		SELECT_ITEM *SelectItem = (SELECT_ITEM *)ptr;
+
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 
                               WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS,
@@ -159,7 +161,9 @@ public:
 
 		m_columns.SetDefaultColumns(def_columns,ARRAYSIZE(def_columns));
 
-		if( !LoadColumns(m_hWndList) )
+		m_columns.SetColumnNameMap(GetColumnNameTableItemCount(),GetColumnNameTable());
+
+		if( !LoadColumns(m_hWndList,nullptr,0) )
 		{
 			InitColumns(m_hWndList);
 		}
@@ -858,10 +862,10 @@ public:
 		}
 	}
 
-	BOOL LoadColumns(HWND hWndList)
+	BOOL LoadColumns(HWND hWndList,PWSTR psz,ULONG cb)
 	{
 		COLUMN_TABLE *pcoltbl;
-		if( m_columns.LoadUserDefinitionColumnTable(&pcoltbl,L"ColumnLayout") == 0)
+		if( m_columns.LoadUserDefinitionColumnTableFromText(&pcoltbl,psz,cb) == 0)
 			return FALSE;
 
 		LVCOLUMN lvc = {0};

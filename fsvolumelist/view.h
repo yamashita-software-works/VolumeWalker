@@ -195,18 +195,10 @@ public:
 			case VOLUME_CONSOLE_RELATIONVIEW:
 			{
 				pNew = GetOrAllocWndObject<CVolumeDriveRelationViewPage>(nView);
-//				pNew = GetOrAllocWndObjectEx<CVolumeDriveRelationViewPage>(nView,PAGE_RELATIONVIEW_MOUNTEDDRIVE);
 				break;
 			}
 			default:
 				return NULL;
-		}
-
-		ASSERT(pNew != NULL);
-
-		if( pNew )
-		{
-			pNew->OnInitPage(ptr,0,0);
 		}
 
 		return pNew;
@@ -228,6 +220,13 @@ public:
 		if( m_pPageTable[ nView ] == NULL )
 		{
 			pNew = _CreatePage(nView,SelItem);
+
+			ASSERT(pNew != NULL);
+
+			if( pNew )
+			{
+				pNew->OnInitPage(SelItem,0,0);
+			}
 		}
 		else
 		{

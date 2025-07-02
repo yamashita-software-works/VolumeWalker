@@ -19,7 +19,7 @@
 #include "volumeconsoledef.h"
 #include "filelistview.h"
 #include "page_volumefilelist.h"
-#include "page_volumefilelist_location.h"
+#include "page_volumefilelist_search_result.h"
 
 class CVolumeFilesWindow : public CBaseWindow
 {
@@ -244,6 +244,7 @@ public:
 			case PM_FINDITEM:
 			case PM_GETSELECTEDFILE:
 			case PM_GETWORKINGDIRECTORY:
+			case PM_SAVECONFIG:
 				if( m_pView )
 					return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam); // forward to current page
 				return 0;
@@ -311,7 +312,18 @@ public:
 		sel.Guid     = ppg->ConsoleGuid;
 		sel.Flags    = ppg->dwFlags;
 
-		if( ppg->pszPath != NULL && *ppg->pszPath != L'\0' )
+		if( ppg->ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT )
+		{
+			sel.ViewType  = ppg->ConsoleTypeId;
+			sel.pszPath   = ppg->pszPath; // Handle of FIL
+			sel.pszName   = NULL;
+			sel.pszCurDir = NULL;
+			sel.Flags     = 0;
+			m_pView->SelectView(&sel);
+
+			m_ConsoleTypeId = ppg->ConsoleTypeId;
+		}
+		else if( ppg->pszPath != NULL && *ppg->pszPath != L'\0' )
 		{
 			PWSTR pszPath;
 
@@ -323,6 +335,8 @@ public:
 #if 0 // ***If Accept Volume Name in Root directory list***
 				pszPath = DuplicateString(ppg->pszPath);
 #else
+				// convert volume name to root directory
+				// "\Device\HarddiskVolume1" -> "\Device\HarddiskVolume1\"
 				pszPath = CombinePath(ppg->pszPath,L"\\");
 #endif
 
@@ -340,7 +354,9 @@ public:
 					sel.pszName   = NULL;
 					sel.pszCurDir = NULL;
 					sel.Flags     = 0;
+					sel.Context   = ppg->Context;
 #endif
+
 					m_pView->SelectView(&sel);
 
 					m_ConsoleTypeId = ppg->ConsoleTypeId;
@@ -362,6 +378,8 @@ public:
 					sel.pszCurDir = NULL;
 					sel.pszPath   = pszPath;
 					sel.pszName   = ppg->pszFileName;
+					sel.Context   = ppg->Context;
+
 					m_pView->SelectView(&sel);
 
 					m_ConsoleTypeId = ppg->ConsoleTypeId;
@@ -390,48 +408,74 @@ public:
 		return 0;
 	}
 
-	LRESULT OnChangeDirectory(SELECT_ITEM* pFile)
+	LRESULT OnChangeDirectory(SELECT_ITEM* pSelectItem)
 	{
-		if( (pFile->mask & SI_MASK_FILEID) && (pFile->Flags &  _FLG_NTFS_SPECIALFILE) )
+		if( (pSelectItem->mask & SI_MASK_FILEID) && (pSelectItem->Flags &  _FLG_NTFS_SPECIALFILE) )
 		{
-			m_pView->SelectView(pFile);
+			m_pView->SelectView(pSelectItem);
 			return 0;
 		}
 
-		if( pFile->pszName && wcscmp(pFile->pszName,L"..") == 0 )
+		if( pSelectItem->pszName && wcscmp(pSelectItem->pszName,L"..") == 0 )
 		{
-			PWSTR pszPath = _MemAllocString(pFile->pszCurDir);
-			PWSTR pszName = _MemAllocString( FindFileName_W(pszPath) );
-			if( pszPath && pszName && *pszPath != L'\0' && *pszName != L'\0' )
-			{
-				RemoveFileSpec_W(pszPath);
+			PWSTR pszNewCurDir;
+			PWSTR pszFileName;
+			PWSTR pszRootDir;
 
-				SELECT_ITEM sel = {0};
-				sel.ViewType  = m_ConsoleTypeId;
-				sel.pszCurDir = pszPath;
-				sel.pszPath   = pszPath;
-				sel.pszName   = pszName;
-				m_pView->SelectView(&sel);
+			//
+			// Check current is rootChecks if current page in the root directory.
+			//
+			pszRootDir = CombinePath(pSelectItem->pszVolume,L"\\");
+			if( wcsicmp(pSelectItem->pszCurDir,pszRootDir) == 0 )
+			{
+				FreeMemory(pszRootDir);
+				return 0;
 			}
-			_SafeMemFree(pszPath);
-			_SafeMemFree(pszName);
+			FreeMemory(pszRootDir);
+
+			//
+			// Get file name for select on the file list when changed to new page.
+			//
+			pszFileName = (PWSTR)FindFileName_W( pSelectItem->pszCurDir );
+			pszFileName = _MemAllocString( pszFileName  );
+
+			//
+			// Get directory path to go new page.
+			//
+			SIZE_T cchNewCurDir = wcslen(pSelectItem->pszCurDir) + 1; // length with a include extra character.
+			pszNewCurDir = _MemAllocStringBuffer( cchNewCurDir  );
+			wcscpy_s(pszNewCurDir,cchNewCurDir,pSelectItem->pszCurDir);
+			RemoveFileSpec_W(pszNewCurDir);
+			if( wcsicmp(pszNewCurDir,pSelectItem->pszVolume) == 0 )
+			{
+				// We are to go the root directory.
+				wcscat_s(pszNewCurDir,cchNewCurDir,L"\\");
+			}
+
+			SELECT_ITEM sel = {0};
+			sel.ViewType  = m_ConsoleTypeId;
+			sel.pszPath   = pszNewCurDir; // change to  directory
+			sel.pszName   = pszFileName;
+			m_pView->SelectView(&sel);
+
+			_SafeMemFree(pszNewCurDir);
 		}
 		else
 		{
-			SELECT_ITEM sel = *pFile; // trick! for Specified DOS Path
+			SELECT_ITEM sel = *pSelectItem; // trick! for Specified DOS Path
 			PWSTR pszPath = NULL;
 
-			if( pFile->pszPath )
+			if( pSelectItem->pszPath )
 			{
-				ULONG PathType = GetPathType(pFile->pszPath);
+				ULONG PathType = GetPathType(pSelectItem->pszPath);
 
 				if( PATHTYPE_NT_DEVICE != PathType )
 				{
-					pszPath = DosPathNameToNtPathName_W(pFile->pszPath);
+					pszPath = DosPathNameToNtPathName_W(pSelectItem->pszPath);
 				}
 				else
 				{
-					pszPath = DuplicateString(pFile->pszPath);
+					pszPath = DuplicateString(pSelectItem->pszPath);
 				}
 
 				sel.pszPath = pszPath;

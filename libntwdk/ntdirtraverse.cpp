@@ -480,6 +480,23 @@ QueryDirectoryEntryInformation(
                 // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 
                 );
 
+	if( Status == STATUS_OBJECT_NAME_INVALID )
+	{
+		//
+		// note: hack:
+		// Might be called only for path is network device.
+		// This is because the root directory of network drive volume 
+		// cannot be parsed correctly in OpenFileEx_W.
+		//
+	    Status = OpenFile_W(&hDirectory,NULL,
+                pusPath->Buffer,
+                FILE_LIST_DIRECTORY|FILE_TRAVERSE|SYNCHRONIZE,
+                FILE_SHARE_READ|FILE_SHARE_WRITE,
+                FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT
+                // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 
+                );
+	}
+
     if( Status == STATUS_SUCCESS )
     {
         PVOID pBuffer = NULL;

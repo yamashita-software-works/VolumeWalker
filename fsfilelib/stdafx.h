@@ -37,7 +37,6 @@
 #include "mem.h"
 
 #include "..\libntwdk\libntwdk.h"
-#include "..\inc\common.h"
 
 #define  _ASSERT ASSERT
 

@@ -27,6 +27,11 @@
 #include "filesheaderbar.h"
 #include "fopfilelist.h"
 #include "dialog_traverse_directory.h"
+#include "filelist_filesearch.h"
+#include "fileitemlist.h"
+#include "runhelp.h"
+
+#define _ENABLE_ROOTDIRECTORY_LIST  0
 
 #define PM_UPDATE_FILELIST (PM_PRIVATEBASE + 1)
 
@@ -45,17 +50,17 @@ enum {
 	ID_GROUP_FILE,
 };
 
-typedef struct _FILEINFOITEM
+typedef struct _FILELVITEM
 {
 	UINT Type;
 	CFileItemEx *pFI;
-} FILEINFOITEM, *PFILEINFOITEM;
+} FILELVITEM, *PFILELVITEM;
 
-struct CFileInfoItem : public FILEINFOITEM
+struct CFileLvItem : public FILELVITEM
 {
-	CFileInfoItem()
+	CFileLvItem()
 	{
-		memset(this,0,sizeof(FILEINFOITEM));
+		memset(this,0,sizeof(FILELVITEM));
 	}
 };
 
@@ -66,11 +71,13 @@ class CFileListPage :
 protected:
 	HWND m_hWndList;
 
-	COLUMN_HANDLER_DEF<CFileListPage> *m_disp_proc;
-	COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileInfoItem> *m_comp_proc;
+	IApplicationsReader *m_pOpenApplications;
 
-	typedef COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileInfoItem> FILELISTPAGE_COMPARE_HANDLER;
-	typedef int (CFileListPage::*COMPHANDLER)(CFileInfoItem *p1,CFileInfoItem *p2, const void *p);
+	COLUMN_HANDLER_DEF<CFileListPage> *m_disp_proc;
+	COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileLvItem> *m_comp_proc;
+
+	typedef COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileLvItem> FILELISTPAGE_COMPARE_HANDLER;
+	typedef int (CFileListPage::*COMPHANDLER)(CFileLvItem *p1,CFileLvItem *p2, const void *p);
 
 	struct {
 		int CurrentSubItem;
@@ -91,6 +98,8 @@ protected:
 	BOOL m_bEnumShadowCopyVolumes;
 	BOOL m_bEnableIconImage;
 	BOOL m_bExecFileVerification;
+	BOOL m_bRootDirectory;
+	BOOL m_bRemoteDevice;
 
 	UINT m_columnShowStyleFlags[COLUMN_MaxCount];
 
@@ -108,6 +117,8 @@ protected:
 	PWSTR m_pszVolumeDevice;
 	PWSTR m_pszVolumeRootRelativePath;
 	PWSTR m_pszVolumePathLastSection;
+
+	WCHAR m_szDosDrive[8];
 
 public:
 	PWSTR GetPath() const { return m_pszCurDir; }
@@ -129,8 +140,8 @@ public:
 	CFileListPage()
 	{
 		m_hWndList = NULL;
-		m_Sort.CurrentSubItem = 0; // default: 0 column
-		m_Sort.Direction      = 1; // default: ascend order
+		m_Sort.CurrentSubItem = -1;
+		m_Sort.Direction      = -1;
 		m_pszCurDir = NULL;
 		m_disp_proc = NULL;
 		m_comp_proc = NULL;
@@ -142,13 +153,16 @@ public:
 		m_LastErrorCode = 0;
 		m_bFillCostlyData = TRUE;
 		m_pHeaderBar = NULL;
-		m_bEnumShadowCopyVolumes = TRUE;
+		m_bEnumShadowCopyVolumes = FALSE;
 		m_bEnableIconImage = FALSE;
 		m_bExecFileVerification = TRUE;
+		m_bRootDirectory = FALSE;
+		m_bRemoteDevice = FALSE;
 		m_pszVolumeName = NULL;
 		m_pszVolumeDevice = NULL;
 		m_pszVolumeRootRelativePath = NULL;
 		m_pszVolumePathLastSection = NULL;
+		m_pOpenApplications = NULL;
 		ZeroMemory(m_columnShowStyleFlags,sizeof(m_columnShowStyleFlags));
 	}
 
@@ -166,16 +180,38 @@ public:
 			delete[] m_comp_proc;
 	}
 
-	virtual HRESULT OnInitPage(PVOID pParam,DWORD,PVOID)
+	virtual HRESULT OnInitPage(PVOID ptr,DWORD,PVOID)
 	{
+		SELECT_ITEM *pSelectItem = (SELECT_ITEM *)ptr;
+
+		CStringBuffer columnLayoutString(32768);
+		CStringBuffer columnCurrentSort(256);
+
+		if( pSelectItem->Context )
+		{
+			ILoadViewConfig *pLoadConfig;
+			if( pSelectItem->Context->MainApp->QueryInterface( I_LOADCONFIG, (void **)&pLoadConfig ) == S_OK )
+			{
+				pLoadConfig->ReadValue(GetParent(m_hWnd),L"Columns",columnLayoutString,columnLayoutString.GetBufferSize());
+				pLoadConfig->ReadValue(GetParent(m_hWnd),L"CurrentSortColumn",columnCurrentSort,columnCurrentSort.GetBufferSize());
+				m_bEnableIconImage = pLoadConfig->ReadValueInt(GetParent(m_hWnd),L"EnableIcon",m_bEnableIconImage);
+				pLoadConfig->Release();
+
+				if( columnCurrentSort.IsEmpty() )
+					StringCchCopy(columnCurrentSort,columnCurrentSort.GetLength(),L"Name,1");
+			}
+		}
+
 		InitListView();
 
-		if( !LoadColumns(m_hWndList,NULL) )
+		if( !LoadColumns(m_hWndList,columnLayoutString,columnCurrentSort) )
 		{
 			InsertDefaultColumns(m_hWndList);
 		}
 
 		InitGroup();
+
+		CreateApplicationList(&m_pOpenApplications);
 
 		RECT rc;
 		GetClientRect(m_hWnd,&rc);
@@ -189,7 +225,7 @@ public:
 	LRESULT OnCreate(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		m_hFont = GetGlobalFont(hWnd);
-#if 1
+#if _ENABLE_ROOTDIRECTORY_LIST
 		m_hFontHeader = GetIconFont();
 #else
 		HDC hdc = GetWindowDC(NULL);
@@ -276,6 +312,12 @@ public:
 
 	LRESULT OnDestroy(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
+		if( m_pOpenApplications )
+		{
+			m_pOpenApplications->Release();
+			m_pOpenApplications = NULL;
+		}
+
 		if( m_hWatchHandle )
 		{
 			StopDirectoryWatch(m_hWatchHandle);
@@ -366,7 +408,7 @@ public:
 				return CDRF_NOTIFYITEMDRAW;
 			case CDDS_ITEMPREPAINT:
 			{
-				CFileInfoItem *pItem = (CFileInfoItem *)pnmlvcd->nmcd.lItemlParam;
+				CFileLvItem *pItem = (CFileLvItem *)pnmlvcd->nmcd.lItemlParam;
 
 				if( (pItem->pFI->ItemTypeFlag & _FLG_COSTRY_DATA) == 0 )
 				{
@@ -394,21 +436,6 @@ public:
 
 				if( pItem->pFI->Wof )
 					pnmlvcd->clrText = RGB(128,0,80);
-
-				if( 0 ) 
-				{
-					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-					{
-						pnmlvcd->clrTextBk = RGB(248,248,248);
-
-						if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
-							pnmlvcd->clrTextBk = RGB(248,243,253);
-						else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
-							pnmlvcd->clrTextBk = RGB(219,255,219);
-						else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
-							pnmlvcd->clrTextBk = RGB(200,231,255);
-					}
-				}
 				return CDRF_NOTIFYPOSTPAINT;
 			}
 			case CDDS_ITEMPOSTPAINT:
@@ -536,7 +563,7 @@ public:
 	{
 		NMLISTVIEW *pnmlv = (NMLISTVIEW *)pnmhdr;
 
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlv->lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlv->lParam;
 		delete pItem->pFI;
 		delete pItem;
 		return 0;
@@ -549,7 +576,7 @@ public:
 		if( ((pnmlv->uOldState == 0)|| ((pnmlv->uNewState & (LVIS_SELECTED)) == (LVIS_SELECTED))) 
 			 && ((pnmlv->uNewState & (LVIS_SELECTED|LVIS_FOCUSED)) == (LVIS_SELECTED|LVIS_FOCUSED)) )
 		{
-			CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(pnmhdr->hwndFrom,pnmlv->iItem);
+			CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(pnmhdr->hwndFrom,pnmlv->iItem);
 
 			if( wcscmp(pItem->pFI->hdr.FileName,L"..") == 0 )
 				return 0;
@@ -605,7 +632,7 @@ public:
 	{
 		NMLISTVIEW *pnmlv = (NMLISTVIEW *)pnmhdr;
 
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlv->lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlv->lParam;
 
 		DoSort(pnmlv->iSubItem,TRUE);
 
@@ -643,7 +670,7 @@ public:
 	{
 		NMLISTVIEW *pnmlv = (NMLISTVIEW *)pnmhdr;
 
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlv->lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlv->lParam;
 
 		HWND hwndHeader = ListView_GetHeader(pnmlv->hdr.hwndFrom);
 		RECT rc;
@@ -751,7 +778,7 @@ public:
 
 	LRESULT OnDisp_Name(UINT,NMLVDISPINFO *pnmlvdi)
 	{
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		pnmlvdi->item.pszText = pItem->pFI->hdr.FileName;
 		return 0;
 	}
@@ -759,7 +786,7 @@ public:
 	LRESULT OnDisp_FileId(UINT,NMLVDISPINFO *pnmlvdi)
 	{
 		// not support 128bit FRN
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		if( pItem->pFI->FileId.QuadPart != 0 )
 			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%016I64X",pItem->pFI->FileId.QuadPart);
 		return 0;
@@ -767,7 +794,7 @@ public:
 
 	LRESULT OnDisp_EaSize(UINT,NMLVDISPINFO *pnmlvdi)
 	{
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		if( pItem->pFI->EaSize )
 			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%08X",pItem->pFI->EaSize);
 		return 0;
@@ -775,7 +802,7 @@ public:
 
 	LRESULT OnDisp_Extension(UINT,NMLVDISPINFO *pnmlvdi)
 	{
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		if( !(pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
 			pnmlvdi->item.pszText = PathFindExtension(pItem->pFI->hdr.FileName);
 		else
@@ -785,21 +812,21 @@ public:
 
 	LRESULT OnDisp_ShortName(UINT,NMLVDISPINFO *pnmlvdi)
 	{
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		pnmlvdi->item.pszText = pItem->pFI->ShortName;
 		return 0;
 	}
 
 	LRESULT OnDisp_Path(UINT,NMLVDISPINFO *pnmlvdi)
 	{
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		pnmlvdi->item.pszText = pItem->pFI->hdr.Path;
 		return 0;
 	}
 
 	LRESULT OnDisp_Lcn(UINT,NMLVDISPINFO *pnmlvdi)
 	{
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		if( pItem->pFI->FirstLCN.QuadPart != 0 && pItem->pFI->FirstLCN.QuadPart != -1)
 			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->pFI->FirstLCN);
 		else
@@ -809,7 +836,7 @@ public:
 
 	LRESULT OnDisp_DateTime(UINT id,NMLVDISPINFO *pnmlvdi)
 	{
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		LONGLONG dt = 0;
 		switch( id )
 		{
@@ -853,7 +880,7 @@ public:
 
 	LRESULT OnDisp_Size(UINT id,NMLVDISPINFO *pnmlvdi)
 	{
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 
 		LONGLONG cb;
 
@@ -880,7 +907,7 @@ public:
 
 	LRESULT OnDisp_Attributes(UINT id,NMLVDISPINFO *pnmlvdi)
 	{
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		UINT f = m_columnShowStyleFlags[ id ];
 		if( f == 0 )
 			GetAttributeString(pItem->pFI->FileAttributes,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax);
@@ -901,7 +928,7 @@ public:
 
 	LRESULT OnDisp_PhysicalDriveNumber(UINT id,NMLVDISPINFO *pnmlvdi)
 	{
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		if( pItem->pFI->PhysicalDriveNumber != (ULONG)-1 )
 			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"PhysicalDrive%u",pItem->pFI->PhysicalDriveNumber);
 		else
@@ -911,7 +938,7 @@ public:
 
 	LRESULT OnDisp_PhysicalDriveOffset(UINT id,NMLVDISPINFO *pnmlvdi)
 	{
-		CFileInfoItem *pItem = (CFileInfoItem *)pnmlvdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		if( pItem->pFI->PhysicalDriveOffset.QuadPart != 0 && pItem->pFI->PhysicalDriveOffset.QuadPart != -1 )
 			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->pFI->PhysicalDriveOffset.QuadPart);
 		else
@@ -953,7 +980,7 @@ public:
 		}
 	}
 
-	virtual LRESULT OnGetDispText(int id,NMLVDISPINFO *pdi, CFileInfoItem *pItem)
+	virtual LRESULT OnGetDispText(int id,NMLVDISPINFO *pdi, CFileLvItem *pItem)
 	{
 		if( !(pItem->pFI->ItemTypeFlag & _FLG_COSTRY_DATA) )
 		{
@@ -970,7 +997,7 @@ public:
 		return 0;
 	}
 
-	virtual LRESULT OnGetDispImage(int id,NMLVDISPINFO *pdi, CFileInfoItem *pItem)
+	virtual LRESULT OnGetDispImage(int id,NMLVDISPINFO *pdi, CFileLvItem *pItem)
 	{
 		pdi->item.iImage = GetShellFileImageListIndex(NULL,pItem->pFI->hdr.FileName,pItem->pFI->FileAttributes);
 
@@ -991,7 +1018,7 @@ public:
 	LRESULT OnGetDispInfo(NMHDR *pnmhdr)
 	{
 		NMLVDISPINFO *pdi = (NMLVDISPINFO*)pnmhdr;
-		CFileInfoItem *pItem = (CFileInfoItem *)pdi->item.lParam;
+		CFileLvItem *pItem = (CFileLvItem *)pdi->item.lParam;
 
 		int id = (int)ListViewEx_GetHeaderItemData(pnmhdr->hwndFrom,pdi->item.iSubItem);
 
@@ -1050,7 +1077,7 @@ public:
 		if( iItem == -1 )
 			return 0;
 
-		CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 		return pItem->pFI->FileAttributes;
 	}
 
@@ -1089,8 +1116,6 @@ public:
 			sel.pszPath = sz;
 			UpdateData( &sel );
 
-			m_pHeaderBar->SetPath(sz);
-
 			delete[] sz;
 		}
 		return 0;
@@ -1103,7 +1128,7 @@ public:
 		if( ID_MENU == id )
 		{
 			AppendMenu(hMenu,MF_STRING,ID_UP_DIR,                   L"&Go Up One Directory\tAlt+UpArrow");
-			AppendMenu(hMenu,MF_STRING,ID_GOTO,                     L"&GoTo Directory\tCtrl+G");
+			AppendMenu(hMenu,MF_STRING,ID_GOTO,                     L"&Traverse Directory\tCtrl+G");
 			AppendMenu(hMenu,MF_STRING,0,NULL);
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"Open Explorer");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"Open Command Prompt");
@@ -1116,6 +1141,59 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_GOTO,                     L"&GoTo Directory");
 			SetMenuDefaultItem(hMenu,ID_GOTO,FALSE);
 		}
+		return 0;
+	}
+
+	LRESULT OnSaveConfig(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		ISaveViewConfig *psvc = (ISaveViewConfig *)lParam;
+
+		if( psvc == NULL )
+		{
+			return ERROR_INVALID_PARAMETER;
+		}
+
+		// Current Directory
+		{
+			if( m_pszCurDir )
+			{
+				if( *m_pszCurDir != L'\0' )
+				{
+					// ToDo:
+					// Currently, not yet supported ultra deep path
+					// (over MAX_PATH like as 32767 characters path).
+					psvc->WriteValue( GetParent(m_hWnd), C_KEY_VOLUME, m_pszCurDir );
+				}
+				else
+				{
+					// Root Directories
+					psvc->WriteValue( GetParent(m_hWnd), C_KEY_VOLUME, L"" );
+				}
+			}
+		}
+
+		// Column Layout String
+		{
+			PWSTR psz;
+			SaveColumns(m_hWndList,&psz);
+
+			psvc->WriteValue( GetParent(m_hWnd), C_KEY_COLUMNLAYOUTSTRING, psz );
+
+			_MemFree(psz);
+		}
+
+		// Current Sort Column
+		{
+			int ColumnId = (int)ListViewEx_GetHeaderItemData( m_hWndList, m_Sort.CurrentSubItem  );
+
+			PCWSTR pColumnName = m_columns.IdToName( ColumnId );
+
+			WCHAR sz[64];
+			StringCchPrintf(sz,ARRAYSIZE(sz),L"%s,%d",pColumnName,m_Sort.Direction==1?0:1);
+
+			psvc->WriteValue( GetParent(m_hWnd), C_KEY_CURRENTSORTCOLUMN, sz );
+		}
+
 		return 0;
 	}
 
@@ -1167,7 +1245,7 @@ public:
 				iItem = FindFileName(pFI->hdr.FileName);
 				if( iItem != -1 )
 				{
-					CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+					CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 
 					pItem->pFI->AllocationSize = pFI->AllocationSize;
 					pItem->pFI->ChangeTime     = pFI->ChangeTime;
@@ -1194,7 +1272,7 @@ public:
 				iItem = FindFileName( pszOldName );
 				if( iItem != -1 )
 				{
-					CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+					CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 					pItem->pFI->SetFileName( pszNewName );
 					InvalidateListItem(iItem);
 				}
@@ -1282,27 +1360,8 @@ public:
 				if( m_pHeaderBar )
 					SendMessage(m_pHeaderBar->GetHwnd(),HBM_COLOR,wParam?1:0,0);
 				return 0;
-			case WM_QUERY_MESSAGE:
-			{
-				if( LOWORD(wParam) == QMT_GETVOLUMEPATH && lParam != 0 ) 
-				{
-					if( m_pszCurDir )
-					{
-						QM_PARAM *pParam = (QM_PARAM *)lParam;
-						if( *m_pszCurDir != L'\0' )
-						{
-							StringCchCopy(pParam->VolumePath,pParam->dwLength,m_pszCurDir);
-						}
-						else
-						{
-							// Root Directories
-							StringCchCopy(pParam->VolumePath,pParam->dwLength,L"");
-						}
-						return (LRESULT)wcslen(pParam->VolumePath);
-					}
-				}
-				return 0;
-			}
+			case PM_SAVECONFIG:
+				return OnSaveConfig(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
 				return CFindHandler<CFileListPage>::OnFindItem(hWnd,uMsg,wParam,lParam);;
 			case PM_GETWORKINGDIRECTORY:
@@ -1427,6 +1486,8 @@ public:
 			{ COLUMN_Lcn,                 L"Lcn",                   0},
 			{ COLUMN_PhysicalDriveNumber, L"PhysicalDrive",         0}, 
 			{ COLUMN_PhysicalDriveOffset, L"PhysicalOffset",        0},
+			{ COLUMN_RelativePath,        L"RelativePath",          0},
+			{ COLUMN_VolumeRelativePath,  L"VolumeRelativePath",    0},
 		};
 		m_columns.SetColumnNameMap( _countof(column_name_map), column_name_map );
 	}
@@ -1473,12 +1534,66 @@ public:
 		}
 	}
 
-	virtual BOOL LoadColumns(HWND hWndList,PCWSTR pszSectionName)
+	virtual BOOL LoadColumns(HWND hWndList,PCWSTR pszColumnLayout,PCWSTR pszCurrentSortColumn)
 	{
-		return FALSE;
+		COLUMN_TABLE *pcoltbl;
+
+		WCHAR bufDefaultTable[] =
+				L"Name=240\0"
+				L"Extension=80\0"
+				L"Attributes=80\0"
+				L"AllocationSize=116\0"
+				L"EndOfFile=116\0"
+				L"LastWriteTime=180\0"
+				L"CreationTime=180\0"
+				L"LastAccessTime=180\0"
+				L"ChangeTime=180\0";
+
+		int cb = sizeof(bufDefaultTable);
+		PWSTR ptr;
+
+		if( pszColumnLayout )
+		{
+			ptr = ColumnList_ConvertAllocSzToMszColumnString(pszColumnLayout);
+			cb = ColumnList_GetMszColumnStringSizeCb(ptr);
+		}
+		else
+		{
+			ptr = bufDefaultTable;
+			cb = sizeof(bufDefaultTable);
+		}
+
+		int iRet = m_columns.LoadUserDefinitionColumnTableFromText(&pcoltbl,ptr,cb);
+
+		ColumnList_FreeString(ptr);
+
+		if( iRet == 0 )
+		{
+			return FALSE;
+		}
+
+		InsertColumns(hWndList,pcoltbl);
+
+		m_columns.FreeUserDefinitionColumnTable(pcoltbl);
+
+		LARGE_INTEGER li;
+		PCWSTR pszSortColumn;
+		if( pszCurrentSortColumn )
+			pszSortColumn = pszCurrentSortColumn;
+		else
+			pszSortColumn = L"Name,0";
+
+		li = m_columns.GetColumnSortInfoFromText(pszSortColumn);
+		if( li.QuadPart != 0 )
+		{
+			m_Sort.CurrentSubItem = FindSubItemById( li.LowPart );
+			m_Sort.Direction = li.HighPart;
+		}
+
+		return TRUE;
 	}
 
-	BOOL SaveColumns(HWND hWndList)
+	BOOL SaveColumns(HWND hWndList,PWSTR *pszRetString=NULL)
 	{
 		int cColumns = ListViewEx_GetColumnCount(hWndList);
 		COLUMN_TABLE *pcoltbl = (COLUMN_TABLE *)_MemAllocZero(sizeof(COLUMN_TABLE) + sizeof(COLUMN) * cColumns);
@@ -1505,6 +1620,12 @@ public:
 		PWSTR pszColumns = NULL;
 		PWSTR pszSortColumn = NULL;
 		m_columns.MakeColumnString(pcoltbl,ColumnId,m_Sort.Direction,&pszColumns,&pszSortColumn);
+
+		if( pszRetString )
+		{
+			*pszRetString = _MemAllocString(pszColumns);
+		}
+
 		CoTaskMemFree(pszColumns);
 		CoTaskMemFree(pszSortColumn);
 
@@ -1515,7 +1636,7 @@ public:
 
 	virtual HRESULT SeveConfig()
 	{
-		SaveColumns(m_hWndList); // todo:
+		SaveColumns(m_hWndList);
 		return S_OK;
 	}
 
@@ -1545,7 +1666,7 @@ public:
 		if( iItem == -1 )
 			iItem = ListView_GetItemCount(hWndList);
 
-		CFileInfoItem *pItem = new CFileInfoItem;
+		CFileLvItem *pItem = new CFileLvItem;
 
 		pItem->Type  = 0;
 		pItem->pFI   = pFI;
@@ -1631,7 +1752,7 @@ public:
 
 		pFI->ItemTypeFlag |= _FLG_NTFS_SPECIALFILE;
 
-		pa->Add( (CFileItemEx*)pFI );	
+		pa->Add( pFI );	
 
 		return S_OK;
 	}
@@ -1736,7 +1857,7 @@ public:
 
 		if( m_pszCurDir == NULL || *m_pszCurDir == L'\0' )
 			SplitRootPath_W(pFI->hdr.Path,&RootDirectory,&cchRootDirectory,&RootRelativePath,&cchRootRelativePath);
-		else if( pFI->hdr.Path )
+		else if( pFI->hdr.Path == NULL )
 			SplitRootPath_W(m_pszCurDir,&RootDirectory,&cchRootDirectory,&RootRelativePath,&cchRootRelativePath);
 		else
 			return; // invalid case
@@ -1812,7 +1933,7 @@ public:
 
 			for(i = 0; i < cFiles; i++)
 			{
-				CFileItemEx *pFI = (CFileItemEx *)pa->Get(i);
+				CFileItemEx *pFI = pa->Get(i);
 
 				InitCostryFileItemInformation(pFI);
 
@@ -2204,29 +2325,34 @@ public:
 		return S_OK;
 	}
 
-	virtual HRESULT UpdateData(PVOID pSelItem)
+	virtual HRESULT UpdateData(PVOID ptr)
 	{
 		HRESULT hr;
 
-		SELECT_ITEM *pPath = (SELECT_ITEM *)pSelItem;
+		SELECT_ITEM *SelectItem = (SELECT_ITEM *)ptr;
 
 		_SafeMemFree(m_pszVolumeName);
 		_SafeMemFree(m_pszVolumeDevice);
 		_SafeMemFree(m_pszVolumeRootRelativePath);
 		_SafeMemFree(m_pszVolumePathLastSection);
 
-		if( pPath->pszPath )
+		ZeroMemory(m_szDosDrive,sizeof(m_szDosDrive));
+
+		m_bRootDirectory = FALSE;
+		m_bRemoteDevice = FALSE;
+
+		if( SelectItem->pszPath )
 		{
 			WCHAR szVolume[MAX_PATH];
-			if( NtPathGetVolumeName(pPath->pszPath,szVolume,_countof(szVolume)) )
+			if( NtPathGetVolumeName(SelectItem->pszPath,szVolume,_countof(szVolume)) )
 				m_pszVolumeName = _MemAllocString(szVolume);
 
 			WCHAR szDevice[MAX_PATH];
-			if( NtPathParseDeviceName(pPath->pszPath,szDevice,ARRAYSIZE(szDevice),NULL,0) == S_OK )
+			if( NtPathParseDeviceName(SelectItem->pszPath,szDevice,ARRAYSIZE(szDevice),NULL,0) == S_OK )
 				m_pszVolumeDevice = _MemAllocString(szDevice);
 
 			PWSTR pszRoot = NULL;
-			if( FindRootDirectory_W(pPath->pszPath,&pszRoot) == 0 && pszRoot != NULL )
+			if( FindRootDirectory_W(SelectItem->pszPath,&pszRoot) == 0 && pszRoot != NULL )
 			{
 				m_pszVolumeRootRelativePath =  _MemAllocString(pszRoot);
 
@@ -2238,33 +2364,93 @@ public:
 			}
 		}
 
+		if( m_pszVolumeDevice )
+		{
+			ULONG DeviceType;
+			ULONG Characteristics;
+			HANDLE hRootDirectory;
+			PWSTR pszRoot = CombinePath(m_pszVolumeDevice,L"\\");
+			if( OpenRootDirectory(pszRoot,0,&hRootDirectory) == 0)
+			{
+				GetVolumeDeviceType(hRootDirectory,&DeviceType,&Characteristics);
+				if( FILE_REMOTE_DEVICE & Characteristics )
+					m_bRemoteDevice = TRUE;
+				CloseHandle(hRootDirectory);
+			}
+			FreeMemory(pszRoot);
+		}
+
+		if( m_pszVolumeDevice )
+		{
+			DosDriveFromNtDevicePath(m_pszVolumeDevice,m_szDosDrive,ARRAYSIZE(m_szDosDrive),0,NULL);
+		}
+
 		if( m_pHeaderBar )
 		{
-			if( pPath->pszPath )
+			if( SelectItem->pszPath )
 			{
-				m_pHeaderBar->SetPath(pPath->pszPath);
+				m_pHeaderBar->SetPathEx(m_pszVolumeDevice,m_pszVolumeRootRelativePath,m_szDosDrive);
 			}
 			else
 			{
 				m_pHeaderBar->SetText(L"Root Directories",L"");
 			}
-#if 0 // Enable root directories list
-			m_pHeaderBar->EnableButton(ID_UP_DIR, (pPath->pszPath == NULL || *pPath->pszPath == 0) ? FALSE : TRUE);
-#else // Not use  root directories list
-			m_pHeaderBar->EnableButton(ID_UP_DIR, NtPathIsRootDirectory(pPath->pszPath) ? FALSE : TRUE );
+
+#if _ENABLE_ROOTDIRECTORY_LIST // Enable root directories list
+			BOOL bRoot = NtPathIsRootDirectory(SelectItem->pszPath);
+			if( m_pszVolumeDevice )
+			{
+				if( !bRoot )
+				{
+					PWSTR pszRootDir = CombinePath(this->m_pszVolumeDevice,L"\\");
+					if( wcsicmp(SelectItem->pszPath,pszRootDir) == 0 )
+					{
+						bRoot = true;
+					}
+					FreeMemory(pszRootDir);
+				}
+			}
+
+			m_bRootDirectory = bRoot;
+
+			BOOL bEnable;
+			if( m_bRemoteDevice )
+				bEnable = !bRoot ? TRUE : FALSE;
+			else
+				bEnable = (SelectItem->pszPath && *SelectItem->pszPath);
+
+			m_pHeaderBar->EnableButton(ID_UP_DIR, bEnable );
+
+#else // Not use root directories list
+			if( this->m_pszVolumeDevice ) {
+			BOOL bRoot = NtPathIsRootDirectory(SelectItem->pszPath);
+
+			if( !bRoot )
+			{
+				PWSTR pszRootDir = CombinePath(this->m_pszVolumeDevice,L"\\");
+				if( wcsicmp(SelectItem->pszPath,pszRootDir) == 0 )
+				{
+					bRoot = true;
+				}
+				FreeMemory(pszRootDir);
+			}
+			m_pHeaderBar->EnableButton(ID_UP_DIR, bRoot ? FALSE : TRUE );
+
+			m_bRootDirectory = bRoot;
+			}
 #endif
 		}
 
 		//
 		// Update List-View
 		//
-		hr = FillItems(pPath);
+		hr = FillItems(SelectItem);
 
 		//
 		// - Update MDI frame title
 		// - Set MDI child frame title
 		//
-		WCHAR szVolumeName[128];
+		WCHAR szVolumeName[MAX_PATH];
 		if( this->m_pszVolumeDevice )
 			StringCchCopy(szVolumeName,ARRAYSIZE(szVolumeName),this->m_pszVolumeDevice);
 		else
@@ -2280,7 +2466,7 @@ public:
 		if( iItem == -1 )
 			return -1;
 
-		CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 
 		if( pItem == NULL )
 			return -1;
@@ -2309,6 +2495,7 @@ public:
 			sel.ViewType  = GetConsoleId();
 			sel.pszPath   = pszGoToDir;
 			sel.pszCurDir = DuplicateString(m_pszCurDir);
+			sel.pszVolume = m_pszVolumeDevice;
 
 			if( wcscmp(pItem->pFI->hdr.FileName,L"..") == 0 )
 				sel.pszName   = DuplicateString(pItem->pFI->hdr.FileName);
@@ -2363,52 +2550,102 @@ public:
 					m_bExecFileVerification = FALSE; // does not confirm next time
 			}
 
-			PWSTR pszFullPath;
-			pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+			OpenWithExplorer(pItem);
+		}
 
-			SELECT_ITEM sel = {0};
-			sel.ViewType  = VOLUME_CONSOLE_HOME;
-			sel.pszPath   = pszFullPath;
-			sel.pszCurDir = DuplicateString(m_pszCurDir);
-			sel.pszName   = DuplicateString(pItem->pFI->hdr.FileName);
+		return 0;
+	}
 
+	void OpenWithExplorer(CFileLvItem *pItem)
+	{
+		SELECT_ITEM File = {0};
+
+		if( m_pszCurDir && *m_pszCurDir != L'\0' )
+			File.pszPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+		else
+			File.pszPath = CombinePath(pItem->pFI->hdr.Path,pItem->pFI->hdr.FileName);
+	
+		if( m_pszCurDir && *m_pszCurDir != L'\0' )
+			File.pszCurDir = DuplicateString(m_pszCurDir);
+		else
+			File.pszCurDir = DuplicateString(pItem->pFI->hdr.Path);
+
+		File.pszName = DuplicateString(pItem->pFI->hdr.FileName);
+
+		if( File.pszPath && File.pszCurDir && File.pszName )
+		{
+			WCHAR szDosPath[MAX_PATH];
+			ZeroMemory(szDosPath,sizeof(szDosPath));
+	
+			if( PathIsPrefixDosDeviceDrive(File.pszPath) )
 			{
-				SELECT_ITEM* pFile = &sel;
-				WCHAR szDosPath[MAX_PATH];
-				ZeroMemory(szDosPath,sizeof(szDosPath));
-
-				if( PathIsPrefixDosDeviceDrive(pFile->pszPath) )
+				StringCchCopy(szDosPath,MAX_PATH,&File.pszPath[4]);
+			}
+			else if( HasPrefix(L"\\??\\",File.pszPath) )
+			{
+				StringCchCopy(szDosPath,MAX_PATH,L"\\\\?\\");
+				StringCchCat(szDosPath,MAX_PATH,&File.pszPath[4]);
+			}
+			else if( NtPathToDosPath(File.pszPath,szDosPath,MAX_PATH) )
+			{
+				;
+			}
+			else
+			{
+				PCWSTR RootDirectoryPart=NULL;
+				if( DosDriveFromNtDevicePath(File.pszPath,szDosPath,MAX_PATH,DDNTF_DEVICENAME_COMPARE,&RootDirectoryPart) == S_OK )
 				{
-					StringCchCopy(szDosPath,MAX_PATH,&pFile->pszPath[4]);
-				}
-				else if( HasPrefix(L"\\??\\",pFile->pszPath) )
-				{
-					StringCchCopy(szDosPath,MAX_PATH,L"\\\\?\\");
-					StringCchCat(szDosPath,MAX_PATH,&pFile->pszPath[4]);
-				}
-				else if( NtPathToDosPath(pFile->pszPath,szDosPath,MAX_PATH) )
-				{
-					;
-				}
-				else
-				{
-					StringCchCopy(szDosPath,MAX_PATH,pFile->pszPath);
-				}
-		
-				if( szDosPath[0] )
-				{
-					_OpenByExplorerEx(m_hWnd,szDosPath,NULL,FALSE);
+					StringCchCat(szDosPath,MAX_PATH,RootDirectoryPart);
 				}
 				else
 				{
-					MessageBeep(MB_ICONSTOP);
+					StringCchCopy(szDosPath,MAX_PATH,File.pszPath);
 				}
 			}
-
-			FreeMemory(sel.pszCurDir);
-			FreeMemory(sel.pszName);
-			FreeMemory(pszFullPath);
+	
+			if( szDosPath[0] )
+			{
+				_OpenByExplorerEx(m_hWnd,szDosPath,NULL,FALSE);
+			}
+			else
+			{
+				MessageBeep(MB_ICONSTOP);
+			}
 		}
+	
+		FreeMemory(File.pszCurDir);
+		FreeMemory(File.pszName);
+		FreeMemory(File.pszPath);
+	}
+
+	int ChooseDirectoryAndSelectItem(int iItem,PCWSTR pszVolumeRelativeFilePath)
+	{
+		PWSTR pszDirectoryPath = DuplicateString(pszVolumeRelativeFilePath);
+
+		PWSTR pszFileName = (PWSTR)FindFileName_W(pszDirectoryPath);
+
+		pszFileName = DuplicateString(pszFileName);
+
+		RemoveFileSpec_W(pszDirectoryPath);
+
+		if( wcsicmp(m_pszVolumeRootRelativePath,pszDirectoryPath) == 0 )
+		{
+			if( pszFileName )
+				SelectFileName(pszFileName);
+		}
+		else
+		{
+			PWSTR pszSelectDir = CombinePath(m_pszVolumeName,pszDirectoryPath);
+			SELECT_ITEM sel = {0};
+			sel.pszPath = pszSelectDir;
+			UpdateData( &sel );
+			if( pszFileName )
+				SelectFileName(pszFileName);
+			FreeMemory(pszSelectDir);
+		}
+
+		FreeMemory(pszFileName);
+		FreeMemory(pszDirectoryPath);
 
 		return 0;
 	}
@@ -2420,7 +2657,43 @@ public:
 
 	virtual HRESULT MakeContextMenu(HMENU hMenu)
 	{
-		return S_FALSE;
+		AppendMenu(hMenu,MF_STRING,ID_OPEN,L"&Open");
+		AppendMenu(hMenu,MF_STRING,0,NULL);
+		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text\tCtrl+C");
+		SetMenuDefaultItem(hMenu,ID_OPEN,FALSE);
+
+		AppendMenu(hMenu,MF_STRING,0,NULL);
+		AppendMenu(hMenu,MF_STRING,ID_SEARCH,L"&Search\tCtrl+Shift+F");
+
+		AppendMenu(hMenu,MF_STRING,0,NULL);
+		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLECHECK,L"Count Selected &Files");
+
+		if( m_pOpenApplications )
+		{
+			HMENU hAppMenu = CreatePopupMenu();
+			ULONG cApps = 0;
+			m_pOpenApplications->GetItemCount( &cApps );
+	
+			WCHAR szName[MAX_PATH];
+	
+			for(ULONG i = 0; i < cApps; i++)
+			{
+				if( m_pOpenApplications->IsSeparator(i) == S_FALSE )
+				{
+					m_pOpenApplications->GetFriendlyName(i,szName,MAX_PATH);
+					AppendMenu(hAppMenu,MF_STRING,ID_OPEN_APP_FIRST+i,szName);
+				}
+				else
+				{
+					AppendMenu(hAppMenu,MF_STRING,0,0);
+				}
+			}	
+	
+			AppendMenu(hMenu,MF_STRING,0,0);
+			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hAppMenu,L"Open with &Application");
+		}
+
+		return S_OK;
 	}
 
 	LRESULT OnContextMenu(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -2433,7 +2706,7 @@ public:
 
 		SendMessage(GetActiveWindow(),PM_MAKECONTEXTMENU,(WPARAM)hMenu,0);
 
-		CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 
 		MakeContextMenu(hMenu);
 
@@ -2459,12 +2732,12 @@ public:
 
 		CFileOperationList *pFiles = new CFileOperationList(32,16);
 
-		CFileInfoItem *pItem;
+		CFileLvItem *pItem;
 		PWSTR pNtPath;
 		int iItem = -1;
 		while( (iItem = ListView_GetNextItem(m_hWndList,iItem,LVNI_SELECTED)) != -1 )
 		{
-			pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+			pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 
 			ASSERT(pItem != NULL);
 
@@ -2493,7 +2766,7 @@ public:
 		cItems = ListView_GetItemCount(m_hWndList);
 		for(i = 0; i < cItems; i++)
 		{
-			CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,i);
+			CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,i);
 
 			if( _wcsicmp(pItem->pFI->hdr.FileName,pszName) == 0 )
 			{
@@ -2511,7 +2784,7 @@ public:
 			return S_FALSE;
 		}
 
-		CFileInfoItem *pItem = (CFileInfoItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 
 		if( wcscmp(pItem->pFI->hdr.FileName,L".") == 0 )
 			return S_FALSE;
@@ -2519,7 +2792,11 @@ public:
 		if( wcscmp(pItem->pFI->hdr.FileName,L"..") == 0 )
 			return S_FALSE;
 
-		PWSTR pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+		PWSTR pszFullPath;
+		if( m_pszCurDir && *m_pszCurDir )
+			pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+		else
+			pszFullPath = CombinePath(pItem->pFI->hdr.Path,pItem->pFI->hdr.FileName);
 
 		pPath->FileAttributes = pItem->pFI->FileAttributes;
 
@@ -2543,7 +2820,7 @@ public:
 
 	int AppendFileItem( PCWSTR pszFileName )
 	{
-		CFileItemEx *pFI = CreateFileItem( pszFileName );
+		CFileItemEx *pFI = CreateFileItem( m_pszCurDir, pszFileName );
 		if( pFI )
 		{
 			return Insert(m_hWndList,pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY ? ID_GROUP_DIRECTORY : ID_GROUP_FILE,-1,pFI);
@@ -2551,18 +2828,19 @@ public:
 		return -1;
 	}
 
-	CFileItemEx *CreateFileItem( PCWSTR pszFileName )
+	CFileItemEx *CreateFileItem( PCWSTR pszCurDir, PCWSTR pszFileName )
 	{
 		CFileItemEx *pFI = NULL;
 
 		PWSTR pszFullPath;
-		pszFullPath = CombinePath(m_pszCurDir,pszFileName);
+		pszFullPath = CombinePath(pszCurDir,pszFileName);
+
 		if( pszFullPath == NULL )
 			return NULL;
 
 		HANDLE hDirectory;
 
-		if( OpenFileEx_W(&hDirectory,m_pszCurDir,
+		if( OpenFileEx_W(&hDirectory,pszCurDir,
 					GENERIC_READ|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,
 					FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT) == STATUS_SUCCESS )
 		{
@@ -2612,6 +2890,8 @@ public:
 			int index = ListView_InsertColumn(hWndList,lvc.iOrder,&lvc);
 
 			ListViewEx_SetHeaderItemData( hWndList, index, pcol->id );
+
+			m_columnShowStyleFlags[ pcol->id ] = pcol->field;
 		}
 	}
 
@@ -2620,7 +2900,7 @@ public:
 	// Sort
 	//
 
-	int _comp_name(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	int _comp_name(CFileLvItem *pItem1,CFileLvItem *pItem2, const void *p)
 	{
 		SORT_PARAM<CFileListPage> *op = (SORT_PARAM<CFileListPage> *)p;
 
@@ -2632,11 +2912,16 @@ public:
 		return StrCmpLogicalW(pItem1->pFI->hdr.FileName,pItem2->pFI->hdr.FileName);
 	}
 
-	int _comp_size(CFileInfoItem *p1,CFileInfoItem *p2, const void *p)
+	int _comp_size(CFileLvItem *p1,CFileLvItem *p2, const void *p)
 	{
-		CFileInfoItem *pItem1 = (CFileInfoItem *)p1;
-		CFileInfoItem *pItem2 = (CFileInfoItem *)p2;
+		CFileLvItem *pItem1 = (CFileLvItem *)p1;
+		CFileLvItem *pItem2 = (CFileLvItem *)p2;
 		SORT_PARAM<CFileListPage> *op = (SORT_PARAM<CFileListPage> *)p;
+
+		// note:
+		// The size of a directory cannot be obtained using the NtQueryDirectoryFile 
+		// and must be obtained other system call.
+		_get_sort_ex_date(pItem1,pItem2);
 
 		LONGLONG cb1,cb2;
 
@@ -2655,7 +2940,7 @@ public:
 		return _COMP(cb1,cb2);
 	}
 
-	int _comp_datetime(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	int _comp_datetime(CFileLvItem *pItem1,CFileLvItem *pItem2, const void *p)
 	{
 		SORT_PARAM<CFileListPage> *op = (SORT_PARAM<CFileListPage> *)p;
 
@@ -2684,7 +2969,7 @@ public:
 		return _COMP(cb1,cb2);
 	}
 
-	int _comp_fileattributes(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	int _comp_fileattributes(CFileLvItem *pItem1,CFileLvItem *pItem2, const void *p)
 	{
 		UINT f = m_columnShowStyleFlags[ COLUMN_FileAttributes ];
 
@@ -2703,12 +2988,12 @@ public:
 		}
 	}
 
-	int _comp_ea(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	int _comp_ea(CFileLvItem *pItem1,CFileLvItem *pItem2, const void *p)
 	{
 		return _COMP(pItem1->pFI->EaSize,pItem2->pFI->EaSize);
 	}
 
-	int _comp_extension(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	int _comp_extension(CFileLvItem *pItem1,CFileLvItem *pItem2, const void *p)
 	{
 		if( _IS_DIRECTORY(pItem1->pFI->FileAttributes) && !_IS_DIRECTORY(pItem2->pFI->FileAttributes) )
 			return -1;
@@ -2722,7 +3007,7 @@ public:
 		return _compare_pointer_string_logical(pExt1,pExt2,op->direction);
 	}
 
-	int _comp_shortname(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	int _comp_shortname(CFileLvItem *pItem1,CFileLvItem *pItem2, const void *p)
 	{
 		PCWSTR pShortName1 = pItem1->pFI->ShortName;
 		PCWSTR pShortName2 = pItem2->pFI->ShortName;
@@ -2731,7 +3016,7 @@ public:
 		return _compare_pointer_string_logical(pShortName1,pShortName2,op->direction);
 	}
 
-	int _comp_fileid(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	int _comp_fileid(CFileLvItem *pItem1,CFileLvItem *pItem2, const void *p)
 	{
 		// refer to only 64bit id.
 		if( GetKeyState(VK_SHIFT) < 0 )
@@ -2747,14 +3032,26 @@ public:
 		return _COMP(pItem1->pFI->FileId.QuadPart,pItem2->pFI->FileId.QuadPart);
 	}
 
-	int _comp_path(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	int _comp_path(CFileLvItem *pItem1,CFileLvItem *pItem2, const void *p)
 	{
 		return StrCmpLogicalW(pItem1->pFI->hdr.Path,pItem2->pFI->hdr.Path);
 	}
 
-	int _comp_lcn(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	__forceinline void _get_sort_ex_date(CFileLvItem *pItem1,CFileLvItem *pItem2)
+	{
+		if( (pItem1->pFI->ItemTypeFlag & _FLG_COSTRY_DATA) == 0 )
+			GetCostlyFileInformationData(pItem1->pFI);
+
+		if( (pItem2->pFI->ItemTypeFlag & _FLG_COSTRY_DATA) == 0 )
+			GetCostlyFileInformationData(pItem2->pFI);
+	}
+
+	int _comp_lcn(CFileLvItem *pItem1,CFileLvItem *pItem2, const void *p)
 	{
 		SORT_PARAM<CFileListPage> *op = (SORT_PARAM<CFileListPage> *)p;
+
+		_get_sort_ex_date(pItem1,pItem2);
+
 		if( pItem1->pFI->FirstLCN.QuadPart == 0 && pItem2->pFI->FirstLCN.QuadPart != 0 )
 			return 1 * op->direction;
 		if( pItem1->pFI->FirstLCN.QuadPart != 0 && pItem2->pFI->FirstLCN.QuadPart == 0 )
@@ -2762,9 +3059,12 @@ public:
 		return _COMP(pItem1->pFI->FirstLCN.QuadPart,pItem2->pFI->FirstLCN.QuadPart);
 	}
 
-	int _comp_physicaldrivenumber(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	int _comp_physicaldrivenumber(CFileLvItem *pItem1,CFileLvItem *pItem2, const void *p)
 	{
 		SORT_PARAM<CFileListPage> *op = (SORT_PARAM<CFileListPage> *)p;
+
+		_get_sort_ex_date(pItem1,pItem2);
+
 		if( pItem1->pFI->PhysicalDriveNumber == -1 && pItem2->pFI->PhysicalDriveNumber != -1 )
 			return 1 * op->direction;
 		if( pItem1->pFI->PhysicalDriveNumber != -1 && pItem2->pFI->PhysicalDriveNumber == -1 )
@@ -2772,9 +3072,12 @@ public:
 		return _COMP(pItem1->pFI->PhysicalDriveNumber,pItem2->pFI->PhysicalDriveNumber);
 	}
 
-	int _comp_physicaldriveoffset(CFileInfoItem *pItem1,CFileInfoItem *pItem2, const void *p)
+	int _comp_physicaldriveoffset(CFileLvItem *pItem1,CFileLvItem *pItem2, const void *p)
 	{
 		SORT_PARAM<CFileListPage> *op = (SORT_PARAM<CFileListPage> *)p;
+
+		_get_sort_ex_date(pItem1,pItem2);
+
 		if( pItem1->pFI->PhysicalDriveOffset.QuadPart == -1 && pItem2->pFI->PhysicalDriveOffset.QuadPart != -1 )
 			return 1 * op->direction;
 		if( pItem1->pFI->PhysicalDriveOffset.QuadPart != -1 && pItem2->pFI->PhysicalDriveOffset.QuadPart == -1 )
@@ -2784,12 +3087,12 @@ public:
 
 	virtual void init_compare_proc_def_table()
 	{
-		m_comp_proc = new COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileInfoItem>[COLUMN_MaxItem];
+		m_comp_proc = new COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileLvItem>[COLUMN_MaxItem];
 		ASSERT(m_comp_proc != NULL);
 
-		ZeroMemory(m_comp_proc,sizeof(COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileInfoItem>)*COLUMN_MaxItem);
+		ZeroMemory(m_comp_proc,sizeof(COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileLvItem>)*COLUMN_MaxItem);
 
-		static COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileInfoItem> _comp_proc[] = 
+		static COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileLvItem> _comp_proc[] = 
 		{
 			{COLUMN_Name,                &CFileListPage::_comp_name},
 			{COLUMN_LastWriteTime,       &CFileListPage::_comp_datetime},
@@ -2806,6 +3109,7 @@ public:
 			{COLUMN_Lcn,                 &CFileListPage::_comp_lcn},
 			{COLUMN_PhysicalDriveNumber, &CFileListPage::_comp_physicaldrivenumber},
 			{COLUMN_PhysicalDriveOffset, &CFileListPage::_comp_physicaldriveoffset},
+			{COLUMN_VolumeRelativePath,  &CFileListPage::_comp_path}, 
 		};
 
 		int i;
@@ -2816,7 +3120,7 @@ public:
 		}
 	}
 
-	virtual int CompareItem(CFileInfoItem *pItem1,CFileInfoItem *pItem2,SORT_PARAM<CFileListPage> *op)
+	virtual int CompareItem(CFileLvItem *pItem1,CFileLvItem *pItem2,SORT_PARAM<CFileListPage> *op)
 	{
 		if( m_comp_proc == NULL )
 		{
@@ -2850,8 +3154,8 @@ public:
 
 	static int CALLBACK CompareProc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort)
 	{
-		CFileInfoItem *pItem1 = (CFileInfoItem *)lParam1;
-		CFileInfoItem *pItem2 = (CFileInfoItem *)lParam2;
+		CFileLvItem *pItem1 = (CFileLvItem *)lParam1;
+		CFileLvItem *pItem2 = (CFileLvItem *)lParam2;
 		SORT_PARAM<CFileListPage> *op = (SORT_PARAM<CFileListPage> *)lParamSort;
 		return op->pThis->CompareItem(pItem1,pItem2,op);
 	}
@@ -2882,13 +3186,35 @@ public:
 				break;
 			case ID_EDIT_COPY:
 			case ID_OPEN:
+			case ID_FILE_SIMPLECHECK:
 				*puState = ListView_GetSelectedCount(m_hWndList) ?  UPDUI_ENABLED : UPDUI_DISABLED;
 				break;
+			case ID_SEARCH:
+			{
+				*puState = UPDUI_DISABLED;
+				int iItem =	ListViewEx_GetCurSel(m_hWndList);
+				if( iItem != -1 )
+				{
+					CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+					if( (pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (wcscmp(pItem->pFI->hdr.FileName,L"..") != 0) )
+						*puState = UPDUI_ENABLED;
+				}
+				break;
+			}
 			case ID_UP_DIR:
-#if 0 // Enable root directories list
-				*puState = UPDUI_ENABLED;
+#if _ENABLE_ROOTDIRECTORY_LIST // Enable root directories list
+				if( m_pszCurDir && *m_pszCurDir ) {
+				if( m_bRemoteDevice )
+					*puState = m_bRootDirectory ? UPDUI_DISABLED : UPDUI_ENABLED;
+				else
+					*puState = UPDUI_ENABLED;
+				}
+				else
+				{
+					*puState = UPDUI_DISABLED;
+				}
 #else
-				*puState = NtPathIsRootDirectory(m_pszCurDir) ? UPDUI_DISABLED : UPDUI_ENABLED;
+				*puState = m_bRootDirectory ? UPDUI_DISABLED : UPDUI_ENABLED;
 #endif
 				break;
 			case ID_GOTO:
@@ -2907,6 +3233,11 @@ public:
 				*puState = UPDUI_ENABLED;
 				break;
 			default:
+				if( ID_OPEN_APP_FIRST <= uCmdId && uCmdId <= ID_OPEN_APP_LAST )
+				{
+					*puState = UPDUI_ENABLED;
+					return S_OK;
+				}
 				return S_FALSE;
 		}
 		return S_OK;
@@ -2982,56 +3313,34 @@ public:
 
 		if( IsRootDirectory_W(szDirPath) )
 		{
-#if 0
-			if( 0 )
-			{
-				// change to root directories page
-				UIS_PAGE pg = {0};
-				pg.ConsoleTypeId = VOLUME_CONSOLE_FILE_ROOTDIRECTORIES;
-				pg.pszPath       = szDirPath;
-				PWSTR pszBuffer  = _MemAllocString(szDirPath);
-				if( pszBuffer )
-				{
-					RemoveBackslash(pszBuffer);
-					PWSTR pName = wcsrchr(pszBuffer,L'\\');
-					if( pName && (*(++pName) != L'\0') )
-						pg.pszFileName = pName;
-				}
+			// Change to Root Directories page.
+			WCHAR *pName = NULL;
+			WCHAR szName[MAX_PATH];
+			StringCchCopy(szName,MAX_PATH,szDirPath.c_str());
+			RemoveBackslash(szName);
+			pName = wcsrchr(szName,L'\\');
+			if( pName )
+				pName++;
 
-				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,MAKEWPARAM(UI_SELECT_PAGE,0),(LPARAM)&pg);
+			SELECT_ITEM sel = {0};
+			sel.Flags     = SI_FLAG_ROOT_DIRECTORY;
+			sel.ViewType  = GetConsoleId();
+			sel.pszPath   = L"";
+			sel.pszCurDir = _MemAllocString( this->m_pszVolumeDevice ); // Previous shown volume's name.
+			sel.pszName   = _MemAllocString( pName );
+			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
 
-				_SafeMemFree(pszBuffer);
-			}
-			else
-#endif
-			{
-				// no page change, show root directries.
-				WCHAR *pName = NULL;
-				WCHAR szName[MAX_PATH];
-				StringCchCopy(szName,MAX_PATH,szDirPath.c_str());
-				RemoveBackslash(szName);
-				pName = wcsrchr(szName,L'\\');
-				if( pName )
-					pName++;
-
-				SELECT_ITEM sel = {0};
-				sel.Flags     = SI_FLAG_ROOT_DIRECTORY;
-				sel.ViewType  = GetConsoleId();
-				sel.pszPath   = L"";
-				sel.pszCurDir = _MemAllocString( this->m_pszVolumeDevice ); // Previous shown volume's name.
-				sel.pszName   = _MemAllocString( pName );
-				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
-
-				_SafeMemFree( sel.pszCurDir );
-				_SafeMemFree( sel.pszName );
-			}
+			_SafeMemFree( sel.pszCurDir );
+			_SafeMemFree( sel.pszName );
 		}
 		else
 		{
+			// Change to up one directory.
 			SELECT_ITEM sel = {0};
 			sel.ViewType  = GetConsoleId();
 			sel.pszCurDir = szDirPath;
 			sel.pszName   = L"..";
+			sel.pszVolume = m_pszVolumeDevice;
 			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
 		}
 	}
@@ -3098,6 +3407,12 @@ public:
 			case ID_GOTO:
 				OnGotoDirectory();
 				break;
+			case ID_SEARCH:
+				OnFileSearch();
+				break;
+			case ID_FILE_SIMPLECHECK:
+				OnSimpleCheck();
+				break;
 			case ID_OPEN_LOCATION_EXPLORER:
 			case ID_OPEN_LOCATION_CMDPROMPT:
 			case ID_OPEN_LOCATION_POWERSHELL:
@@ -3109,6 +3424,10 @@ public:
 				OnOpenItem();
 				break;
 			default:
+				if( ID_OPEN_APP_FIRST <= CmdId && CmdId <= ID_OPEN_APP_LAST )
+				{
+					return OnOpenFileWithApplication(m_hWnd,CmdId);
+				}
 				return S_FALSE;
 		}
 		return S_OK;
@@ -3128,18 +3447,175 @@ public:
 
 	void OnGotoDirectory()
 	{
+		HRESULT hr;
 		PWSTR pszNewPath;
-		if( TraverseDirectoryDialog(m_hWnd,m_pszCurDir,&pszNewPath,0) == S_OK )
-		{
-			SELECT_ITEM sel = {0};
-			sel.ViewType  = GetConsoleId();
-			sel.pszPath   = pszNewPath;
-			sel.pszCurDir = NULL;
-			sel.pszName   = NULL;
-			SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
 
+		hr = TraverseDirectoryDialog(m_hWnd,m_pszCurDir,&pszNewPath,0);
+
+		if( hr == S_OK )
+		{
+			ULONG fa = 0;
+			PathFileExists_W(pszNewPath,&fa);
+
+			if( fa & FILE_ATTRIBUTE_DIRECTORY )
+			{
+				// Show the specified directory.
+				SELECT_ITEM sel = {0};
+				sel.ViewType  = GetConsoleId();
+				sel.pszPath   = pszNewPath;
+				sel.pszCurDir = NULL;
+				sel.pszName   = NULL;
+				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
+			}
+			else
+			{
+				// Show the specified file's directory and select it.
+/*++			PWSTR RootRelativePath;
+				SplitRootPath_W(pszNewPath,NULL,NULL,&RootRelativePath,NULL);
+				FreeMemory(RootRelativePath); --*/
+				UNICODE_STRING volume,path;
+				SplitVolumeRelativePath(pszNewPath,&volume,&path);
+				ChooseDirectoryAndSelectItem(0,path.Buffer);
+			}
 			CoTaskMemFree(pszNewPath);
 		}
+	}
+
+	void OnSimpleCheck()
+	{
+		FS_SELECTED_FILELIST Files = {0};
+		if( MakeSelectedFileList(&Files) != S_OK )
+			return;
+
+		LARGE_INTEGER AllocationSize = {0};
+		LARGE_INTEGER EndOfFile = {0};
+		LARGE_INTEGER Directories = {0};
+		LARGE_INTEGER FileCounts = {0};
+		LARGE_INTEGER Errors = {0};
+		LARGE_INTEGER Total = {0};
+
+		PWSTR pszFullQualifyPath;
+		int i;
+		for(i = 0; i < (int)Files.FileListBuffer->Count; i++)
+		{
+			FS_FLITEM& fi = Files.FileListBuffer->File[i];
+
+			if( fi.Flags & FLI_FLG_NAME_OFFSET )
+			{
+				pszFullQualifyPath = GetFileNamePtr(Files.FileListBuffer,&fi);
+			}
+			else
+			{
+				pszFullQualifyPath = fi.Name;
+			}
+
+			Total.QuadPart++;
+
+			if( fi.Attributes & FILE_ATTRIBUTE_DIRECTORY )
+				Directories.QuadPart++;
+			else
+				FileCounts.QuadPart++;
+
+			NTSTATUS Status;
+			HANDLE hFile;
+			Status = OpenFileEx_W(&hFile,pszFullQualifyPath,FILE_READ_ATTRIBUTES|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_SYNCHRONOUS_IO_NONALERT|FILE_OPEN_REPARSE_POINT);
+			if( Status == 0 )
+			{
+				FILE_STANDARD_INFO fsi = {0};
+				if( GetFileInformationByHandleEx(hFile,FileStandardInfo,&fsi,sizeof(fsi)) )
+				{
+					AllocationSize.QuadPart += fsi.AllocationSize.QuadPart;
+					EndOfFile.QuadPart += fsi.EndOfFile.QuadPart;
+				}
+				else
+				{
+					Errors.QuadPart++;
+				}
+				CloseHandle(hFile);
+			}
+			else
+			{
+				Errors.QuadPart++;
+			}
+		}
+
+		CoTaskMemFree(Files.FileListBuffer); // todo:
+
+		WCHAR szMsgBuf[MAX_PATH];
+		WCHAR szTotalBuf[24];
+		WCHAR szFilesBuf[24];
+		WCHAR szDirectoriesBuf[24];
+		WCHAR szAllocSizeBuf[24];
+		WCHAR szEndOfFileBuf[24];
+		WCHAR szErrorsBuf[24];
+		WCHAR szAllocSizeFormatBuf[24];
+		WCHAR szEndOfFileFormatBuf[24];
+
+		{
+			_CommaFormatString(Total.QuadPart,szTotalBuf);
+			_CommaFormatString(Directories.QuadPart,szDirectoriesBuf);
+			_CommaFormatString(FileCounts.QuadPart,szFilesBuf);
+			_CommaFormatString(AllocationSize.QuadPart,szAllocSizeBuf);
+			_CommaFormatString(EndOfFile.QuadPart,szEndOfFileBuf);
+			_CommaFormatString(Errors.QuadPart,szErrorsBuf);
+
+			StrFormatByteSizeEx(AllocationSize.QuadPart,SFBS_FLAGS_TRUNCATE_UNDISPLAYED_DECIMAL_DIGITS,szAllocSizeFormatBuf,ARRAYSIZE(szAllocSizeFormatBuf));
+			StrFormatByteSizeEx(EndOfFile.QuadPart,SFBS_FLAGS_TRUNCATE_UNDISPLAYED_DECIMAL_DIGITS,szEndOfFileFormatBuf,ARRAYSIZE(szEndOfFileFormatBuf));
+		}
+
+		StringCchPrintf(szMsgBuf,MAX_PATH,
+			L"%s (%s) Total File Size\n"
+			L"%s (%s) Total Allocation Size\n"
+			L"\n"
+			L"%s Total Files\n"
+			L"%s Directories\n"
+			L"%s Files\n"
+			L"%s Errors\n",
+			szAllocSizeBuf,szAllocSizeFormatBuf,
+			szEndOfFileBuf,szEndOfFileFormatBuf,
+			szTotalBuf,
+			szDirectoriesBuf,
+			szFilesBuf,
+			szErrorsBuf
+			);
+
+		MsgBox(GetActiveWindow(),szMsgBuf,L"Quick Check on Selection items",MB_OK|MB_ICONINFORMATION);
+	}
+
+	void OnFileSearch()
+	{
+		HWND hwndMainWnd = GetActiveWindow();
+
+		FS_SELECTED_FILELIST Files = {0};
+		if( MakeSelectedFileList(&Files) != S_OK )
+			return;
+
+		HANDLE hMatchedFiles;
+		FO_PARAM fop = {0};
+		fop.hwnd  = m_hWnd;
+		fop.cmd   = FO_SEARCH;
+		fop.Flags = 0x1; // todo:
+
+		HRESULT hr;
+		hr = Search(m_hWnd,&Files,&hMatchedFiles);
+
+		if( hr == S_OK )
+		{
+			if( FILGetItemCount(hMatchedFiles) > 0 )
+			{
+				OPEN_MDI_CHILDFRAME_PARAM *popen_mdi = (OPEN_MDI_CHILDFRAME_PARAM *)_CoTaskMemAllocZero( sizeof(OPEN_MDI_CHILDFRAME_PARAM) + sizeof(HANDLE) );
+				popen_mdi->Flags = 0;
+				popen_mdi->Path = (PWSTR)hMatchedFiles; // Set a Handle of FIL.
+				PostMessage(hwndMainWnd,WM_OPEN_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT,1),(LPARAM)popen_mdi);
+			}
+			else
+			{
+				MsgBox(GetActiveWindow(),L"File not found.",L"File Search",MB_OK|MB_ICONINFORMATION);
+				FILDestroy(hMatchedFiles);
+			}
+		}
+
+		CoTaskMemFree(Files.FileListBuffer);
 	}
 
 	void OnOpenLocation(UINT uCmdId)
@@ -3213,6 +3689,52 @@ public:
 		_SafeMemFree( sel.pszPath );
 	}
 
+	HRESULT OnOpenFileWithApplication(HWND hWnd,UINT uCmdId)
+	{
+		HRESULT hr;
+		ULONG Index = uCmdId - ID_OPEN_APP_FIRST;
+
+		ASSERT( m_pOpenApplications != NULL );
+
+		WCHAR szCmdLine[MAX_PATH];
+		WCHAR szStartupPath[MAX_PATH];
+		WCHAR szAppendPath[MAX_PATH];
+		WCHAR szExecPath[MAX_PATH];
+
+		ZeroMemory(szCmdLine,sizeof(szCmdLine));
+		ZeroMemory(szStartupPath,sizeof(szStartupPath));
+		ZeroMemory(szAppendPath,sizeof(szAppendPath));
+		ZeroMemory(szExecPath,sizeof(szExecPath));
+
+		m_pOpenApplications->GetCommandLine(Index,szCmdLine,MAX_PATH);
+		m_pOpenApplications->GetStartupDirectory(Index,szStartupPath,MAX_PATH);
+		m_pOpenApplications->GetAppendPath(Index,szAppendPath,MAX_PATH);
+		m_pOpenApplications->GetAppendPath(Index,szExecPath,MAX_PATH);
+
+		FS_SELECTED_FILE FilePath = {0};
+		if( (hr = GetSelectedFile(hWnd,&FilePath)) == S_OK )
+		{
+			CRunHelp run;
+			CStringBuffer dosPath(32768);
+
+			NtPathToDosPath(FilePath.pszPath,dosPath,dosPath.GetBufferSize());
+
+			CRunHelp::RUN_COMMAND_PARAM cf = {0};
+
+			cf.mask                = RHCF_MASK_PATH|RHCF_MASK_DOSPATH|RHCF_MASK_PARAM;
+			cf.pszPath             = FilePath.pszPath; // open file nt-path
+			cf.pszDosPath          = dosPath;          // open file dos-path
+			cf.pszExecPath         = szCmdLine;        // app command line (with "%1")
+			cf.pszAppendPath       = szAppendPath;
+			cf.pszStartupDirectory = szStartupPath;
+
+			run.RunCommand(0,&cf);
+
+			FreeSelectedFile(&FilePath);
+		}
+		return hr;
+	}
+
 	//
 	// Directory Watch Notify Callback Proc
 	//
@@ -3260,7 +3782,7 @@ public:
 			case FILE_ACTION_ADDED:
 			case FILE_ACTION_RENAMED_NEW_NAME:
 			{
-				CFileItemEx *pFI = CreateFileItem( FileName );
+				CFileItemEx *pFI = CreateFileItem( m_pszCurDir, FileName );
 				if( pFI )
 				{
 					PostMessage(m_hWnd, PM_UPDATE_FILELIST,MAKEWPARAM(Action,0),(LPARAM)pFI);
@@ -3347,7 +3869,7 @@ public:
 							Action = _FILE_ACTION_RENAME;
 						}
 					}
-					else if( Event->InformationClass == DirectoryNotifyExtendedInformation )
+/*++				else if( Event->InformationClass == DirectoryNotifyExtendedInformation )
 					{
 						FILE_NOTIFY_EXTENDED_INFORMATION *pNextNotifyEx = (FILE_NOTIFY_EXTENDED_INFORMATION *)pNextNotify;
 						pszNewFileName = (WCHAR*)_MemAllocZero( pNextNotifyEx->FileNameLength + sizeof(WCHAR) );
@@ -3357,7 +3879,7 @@ public:
 							pNotify = (FILE_NOTIFY_INFORMATION *)pNextNotifyEx;
 							Action = _FILE_ACTION_RENAME;
 						}
-					}
+					}--*/
 				}
 			}
 
@@ -3374,6 +3896,28 @@ public:
 
 			pNotify = (FILE_NOTIFY_INFORMATION *)((ULONG_PTR)pNotify + pNotify->NextEntryOffset);
 		}
+		return S_OK;
+	}
+
+	HRESULT GetSelectedFile(HWND hWnd,FS_SELECTED_FILE *FilePath)
+	{
+		if( hWnd )
+		{
+			FS_SELECTED_FILE path = {0};
+			if( SendMessage(hWnd,PM_GETSELECTEDFILE,0,(LPARAM)&path) )
+			{
+				FilePath->FileAttributes = path.FileAttributes;
+				FilePath->pszPath = _MemAllocString(path.pszPath);
+				LocalFree(path.pszPath);
+				return S_OK;
+			}
+		}
+		return S_FALSE;
+	}
+
+	HRESULT FreeSelectedFile(FS_SELECTED_FILE *FilePath)
+	{
+		_SafeMemFree(FilePath->pszPath);
 		return S_OK;
 	}
 };

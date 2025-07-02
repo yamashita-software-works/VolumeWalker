@@ -17,14 +17,6 @@ FILDestroy(
 	);
 
 EXTERN_C
-INT
-WINAPI
-FILAddItem(
-	HANDLE hfl,
-	FILEITEM *Item
-	);
-
-EXTERN_C
 BOOL
 WINAPI
 FILRemoveAllItems(
@@ -34,16 +26,24 @@ FILRemoveAllItems(
 EXTERN_C
 INT
 WINAPI
-FILAddFileName(
-	HANDLE hfl,
-	PCWSTR FileName
+FILGetItemCount(
+	HANDLE hfl
 	);
 
 EXTERN_C
 INT
 WINAPI
-FILGetItemCount(
-	HANDLE hfl
+FILAddItem(
+	HANDLE hfl,
+	FILEITEM *Item
+	);
+
+EXTERN_C
+INT
+WINAPI
+FILAddFileName(
+	HANDLE hfl,
+	PCWSTR FileName
 	);
 
 EXTERN_C
@@ -61,6 +61,22 @@ WINAPI
 FILGetItemPtr(
 	HANDLE hfl,
 	INT Index
+	);
+
+EXTERN_C
+FILEITEMEX *
+WINAPI
+FILGetItemExPtr(
+	HANDLE hfl,
+	INT Index
+	);
+
+EXTERN_C
+INT
+WINAPI
+FILAddItemExPtr(
+	HANDLE hfl,
+	FILEITEMEX *ItemEx
 	);
 
 EXTERN_C

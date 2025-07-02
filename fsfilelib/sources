@@ -110,6 +110,7 @@ SOURCES = \
 	watchdirectory.cpp \
 	ntfsrecord.cpp \
 	fileitemlist.cpp \
+	fileitemdata.cpp \
 	reparsepointinfo.cpp \
 	util.cpp \
 	fsfilelib.rc

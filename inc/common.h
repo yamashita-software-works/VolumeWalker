@@ -19,20 +19,20 @@
 #define WM_QUERY_MESSAGE    (PRIVATE_MESSAGE_BASE+2)
 
 enum {
-	UI_INIT_LAYOUT       =  0x1001,
-	UI_INIT_VIEW         =  0x1002,
-	UI_SELECT_ITEM       =  0x1003,
-	UI_SET_FILE          =  0x1004,
-	UI_SET_DIRECTORY     =  0x1005,
-	UI_CHANGE_DIRECTORY  =  0x1006,
-	UI_SET_TITLE         =  0x1007,
-	UI_SET_ICON          =  0x1008,
-//	OBSOLETE             =  0x1009,
-	UI_GET_SUBPANE       =  0x100A,
-	UI_SET_SUBPANE       =  0x100B,
-	UI_SET_FILELIST      =  0x100C,
-	UI_SELECT_PAGE       =  0x100D,
-	UI_SELECT_FILE       =  0x100E,
+	UI_INIT_LAYOUT              = 0x1001,
+//	OBSOLETE                    = 0x1002,
+	UI_SELECT_ITEM              = 0x1003,
+	UI_SET_FILE                 = 0x1004,
+	UI_SET_DIRECTORY            = 0x1005,
+	UI_CHANGE_DIRECTORY         = 0x1006,
+	UI_SET_TITLE                = 0x1007,
+	UI_SET_ICON                 = 0x1008,
+//	OBSOLETE                    = 0x1009,
+	UI_GET_SUBPANE              = 0x100A,
+	UI_SET_SUBPANE              = 0x100B,
+	UI_SET_FILELIST             = 0x100C,
+	UI_SELECT_PAGE              = 0x100D,
+	UI_SELECT_FILE              = 0x100E,
 	UI_NOTIFY_ITEM_SELECTED     = 0x2001,
 	UI_NOTIFY_VOLUME_SELECTED   = 0x2002,
 //	OBSOLETE                    = 0x2003,
@@ -42,6 +42,37 @@ enum {
 	UI_QUERY_CURRENTITEMNAME    = 0x3002,
 	UI_QUERY_SELECTEDITEM       = 0x3003,
 };
+
+interface __declspec(novtable)  IInterface {
+	virtual VOID Release(void);
+};
+
+interface __declspec(novtable)  ISaveViewConfig : public IInterface {
+	virtual INT WriteValue(HWND hwndView,PCWSTR KeyName,PWSTR Value) = 0;
+	virtual INT WriteValueInt(HWND hwndView,PCWSTR KeyName,INT Value) = 0;
+};
+
+interface __declspec(novtable)  ILoadViewConfig : public IInterface {
+	virtual INT ReadValue(HWND hwndView,PCWSTR KeyName,PWSTR Value,UINT ValueLength) = 0;
+	virtual INT ReadValueInt(HWND hwndView,PCWSTR KeyName,INT DefaultValue) = 0;
+};
+
+interface __declspec(novtable)  IApplication : public IInterface {
+	virtual HRESULT QueryInterface(UINT InterfaceId,void **pv) = 0;
+};
+
+enum {
+	I_UNKNOWN = 0,
+	I_LOADCONFIG,
+	I_SAVECONFIG,
+};
+
+typedef struct _PAGE_CONTEXT {
+	UINT Flags;
+	union {
+		IApplication *MainApp;
+	};
+} PAGE_CONTEXT;
 
 //
 // UI_SELECT_ITEM
@@ -59,8 +90,8 @@ typedef struct _SELECT_ITEM
 	};
 	FILE_ID_DESCRIPTOR FileId;
 	UINT ViewType;
-	PVOID Context;     // Depends an application.
 	GUID Guid;
+	PAGE_CONTEXT *Context;
 } SELECT_ITEM;
 
 #define SI_MASK_PATH     0x1
@@ -75,6 +106,7 @@ typedef struct _SELECT_ITEM
 #define SI_FLAG_ROOT_DIRECTORY     0x2
 #define SI_FLAG_NO_UPDATE          0x8
 #define SI_FLAG_CHANGE_PAGE_ONLY   (SI_FLAG_NO_UPDATE)
+#define SI_FLAG_CREATE_PAGE        0x1000
 
 typedef struct _SELECT_OFFSET_ITEM
 {
@@ -83,15 +115,6 @@ typedef struct _SELECT_OFFSET_ITEM
 } SELECT_OFFSET_ITEM;
 
 #define SI_MASK_START_OFFSET  0x8000
-
-//
-// UI_SET_DIRECTORY_FILE
-//
-typedef struct _UIS_DIRECTORY_FILE
-{
-	PWSTR pszPath;
-	PWSTR pszFileName;
-} UIS_DIRECTORY_FILE;
 
 //
 // UI_SELECT_PAGE
@@ -103,6 +126,7 @@ typedef struct _UIS_PAGE
 	PWSTR pszPath;
 	PWSTR pszFileName;
 	DWORD dwFlags;
+	PAGE_CONTEXT *Context;
 } UIS_PAGE;
 
 //
@@ -184,18 +208,3 @@ enum {
 //
 #define WM_MDI_CHILDFRAME_NCDESTROY   (PRIVATE_MESSAGE_BASE+14)
 
-//
-// WM_GETCONSOLEVIEWID
-//
-// wParam - Pointer to UINT, ConsoleId contained.
-// lParam - Pointer to GUID, Console Guid contained.
-//
-#define WM_GETCONSOLEVIEWID  (PRIVATE_MESSAGE_BASE+16)
-
-//
-// WM_GETCONFIGURATIONINFO
-//
-// wParam -
-// lParam -
-//
-#define WM_GETCONFIGURATIONINFO  (PRIVATE_MESSAGE_BASE+17)
