@@ -211,6 +211,9 @@ NtPathToGuidPath(
 #define PTF_WIN32PATHPREFIX        0x200
 #define PTF_PREFIX_MASK            (0x100|0x200)
 #define PTF_NO_PREFIX              0x0
+#define PTF_GLOBALNAMESPACE        0x0
+#define PTF_USERNAMESPACE          0x400
+#define PTF_NAMESPACEMASK          0x400
 
 EXTERN_C
 BOOL

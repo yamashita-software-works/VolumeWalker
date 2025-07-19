@@ -109,22 +109,23 @@ NtPathParseDeviceName(
 				StringCchCopy(szVolume,MAX_PATH,pHead);
 			}
 
-			if( QueryDosDevice(szVolume,pszDeviceName,cchDeviceName) == 0 )
+			if( QueryDosDevice(szVolume,pszDeviceName,cchDeviceName) > 0 )
 			{
-				memset(pszDeviceName,0,WCHAR_BYTES(cchDeviceName));
+				if( pszDosDeviceName )
+				{
+					StringCchCopy(pszDosDeviceName,cchDosDeviceName,szVolume);
+				}
+				hr = S_OK;
 			}
-
-			if( pszDosDeviceName )
+			else
 			{
-				StringCchCopy(pszDosDeviceName,cchDosDeviceName,szVolume);
+				hr = HRESULT_FROM_WIN32( GetLastError() );
 			}
-
-			hr = S_OK;
 		}
 	}
 	else
 	{
-		hr = S_FALSE;
+		hr = E_INVALIDARG;
 	}
 
 	return hr;

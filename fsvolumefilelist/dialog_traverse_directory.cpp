@@ -3,7 +3,7 @@
 //*                                                                         *
 //*  dialog_traverse_directory.cpp                                          *
 //*                                                                         *
-//*  Goto Dialog Box Implements.                                            *
+//*  Traverse Dialog Box Implements.                                        *
 //*                                                                         *
 //*  Author:  YAMASHITA Katsuhiro                                           *
 //*                                                                         *
@@ -11,7 +11,7 @@
 //*           2024-12-07 Modified                                           *
 //*           2024-12-12 GotoDirectoryOnSameVolumeDialog()                  *
 //*           2025-03-19 Renamed filename from gotodialog.cpp               *
-//*           2024-03-19 Renamed to TraverseDirectoryDialog()               *
+//*           2025-03-19 Renamed to TraverseDirectoryDialog()               *
 //*                                                                         *
 //***************************************************************************
 //

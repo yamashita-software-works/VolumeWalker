@@ -239,9 +239,9 @@ static HRESULT CALLBACK SearchFileCallbackProc(ULONG CallbackReason,PVOID Callba
 				FreeMemory(pszDestinationFullQualifyFile);
 			}
 
-			if( pscp->SearchParam->ItemsUpperBound != 0 )
+			if( pscp->SearchParam->MaxFoundItemCount != 0 )
 			{
-				if( (pscp->SearchDirCount + pscp->SearchFileCount) >= pscp->SearchParam->ItemsUpperBound )
+				if( pscp->FindFileCount >= pscp->SearchParam->MaxFoundItemCount )
 				{
 					pscp->bLimitReached = TRUE;
 					pscp->bAbort = TRUE;

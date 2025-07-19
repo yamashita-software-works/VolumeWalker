@@ -32,6 +32,7 @@
 #include "runhelp.h"
 
 #define _ENABLE_ROOTDIRECTORY_LIST  0
+#define _ENABLE_SHELL_ICON          0
 
 #define PM_UPDATE_FILELIST (PM_PRIVATEBASE + 1)
 
@@ -100,6 +101,7 @@ protected:
 	BOOL m_bExecFileVerification;
 	BOOL m_bRootDirectory;
 	BOOL m_bRemoteDevice;
+	BOOL m_bPreventToCommand;
 
 	UINT m_columnShowStyleFlags[COLUMN_MaxCount];
 
@@ -125,7 +127,7 @@ public:
 	PWSTR GetCurPath() const { return m_pszCurDir; }
 	HWND GetListView() const { return m_hWndList; }
 
-	LARGE_INTEGER GetFileId() const
+	LARGE_INTEGER _GetFileId() const
 	{
 		LARGE_INTEGER li;
 		FS_NTFS_SPECIAL_FILE_LIST ntfsFile;
@@ -154,10 +156,11 @@ public:
 		m_bFillCostlyData = TRUE;
 		m_pHeaderBar = NULL;
 		m_bEnumShadowCopyVolumes = FALSE;
-		m_bEnableIconImage = FALSE;
+		m_bEnableIconImage = TRUE;
 		m_bExecFileVerification = TRUE;
 		m_bRootDirectory = FALSE;
 		m_bRemoteDevice = FALSE;
+		m_bPreventToCommand = FALSE;
 		m_pszVolumeName = NULL;
 		m_pszVolumeDevice = NULL;
 		m_pszVolumeRootRelativePath = NULL;
@@ -266,8 +269,8 @@ public:
 		{
 			COLORREF crBack = RGB(98,98,98);
 			COLORREF crText = RGB(214,214,214);
-			COLORREF crHighlightText = RGB(255,255,255);
-			ibc.crHighlightText     = 
+			COLORREF crHighlightText = RGB(252,252,252);
+			ibc.crHighlightText     = crHighlightText;
 			ibc.crHighlightBack     = crBack;
 			ibc.crNormalBack        = crBack;
 			ibc.crNormalText        = crText;
@@ -288,7 +291,7 @@ public:
 			}
 			else
 			{
-				crBack = RGB(250,250,250);
+				crBack = RGB(243,243,243);
 				crText = RGB(108,108,108);
 			}
 
@@ -415,6 +418,7 @@ public:
 					GetCostlyFileInformationData(pItem->pFI);
 				}
 
+#if 1 // light
 				if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
 					pnmlvcd->clrText = RGB(32,32,32);
 
@@ -436,6 +440,44 @@ public:
 
 				if( pItem->pFI->Wof )
 					pnmlvcd->clrText = RGB(128,0,80);
+#else // dark
+				if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+					pnmlvcd->clrText = RGB(223,223,223);
+
+				if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
+					pnmlvcd->clrText = RGB(0,255,255);
+
+				if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
+					pnmlvcd->clrText = RGB(0,0,180);
+				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
+					pnmlvcd->clrText = RGB(0,174,54);
+				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
+					pnmlvcd->clrText = RGB(10,223,96);
+				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
+					pnmlvcd->clrText = RGB(0,200,48);
+				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
+					pnmlvcd->clrText = RGB(185,122,87);
+				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SYSTEM )
+					pnmlvcd->clrText = RGB(180,40,223);
+
+				if( pItem->pFI->Wof )
+					pnmlvcd->clrText = RGB(128,0,80);
+#endif
+
+				if( 0 ) 
+				{
+					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+					{
+						pnmlvcd->clrTextBk = RGB(248,248,248);
+
+						if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
+							pnmlvcd->clrTextBk = RGB(248,243,253);
+						else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
+							pnmlvcd->clrTextBk = RGB(219,255,219);
+						else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
+							pnmlvcd->clrTextBk = RGB(200,231,255);
+					}
+				}
 				return CDRF_NOTIFYPOSTPAINT;
 			}
 			case CDDS_ITEMPOSTPAINT:
@@ -999,6 +1041,7 @@ public:
 
 	virtual LRESULT OnGetDispImage(int id,NMLVDISPINFO *pdi, CFileLvItem *pItem)
 	{
+#if _ENABLE_SHELL_ICON
 		pdi->item.iImage = GetShellFileImageListIndex(NULL,pItem->pFI->hdr.FileName,pItem->pFI->FileAttributes);
 
 		if( pdi->item.iImage & 0xff000000 )
@@ -1009,7 +1052,17 @@ public:
 		}
 
 		pdi->item.iImage = pdi->item.iImage & ~0xFF000000;
-
+#else
+		if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+		{
+			if( pItem->pFI->hdr.FileName[0] == L'.' &&  pItem->pFI->hdr.FileName[1] == L'.' &&  pItem->pFI->hdr.FileName[2] == L'\0' )
+				pdi->item.iImage = 1;
+			else
+				pdi->item.iImage = 0;
+		}
+		else
+			pdi->item.iImage = I_IMAGENONE;
+#endif
 		pdi->item.mask |= LVIF_DI_SETITEM;
 
 		return 0;
@@ -1047,12 +1100,15 @@ public:
 
 		if( wParam != 0 )
 		{
-			StringCchCopy((PWSTR)lParam,(SIZE_T)wParam,GetPath());
-			return (LRESULT)IsNtfsSpecialDirectory();
+			if( this->m_pszCurDir )
+			{
+				StringCchCopy((PWSTR)lParam,(SIZE_T)wParam,GetPath());
+				return (LRESULT)IsNtfsSpecialDirectory();
+			}
 		}
 		else
 		{
-			*((LARGE_INTEGER *)lParam) = GetFileId();
+			*((LARGE_INTEGER *)lParam) = _GetFileId();
 		}
 		return 0;
 	}
@@ -1341,8 +1397,6 @@ public:
 	{
 		switch(uMsg)
 		{
-			case WM_PRETRANSLATEMESSAGE:
-				return FALSE;
 			case WM_SETFOCUS:
 				SetFocus(m_hWndList);
 				return 0;
@@ -1434,7 +1488,22 @@ public:
 #endif
 		if( m_bEnableIconImage )
 		{
-			HIMAGELIST himl = GetGlobalShareImageList(0);
+			HIMAGELIST himl;
+#if _ENABLE_SHELL_ICON
+			himl = GetGlobalShareImageList(0);
+#else
+			int cxIcon,cyIcon;
+			cxIcon = GetSystemMetrics(SM_CXSMICON);
+			cyIcon = GetSystemMetrics(SM_CYSMICON);
+			himl = ImageList_Create(cxIcon,cyIcon,ILC_COLOR32,8,8);
+			{HICON hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(IDI_LIST_FOLDER),IMAGE_ICON,cxIcon,cyIcon,LR_DEFAULTCOLOR);
+			ImageList_AddIcon(himl,hIcon);
+			DestroyIcon(hIcon);}
+
+			{HICON hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(IDI_LIST_FOLDER_UP_ONE),IMAGE_ICON,cxIcon,cyIcon,LR_DEFAULTCOLOR);
+			ImageList_AddIcon(himl,hIcon);
+			DestroyIcon(hIcon);}
+#endif
 			ListView_SetImageList(m_hWndList,himl,LVSIL_SMALL);
 		}
 
@@ -1976,7 +2045,7 @@ public:
 
 		if( (Status = OpenFile_W(&hRootDirectory,hRootDirectory,RootDir,FILE_READ_ATTRIBUTES|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE)) == 0 )
 		{
-			::GetFileId(hRootDirectory,&pFI->FileId);
+			GetFileId(hRootDirectory,&pFI->FileId);
 
 			FILE_BASIC_INFO fbi = {0};
 			if( GetFileInformationByHandleEx(hRootDirectory,FileBasicInfo,&fbi,sizeof(fbi)) )
@@ -2185,6 +2254,9 @@ public:
 					m_LastErrorCode = hr;
 					ListViewEx_ResetEmptyText(m_hWndList);
 	
+					if( m_bRootDirectory )
+						DisablePage(hr);
+
 					return hr;
 				}
 	
@@ -2243,6 +2315,9 @@ public:
 			// Get information enumerated files.
 			//
 			GetCostlyFilesInformationOnPtrArray(pa);
+
+			if( m_pHeaderBar )
+				m_pHeaderBar->EnableUsageSizeBar( TRUE );
 		}
 		else
 		{
@@ -2258,6 +2333,9 @@ public:
 			pa->Create( 256 );
 
 			EnumRootDirectories(pa);
+
+			if( m_pHeaderBar )
+				m_pHeaderBar->EnableUsageSizeBar( FALSE );
 		}
 
 		//
@@ -2320,9 +2398,23 @@ public:
 		if( m_hWatchHandle )
 			SetWatchDirectory(m_hWatchHandle,pSel->pszPath);
 
+		if( m_pHeaderBar )
+			m_pHeaderBar->UpdateBarInfo();
+
 		m_LastErrorCode = S_OK;
 
 		return S_OK;
+	}
+
+	void DisablePage(DWORD dwErrorCode)
+	{
+		this->m_pHeaderBar->EnableButton(ID_UP_DIR, FALSE);
+		this->m_pHeaderBar->EnableButton(ID_GOTO, FALSE);
+		this->m_pHeaderBar->EnableMenuButton(FALSE);
+		this->m_pHeaderBar->EnableUsageSizeBar(FALSE);
+		m_bPreventToCommand = TRUE;
+		m_LastErrorCode = dwErrorCode;
+		ListViewEx_ResetEmptyText(m_hWndList);
 	}
 
 	virtual HRESULT UpdateData(PVOID ptr)
@@ -2340,16 +2432,31 @@ public:
 
 		m_bRootDirectory = FALSE;
 		m_bRemoteDevice = FALSE;
+		m_bPreventToCommand = FALSE;
 
 		if( SelectItem->pszPath )
 		{
 			WCHAR szVolume[MAX_PATH];
 			if( NtPathGetVolumeName(SelectItem->pszPath,szVolume,_countof(szVolume)) )
+			{
 				m_pszVolumeName = _MemAllocString(szVolume);
+			}
+			else
+			{
+				DisablePage(ERROR_PATH_NOT_FOUND);
+				m_pHeaderBar->SetText(SelectItem->pszPath,L"");
+				SendMessage(GetActiveWindow(),PM_UPDATETITLE,0,(LPARAM)SelectItem->pszPath);
+				return E_FAIL;
+			}
 
 			WCHAR szDevice[MAX_PATH];
-			if( NtPathParseDeviceName(SelectItem->pszPath,szDevice,ARRAYSIZE(szDevice),NULL,0) == S_OK )
-				m_pszVolumeDevice = _MemAllocString(szDevice);
+			if( NtPathParseDeviceName(SelectItem->pszPath,szDevice,ARRAYSIZE(szDevice),NULL,0) != S_OK )
+			{
+				StringCchCopy( szDevice, ARRAYSIZE(szDevice), SelectItem->pszPath );
+				RemoveBackslash( szDevice );
+			}
+	
+			m_pszVolumeDevice = _MemAllocString(szDevice);
 
 			PWSTR pszRoot = NULL;
 			if( FindRootDirectory_W(SelectItem->pszPath,&pszRoot) == 0 && pszRoot != NULL )
@@ -2389,7 +2496,7 @@ public:
 		{
 			if( SelectItem->pszPath )
 			{
-				m_pHeaderBar->SetPathEx(m_pszVolumeDevice,m_pszVolumeRootRelativePath,m_szDosDrive);
+				m_pHeaderBar->SetPathEx(m_pszVolumeDevice,m_pszVolumeRootRelativePath,m_szDosDrive,m_pszVolumeName);
 			}
 			else
 			{
@@ -2422,21 +2529,22 @@ public:
 			m_pHeaderBar->EnableButton(ID_UP_DIR, bEnable );
 
 #else // Not use root directories list
-			if( this->m_pszVolumeDevice ) {
-			BOOL bRoot = NtPathIsRootDirectory(SelectItem->pszPath);
-
-			if( !bRoot )
+			if( m_pszVolumeDevice )
 			{
-				PWSTR pszRootDir = CombinePath(this->m_pszVolumeDevice,L"\\");
-				if( wcsicmp(SelectItem->pszPath,pszRootDir) == 0 )
-				{
-					bRoot = true;
-				}
-				FreeMemory(pszRootDir);
-			}
-			m_pHeaderBar->EnableButton(ID_UP_DIR, bRoot ? FALSE : TRUE );
+				BOOL bRoot = NtPathIsRootDirectory(SelectItem->pszPath);
 
-			m_bRootDirectory = bRoot;
+				if( !bRoot )
+				{
+					PWSTR pszRootDir = CombinePath(this->m_pszVolumeDevice,L"\\");
+					if( wcsicmp(SelectItem->pszPath,pszRootDir) == 0 )
+					{
+						bRoot = true;
+					}
+					FreeMemory(pszRootDir);
+				}
+				m_pHeaderBar->EnableButton(ID_UP_DIR, bRoot ? FALSE : TRUE );
+
+				m_bRootDirectory = bRoot;
 			}
 #endif
 		}
@@ -3203,23 +3311,32 @@ public:
 			}
 			case ID_UP_DIR:
 #if _ENABLE_ROOTDIRECTORY_LIST // Enable root directories list
-				if( m_pszCurDir && *m_pszCurDir ) {
-				if( m_bRemoteDevice )
-					*puState = m_bRootDirectory ? UPDUI_DISABLED : UPDUI_ENABLED;
-				else
-					*puState = UPDUI_ENABLED;
-				}
-				else
 				{
-					*puState = UPDUI_DISABLED;
+					if( m_pszCurDir && *m_pszCurDir )
+					{
+						if( m_bRemoteDevice )
+							*puState = m_bRootDirectory ? UPDUI_DISABLED : UPDUI_ENABLED;
+						else
+							*puState = UPDUI_ENABLED;
+					}
+					else
+					{
+						*puState = UPDUI_DISABLED;
+					}
 				}
 #else
-				*puState = m_bRootDirectory ? UPDUI_DISABLED : UPDUI_ENABLED;
+				{
+					*puState = m_bRootDirectory ? UPDUI_DISABLED : UPDUI_ENABLED;
+				}
 #endif
+				if( m_bPreventToCommand )
+					*puState = UPDUI_DISABLED;
 				break;
 			case ID_GOTO:
 			case ID_VIEW_REFRESH:
 				*puState = UPDUI_ENABLED;
+				if( m_bPreventToCommand )
+					*puState = UPDUI_DISABLED;
 				break;
 			case ID_OPEN_LOCATION_EXPLORER:
 			case ID_OPEN_LOCATION_CMDPROMPT:
@@ -3258,7 +3375,7 @@ public:
 			HANDLE hFile;
 			OpenFile_U(&hFile,NULL,&usRoot,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE,0);
 			LARGE_INTEGER liRoot;
-			::GetFileId(hFile,&liRoot);
+			GetFileId(hFile,&liRoot);
 			CloseHandle(hFile);
 
 			LARGE_INTEGER li;
@@ -3648,14 +3765,36 @@ public:
 
 		CStringBuffer dos(32768);
 		PWSTR DeviceRoot = CombinePath(this->m_pszVolumeDevice,m_pszVolumeRootRelativePath);
-		if( NtPathToDosPath(DeviceRoot,dos,dos.GetBufferSize()) > 0 )
+
+		BOOL doOpen = (NtPathToDosPath(DeviceRoot,dos,dos.GetBufferSize()) > 0);
+		if( !doOpen )
+		{
+			if( (op & OpenVolumeLocationWithExplorer) == OpenVolumeLocationWithExplorer )
+			{
+				doOpen = (NtPathToDosPathEx(DeviceRoot,dos,dos.GetBufferSize(),PTF_GUID|PTF_WIN32PATHPREFIX) > 0);
+			}
+		}
+
+		if( doOpen )
 		{
 			OpenVolumeLocationByShell(GetActiveWindow(),op,dos,NULL);
 		}
 		else
 		{
-			MsgBox(GetActiveWindow(),L"To be opened drive, the volume must be assigned drive.",L"Open Volume",MB_ICONEXCLAMATION|MB_OK);
+			PWSTR pAppName = L"";
+			switch( uCmdId )
+			{
+				case ID_OPEN_LOCATION_EXPLORER:   pAppName = L"Explorer";       break;
+				case ID_OPEN_LOCATION_CMDPROMPT:  pAppName = L"Command Prompt"; break;
+				case ID_OPEN_LOCATION_POWERSHELL: pAppName = L"PowerShell";     break;
+				case ID_OPEN_LOCATION_TERMINAL:   pAppName = L"Terminal";       break;
+				case ID_OPEN_LOCATION_BASH:       pAppName = L"Bash";           break;
+			}
+			WCHAR msg[256];
+			StringCchPrintf(msg,ARRAYSIZE(msg),L"To be open volume with %s, the volume must be assigned drive.",pAppName);
+			MsgBox(GetActiveWindow(),msg,L"Open Volume",MB_ICONEXCLAMATION|MB_OK);
 		}
+
 		FreeMemory(DeviceRoot);
 	}
 

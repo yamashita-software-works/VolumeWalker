@@ -49,7 +49,8 @@ OpenVolumeLocationByShell(
             }
             else if( pszDosDrive != NULL || *pszDosDrive != L'\0' )
             {
-                hr = StringCchPrintf(szVolume,MAX_PATH,L"%s\\",pszDosDrive);
+				hr = StringCchCopy(szVolume,MAX_PATH,pszDosDrive);
+				PathAddBackslash(szVolume);
             }
             else
             {

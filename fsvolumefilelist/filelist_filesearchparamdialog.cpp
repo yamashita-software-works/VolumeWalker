@@ -53,6 +53,7 @@ namespace SearchParameterDialog
 	HWND hwndEndOfFileTo;
 	HWND hwndAllocationSizeFrom;
 	HWND hwndAllocationSizeTo;
+	HWND hwndMaxItemCound;
 
 	SEARCH_PARAMETER *SearchParam;
 
@@ -281,7 +282,7 @@ namespace SearchParameterDialog
 
 	VOID SetSizeText(HWND hwndFrom,HWND hwndTo,LARGE_INTEGER *pliFrom,LARGE_INTEGER *pliTo)
 	{
-		WCHAR sz[100];
+		WCHAR sz[64];
 
 		StringCchPrintf(sz,ARRAYSIZE(sz),L"%I64d",pliFrom->QuadPart);
 		SetWindowText(hwndFrom,sz);
@@ -294,6 +295,14 @@ namespace SearchParameterDialog
 	{
 		SetSizeText(hwndEndOfFileFrom,hwndEndOfFileTo,&SearchParam->EndOfFile.From,&SearchParam->EndOfFile.To);
 		SetSizeText(hwndAllocationSizeFrom,hwndAllocationSizeTo,&SearchParam->EndOfFile.From,&SearchParam->EndOfFile.To);
+	}
+
+	VOID InitMaxFoundItemCount(SEARCH_PARAMETER *SearchParam)
+	{
+		WCHAR sz[64];
+
+		StringCchPrintf(sz,ARRAYSIZE(sz),L"%u",SearchParam->MaxFoundItemCount);
+		SetWindowText(hwndMaxItemCound,sz);
 	}
 
 	INT_PTR OnInitDialog(HWND hDlg,UINT,WPARAM,LPARAM lParam)
@@ -321,6 +330,7 @@ namespace SearchParameterDialog
 		hwndEndOfFileTo        = GetDlgItem(hDlg,IDC_EDIT3);
 		hwndAllocationSizeFrom = GetDlgItem(hDlg,IDC_EDIT4);
 		hwndAllocationSizeTo   = GetDlgItem(hDlg,IDC_EDIT5);
+		hwndMaxItemCound       = GetDlgItem(hDlg,IDC_EDIT7);
 
 		InitAttributeList(hDlg);
 		SetFileAttributesList(SearchParam);
@@ -328,6 +338,8 @@ namespace SearchParameterDialog
 		InitDateTimePickers(SearchParam);
 
 		InitFileSize(SearchParam);
+
+		InitMaxFoundItemCount(SearchParam);
 
 		UINT id[] = {IDC_CHECK1,IDC_CHECK2,IDC_CHECK3,IDC_CHECK4,IDC_CHECK5,IDC_CHECK6,IDC_CHECK7};
 		for( int i = 0; i < _countof(id); i++ )
@@ -442,6 +454,22 @@ namespace SearchParameterDialog
 		return TRUE;
 	}
 
+	BOOL GetMaxFoundItemCount(HWND hwndEdit,ULONG *pulCount)
+	{
+		WCHAR szBuf[100];
+		int n;
+
+		GetWindowText(hwndEdit,szBuf,ARRAYSIZE(szBuf));
+
+		if( StrToIntEx(szBuf,STIF_SUPPORT_HEX,&n) )
+		{
+			*pulCount = n;
+			return TRUE;
+		}
+
+		return FALSE;
+	}
+
 	VOID OnOK(HWND hwndDlg)
 	{
 		SEARCH_PARAMETER *psp = (SEARCH_PARAMETER *)GetWindowLongPtr(hwndDlg,DWLP_USER);
@@ -459,6 +487,8 @@ namespace SearchParameterDialog
 		GetDateTime(hwndDtpChangeFrom,hwndDtpChangeTo,&psp->DateTime.Change);
 
 		psp->CompareFlag = GetCompareFlag();
+
+		GetMaxFoundItemCount(hwndMaxItemCound,&psp->MaxFoundItemCount);
 
 		EndDialog(hwndDlg,IDOK);
 	}

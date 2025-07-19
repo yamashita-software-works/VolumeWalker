@@ -482,7 +482,8 @@ HWND FindSameWindowType(UINT ConsoleType,PCWSTR pszName)
 HWND FindSameVolumeWindow(UINT ConsoleType,PCWSTR pszVolumeName)
 {
 	CStringBuffer sVolumeName(32768);
-	NtPathGetVolumeName(pszVolumeName,sVolumeName,sVolumeName.GetBufferSize());
+	if( !NtPathGetVolumeName(pszVolumeName,sVolumeName,sVolumeName.GetBufferSize()) )
+		return FALSE;
 
 	HWND hwnd;
 	hwnd = GetWindow(g_hWndMDIClient,GW_CHILD);

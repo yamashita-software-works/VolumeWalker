@@ -337,7 +337,10 @@ public:
 #else
 				// convert volume name to root directory
 				// "\Device\HarddiskVolume1" -> "\Device\HarddiskVolume1\"
-				pszPath = CombinePath(ppg->pszPath,L"\\");
+				if( !IsLastCharacterBackslash(ppg->pszPath) )
+					pszPath = CombinePath(ppg->pszPath,L"\\");
+				else
+					pszPath = DuplicateString(ppg->pszPath);
 #endif
 
 				if( pszPath )
@@ -459,6 +462,7 @@ public:
 			m_pView->SelectView(&sel);
 
 			_SafeMemFree(pszNewCurDir);
+			_SafeMemFree(pszFileName);
 		}
 		else
 		{

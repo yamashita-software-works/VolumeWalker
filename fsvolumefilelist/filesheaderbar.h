@@ -16,9 +16,14 @@
 //  Licensed under the MIT License.
 //
 #include "longpathbox.h"
+#include "meterbox.h"
 #include "resource.h"
 
-#define ID_PATHBOX 100
+#include "..\fsvolumehelp\volumehelp.h"
+
+#define ID_VOLUMEBOX 100
+#define ID_PATHBOX   101
+#define ID_METERBOX  102
 
 #define PM_CHANGEPATH             (WM_APP+5000)
 
@@ -72,8 +77,11 @@ class CHeaderBar : public CBaseWindow
 	HWND m_hWndMenubar;
 	HWND m_hWndVolumeBox;
 	HWND m_hWndPathBox;
+	HWND m_hWndMeterBox;
 
 	DWORD m_dwStyleFlags;
+
+	PWSTR m_pszDeviceName;
 
 public:
 	CHeaderBar()
@@ -92,12 +100,13 @@ public:
 		m_crBoxInactiveBack = m_crBoxBack;
 		m_crBoxInactiveBorder = m_crBoxInactiveBack;
 		m_dwStyleFlags = 0;
+		m_pszDeviceName = NULL;
 	}
 
 	~CHeaderBar()
 	{
-		if( m_hFont )
-			DeleteObject(m_hFont);
+		ASSERT( m_hFont == NULL );
+		ASSERT( m_pszDeviceName == NULL );
 	}
 
 	DWORD GetStyle() const
@@ -110,7 +119,59 @@ public:
 		m_dwStyleFlags = dwStyle;
 	}
 
-	HRESULT SetPathEx(PCWSTR pszVolume,PCWSTR pszPath,PCWSTR pszDosDrive)
+#if 0
+	HRESULT SetPath(PCWSTR pszPath)
+	{
+		PWSTR pszRoot;
+
+		if( FindRootDirectory_W(pszPath,&pszRoot) != STATUS_SUCCESS )
+		{
+			pszRoot = L"<ERROR>";
+		}
+		SetWindowText(m_hWndPathBox,pszRoot);
+
+#if 1
+		WCHAR szText[MAX_PATH];
+		WCHAR szDevice[MAX_PATH];
+		WCHAR szDosDrive[8];
+		PWSTR pszDeviceName;
+		
+		memset(szDevice,0,sizeof(szDevice));
+		
+		NtPathParseDeviceName(pszPath,szDevice,ARRAYSIZE(szDevice),NULL,0);
+		
+		pszDeviceName = wcsrchr(szDevice,L'\\');
+		if( pszDeviceName )
+			pszDeviceName++;
+		else
+			pszDeviceName = szDevice;
+		
+		if( NtPathToDosPath(pszPath,szDosDrive,ARRAYSIZE(szDosDrive)) )
+			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s (%s)",pszDeviceName,szDosDrive);
+		else
+			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s",pszDeviceName);
+
+		SetWindowText(m_hWndVolumeBox,szText);
+#else
+		WCHAR szVolumeName[MAX_PATH];
+		ZeroMemory(szVolumeName,sizeof(szVolumeName));
+
+		if( NtPathGetVolumeName(pszPath,szVolumeName,ARRAYSIZE(szVolumeName)) )
+		{
+			if( HasPrefix(L"\\??\\",szVolumeName) )
+			{
+				if( szVolumeName[4] != L'\0' && szVolumeName[5] == L':' )
+					szVolumeName[4] = towupper(szVolumeName[4]);
+			}
+		}
+
+		SetWindowText(m_hWndVolumeBox,szVolumeName);
+#endif
+		return S_OK;
+	}
+#endif
+
+	HRESULT SetPathEx(PCWSTR pszVolume,PCWSTR pszPath,PCWSTR pszDosDrive,PCWSTR pszSymbolicLinkName=NULL)
 	{
 		WCHAR szText[MAX_PATH];
 		WCHAR szDevice[MAX_PATH];
@@ -118,31 +179,31 @@ public:
 	
 		memset(szDevice,0,sizeof(szDevice));
 		
-		if( 0 )
+		pszDeviceName = (PWSTR)pszVolume;
+
+		PCWSTR pszDisplayName;
+
+		if( pszSymbolicLinkName )
 		{
-			NtPathParseDeviceName(pszVolume,szDevice,ARRAYSIZE(szDevice),NULL,0);
-
-			pszDeviceName = wcsrchr(szDevice,L'\\');
-			if( pszDeviceName )
-				pszDeviceName++;
-			else
-				pszDeviceName = szDevice;
-
+			pszDisplayName = pszSymbolicLinkName;
 		}
 		else
 		{
-			pszDeviceName = (PWSTR)pszVolume;
+			pszDisplayName = pszVolume;
 		}
 
-		if( pszDosDrive )
-			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s (%s)",pszDeviceName,pszDosDrive);
+		if( pszDosDrive != NULL && *pszDosDrive != L'\0' )
+			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s (%s)",pszDisplayName,pszDosDrive);
 		else
-			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s",pszDeviceName);
+			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s",pszDisplayName);
 
 		SetWindowText(m_hWndVolumeBox,szText);
 
 		SetWindowText(m_hWndPathBox,pszPath);
 
+		_SafeMemFree(m_pszDeviceName);
+		m_pszDeviceName = _MemAllocString(pszDeviceName);
+		
 		return S_OK;
 	}
 
@@ -217,6 +278,25 @@ public:
 		SendMessage(m_hWndToolbar,TB_SETSTATE,(WPARAM)id,(LPARAM)state);
 	}
 
+	void EnableMenuButton(BOOL bEnable)
+	{
+		DWORD state = (DWORD)SendMessage(m_hWndMenubar,TB_GETSTATE,(WPARAM)ID_MENU,0);
+		state &= ~TBSTATE_ENABLED;
+		state |= (bEnable ? TBSTATE_ENABLED : 0);
+		SendMessage(m_hWndMenubar,TB_SETSTATE,(WPARAM)ID_MENU,(LPARAM)state);
+	}
+
+	void EnableUsageSizeBar(BOOL bEnable)
+	{
+		if( IsWindowVisible(m_hWndMeterBox) != bEnable )
+			ShowWindow( m_hWndMeterBox, bEnable ? SW_SHOW : SW_HIDE );
+	}
+
+	VOID UpdateBarInfo()
+	{
+		UpdateVolumeMeter(m_pszDeviceName);
+	}
+
 	void InitFont()
 	{
 		if( m_hFont )
@@ -264,7 +344,7 @@ public:
 #endif
 		m_hWndVolumeBox = CreateWindowEx(0,LPBC_LONGPATHBOX_NAME,L"",
 							WS_VISIBLE|WS_CHILD|LPBS_FLAT_BORDER|LPBS_NO_TEXTSELECTION|LPBS_NO_FOCUS,
-							0,0,0,0,m_hWnd,(HMENU)ID_PATHBOX,_GetResourceInstance(),0);
+							0,0,0,0,m_hWnd,(HMENU)ID_VOLUMEBOX,_GetResourceInstance(),0);
 
 		m_hWndPathBox = CreateWindowEx(0,LPBC_LONGPATHBOX_NAME,L"",
 							WS_VISIBLE|WS_CHILD|LPBS_FLAT_BORDER|LPBS_NO_TEXTSELECTION|LPBS_NO_FOCUS,
@@ -272,6 +352,11 @@ public:
 
 		SendMessage(m_hWndVolumeBox,WM_SETFONT,(WPARAM)m_hFont,0);
 		SendMessage(m_hWndPathBox,WM_SETFONT,(WPARAM)m_hFont,0);
+
+		InitMeterBox( _GetResourceInstance() );
+		m_hWndMeterBox = CreateWindowEx(0,MTBC_METERBOX_NAME,L"",WS_CHILD|WS_VISIBLE|MTBS_BORDER,
+							0,0,0,0,hWnd,(HMENU)ID_METERBOX,_GetResourceInstance(),NULL);
+		SendMessage(m_hWndMeterBox,WM_SETFONT,(WPARAM)GetIconFont(),0);
 
 		return 0;
 	}
@@ -284,6 +369,17 @@ public:
 
 		himl = (HIMAGELIST)SendMessage(m_hWndToolbar,TB_GETIMAGELIST, 0, 0);
 		ImageList_Destroy(himl);
+
+		HFONT hFont = (HFONT)SendMessage(m_hWndMeterBox,WM_GETFONT,0,0);
+		DeleteObject(hFont);
+
+		if( m_hFont )
+		{
+			DeleteObject(m_hFont);
+			m_hFont = NULL;
+		}
+
+		_SafeMemFree(m_pszDeviceName);
 
 		return 0;
 	}
@@ -374,32 +470,43 @@ public:
 		int cxtbMenu,cytbMenu;
 		CalcToolBarSize(m_hWndMenubar,cxtbMenu,cytbMenu);
 
+		int cxMeterBox = 180;
+		int cxMeterBoxSpace = 4;
+		int cxcyMeterMatgin = 4;
+
 		SetWindowPos(m_hWndVolumeBox,NULL,
 				cxPathBoxMargin + cxMargin + cxMargin,
 				cyTopMargin,
-				cx-cxtb-cxtbMenu-(cxMargin*2)-cxMargin - cxPathBoxMargin,
+				(cx-(cxMargin*2)) - cxMargin - cxPathBoxMargin - cxMeterBox - cxMeterBoxSpace,
 				cyPathBox,
+				SWP_NOZORDER);
+
+		SetWindowPos(m_hWndMeterBox,NULL,
+				cx - cxMeterBox - cxMeterBoxSpace,
+				cyTopMargin + 3,
+				cxMeterBox - cxMeterBoxSpace,
+				cyPathBox - cxcyMeterMatgin - 3,
 				SWP_NOZORDER);
 
 		SetWindowPos(m_hWndPathBox,NULL,
 				cxPathBoxMargin + cxMargin + cxMargin,
-				cy - cytbMenu,
+				cyTopMargin + cytbMenu + cyMargin,
 				cx-cxtb-cxtbMenu-(cxMargin*2)-cxMargin - cxPathBoxMargin,
 				cyPathBox,
 				SWP_NOZORDER);
 
 		SetWindowPos(m_hWndToolbar,NULL,
 				cx-cxtb-cxtbMenu,
-				cy - cytbMenu,
+				cyTopMargin + cytbMenu + cyMargin,
 				cxtb,
 				cyPathBox,
 				SWP_NOZORDER);
 
 		SetWindowPos(m_hWndMenubar,NULL,
 				cx-cxtbMenu,
-				cy - cytbMenu,
+				cyTopMargin + cytbMenu + cyMargin,
 				cxtbMenu,
-				cytbMenu,
+				cyPathBox,
 				SWP_NOZORDER);
 
 		RedrawWindow(hWnd,NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW);
@@ -660,5 +767,50 @@ private:
 			cx += (rect.right - rect.left);
 		}
 		cy = (rect.bottom - rect.top);
+	}
+
+	VOID UpdateVolumeMeter(PCWSTR psz)
+	{
+		NTSTATUS Status;
+		HANDLE hVolume = NULL;
+		HANDLE hRootDirectory = NULL;
+		PWSTR RootDirectoryName;
+
+		RootDirectoryName = CombinePath(psz,L"\\");
+
+		if( (Status = OpenFile_W(&hRootDirectory,hRootDirectory,RootDirectoryName,FILE_READ_ATTRIBUTES|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE)) == 0 )
+		{
+			DWORD VolumeSerialNumber;
+			DWORD FileSystemAttributes;
+
+			GetVolumeInformationByHandleW(hRootDirectory,
+				NULL,0,
+				&VolumeSerialNumber,NULL,
+				&FileSystemAttributes,
+				NULL,0
+				);
+
+			LARGE_INTEGER li;
+			GetFileSizeEx(hRootDirectory,&li);
+
+			VOLUME_FS_SIZE_INFORMATION *Size;
+			NTSTATUS Status;
+			Status = GetVolumeFsInformation(hRootDirectory,VOLFS_SIZE_INFORMATION,(void**)&Size);
+			if( Status == 0 )
+			{
+				METERBOX_FULL mf;
+				METERBOX_POS  mp;
+
+				mf.Full.QuadPart = Size->TotalAllocationUnits.QuadPart * Size->SectorsPerAllocationUnit * Size->BytesPerSector;
+				SendMessage(m_hWndMeterBox,MTBM_SETFULL,0,(LPARAM)&mf);
+
+				mp.Pos.QuadPart = mf.Full.QuadPart - (Size->AvailableAllocationUnits.QuadPart * Size->SectorsPerAllocationUnit * Size->BytesPerSector);
+				SendMessage(m_hWndMeterBox,MTBM_SETPOS,0,(LPARAM)&mp);
+
+				CloseHandle(hRootDirectory);
+			}
+			FreeMemory(Size);
+		}
+		FreeMemory(RootDirectoryName);
 	}
 };

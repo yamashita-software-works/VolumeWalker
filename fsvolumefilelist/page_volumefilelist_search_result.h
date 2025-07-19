@@ -92,12 +92,12 @@ public:
  		return FillItems(pSel);
 	}
 
-	virtual LRESULT OnGetDispImage(int id,NMLVDISPINFO *pdi, CFileLvItem *pItem)
+	/*virtual LRESULT OnGetDispImage(int id,NMLVDISPINFO *pdi, CFileLvItem *pItem)
 	{
 		pdi->item.iImage = GetShellFileImageListIndex(NULL,pItem->pFI->hdr.FileName,pItem->pFI->FileAttributes);
 		pdi->item.mask |= LVIF_DI_SETITEM;
 		return 0;
-	}
+	}*/
 
 	virtual LRESULT OnGetDispText(int id,NMLVDISPINFO *pdi, CFileLvItem *pFileInfoItem)
 	{
@@ -315,6 +315,9 @@ public:
 
 		AppendMenu(hMenu,MF_STRING,0,NULL);
 		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLECHECK,L"Count Selected Files");
+
+		if( m_pOpenApplications == NULL )
+			CreateApplicationList(&m_pOpenApplications);
 
 		if( m_pOpenApplications )
 		{

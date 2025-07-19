@@ -431,8 +431,11 @@ public:
 				DWORD dw;
 				dw = (DWORD)SendMessage(m_hWndToolBar,TB_GETBUTTONSIZE,0,0);
 				rc.bottom = HIWORD(dw);
-
+#if 0
 				HBRUSH hbr = CreateSolidBrush(GetSysColor(COLOR_3DFACE));
+#else
+				HBRUSH hbr = CreateSolidBrush(RGB(243,243,243));
+#endif
 				FillRect(hdc,&rc,hbr);
 				DeleteObject(hbr);
 				return 1;

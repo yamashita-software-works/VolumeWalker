@@ -171,7 +171,7 @@ NtPathQueryVolumeDeviceName(
 
 static BOOLEAN _compare_target_name(HANDLE hObjDir,WCHAR *SymName,UNICODE_STRING *NtVolumeDeviceName)
 {
-	WCHAR buf[32];
+	WCHAR buf[MAX_PATH];
     UNICODE_STRING usLinkTarget;
 	usLinkTarget.Length = 0;
 	usLinkTarget.MaximumLength = sizeof(buf);
@@ -282,7 +282,13 @@ NtPathTranslatePath(
 	FreeMemory(p1);
 #endif
 
-    Status = OpenObjectDirectory( L"\\GLOBAL??", &hObjDir );
+	PCWSTR NamespaceRoot;
+	if( Flags & PTF_USERNAMESPACE )
+		NamespaceRoot = L"\\??";
+	else 
+		NamespaceRoot = L"\\GLOBAL??";
+
+    Status = OpenObjectDirectory( NamespaceRoot, &hObjDir );
 
     if( Status == STATUS_SUCCESS )
     {
@@ -323,7 +329,9 @@ NtPathToDosPath(
 	ULONG cchPath
 	)
 {
-	return NtPathTranslatePath(pszNtPath,PTF_DOSDRIVE,pszPath,cchPath);
+	if( NtPathTranslatePath(pszNtPath,PTF_DOSDRIVE|PTF_GLOBALNAMESPACE,pszPath,cchPath) )
+		return TRUE;
+	return NtPathTranslatePath(pszNtPath,PTF_DOSDRIVE|PTF_USERNAMESPACE,pszPath,cchPath);
 }
 
 EXTERN_C
@@ -340,7 +348,7 @@ NtPathToDosPathEx(
 		Flags |= PTF_DOSDRIVE;
 
 	return NtPathTranslatePath(pszNtPath,
-				Flags | (Flags & PTF_PREFIX_MASK),
+				Flags,
 				pszPath,cchPath);
 }
 
@@ -354,7 +362,7 @@ NtPathToGuidPath(
 	ULONG Flags
 	)
 {
-	return NtPathTranslatePath(pszNtPath,PTF_GUID|(Flags & PTF_PREFIX_MASK),
+	return NtPathTranslatePath(pszNtPath,PTF_GUID|(Flags & (PTF_PREFIX_MASK|PTF_NAMESPACEMASK)),
 			pszPath,cchPath);
 }
 
@@ -405,7 +413,7 @@ DosPathToNtDevicePath(
 
 	if( pVolume && pRootPath )
 	{
-		WCHAR szNtVolume[64];
+		WCHAR szNtVolume[MAX_PATH];
 		RtlZeroMemory(szNtVolume,sizeof(szNtVolume));
 
 		if( PathIsPrefixDosDevice(pVolume) )

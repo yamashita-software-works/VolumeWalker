@@ -16,9 +16,9 @@ typedef struct _SEARCH_PARAMETER
 		SEARCH_RANGE_VALUE LastWrite;
 		SEARCH_RANGE_VALUE Creation;
 		SEARCH_RANGE_VALUE LastAccess;
-		SEARCH_RANGE_VALUE	Change;
+		SEARCH_RANGE_VALUE Change;
 	} DateTime;
-	ULONG ItemsUpperBound;
+	ULONG MaxFoundItemCount;
 	ULONG MaxDirectoryLevel;
 	WCHAR Name[MAX_PATH];
 } SEARCH_PARAMETER;

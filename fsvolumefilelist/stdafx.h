@@ -139,3 +139,11 @@ enum {
 
 #define FOF_FILEOPERATIONLIST  0x0
 #define FOF_SELECTEDFILELIST   0x1
+
+
+EXTERN_C
+HRESULT
+WINAPI
+InitializeVolumeFilesConsole(
+	DWORD dwFlags
+	);
