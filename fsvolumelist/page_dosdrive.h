@@ -1076,7 +1076,13 @@ public:
 			CDosDriveItem *pItem = (CDosDriveItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 			if( pItem && pItem->pDriveInfo )
 			{
+#if 1
 				OpenConsole_SendMessage(ConsoleId,pItem->pDriveInfo->Device);
+#else
+				WCHAR ntDos[8];
+				StringCchPrintf(ntDos,ARRAYSIZE(ntDos),L"\\??\\%s",pItem->pDriveInfo->szDrive);
+					OpenConsole_SendMessage(ConsoleId,ntDos);
+#endif
 			}
 		}
 	}

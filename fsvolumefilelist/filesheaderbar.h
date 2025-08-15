@@ -776,6 +776,9 @@ private:
 		HANDLE hRootDirectory = NULL;
 		PWSTR RootDirectoryName;
 
+		if( psz == NULL )
+			return ;
+
 		RootDirectoryName = CombinePath(psz,L"\\");
 
 		if( (Status = OpenFile_W(&hRootDirectory,hRootDirectory,RootDirectoryName,FILE_READ_ATTRIBUTES|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE)) == 0 )

@@ -390,6 +390,7 @@ static MDICHILDFRAMETABLE table[]= {
 	{VOLUME_CONSOLE_VOLUMEMOUNTPOINT,  0},
 	{VOLUME_CONSOLE_ENCRYPTIONVOLUME,  0},
 	{VOLUME_CONSOLE_RELATIONVIEW,      0},
+	{VOLUME_CONSOLE_VOLUMEFILELIST,    0},
 };
 
 int ClearWindowHandle(UINT_PTR ConsoleTypeId,HWND hwnd)
@@ -904,7 +905,11 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		}
 		case VOLUME_CONSOLE_VOLUMEFILELIST:
 		{
+#if _ENABLE_FILELIST_SINGLETON
+ 			hwndChildFrame = FindSameWindowType(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
+#else
 			hwndChildFrame = FindSameVolumeWindow(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
+#endif
 			break;
 		}
 		case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
@@ -944,7 +949,12 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		{
 			SendFileSearchResult(hwndChildFrame,ConsoleTypeId,pd,pOpenParam);
 		}
-
+#if _ENABLE_FILELIST_SINGLETON
+		else if( VOLUME_CONSOLE_VOLUMEFILELIST == ConsoleTypeId && pOpenParam )
+		{
+			SendFileListPath(hwndChildFrame,ConsoleTypeId,pd,pOpenParam);
+		}
+#endif
 		if( bMaximized )
 		{
 			SetRedraw(g_hWndMDIClient,TRUE);

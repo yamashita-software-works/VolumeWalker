@@ -43,26 +43,37 @@ HRESULT CreateApplicationList(IApplicationsReader **ppApps)
 {
 	HRESULT hr;
 
+	WCHAR szAppExecFile[MAX_PATH];
+	WCHAR szAppFile[MAX_PATH];
+	WCHAR szIniFile[MAX_PATH];
+
+	ZeroMemory(szAppExecFile,sizeof(szAppExecFile));
+	ZeroMemory(szAppFile,sizeof(szAppFile));
+	ZeroMemory(szIniFile,sizeof(szIniFile));
+
+	GetModuleFileName(NULL,szAppExecFile,MAX_PATH);
+
+#if 1
+	StringCchCopy(szIniFile,ARRAYSIZE(szIniFile),szAppExecFile);
+	PathRenameExtension(szIniFile,L".ini");
+	if( GetPrivateProfileString(L"General",L"AppFilePath",L"",szAppFile,MAX_PATH,szIniFile) == 0 )
+#endif
+	{
+		PathRemoveFileSpec(szAppExecFile);
+		PathCombine(szAppFile,szAppExecFile,L"applications.xml");
+	}
+
+	if( !PathFileExists(szAppFile) )
+	{
+		return HRESULT_FROM_WIN32( ERROR_FILE_NOT_FOUND );
+	}
+
 	IApplicationsReader *pApps = NULL;
 	hr = CreateFileLaunchApplicationList( (void**)&pApps );
 	if( hr != S_OK )
 	{
 		return hr;
 	}
-
-#if 0
-	PCWSTR szAppFile = L""; // for debug
-#else
-	WCHAR szAppFile[MAX_PATH];
-	GetModuleFileName(NULL,szAppFile,MAX_PATH);
-	PathRemoveFileSpec(szAppFile);
-	PathCombine(szAppFile,szAppFile,L"applications.xml");
-	if( !PathFileExists(szAppFile) )
-	{
-		pApps->Release();
-		return HRESULT_FROM_WIN32( ERROR_FILE_NOT_FOUND );
-	}
-#endif
 
 	hr = pApps->Load( szAppFile );
 

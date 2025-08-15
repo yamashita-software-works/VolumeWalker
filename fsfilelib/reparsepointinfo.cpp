@@ -318,7 +318,6 @@ GetReparsePointInformation(
 	return bSuccess;
 }
 
-#if 0 // todo:
 //----------------------------------------------------------------------------
 //
 //  SetReparsePointInformation()
@@ -344,7 +343,7 @@ SetReparsePointInformation(
 
 	cbBuffer = sizeof(REPARSE_DATA_BUFFER) + cbFilePath;
 
-	REPARSE_DATA_BUFFER *p = (REPARSE_DATA_BUFFER *)FsMemAlloc( cbBuffer );
+	REPARSE_DATA_BUFFER *p = (REPARSE_DATA_BUFFER *)AllocMemory( cbBuffer );
 	if( p == NULL )
 		return STATUS_NO_MEMORY;
 
@@ -381,7 +380,7 @@ SetReparsePointInformation(
 
 	Status = NtFsControlFile(hFile,NULL,NULL,NULL,&IoStatus,FSCTL_SET_REPARSE_POINT,p,cbBuffer,	NULL,0);
 
-	FsMemFree(p);
+	FreeMemory(p);
 
 	return Status;
 }
@@ -430,7 +429,7 @@ SetJunctionPointInformation(
 	ULONG cbBuffer = cbStructSize + cbTarget +  cbPrintName;
 
 	REPARSE_MOUNTPOINT_DATA_BUFFER *ReparseBuffer;
-	ReparseBuffer = (REPARSE_MOUNTPOINT_DATA_BUFFER *)FsMemAlloc( cbBuffer );
+	ReparseBuffer = (REPARSE_MOUNTPOINT_DATA_BUFFER *)AllocMemory( cbBuffer );
 	if( ReparseBuffer == NULL )
 		return STATUS_NO_MEMORY;
 
@@ -457,7 +456,7 @@ SetJunctionPointInformation(
 					ReparseBuffer,cbBuffer,
 					NULL,0);
 
-	FsMemFree(ReparseBuffer);
+	FreeMemory(ReparseBuffer);
 
 	return Status;
 }
@@ -468,7 +467,7 @@ SetJunctionPointInformation(
 //
 //----------------------------------------------------------------------------
 EXTERN_C
-NTSTATUS
+LONG
 NTAPI
 GetReparsePointType(
 	HANDLE hFile,
@@ -477,13 +476,13 @@ GetReparsePointType(
 {
 	NTSTATUS Status = STATUS_SUCCESS;
 
-	BYTE *pBuffer = (BYTE *)FsMemAlloc( MAXIMUM_REPARSE_DATA_BUFFER_SIZE );
+	BYTE *pBuffer = (BYTE *)AllocMemory( MAXIMUM_REPARSE_DATA_BUFFER_SIZE );
 	if( pBuffer )
 	{
 		BOOL bSuccess;
 		DWORD cb;
 
-        bSuccess = _FspDeviceIoControl(hFile,
+        bSuccess = DeviceIoControl(hFile,
 						FSCTL_GET_REPARSE_POINT,
 						NULL,0,
 						pBuffer,MAXIMUM_REPARSE_DATA_BUFFER_SIZE,
@@ -493,17 +492,13 @@ GetReparsePointType(
 		{
 			*pulReparsePointType = *((PULONG)pBuffer);
 		}
-		else
-		{
-			Status = RtlGetLastWin32Error(); // NTSTATUS
-		}
 	}
 	else
 	{
-		Status = STATUS_NO_MEMORY;
+		_SetLastWin32Error( ERROR_NOT_ENOUGH_MEMORY );
 	}
 
-	return Status;
+	return RtlGetLastWin32Error();
 }
 
 //----------------------------------------------------------------------------
@@ -512,7 +507,7 @@ GetReparsePointType(
 //
 //----------------------------------------------------------------------------
 EXTERN_C
-BOOLEAN
+BOOL
 NTAPI
 GetAppLinkInformation(
 	HANDLE hRoot,
@@ -527,7 +522,7 @@ GetAppLinkInformation(
 	ULONG cchApplicationType
 	)
 {
-	BOOLEAN bSuccess = FALSE;
+	BOOL bSuccess = FALSE;
 	HANDLE hFile;
 
 	if( FilePath != NULL )
@@ -535,13 +530,12 @@ GetAppLinkInformation(
 		NTSTATUS Status;
 		UNICODE_STRING ustrPath;
 		RtlInitUnicodeString(&ustrPath,FilePath);
-		Status = FsOpenFile_U(&hFile,hRoot,&ustrPath,
+		Status = OpenFile_U(&hFile,hRoot,&ustrPath,
 					FILE_READ_ATTRIBUTES|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,
-					FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT,
-					NULL);
+					FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT);
 		if( Status != STATUS_SUCCESS )
 		{
-			RtlSetLastWin32Error( RtlNtStatusToDosError(Status) );
+			_SetLastWin32Error( RtlNtStatusToDosError(Status) );
 			return FALSE;
 		}
 	}
@@ -556,7 +550,7 @@ GetAppLinkInformation(
 	}
 
 	ULONG cbDataLength = _REPARSE_DATA_BUFFER_LENGTH;
-	REPARSE_DATA_BUFFER *pBuffer = (REPARSE_DATA_BUFFER *)FsMemAlloc( cbDataLength );
+	REPARSE_DATA_BUFFER *pBuffer = (REPARSE_DATA_BUFFER *)AllocMemory( cbDataLength );
 
 	if( pBuffer != NULL && hFile != INVALID_HANDLE_VALUE )
 	{
@@ -636,7 +630,7 @@ GetAppLinkInformation(
 //
 //----------------------------------------------------------------------------
 EXTERN_C
-BOOLEAN
+BOOL
 NTAPI
 IsAppLinkFile(
 	HANDLE hRoot,
@@ -647,4 +641,3 @@ IsAppLinkFile(
 {
 	return GetAppLinkInformation(hRoot,FilePath,pszPath,cchPath,NULL,0,NULL,0,NULL,0);
 }
-#endif

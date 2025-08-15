@@ -112,7 +112,6 @@ SOURCES = \
 	fileitemlist.cpp \
 	fileitemdata.cpp \
 	reparsepointinfo.cpp \
-	util.cpp \
 	fsfilelib.rc
 
 #----------------------------------------------------------

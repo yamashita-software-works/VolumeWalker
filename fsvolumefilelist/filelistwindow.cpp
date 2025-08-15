@@ -53,6 +53,7 @@ public:
 		m_pView = &m_PageHost;
 
 		m_pView->m_hWnd = m_hWnd;
+		m_pView->m_dwFlags = m_dwViewStyle;
 
 #if 0
 		if( m_ConsoleTypeId == VOLUME_CONSOLE_FILE_MANAGER )
@@ -171,11 +172,12 @@ public:
 	{
 		switch( LOWORD(wParam) )
 		{
-			case UI_NOTIFY_ITEM_SELECTED:
-				OnItemSelected( (SELECT_ITEM*)lParam );
+			case UI_NOTIFY_ITEM_SELECTED:    // SELECT_ITEM*
+			case UI_NOTIFY_VOLUME_SELECTED:  // SELECT_ITEM*
+				OnNotifyForwardToMainFrame(LOWORD(wParam),(PVOID)lParam);
 				break;
-			case UI_NOTIFY_ITEM_ACTIVATED:
-				OnItemActivated( (UIS_ITEM_ACTIVATED*)lParam );
+			case UI_NOTIFY_ITEM_ACTIVATED:   // UIS_ITEM_ACTIVATED*
+				OnNotifyForwardToMainFrame(LOWORD(wParam),(PVOID)lParam);
 				break;
 		}
 		return 0;
@@ -245,6 +247,7 @@ public:
 			case PM_GETSELECTEDFILE:
 			case PM_GETWORKINGDIRECTORY:
 			case PM_SAVECONFIG:
+			case WM_PRETRANSLATEMESSAGE:
 				if( m_pView )
 					return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam); // forward to current page
 				return 0;
@@ -286,18 +289,11 @@ public:
 	{
 	}
 
-	VOID OnItemActivated(UIS_ITEM_ACTIVATED *pia)
+	VOID OnNotifyForwardToMainFrame(UINT code,PVOID pFile) // SELECT_ITEM* or UIS_ITEM_ACTIVATED *
 	{
 		// Forward to MainFrame
 		HWND hwndMainWnd = GetActiveWindow(); // todo:
-		SendMessage(hwndMainWnd,WM_NOTIFY_MESSAGE,UI_NOTIFY_ITEM_ACTIVATED,(LPARAM)pia);
-	}
-
-	VOID OnItemSelected(SELECT_ITEM* pFile)
-	{
-		// Forward to MainFrame
-		HWND hwndMainWnd = GetActiveWindow(); // todo:
-		SendMessage(hwndMainWnd,WM_NOTIFY_MESSAGE,UI_NOTIFY_ITEM_SELECTED,(LPARAM)pFile);
+		SendMessage(hwndMainWnd,WM_NOTIFY_MESSAGE,code,(LPARAM)pFile);
 	}
 
 	LRESULT OnSelectPage(HWND /*hWnd*/,UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam)

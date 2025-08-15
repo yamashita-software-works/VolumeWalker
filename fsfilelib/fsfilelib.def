@@ -72,5 +72,3 @@ EXPORTS
 	GetFileItemDetailInformation
 	AllocateFileItemEx
 	DeleteFileItemEx
-
-	_InternalBackupCopy

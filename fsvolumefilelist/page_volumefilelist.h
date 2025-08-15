@@ -27,12 +27,12 @@
 #include "filesheaderbar.h"
 #include "fopfilelist.h"
 #include "dialog_traverse_directory.h"
+#if _ENABLE_FILE_MANAGER
+#include "dialog_goto_directory.h"
+#endif
 #include "filelist_filesearch.h"
 #include "fileitemlist.h"
 #include "runhelp.h"
-
-#define _ENABLE_ROOTDIRECTORY_LIST  0
-#define _ENABLE_SHELL_ICON          0
 
 #define PM_UPDATE_FILELIST (PM_PRIVATEBASE + 1)
 
@@ -45,6 +45,13 @@
 #define _FILE_ACTION_RENAME          (0x10)
 
 #define _MAX_LEADING_READ 128
+
+inline int _LoadIconImage(HIMAGELIST himl,UINT idIconRes,int cxIcon,int cyIcon) {
+	HICON hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(idIconRes),IMAGE_ICON,cxIcon,cyIcon,LR_DEFAULTCOLOR);
+	int index = ImageList_AddIcon(himl,hIcon);
+	DestroyIcon(hIcon);
+	return index;
+}
 
 enum {
 	ID_GROUP_DIRECTORY=1,
@@ -96,8 +103,9 @@ protected:
 
 	BOOL m_bNtfsSpecialDirectory;
 	BOOL m_bFillCostlyData;
-	BOOL m_bEnumShadowCopyVolumes;
 	BOOL m_bEnableIconImage;
+	BOOL m_bUseShellIcon;
+	BOOL m_bEnumShadowCopyVolumes;
 	BOOL m_bExecFileVerification;
 	BOOL m_bRootDirectory;
 	BOOL m_bRemoteDevice;
@@ -121,6 +129,9 @@ protected:
 	PWSTR m_pszVolumePathLastSection;
 
 	WCHAR m_szDosDrive[8];
+
+	int m_imgUpOneDir;
+	int m_imgDir;
 
 public:
 	PWSTR GetPath() const { return m_pszCurDir; }
@@ -157,6 +168,11 @@ public:
 		m_pHeaderBar = NULL;
 		m_bEnumShadowCopyVolumes = FALSE;
 		m_bEnableIconImage = TRUE;
+#if _ENABLE_SHELL_ICON
+		m_bUseShellIcon = TRUE;
+#else
+		m_bUseShellIcon = FALSE;
+#endif
 		m_bExecFileVerification = TRUE;
 		m_bRootDirectory = FALSE;
 		m_bRemoteDevice = FALSE;
@@ -166,6 +182,8 @@ public:
 		m_pszVolumeRootRelativePath = NULL;
 		m_pszVolumePathLastSection = NULL;
 		m_pOpenApplications = NULL;
+		m_imgUpOneDir = I_IMAGENONE;
+		m_imgDir = I_IMAGENONE;
 		ZeroMemory(m_columnShowStyleFlags,sizeof(m_columnShowStyleFlags));
 	}
 
@@ -190,7 +208,7 @@ public:
 		CStringBuffer columnLayoutString(32768);
 		CStringBuffer columnCurrentSort(256);
 
-		if( pSelectItem->Context )
+		if( pSelectItem->Context && pSelectItem->Context->MainApp )
 		{
 			ILoadViewConfig *pLoadConfig;
 			if( pSelectItem->Context->MainApp->QueryInterface( I_LOADCONFIG, (void **)&pLoadConfig ) == S_OK )
@@ -269,8 +287,8 @@ public:
 		{
 			COLORREF crBack = RGB(98,98,98);
 			COLORREF crText = RGB(214,214,214);
-			COLORREF crHighlightText = RGB(252,252,252);
-			ibc.crHighlightText     = crHighlightText;
+			COLORREF crHighlightText = RGB(255,255,255);
+			ibc.crHighlightText     = crBack;
 			ibc.crHighlightBack     = crBack;
 			ibc.crNormalBack        = crBack;
 			ibc.crNormalText        = crText;
@@ -283,17 +301,8 @@ public:
 		{
 			COLORREF crBack;
 			COLORREF crText;
-
-			if( _GetOSVersion() <= 0x602 )
-			{
-				crBack = RGB(230,243,253);
-				crText = RGB(55,60,80);
-			}
-			else
-			{
-				crBack = RGB(243,243,243);
-				crText = RGB(108,108,108);
-			}
+			crBack = RGB(243,243,243);
+			crText = RGB(0,0,0);
 
 			COLORREF crHighlightText = RGB(0,0,0);
 			ibc.crHighlightText     = crHighlightText;
@@ -418,52 +427,54 @@ public:
 					GetCostlyFileInformationData(pItem->pFI);
 				}
 
-#if 1 // light
-				if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-					pnmlvcd->clrText = RGB(32,32,32);
+				if( _IsDarkModeEnabled() )
+				{
+					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+						pnmlvcd->clrText = RGB(223,223,223);
+					if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
+						pnmlvcd->clrText = RGB(0,255,255);
 
-				if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
-					pnmlvcd->clrText = RGB(128,128,128);
+					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
+						pnmlvcd->clrText = RGB(0,0,180);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
+						pnmlvcd->clrText = RGB(0,174,54);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
+						pnmlvcd->clrText = RGB(10,223,96);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
+						pnmlvcd->clrText = RGB(0,200,48);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
+						pnmlvcd->clrText = RGB(185,122,87);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SYSTEM )
+						pnmlvcd->clrText = RGB(180,40,223);
 
-				if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
-					pnmlvcd->clrText = RGB(0,0,180);
-				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
-					pnmlvcd->clrText = RGB(0,174,54);
-				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
-					pnmlvcd->clrText = RGB(100,0,80);
-				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
-					pnmlvcd->clrText = RGB(0,200,48);
-				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
-					pnmlvcd->clrText = RGB(185,122,87);
-				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SYSTEM )
-					pnmlvcd->clrText = RGB(108,108,114);
+					if( pItem->pFI->Wof )
+						pnmlvcd->clrText = RGB(128,0,80);
+				}
+				else
+				{
+					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+						pnmlvcd->clrText = RGB(32,32,32);
 
-				if( pItem->pFI->Wof )
-					pnmlvcd->clrText = RGB(128,0,80);
-#else // dark
-				if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-					pnmlvcd->clrText = RGB(223,223,223);
+					if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
+						pnmlvcd->clrText = RGB(128,128,128);
 
-				if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
-					pnmlvcd->clrText = RGB(0,255,255);
+					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
+						pnmlvcd->clrText = RGB(0,0,180);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
+						pnmlvcd->clrText = RGB(0,174,54);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
+						pnmlvcd->clrText = RGB(100,0,80);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
+						pnmlvcd->clrText = RGB(0,200,48);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
+						pnmlvcd->clrText = RGB(185,122,87);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SYSTEM )
+						pnmlvcd->clrText = RGB(108,108,114);
 
-				if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
-					pnmlvcd->clrText = RGB(0,0,180);
-				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
-					pnmlvcd->clrText = RGB(0,174,54);
-				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
-					pnmlvcd->clrText = RGB(10,223,96);
-				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
-					pnmlvcd->clrText = RGB(0,200,48);
-				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
-					pnmlvcd->clrText = RGB(185,122,87);
-				else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SYSTEM )
-					pnmlvcd->clrText = RGB(180,40,223);
-
-				if( pItem->pFI->Wof )
-					pnmlvcd->clrText = RGB(128,0,80);
-#endif
-
+					if( pItem->pFI->Wof )
+						pnmlvcd->clrText = RGB(128,0,80);
+				}
+#if 0
 				if( 0 ) 
 				{
 					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
@@ -478,6 +489,7 @@ public:
 							pnmlvcd->clrTextBk = RGB(200,231,255);
 					}
 				}
+#endif
 				return CDRF_NOTIFYPOSTPAINT;
 			}
 			case CDDS_ITEMPOSTPAINT:
@@ -624,13 +636,17 @@ public:
 				return 0;
 
 			PWSTR pszFullPath;
-			pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+			if( m_pszCurDir && *m_pszCurDir != 0 )
+				pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+			else
+				pszFullPath = DuplicateString(pItem->pFI->hdr.FileName);
 
 			SELECT_ITEM sel = {0};
 			sel.ViewType  = GetConsoleId();
 			sel.pszPath   = pszFullPath;
 			sel.pszCurDir = DuplicateString(m_pszCurDir);
 			sel.pszName   = DuplicateString(pItem->pFI->hdr.FileName);
+			sel.pszVolume = m_pszVolumeDevice;
 
 			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_ITEM_SELECTED,(LPARAM)&sel);
 
@@ -1041,28 +1057,33 @@ public:
 
 	virtual LRESULT OnGetDispImage(int id,NMLVDISPINFO *pdi, CFileLvItem *pItem)
 	{
-#if _ENABLE_SHELL_ICON
-		pdi->item.iImage = GetShellFileImageListIndex(NULL,pItem->pFI->hdr.FileName,pItem->pFI->FileAttributes);
-
-		if( pdi->item.iImage & 0xff000000 )
+		if( m_bUseShellIcon )
 		{
-			pdi->item.state = INDEXTOOVERLAYMASK(pdi->item.iImage >> 24);
-			pdi->item.stateMask = LVIS_OVERLAYMASK;
-			pdi->item.mask |= LVIF_STATE;
-		}
+			pdi->item.iImage = GetShellFileImageListIndex(NULL,pItem->pFI->hdr.FileName,pItem->pFI->FileAttributes);
 
-		pdi->item.iImage = pdi->item.iImage & ~0xFF000000;
-#else
-		if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-		{
-			if( pItem->pFI->hdr.FileName[0] == L'.' &&  pItem->pFI->hdr.FileName[1] == L'.' &&  pItem->pFI->hdr.FileName[2] == L'\0' )
-				pdi->item.iImage = 1;
-			else
-				pdi->item.iImage = 0;
+			if( pdi->item.iImage & 0xff000000 )
+			{
+				pdi->item.state = INDEXTOOVERLAYMASK(pdi->item.iImage >> 24);
+				pdi->item.stateMask = LVIS_OVERLAYMASK;
+				pdi->item.mask |= LVIF_STATE;
+			}
+
+			pdi->item.iImage = pdi->item.iImage & ~0xFF000000;
 		}
 		else
-			pdi->item.iImage = I_IMAGENONE;
-#endif
+		{
+			if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+			{
+				if( pItem->pFI->hdr.FileName[0] == L'.' &&  pItem->pFI->hdr.FileName[1] == L'.' &&  pItem->pFI->hdr.FileName[2] == L'\0' )
+					pdi->item.iImage = m_imgUpOneDir;
+				else
+					pdi->item.iImage = m_imgDir;
+			}
+			else
+			{
+				pdi->item.iImage = I_IMAGENONE;
+			}
+		}
 		pdi->item.mask |= LVIF_DI_SETITEM;
 
 		return 0;
@@ -1184,18 +1205,22 @@ public:
 		if( ID_MENU == id )
 		{
 			AppendMenu(hMenu,MF_STRING,ID_UP_DIR,                   L"&Go Up One Directory\tAlt+UpArrow");
-			AppendMenu(hMenu,MF_STRING,ID_GOTO,                     L"&Traverse Directory\tCtrl+G");
+#if _ENABLE_FILE_MANAGER
+			AppendMenu(hMenu,MF_STRING,ID_GOTO,                     L"&Goto Directory\tCtrl+G");
+			AppendMenu(hMenu,MF_STRING,ID_TRAVERSE,                 L"&Traverse in Volume\tCtrl+T");
+#else
+			AppendMenu(hMenu,MF_STRING,ID_TRAVERSE,                 L"&Traverse in Volume\tCtrl+T");
+#endif
 			AppendMenu(hMenu,MF_STRING,0,NULL);
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"Open Explorer");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"Open Command Prompt");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_POWERSHELL, L"Open PowerShell");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_TERMINAL,   L"Open Terminal");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"Open Bash");
-		}
-		else
-		{
-			AppendMenu(hMenu,MF_STRING,ID_GOTO,                     L"&GoTo Directory");
-			SetMenuDefaultItem(hMenu,ID_GOTO,FALSE);
+#if _ENABLE_FILE_MANAGER
+			AppendMenu(hMenu,MF_STRING,0,NULL);
+			AppendMenu(hMenu,MF_STRING,ID_CHOOSE_VOLUME,            L"Choose Volume");
+#endif
 		}
 		return 0;
 	}
@@ -1489,21 +1514,19 @@ public:
 		if( m_bEnableIconImage )
 		{
 			HIMAGELIST himl;
-#if _ENABLE_SHELL_ICON
-			himl = GetGlobalShareImageList(0);
-#else
-			int cxIcon,cyIcon;
-			cxIcon = GetSystemMetrics(SM_CXSMICON);
-			cyIcon = GetSystemMetrics(SM_CYSMICON);
-			himl = ImageList_Create(cxIcon,cyIcon,ILC_COLOR32,8,8);
-			{HICON hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(IDI_LIST_FOLDER),IMAGE_ICON,cxIcon,cyIcon,LR_DEFAULTCOLOR);
-			ImageList_AddIcon(himl,hIcon);
-			DestroyIcon(hIcon);}
-
-			{HICON hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(IDI_LIST_FOLDER_UP_ONE),IMAGE_ICON,cxIcon,cyIcon,LR_DEFAULTCOLOR);
-			ImageList_AddIcon(himl,hIcon);
-			DestroyIcon(hIcon);}
-#endif
+			if( m_bUseShellIcon )
+			{
+				himl = GetGlobalShareImageList(0);
+			}
+			else
+			{
+				int cxIcon,cyIcon;
+				cxIcon = GetSystemMetrics(SM_CXSMICON);
+				cyIcon = GetSystemMetrics(SM_CYSMICON);
+				himl = ImageList_Create(cxIcon,cyIcon,ILC_COLOR32,8,8);
+				m_imgDir = _LoadIconImage(himl,IDI_LIST_FOLDER,cxIcon,cyIcon);
+				m_imgUpOneDir = _LoadIconImage(himl,IDI_LIST_FOLDER_UP_ONE,cxIcon,cyIcon);
+			}
 			ListView_SetImageList(m_hWndList,himl,LVSIL_SMALL);
 		}
 
@@ -2423,6 +2446,10 @@ public:
 
 		SELECT_ITEM *SelectItem = (SELECT_ITEM *)ptr;
 
+		PWSTR pszPreviousVolumeDevice = NULL;
+		if( m_pszVolumeDevice != NULL )
+			pszPreviousVolumeDevice = _MemAllocString(m_pszVolumeDevice);
+
 		_SafeMemFree(m_pszVolumeName);
 		_SafeMemFree(m_pszVolumeDevice);
 		_SafeMemFree(m_pszVolumeRootRelativePath);
@@ -2446,6 +2473,7 @@ public:
 				DisablePage(ERROR_PATH_NOT_FOUND);
 				m_pHeaderBar->SetText(SelectItem->pszPath,L"");
 				SendMessage(GetActiveWindow(),PM_UPDATETITLE,0,(LPARAM)SelectItem->pszPath);
+				_SafeMemFree(pszPreviousVolumeDevice);
 				return E_FAIL;
 			}
 
@@ -2565,6 +2593,21 @@ public:
 			StringCchCopy(szVolumeName,ARRAYSIZE(szVolumeName),L"Root Directories");
 
 		SendMessage(GetActiveWindow(),PM_UPDATETITLE,0,(LPARAM)szVolumeName);
+
+		if( (pszPreviousVolumeDevice && m_pszVolumeDevice && wcsicmp(pszPreviousVolumeDevice,m_pszVolumeDevice) != 0) ||  
+            (pszPreviousVolumeDevice == NULL && this->m_pszVolumeDevice != NULL) ) // Root to Volume
+		{
+			SELECT_ITEM sel = {0};
+			sel.ViewType  = GetConsoleId();
+			sel.pszPath   = NULL;
+			sel.pszCurDir = NULL;
+			sel.pszName   = NULL;
+			sel.pszVolume = this->m_pszVolumeDevice;
+
+			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
+		}
+
+		_SafeMemFree(pszPreviousVolumeDevice);
 
 		return hr;
 	}
@@ -2849,8 +2892,13 @@ public:
 
 			ASSERT(pItem != NULL);
 
+			if( wcscmp(pItem->pFI->hdr.FileName,L".." ) == 0 )
+			{
+				continue;
+			}
+
 			if( pItem->pFI->hdr.Path != NULL )
-				pNtPath = DuplicateString(pItem->pFI->hdr.Path);
+				pNtPath = CombinePath(pItem->pFI->hdr.Path,pItem->pFI->hdr.FileName);
 			else
 				pNtPath = CombinePath(GetCurPath(),pItem->pFI->hdr.FileName);
 
@@ -3332,7 +3380,14 @@ public:
 				if( m_bPreventToCommand )
 					*puState = UPDUI_DISABLED;
 				break;
+#if _ENABLE_FILE_MANAGER
 			case ID_GOTO:
+#else
+			case ID_GOTO:
+				*puState = UPDUI_DISABLED;
+				break;
+#endif
+			case ID_TRAVERSE:
 			case ID_VIEW_REFRESH:
 				*puState = UPDUI_ENABLED;
 				if( m_bPreventToCommand )
@@ -3347,6 +3402,9 @@ public:
 				break;
 			case ID_HISTORY_BACKWARD:
 			case ID_HISTORY_FORWARD:
+				*puState = UPDUI_ENABLED;
+				break;
+			case ID_CHOOSE_VOLUME:
 				*puState = UPDUI_ENABLED;
 				break;
 			default:
@@ -3521,15 +3579,20 @@ public:
 			case ID_VIEW_REFRESH:
 				OnRefresh();
 				break;
-			case ID_GOTO:
-				OnGotoDirectory();
-				break;
 			case ID_SEARCH:
 				OnFileSearch();
 				break;
+			case ID_TRAVERSE:
+				OnGotoDirectory(FALSE);
+				break;
+			case ID_GOTO:
+				OnGotoDirectory(TRUE);
+				break;
+#if !_ENABLE_FILE_MANAGER
 			case ID_FILE_SIMPLECHECK:
 				OnSimpleCheck();
 				break;
+#endif
 			case ID_OPEN_LOCATION_EXPLORER:
 			case ID_OPEN_LOCATION_CMDPROMPT:
 			case ID_OPEN_LOCATION_POWERSHELL:
@@ -3540,6 +3603,11 @@ public:
 			case ID_OPEN:
 				OnOpenItem();
 				break;
+#if _ENABLE_FILE_MANAGER
+			case ID_CHOOSE_VOLUME:
+				OnChooseVolume();
+				break;
+#endif
 			default:
 				if( ID_OPEN_APP_FIRST <= CmdId && CmdId <= ID_OPEN_APP_LAST )
 				{
@@ -3548,6 +3616,13 @@ public:
 				return S_FALSE;
 		}
 		return S_OK;
+	}
+
+	void OnEditCopy()
+	{
+#if _ENABLE_DRAG_AND_DROP_SUPPORT
+		OnPushClipboardFileName(0,0,NULL);
+#endif
 	}
 
 	void OnEditCopyText()
@@ -3562,12 +3637,21 @@ public:
 		}
 	}
 
-	void OnGotoDirectory()
+	void OnGotoDirectory(BOOL bGoto)
 	{
 		HRESULT hr;
 		PWSTR pszNewPath;
 
-		hr = TraverseDirectoryDialog(m_hWnd,m_pszCurDir,&pszNewPath,0);
+#if _ENABLE_FILE_MANAGER
+		if( bGoto )
+		{
+			hr = GotoDirectoryDialog(m_hWnd,m_pszCurDir,&pszNewPath,0);
+		}
+		else
+#endif
+		{
+			hr = TraverseDirectoryDialog(m_hWnd,m_pszCurDir,&pszNewPath,0);
+		}
 
 		if( hr == S_OK )
 		{
@@ -3598,6 +3682,7 @@ public:
 		}
 	}
 
+#if !_ENABLE_FILE_MANAGER
 	void OnSimpleCheck()
 	{
 		FS_SELECTED_FILELIST Files = {0};
@@ -3698,6 +3783,7 @@ public:
 
 		MsgBox(GetActiveWindow(),szMsgBuf,L"Quick Check on Selection items",MB_OK|MB_ICONINFORMATION);
 	}
+#endif
 
 	void OnFileSearch()
 	{
@@ -3797,6 +3883,25 @@ public:
 
 		FreeMemory(DeviceRoot);
 	}
+
+#if _ENABLE_FILE_MANAGER
+	void OnChooseVolume()
+	{
+#if 0
+		WCHAR szVolumeName[MAX_PATH];
+		if( ChooseVolumeDialog(GetActiveWindow(),szVolumeName,ARRAYSIZE(szVolumeName)) == S_OK )
+		{
+			; // todo:
+		}
+#else
+		UIS_PAGE pg = {0};
+		pg.ConsoleTypeId = VOLUME_CONSOLE_CHOOSE_VOLUME;
+		pg.pszPath       = NULL;
+		pg.pszFileName   = NULL;
+		SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
+#endif
+	}
+#endif
 
 	void OnOpenItem()
 	{

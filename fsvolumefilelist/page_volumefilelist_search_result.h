@@ -14,10 +14,22 @@
 //  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.
 //  Licensed under the MIT License.
 //
-#include "fsvolumefilelist.h"
+#if _ENABLE_FILE_MANAGER
+#include "page_volumefilelist_filemanager.h"
+#else
 #include "page_volumefilelist.h"
+#endif
 #include "ntvolumenames.h"
 #include "ntobjecthelp.h"
+#include "fileitemlist.h"
+
+class CSearchResultItem : public CFileItemEx
+{
+public:
+	CSearchResultItem(PCWSTR Path,PCWSTR FileName) : CFileItemEx(Path,FileName)
+	{
+	}
+};
 
 struct CSearchResultLvItem : public CFileLvItem
 {
@@ -26,7 +38,8 @@ struct CSearchResultLvItem : public CFileLvItem
 	}
 };
 
-class CFileSearchResultPage : public CFileListPage
+template <class T>
+class CFileSearchResultPage : public T
 {
 	virtual UINT GetConsoleId() const { return VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT; }
 
@@ -91,13 +104,6 @@ public:
 		SendMessage(GetActiveWindow(),PM_UPDATETITLE,0,(LPARAM)L"Search Result"); // todo: title
  		return FillItems(pSel);
 	}
-
-	/*virtual LRESULT OnGetDispImage(int id,NMLVDISPINFO *pdi, CFileLvItem *pItem)
-	{
-		pdi->item.iImage = GetShellFileImageListIndex(NULL,pItem->pFI->hdr.FileName,pItem->pFI->FileAttributes);
-		pdi->item.mask |= LVIF_DI_SETITEM;
-		return 0;
-	}*/
 
 	virtual LRESULT OnGetDispText(int id,NMLVDISPINFO *pdi, CFileLvItem *pFileInfoItem)
 	{
@@ -175,7 +181,7 @@ public:
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hWnd,uMsg,wParam,lParam);
 		}
-		return CFileListPage::WndProc(hWnd,uMsg,wParam,lParam);
+		return T::WndProc(hWnd,uMsg,wParam,lParam);
 	}
 
 	void InitGroup()
@@ -185,7 +191,24 @@ public:
 
 	virtual void SetupColumnNameSet()
 	{
-		CFileListPage::SetupColumnNameSet();
+		static COLUMN_NAME column_name_map[] = {
+			{ COLUMN_Name,                L"Name",                  0},
+			{ COLUMN_Extension,           L"Extension",             0},
+			{ COLUMN_FileAttributes,      L"Attributes",            0},
+			{ COLUMN_EndOfFile,           L"EndOfFile",             0},
+			{ COLUMN_AllocationSize,      L"AllocationSize",        0},
+			{ COLUMN_LastWriteTime,       L"LastWriteTime",         0},
+			{ COLUMN_CreationTime,        L"CreationTime",          0},
+			{ COLUMN_LastAccessTime,      L"LastAccessTime",        0},
+			{ COLUMN_ChangeTime,          L"ChangeTime",            0},
+			{ COLUMN_EaSize,              L"EaSize",                0},
+			{ COLUMN_FileId,              L"FileId",                0},
+			{ COLUMN_FileIndex,           L"FileIndex",             0},
+			{ COLUMN_ShortName,           L"ShortName",             0},
+			{ COLUMN_Extension,           L"Extension",             0},
+			{ COLUMN_VolumeRelativePath,  L"VolumeRelativePath",    0},
+		};
+		m_columns.SetColumnNameMap( _countof(column_name_map), column_name_map );
 	}
 
 	virtual void InitColumnDefinitions()
@@ -357,11 +380,27 @@ public:
 				*puState = UPDUI_DISABLED;
 				break;
 		}
-		return CFileListPage::QueryCmdState(uCmdId,puState);
+		return T::QueryCmdState(uCmdId,puState);
 	}
 
 	virtual HRESULT InvokeCommand(UINT CmdId)
 	{
-		return CFileListPage::InvokeCommand(CmdId);
+		switch( CmdId )
+		{
+			case ID_UP_DIR:
+			case ID_HISTORY_BACKWARD:
+			case ID_HISTORY_FORWARD:
+			{
+				UIS_PAGE pg = {0};
+				pg.ConsoleTypeId = VOLUME_CONSOLE_VOLUMEFILELIST;
+				pg.pszPath       = NULL;
+				pg.pszFileName   = NULL;
+				pg.dwFlags       = 0x8;
+				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
+				SetFocus(GetParent(m_hWnd));
+				return S_OK;
+			}
+		}
+		return T::InvokeCommand(CmdId);
 	}
 };

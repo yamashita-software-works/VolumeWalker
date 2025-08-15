@@ -17,6 +17,11 @@
 #include "pagewbdbase.h"
 #include "page_volumefilelist.h"
 #include "page_volumefilelist_search_result.h"
+#if _ENABLE_FILE_MANAGER
+#include "page_volumefilelist_filemanager.h"
+#include "page_volumefilelist_choosevolume.h"
+#include "page_volumefilelist_folders.h"
+#endif
 #include "interface.h"
 
 class CFilesPageHost
@@ -32,6 +37,7 @@ public:
 			return NULL;
 		return m_pPage->GetHwnd();
 	}
+	DWORD m_dwFlags;
 
 public:
 	CFilesPageHost()
@@ -39,6 +45,7 @@ public:
 		m_hWnd = NULL;
 		m_pPage = NULL;
 		m_nView = -1;
+		m_dwFlags = 0;
 		memset(m_pPageTable,0,sizeof(m_pPageTable));
 	}
 
@@ -114,13 +121,35 @@ public:
 		{
 			case VOLUME_CONSOLE_VOLUMEFILELIST:
 			{
+#if _ENABLE_FILE_MANAGER
+				pNew = GetOrAllocWndObjct<CFileManagerPage>(nView);
+#else
 				pNew = GetOrAllocWndObjct<CFileListPage>(nView);
+#endif
 				ASSERT(pNew != NULL);
 				break;
 			}
+#if _ENABLE_FILE_MANAGER
+			case VOLUME_CONSOLE_CHOOSE_VOLUME:
+			{
+				pNew = GetOrAllocWndObjct<CChooseVolumePage>(nView);
+				ASSERT(pNew != NULL);
+				break;
+			}
+			case VOLUME_CONSOLE_FOLDERS:
+			{
+				pNew = GetOrAllocWndObjct<CFoldersPage>(nView);
+				ASSERT(pNew != NULL);
+				break;
+			}
+#endif
 			case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 			{
-				pNew = GetOrAllocWndObjct<CFileSearchResultPage>(nView);
+#if _ENABLE_FILE_MANAGER
+				pNew = GetOrAllocWndObjct<CFileSearchResultPage<CFileManagerPage>>(nView);
+#else
+				pNew = GetOrAllocWndObjct<CFileSearchResultPage<CFileListPage>>(nView);
+#endif
 				ASSERT(pNew != NULL);
 				break;
 			}
@@ -143,7 +172,7 @@ public:
 		{
 			pPage = _CreatePage(nView);
 
-			pPage->OnInitPage( pSel, 0, 0 );
+			pPage->OnInitPage( pSel, m_dwFlags, 0 );
 
 			bCreate = TRUE;
 		}
@@ -215,6 +244,16 @@ public:
 					UpdateFileList(Path);
 				}
 				break;
+#if _ENABLE_FILE_MANAGER
+			case VOLUME_CONSOLE_CHOOSE_VOLUME:
+				nPrevView = m_nView;
+				pPrev = _SelectPage( Path, bCreate );
+				if( bCreate || ((Path->Flags & 0x8)== 0) )
+				{
+					UpdateData(Path);
+				}
+				break;
+#endif
 			default:
 				ASSERT(FALSE);
 				break;
