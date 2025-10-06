@@ -37,6 +37,15 @@ public:
 		return FALSE;
 	}
 
+	BOOL DestroyCallback(PFNDAENUMCALLBACK pfnCB,void *pData)
+	{
+		if( pfnCB == NULL )
+			return FALSE;
+		DPA_DestroyCallback(m_hdpa,pfnCB,pData);
+		m_hdpa = NULL;
+		return TRUE;
+	}
+
 	INT GetCount()
 	{
 		return DPA_GetPtrCount(m_hdpa);
@@ -70,6 +79,12 @@ public:
 	INT GetIndex(const T *ptr)
 	{
 		return DPA_GetPtrIndex(m_hdpa,ptr);
+	}
+
+	BOOL EnumCallback(PFNDAENUMCALLBACK pfnCB,void *pData)
+	{
+		DPA_EnumCallback(m_hdpa,pfnCB,pData);
+		return TRUE;
 	}
 
 	BOOL DeleteAll()

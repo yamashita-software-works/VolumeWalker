@@ -172,7 +172,7 @@ public:
 		{
 			pPage = _CreatePage(nView);
 
-			pPage->OnInitPage( pSel, m_dwFlags, 0 );
+			pPage->OnInitPage( pSel, m_dwFlags, nullptr );
 
 			bCreate = TRUE;
 		}
@@ -246,6 +246,14 @@ public:
 				break;
 #if _ENABLE_FILE_MANAGER
 			case VOLUME_CONSOLE_CHOOSE_VOLUME:
+				nPrevView = m_nView;
+				pPrev = _SelectPage( Path, bCreate );
+				if( bCreate || ((Path->Flags & 0x8)== 0) )
+				{
+					UpdateData(Path);
+				}
+				break;
+			case VOLUME_CONSOLE_FOLDERS:
 				nPrevView = m_nView;
 				pPrev = _SelectPage( Path, bCreate );
 				if( bCreate || ((Path->Flags & 0x8)== 0) )

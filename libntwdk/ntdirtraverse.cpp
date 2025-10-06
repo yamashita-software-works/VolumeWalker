@@ -412,14 +412,17 @@ _TraverseDirectoryImpl(
                         //
                         Status = callbackFile(FileName,pTDP->InfoType,ptr,pTDP);
 
-                        if( pTDP->bRecursive && (FileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
-                        {
-                            pTDP->PushDirectory(FileName.Buffer,FileName.Length);
+						if( Status == STATUS_SUCCESS )
+						{
+							if( pTDP->bRecursive && (FileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
+							{
+								pTDP->PushDirectory(FileName.Buffer,FileName.Length);
 
-                            Status = _TraverseDirectoryImpl(hDirectory,&FileName,pTDP);
+								Status = _TraverseDirectoryImpl(hDirectory,&FileName,pTDP);
 
-                            pTDP->PopDirectory(FileName.Length);
-                        }
+								pTDP->PopDirectory(FileName.Length);
+							}
+						}
                     }
 
                     if( *((ULONG *)ptr) == 0 ) // (p->NextEntryOffset == 0 )

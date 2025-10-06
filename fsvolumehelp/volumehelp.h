@@ -571,7 +571,6 @@ GetVolumeUsnJornalDataInformation(
 	__inout ULONG *pcbQuataInfoList
 	);
 
-
 //
 // Volume related Shell Helper Functions
 //
@@ -582,7 +581,27 @@ GetDiskDeviceIcon(
 	__in PCWSTR DeviceName
 	);
 
+//
+// Assign Drive
+//
+EXTERN_C
+HRESULT
+WINAPI
+DLEditAssignDrive(
+	__in PCWSTR pszDriveLetter,
+	__in PCWSTR pszNTDevice
+	);
+
+//
+// Remove Drive
+//
+EXTERN_C
+HRESULT
+WINAPI
+DLEditRemoveDrive(
+	__in PCWSTR pszDriveLetter
+	);
+
 #ifdef __cplusplus
 }
 #endif
-

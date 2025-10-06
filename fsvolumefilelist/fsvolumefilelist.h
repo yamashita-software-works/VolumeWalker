@@ -9,3 +9,5 @@ CreateVolumeFileList(
 	DWORD dwOptionFlags,
 	LPARAM lParam
 	);
+
+#define CVFLF_USE_SHELL_ICON           0x1000

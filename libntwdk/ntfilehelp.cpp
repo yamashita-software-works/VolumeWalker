@@ -598,11 +598,6 @@ NTSTATUS GetFileAttributes_U( HANDLE RootHandle, UNICODE_STRING *FilePath, ULONG
 //----------------------------------------------------------------------------
 NTSTATUS GetFileAttributes_W( HANDLE RootHandle, PCWSTR FilePath,  ULONG *pulFileAttributes )
 {
-#if 0
-    UNICODE_STRING usFilePath;
-    RtlInitUnicodeString(&usFilePath,FilePath);
-    return GetFileAttributes_U(RootHandle, &usFilePath, pulFileAttributes);
-#else
     HANDLE Handle;
     NTSTATUS Status;
     IO_STATUS_BLOCK IoStatus = {0};
@@ -615,12 +610,22 @@ NTSTATUS GetFileAttributes_W( HANDLE RootHandle, PCWSTR FilePath,  ULONG *pulFil
         Handle = RootHandle;
         Status = STATUS_SUCCESS;
     }
-    else
+    else if( RootHandle != NULL && FilePath != NULL )
+    {
+        Status = OpenFile_W(&Handle,RootHandle,FilePath,FILE_READ_ATTRIBUTES|SYNCHRONIZE,
+                        FILE_SHARE_READ|FILE_SHARE_WRITE,
+                        FILE_OPEN_REPARSE_POINT|FILE_SYNCHRONOUS_IO_NONALERT);
+    }
+    else if( RootHandle == NULL && FilePath != NULL )
     {
         Status = OpenFileEx_W(&Handle,FilePath,FILE_READ_ATTRIBUTES|SYNCHRONIZE,
                         FILE_SHARE_READ|FILE_SHARE_WRITE,
                         FILE_OPEN_REPARSE_POINT|FILE_SYNCHRONOUS_IO_NONALERT);
     }
+	else
+	{
+        return STATUS_INVALID_PARAMETER;
+	}
 
     if( Status == STATUS_SUCCESS )
     {
@@ -638,7 +643,6 @@ NTSTATUS GetFileAttributes_W( HANDLE RootHandle, PCWSTR FilePath,  ULONG *pulFil
     }
 
     return Status;
-#endif
 }
 
 //----------------------------------------------------------------------------
@@ -657,12 +661,22 @@ NTSTATUS SetFileAttributes_W(HANDLE RootHandle, PCWSTR FilePath,  ULONG ulFileAt
         Handle = RootHandle;
         Status = STATUS_SUCCESS;
     }
-    else
+    else if( RootHandle != NULL && FilePath != NULL )
+    {
+        Status = OpenFile_W(&Handle,RootHandle,FilePath,FILE_WRITE_ATTRIBUTES|SYNCHRONIZE,
+                        FILE_SHARE_READ|FILE_SHARE_WRITE,
+                        FILE_OPEN_REPARSE_POINT|FILE_SYNCHRONOUS_IO_NONALERT);
+    }
+    else if( RootHandle == NULL && FilePath != NULL )
     {
         Status = OpenFileEx_W(&Handle,FilePath,FILE_WRITE_ATTRIBUTES|SYNCHRONIZE,
                         FILE_SHARE_READ|FILE_SHARE_WRITE,
                         FILE_OPEN_REPARSE_POINT|FILE_SYNCHRONOUS_IO_NONALERT);
     }
+	else
+	{
+        return STATUS_INVALID_PARAMETER;
+	}
 
     if( Status == STATUS_SUCCESS )
     {

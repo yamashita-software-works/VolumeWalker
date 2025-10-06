@@ -98,3 +98,9 @@ EXPORTS
 	; Shell helper
 	;
 	GetDiskDeviceIcon
+
+	;
+	; DLEdit
+	;
+	DLEditAssignDrive
+	DLEditRemoveDrive

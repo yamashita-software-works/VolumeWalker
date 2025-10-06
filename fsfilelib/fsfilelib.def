@@ -72,3 +72,12 @@ EXPORTS
 	GetFileItemDetailInformation
 	AllocateFileItemEx
 	DeleteFileItemEx
+
+	GetAlternateStreamInformation
+
+	NtCopyFileEx
+	NtRenameFileW
+	NtDeleteFileW
+	NtRemoveDirectoryW
+	NtSetFileAttributesW
+	NtWin32BackupCopy

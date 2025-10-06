@@ -112,6 +112,8 @@ SOURCES = \
 	fileitemlist.cpp \
 	fileitemdata.cpp \
 	reparsepointinfo.cpp \
+	ntwin32api.cpp \
+	util.cpp \
 	fsfilelib.rc
 
 #----------------------------------------------------------

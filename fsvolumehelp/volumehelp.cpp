@@ -327,7 +327,7 @@ LPCWSTR WINAPI GetPartitionStyleText(LONG PartitionStyle)
 
 LPCWSTR WINAPI GetPartitionTypeText(LONG PartitionType)
 {
-	switch( PartitionType & ~VALID_NTFT ) // ~0xC0
+	switch( PartitionType )
 	{
 		case PARTITION_ENTRY_UNUSED:
 			return L"UNUSED"; // 0x00 An unused entry partition.
@@ -353,12 +353,6 @@ LPCWSTR WINAPI GetPartitionTypeText(LONG PartitionType)
 		case PARTITION_LDM:
 			return L"LDM"; // 0x42 A logical disk manager (LDM) partition.
  
-		case PARTITION_NTFT:
-			return L"NTFT"; // 0x80 An NTFT partition.
- 
-		case VALID_NTFT:
-			return L"NTFT"; // 0xC0 A valid NTFT partition.
-
 		case PARTITION_HUGE:
 			return L"HUGE"; // 0x06 Huge partition MS-DOS V4
 
@@ -1322,9 +1316,7 @@ GetDiskExtents(
 
 			cbOutBuffer += 4096;
 
-			pOutBuffer = StorageMemAlloc( cbOutBuffer );
-			if( pOutBuffer )
-				continue;
+			continue;
 		}
 		break;
 	}

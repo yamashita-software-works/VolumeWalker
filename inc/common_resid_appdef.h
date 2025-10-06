@@ -37,6 +37,9 @@
 #define ID_OPEN_LOCATION_TERMINAL_PREVIEW        41034
 #define ID_OPEN_LOCATION_POWERSHELL              41035 
 #define ID_OPEN_LOCATION_BASH                    41036
+#define ID_FILE_COMMAND_PROMPT                   ID_OPEN_LOCATION_CMDPROMPT
+#define ID_FILE_POWER_SHELL                      ID_OPEN_LOCATION_POWERSHELL
+#define ID_FILE_TERMINAL                         ID_OPEN_LOCATION_TERMINAL
 #define ID_OPEN_LOCATION_CMDPROPMPT_ADMIN        41037
 #define ID_OPEN_LOCATION_TERMINAL_ADMIN          41038
 #define ID_OPEN_LOCATION_TERMINAL_PREVIEW_ADMIN  41038
@@ -60,6 +63,8 @@
 #define ID_ATTACH_VIRTUALDISK_IMAGE              41072
 #define ID_DETTACH_VIRTUALDISK                   41073
 #define ID_VIRTUALDISKFILES                      41074
+#define ID_DLEDIT_REMOVE_DRIVE                   41075
+#define ID_DLEDIT_ASSIGN_DRIVE                   41076
 
 #define ID_EDIT_COPY_COUMN_FIRST                 41100
 #define ID_EDIT_COPY_COUMN_LAST                  41149

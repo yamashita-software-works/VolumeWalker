@@ -103,6 +103,7 @@ SOURCES = \
 	disk.cpp \
 	shell.cpp \
 	guiddef.cpp \
+	dledit.cpp \
 	volumehelp.rc
 
 #----------------------------------------------------------

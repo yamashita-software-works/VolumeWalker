@@ -48,3 +48,30 @@ VirtualDiskAttachDialog(
 	__in PCWSTR pszImageFileName,
 	__in DWORD dwFlags
 	);
+
+// Drive Management
+EXTERN_C
+HRESULT
+WINAPI
+AssignDriveLetterDialog(
+	__in HWND hWnd,
+	__in PCWSTR pszNtDeviceName,
+	__in PCWSTR pszDrive,
+	__in_opt PWSTR pszAssignedDrive,
+	__in_opt DWORD cchAssignedDrive,
+	__in DWORD dwFlags
+	);
+
+EXTERN_C
+HRESULT
+WINAPI
+RemoveDriveLetterDialog(
+	__in HWND hWnd,
+	__in PCWSTR pszNtDeviceName,
+	__in PCWSTR pszDrive,
+	__in_opt PWSTR pszRemovedDrive,
+	__in_opt DWORD cchRemovedDrive,
+	__in DWORD dwFlags
+	);
+
+#define RDDF_CHOOSE_DRIVE_UI  (0x1000)

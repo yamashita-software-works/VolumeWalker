@@ -30,6 +30,7 @@
 #include "command.h"
 #endif
 #include "..\fsvolumelist\fsvolumelist.h"
+#include "..\fsvolumefilelist\fsvolumefilelist.h"
 
 static HINSTANCE g_hInst = NULL;
 static HMODULE g_hInstRes = NULL;
@@ -390,7 +391,9 @@ static MDICHILDFRAMETABLE table[]= {
 	{VOLUME_CONSOLE_VOLUMEMOUNTPOINT,  0},
 	{VOLUME_CONSOLE_ENCRYPTIONVOLUME,  0},
 	{VOLUME_CONSOLE_RELATIONVIEW,      0},
+#if _ENABLE_FILELIST_SINGLETON
 	{VOLUME_CONSOLE_VOLUMEFILELIST,    0},
+#endif
 };
 
 int ClearWindowHandle(UINT_PTR ConsoleTypeId,HWND hwnd)
@@ -908,7 +911,11 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 #if _ENABLE_FILELIST_SINGLETON
  			hwndChildFrame = FindSameWindowType(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
 #else
+#if _ENABLE_ROOTDIRECTORY_LIST
+			hwndChildFrame = NULL;
+#else
 			hwndChildFrame = FindSameVolumeWindow(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
+#endif
 #endif
 			break;
 		}
@@ -1049,7 +1056,11 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 
 					if( pfnCreateVolumeFileList )
 					{
-						pd->hWndView = pfnCreateVolumeFileList(hwndMDIChild,ConsoleTypeId,0,(LPARAM)&param);
+						DWORD dwFlags = 0;
+#if _ENABLE_FILES_USE_SHELL_ICON
+						dwFlags |= CVFLF_USE_SHELL_ICON;
+#endif
+						pd->hWndView = pfnCreateVolumeFileList(hwndMDIChild,ConsoleTypeId,dwFlags,(LPARAM)&param);
 
 						InitViewType(pd,ConsoleTypeId,pwndGuid);
 

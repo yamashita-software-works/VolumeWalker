@@ -52,6 +52,11 @@ public:
 		return DSA_GetItem(m_hdsa,index,p);
 	}
 
+	T*GetItemPtr(int index)
+	{
+		return (T*)DSA_GetItemPtr(m_hdsa,index);
+	}
+
 	BOOL SetItem(int index,T *p)
 	{
 		return DSA_SetItem(m_hdsa,index,p);

@@ -91,6 +91,7 @@ public:
 		pszExpandPart = NULL;
 		pszCurrentDirectory = NULL;
 		pszNtDevice = NULL;
+		AddRef();
 	}
 
 	~CCustomAutoCompleteSource()
@@ -151,7 +152,7 @@ public:
 		}
 		else
 		{
-			return E_NOTIMPL;
+			return E_NOINTERFACE;
 		}
 		return S_OK;
 	}
@@ -339,6 +340,8 @@ static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wPa
 
 			hr = pgp->autoComplete->Init(hwndEdit, punk, NULL, NULL);
 			pgp->autoComplete->SetOptions( ACO_AUTOSUGGEST | ACO_UPDOWNKEYDROPSLIST | ACO_AUTOAPPEND );
+
+			punk->Release();
 
 			WCHAR szText[MAX_PATH];
 #if 0
@@ -564,9 +567,11 @@ _cleanup:
 
 	if( pac )
 	{
-		LONG lret;
-		lret = pac->Release();
-		ASSERT(lret == 0);
+		// workarounds: The unknown problem of exists unreleased objects when once opened the dropdown list.
+//		LONG lret;
+//		lret = pac->Release();
+//		ASSERT(lret == 0);
+		while(  pac->Release() != 0 ) __noop;
 	}
 
 	return hr;

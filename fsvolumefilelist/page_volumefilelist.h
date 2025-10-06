@@ -30,6 +30,7 @@
 #if _ENABLE_FILE_MANAGER
 #include "dialog_goto_directory.h"
 #endif
+#include "fsvolumefilelist.h"
 #include "filelist_filesearch.h"
 #include "fileitemlist.h"
 #include "runhelp.h"
@@ -100,7 +101,9 @@ protected:
 
 	HFONT m_hFont;
 	HFONT m_hFontHeader;
-
+#if _ENABLE_NAME_ROW_FONT_SETTING
+	HFONT m_hFontName;
+#endif
 	BOOL m_bNtfsSpecialDirectory;
 	BOOL m_bFillCostlyData;
 	BOOL m_bEnableIconImage;
@@ -132,6 +135,7 @@ protected:
 
 	int m_imgUpOneDir;
 	int m_imgDir;
+	int m_imgFile;
 
 public:
 	PWSTR GetPath() const { return m_pszCurDir; }
@@ -162,17 +166,16 @@ public:
 		m_bNtfsSpecialDirectory = FALSE;
 		m_hFont = NULL;
 		m_hFontHeader = NULL;
+#if _ENABLE_NAME_ROW_FONT_SETTING
+		m_hFontName = NULL;
+#endif
 		m_hWatchHandle = NULL;
 		m_LastErrorCode = 0;
 		m_bFillCostlyData = TRUE;
 		m_pHeaderBar = NULL;
 		m_bEnumShadowCopyVolumes = FALSE;
 		m_bEnableIconImage = TRUE;
-#if _ENABLE_SHELL_ICON
-		m_bUseShellIcon = TRUE;
-#else
 		m_bUseShellIcon = FALSE;
-#endif
 		m_bExecFileVerification = TRUE;
 		m_bRootDirectory = FALSE;
 		m_bRemoteDevice = FALSE;
@@ -184,6 +187,7 @@ public:
 		m_pOpenApplications = NULL;
 		m_imgUpOneDir = I_IMAGENONE;
 		m_imgDir = I_IMAGENONE;
+		m_imgFile = I_IMAGENONE;
 		ZeroMemory(m_columnShowStyleFlags,sizeof(m_columnShowStyleFlags));
 	}
 
@@ -201,9 +205,14 @@ public:
 			delete[] m_comp_proc;
 	}
 
-	virtual HRESULT OnInitPage(PVOID ptr,DWORD,PVOID)
+	virtual HRESULT OnInitPage(PVOID ptr,DWORD dwFlags,PVOID)
 	{
 		SELECT_ITEM *pSelectItem = (SELECT_ITEM *)ptr;
+
+		if( dwFlags & CVFLF_USE_SHELL_ICON )
+		{
+			m_bUseShellIcon = TRUE;
+		}
 
 		CStringBuffer columnLayoutString(32768);
 		CStringBuffer columnCurrentSort(256);
@@ -246,15 +255,13 @@ public:
 	LRESULT OnCreate(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		m_hFont = GetGlobalFont(hWnd);
-#if _ENABLE_ROOTDIRECTORY_LIST
 		m_hFontHeader = GetIconFont();
-#else
+#if _ENABLE_NAME_ROW_FONT_SETTING
 		HDC hdc = GetWindowDC(NULL);
 		LOGFONT lf = {0};
-		lf.lfHeight = -MulDiv(9, GetDeviceCaps(hdc, LOGPIXELSY), 72);
-		lf.lfCharSet = DEFAULT_CHARSET;
+		SystemParametersInfo(SPI_GETICONTITLELOGFONT,sizeof(LOGFONT),&lf,0);
 		StringCchCopy(lf.lfFaceName,_countof(lf.lfFaceName),L"Yu Gothic UI");
-		m_hFontHeader = CreateFontIndirect( &lf );
+		m_hFontName = CreateFontIndirect( &lf );
 		ReleaseDC(NULL,hdc);
 #endif
 
@@ -344,6 +351,13 @@ public:
 			m_hFont = NULL;
 		}
 
+#if _ENABLE_NAME_ROW_FONT_SETTING
+		if( m_hFontName )
+		{
+			DeleteObject(m_hFontName);
+			m_hFontName = NULL;
+		}
+#endif
 		if( m_hFontHeader )
 		{
 			DeleteObject(m_hFontHeader);
@@ -353,6 +367,12 @@ public:
 		if( m_pHeaderBar )
 		{
 			DestroyWindow( m_pHeaderBar->GetHwnd() );
+		}
+
+		HIMAGELIST himl = ListView_GetImageList(m_hWndList,LVSIL_SMALL);
+		if( himl )
+		{
+			ImageList_Destroy( himl);
 		}
 
 		return 0;
@@ -474,22 +494,6 @@ public:
 					if( pItem->pFI->Wof )
 						pnmlvcd->clrText = RGB(128,0,80);
 				}
-#if 0
-				if( 0 ) 
-				{
-					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-					{
-						pnmlvcd->clrTextBk = RGB(248,248,248);
-
-						if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
-							pnmlvcd->clrTextBk = RGB(248,243,253);
-						else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
-							pnmlvcd->clrTextBk = RGB(219,255,219);
-						else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
-							pnmlvcd->clrTextBk = RGB(200,231,255);
-					}
-				}
-#endif
 				return CDRF_NOTIFYPOSTPAINT;
 			}
 			case CDDS_ITEMPOSTPAINT:
@@ -1081,7 +1085,7 @@ public:
 			}
 			else
 			{
-				pdi->item.iImage = I_IMAGENONE;
+				pdi->item.iImage = m_imgFile;
 			}
 		}
 		pdi->item.mask |= LVIF_DI_SETITEM;
@@ -1526,6 +1530,7 @@ public:
 				himl = ImageList_Create(cxIcon,cyIcon,ILC_COLOR32,8,8);
 				m_imgDir = _LoadIconImage(himl,IDI_LIST_FOLDER,cxIcon,cyIcon);
 				m_imgUpOneDir = _LoadIconImage(himl,IDI_LIST_FOLDER_UP_ONE,cxIcon,cyIcon);
+				m_imgFile = _LoadIconImage(himl,IDI_LIST_FILE,cxIcon,cyIcon);
 			}
 			ListView_SetImageList(m_hWndList,himl,LVSIL_SMALL);
 		}

@@ -731,7 +731,7 @@ _GetFileSize(
 }
 
 //////////////////////////////////////////////////////////////////////////////
-
+/*
 //----------------------------------------------------------------------------
 //
 //  GetAlternateStreamNames()
@@ -817,7 +817,7 @@ GetAlternateStreamNames(
 
 	return Status;
 }
-
+*/
 //----------------------------------------------------------------------------
 //
 //  FreeEAInformation()
@@ -1634,7 +1634,7 @@ NTFile_GatherFileInformation(
 	//
 	{
 		FILE_STREAM_INFORMATION *StreamInformation = NULL;
-		if( GetAlternateStreamNames(hFile,&pfi->AltStream.cAltStreamName,&StreamInformation) == STATUS_SUCCESS )
+		if( GetAlternateStreamInformation(hFile,&pfi->AltStream.cAltStreamName,&StreamInformation) == STATUS_SUCCESS )
 		{
 			if( pfi->AltStream.cAltStreamName > 0 )
 			{
@@ -2182,4 +2182,83 @@ FreeDirectoryReturnBuffer(
 	((DIR_RET_BUFFER *)DirectoryEntryInformation)->cbBuffer  = 0;
 
 	return S_OK;
+}
+
+EXTERN_C
+NTSTATUS
+APIENTRY
+GetAlternateStreamInformation(
+	HANDLE hFile,
+	INT *pAltStreamCount,
+	FILE_STREAM_INFORMATION **StreamInformation
+	)
+{
+	NTSTATUS Status;
+	IO_STATUS_BLOCK IoStatus;
+	INT cAltStreams = 0;
+	FILE_STREAM_INFORMATION s = {0};
+	FILE_STREAM_INFORMATION *pfsi = &s;
+	ULONG cb = sizeof(FILE_STREAM_INFORMATION);
+
+	if( pAltStreamCount )
+		*pAltStreamCount = 0;
+
+	Status = NtQueryInformationFile(hFile,&IoStatus,pfsi,cb,FileStreamInformation);
+
+	if( Status == STATUS_SUCCESS )
+		return Status;
+
+	// STATUS_BUFFER_OVERFLOW
+	// The output buffer was filled before all of the stream information could be returned. 
+	// Only complete FILE_STREAM_INFORMATION structures are returned.
+	// STATUS_INFO_LENGTH_MISMATCH
+	// The specified information record length does not match the length that is required
+	// for the specified information class.
+
+	if( Status != STATUS_BUFFER_OVERFLOW )
+		return Status;
+
+	for(;;)
+	{
+		cb += 4096;
+
+		pfsi = (FILE_STREAM_INFORMATION *)AllocMemory( cb );
+
+		if( pfsi == NULL )
+		{
+			Status = STATUS_NO_MEMORY;
+			break;
+		}
+
+		Status = NtQueryInformationFile(hFile,&IoStatus,pfsi,cb,FileStreamInformation);
+
+		if( Status == STATUS_SUCCESS )
+		{
+			*StreamInformation = pfsi;
+
+			if( pAltStreamCount )
+			{
+				FILE_STREAM_INFORMATION *psn = pfsi;
+
+				for(;;)
+				{
+					cAltStreams++;
+					if( psn->NextEntryOffset == 0 )
+						break;
+					psn = (FILE_STREAM_INFORMATION *)((ULONG_PTR)psn + psn->NextEntryOffset);
+				}
+				*pAltStreamCount = cAltStreams;
+			}
+			break;
+		}
+
+		FreeMemory(pfsi);
+
+		if( Status != STATUS_BUFFER_OVERFLOW )
+		{
+			break;
+		}
+	}
+
+	return Status;
 }

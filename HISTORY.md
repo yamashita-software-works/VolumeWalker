@@ -1,3 +1,25 @@
+### 0.1.35.0
+
+- Volume ListウィンドウにAssign Drive/Remove Driveコマンドを追加。   
+管理者モードで実行中の場合にコマンドは成功します。   
+コンテキストメニューを開き、\[Action\]\>\[Add Drive\] または \[Remove Drive\]を選択します。
+
+- Volume Filesウィンドウの挙動をシングルトン（ウィンドウをひとつだけ開く）に変更。
+
+- Volume Filesウィンドウでファイルにも簡易アイコンを表示。
+
+- Volume Filesウィンドウを閉じる際にイメージリストがリソースリークしていた不具合を修正。
+
+- Disk Drive InformationウィンドウでMBRディスクを表示した時、LDMパーティションの種類が誤って表示される不具合を修正。
+
+- fsvolumehelp.dll GetDiskExtents() でメモリリークが起きることがある不具合を修正。
+
+- fsvolumelist.dll CDiskFindVolume::GetVolumeDiskExtents() でメモリリークが起きることがある不具合を修正。
+
+- Volume Filesウィンドウ Traverse DialogでAutoCompleteの補完プルダウンリストを開いた場合、ダイアログを閉じる時にIAutoComplete2::Releseを呼び出しても参照カウントが0にならず、オブジェクトの解放ができていない不具合の回避策を入れた。
+
+- その他、ソースコード,ライブラリの整理。
+
 ### 0.1.34.0
 
 - ソースコードの整理。

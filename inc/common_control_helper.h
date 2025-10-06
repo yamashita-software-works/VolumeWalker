@@ -35,6 +35,20 @@ inline LPARAM ListViewEx_GetItemData(HWND hwndLV,int iItem)
     return lvi.lParam;
 }
 
+inline LPARAM ListViewEx_GetCurItemData(HWND hwndLV)
+{
+    int iItem = ListView_GetNextItem(hwndLV,-1,LVNI_SELECTED|LVNI_FOCUSED);
+    if( iItem != -1 )
+    {
+        LVITEM lvi = {0};
+        lvi.mask = LVIF_PARAM;
+        lvi.iItem = iItem;
+        ListView_GetItem(hwndLV,&lvi);
+        return lvi.lParam;
+    }
+    return 0;
+}
+
 inline BOOL ListViewEx_SetItemData(HWND hwndLV,int iItem,LPARAM lParam)
 {
     LVITEM lvi = {0};
@@ -168,6 +182,14 @@ inline int ListViewEx_GetCurSel(HWND hwndLV)
     return (int)ListView_GetNextItem(hwndLV,-1,LVNI_SELECTED|LVNI_FOCUSED);
 }
 
+inline BOOL ListViewEx_SetCurSel(HWND hwndLV,int iItem)
+{
+    LVITEM lvi;
+    lvi.mask = LVIF_STATE;
+    lvi.state = lvi.stateMask = LVIS_FOCUSED|LVIS_SELECTED;
+    return (BOOL)SendMessage(hwndLV, LVM_SETITEMSTATE, iItem, (LPARAM)(LVITEM *)&lvi);
+}
+
 #ifndef LVM_RESETEMPTYTEXT
 #define LVM_RESETEMPTYTEXT (LVM_FIRST + 84)
 #endif
@@ -225,7 +247,7 @@ inline int ListViewEx_InsertString(HWND hwndLV,int iItem,PCWSTR String)
 {
     LVITEM item = {0};
     item.mask = LVIF_TEXT;
-	item.iItem = iItem;
+    item.iItem = iItem;
     item.pszText = (LPWSTR)String;
     return (int)SendMessage(hwndLV,LVM_INSERTITEM,0,(LPARAM)&item);
 }
@@ -234,26 +256,26 @@ inline int ListViewEx_InsertStringParam(HWND hwndLV,int iItem,PCWSTR String,LPAR
 {
     LVITEM item = {0};
     item.mask = LVIF_TEXT|LVIF_PARAM;
-	item.iItem = iItem;
+    item.iItem = iItem;
     item.pszText = (LPWSTR)String;
-	item.lParam = lParam;
+    item.lParam = lParam;
     return (int)SendMessage(hwndLV,LVM_INSERTITEM,0,(LPARAM)&item);
 }
 
 inline BOOL ListViewEx_GetCheckState(HWND hwndLV,int nIndex)
 {
-	UINT uRet = ListView_GetItemState(hwndLV, nIndex, LVIS_STATEIMAGEMASK);
-	return (uRet >> 12) - 1;
+    UINT uRet = ListView_GetItemState(hwndLV, nIndex, LVIS_STATEIMAGEMASK);
+    return (uRet >> 12) - 1;
 }
 
 inline VOID ListViewEx_SetCheckState(HWND hwndLV,int nItem, BOOL bCheck)
 {
-	int nCheck = bCheck ? 2 : 1;   // one based index
-	LV_ITEM lvi = {0};
-	lvi.mask = LVIF_STATE;
-	lvi.stateMask = LVIS_STATEIMAGEMASK;
-	lvi.state = INDEXTOSTATEIMAGEMASK(nCheck);
-	SendMessage((hwndLV),LVM_SETITEMSTATE,(WPARAM)(nItem),(LPARAM)(LV_ITEM *)&lvi);
+    int nCheck = bCheck ? 2 : 1;   // one based index
+    LV_ITEM lvi = {0};
+    lvi.mask = LVIF_STATE;
+    lvi.stateMask = LVIS_STATEIMAGEMASK;
+    lvi.state = INDEXTOSTATEIMAGEMASK(nCheck);
+    SendMessage((hwndLV),LVM_SETITEMSTATE,(WPARAM)(nItem),(LPARAM)(LV_ITEM *)&lvi);
 }
 
 typedef struct _LVSORTHOSTPARAM

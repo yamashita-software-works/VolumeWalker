@@ -253,8 +253,11 @@ public:
 
 			hSubMenu = CreatePopupMenu();
 			{
-				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_LABEL,        L"Edit &Volume Label...");
-				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_OBJECT_ID,    L"Edit Volume &Object Id...");
+				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_LABEL,         L"Edit &Volume Label...");
+				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_OBJECT_ID,     L"Edit Volume &Object Id...");
+				AppendMenu(hSubMenu,MF_STRING,0,NULL);
+				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_REMOVE_DRIVE,      L"Remove Drive");
+				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_ASSIGN_DRIVE,      L"Assign Drive...");
 				AppendMenu(hSubMenu,MF_STRING,0,NULL);
 				AppendMenu(hSubMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream Name by LCN...");
 			}
@@ -1143,6 +1146,37 @@ public:
 		return -1;
 	}
 
+	HRESULT UpdateItem(int iItem)
+	{
+		CWaitCursor wait;
+
+		if( iItem == -1 )
+			iItem = ListViewEx_GetCurSel(m_hWndList);
+
+		if( iItem == -1 )
+			return NULL;
+
+		SetRedraw(m_hWndList,FALSE);
+
+		CVolumeItem *pItem = (CVolumeItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+		VOLUME_NAME_STRING vns;
+		vns.NtVolumeName     = (PCWSTR)_MemAllocString(pItem->VolumeDevice);
+		StringCchCopy(vns.VolumeGuidString,ARRAYSIZE(vns.VolumeGuidString),pItem->GuidName);
+		
+		if( Insert(iItem,vns,0) != -1 )
+		{
+			ListView_DeleteItem(m_hWndList,iItem+1);
+			ListViewEx_SetCurSel(m_hWndList,iItem);
+		}
+
+		_MemFree( (PVOID)vns.NtVolumeName );
+
+		SetRedraw(m_hWndList,TRUE);
+
+		return S_OK;
+	}
+
 	//////////////////////////////////////////////////////////////////////////
 	//
 	// Sort
@@ -1352,8 +1386,28 @@ public:
 			case ID_SET_VOLUME_LABEL:
 			case ID_SET_VOLUME_OBJECT_ID:
 			case ID_LOOKUP_STREAM_BY_LCN:
-				*State = ((ListView_GetSelectedCount(m_hWndList) == 1) ? UPDUI_ENABLED : UPDUI_DISABLED);
+				*State = (ListView_GetSelectedCount(m_hWndList) == 1) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
+			case ID_DLEDIT_ASSIGN_DRIVE:
+			case ID_DLEDIT_REMOVE_DRIVE:
+				if( ListView_GetSelectedCount(m_hWndList) == 1)
+				{
+					CVolumeItem *pItem = GetCurItem();
+					if( pItem )
+					{
+						if( ID_DLEDIT_REMOVE_DRIVE == CmdId && pItem->Drive && *pItem->Drive != L'\0' )
+						{
+							*State = UPDUI_ENABLED;
+							return S_OK;
+						}
+						if( ID_DLEDIT_ASSIGN_DRIVE == CmdId && (pItem->Drive == NULL || *pItem->Drive == L'\0') )
+						{
+							*State = UPDUI_ENABLED;
+							return S_OK;
+						}
+					}
+				}
+				break;
 		}
 		return S_FALSE;
 	}
@@ -1406,6 +1460,12 @@ public:
 				break;
 			case ID_LOOKUP_STREAM_BY_LCN:
 				OnCmdLookupStreamByLCN();
+				break;
+			case ID_DLEDIT_ASSIGN_DRIVE:
+				OnCmdAssignDrive();
+				break;
+			case ID_DLEDIT_REMOVE_DRIVE:
+				OnCmdRemoveDrive();
 				break;
 		}
 		return S_OK;
@@ -1470,6 +1530,40 @@ public:
 		if( pItem )
 		{
 			LookupStreamNameDialog(GetActiveWindow(),pItem->VolumeDevice,0);
+		}
+	}
+
+	void OnCmdAssignDrive()
+	{
+		int iItem;
+		CVolumeItem *pItem = GetCurItem(&iItem);
+		if( pItem )
+		{
+			if( AssignDriveLetterDialog(GetActiveWindow(),
+					pItem->VolumeDevice,
+					NULL,
+					NULL,0,
+					0) == S_OK )
+			{
+				UpdateItem(iItem);
+			}
+		}
+	}
+
+	void OnCmdRemoveDrive()
+	{
+		int iItem;
+		CVolumeItem *pItem = GetCurItem(&iItem);
+		if( pItem )
+		{
+			if( RemoveDriveLetterDialog(GetActiveWindow(),
+					pItem->VolumeDevice,
+					pItem->Drive,
+					NULL,0,
+					0) == S_OK )
+			{
+				UpdateItem(iItem);
+			}
 		}
 	}
 

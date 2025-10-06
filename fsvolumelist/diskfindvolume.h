@@ -143,9 +143,7 @@ private:
 
 					cbOutBuffer += 4096;
 
-					pOutBuffer = _MemAllocZero( cbOutBuffer );
-					if( pOutBuffer )
-						continue;
+					continue;
 				}
 				break;
 			}

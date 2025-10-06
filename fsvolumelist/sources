@@ -108,6 +108,8 @@ SOURCES = \
 	dialog_volumelabeleditor.cpp\
 	dialog_volumeobjectideditor.cpp\
 	dialog_virtualdisk_attach.cpp\
+	dialog_assigndrive.cpp\
+	dialog_removedrive.cpp\
 	fsvolumelist.rc
 
 #----------------------------------------------------------

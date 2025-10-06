@@ -306,8 +306,13 @@ public:
 		return StrCmpI(p1,p2);
 	}
 
-	virtual HRESULT OnInitPage(PVOID,DWORD dwStyle,PVOID)
+	virtual HRESULT OnInitPage(PVOID ptr,DWORD dwStyle,PVOID)
 	{
+		if( dwStyle & CVFLF_USE_SHELL_ICON )
+		{
+			m_bUseShellIcon = TRUE;
+		}
+
 		CFileSearchResultPage::InitListView();
 
 		if( !LoadColumns(m_hWndList,NULL) )

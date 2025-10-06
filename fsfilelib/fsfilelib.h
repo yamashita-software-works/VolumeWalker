@@ -437,9 +437,9 @@ typedef struct _FS_CLUSTER_LOCATION
 typedef struct _FS_CLUSTER_INFORMATION
 {
     ULONG BytesPerCluster;
-    ULONG ExtentCount;
     ULONG BytesPerSector;
     RETRIEVAL_POINTER_BASE ClusterHeapBase; // The volume-relative sector offset to the first allocatable unit on the file system.
+    ULONG ExtentCount;
     FS_CLUSTER_LOCATION Extents[ANYSIZE_ARRAY];
 } FS_CLUSTER_INFORMATION;
 
@@ -514,6 +514,15 @@ FreeNtfsSpecialFiles(
     FS_NTFS_SPECIAL_FILE_LIST *FileList
     );
 
+#ifndef _NTIFS_
+typedef struct _FILE_STREAM_INFORMATION {
+    ULONG NextEntryOffset;
+    ULONG StreamNameLength;
+    LARGE_INTEGER StreamSize;
+    LARGE_INTEGER StreamAllocationSize;
+    WCHAR StreamName[1];
+} FILE_STREAM_INFORMATION, *PFILE_STREAM_INFORMATION;
+#endif
 
 typedef struct _FILE_INFORMATION_ALTSTREAM
 {
@@ -718,4 +727,13 @@ HRESULT
 WINAPI
 FreeDirectoryReturnBuffer(
 	PVOID DirectoryEntryInformation
+	);
+
+EXTERN_C
+HRESULT
+APIENTRY
+GetAlternateStreamInformation(
+	HANDLE hFile,
+	INT *pAltStreamCount,
+	FILE_STREAM_INFORMATION **StreamInformation
 	);
