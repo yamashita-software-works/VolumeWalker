@@ -57,10 +57,11 @@ _GetPhysicalLocation(
 				&cbBytesReturned,
 				NULL) )
 		{
-			if( GetLastError() == ERROR_INSUFFICIENT_BUFFER )
+			DWORD dwError = GetLastError();
+			if( dwError == ERROR_INSUFFICIENT_BUFFER || dwError == ERROR_MORE_DATA )
 			{
 				_MemFree(pPhysicalDriveOffsets);
-				cbPhysicalDriveOffsets = cbBytesReturned;
+				cbPhysicalDriveOffsets += (sizeof(VOLUME_PHYSICAL_OFFSETS) * 2);
 				continue;
 			}
 

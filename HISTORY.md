@@ -1,3 +1,8 @@
+### 0.1.36.0
+
+- Volume FilesウィンドウでMirrorボリューム上のファイルを参照した時、\[Physical Drive\],\[Physical Offset\]が表示されない不具合を修正。   
+この場合、最初に検出した物理ドライブとオフセットが表示されます。
+
 ### 0.1.35.0
 
 - Volume ListウィンドウにAssign Drive/Remove Driveコマンドを追加。   
