@@ -960,7 +960,7 @@ public:
 			{ ID_GROUP_NAME,                  L"Name" },
 			{ ID_GROUP_SIZE,                  L"Size"  },
 			{ ID_GROUP_GENERIC,               L"General" },
-			{ ID_GROUP_PHYSICALDRIVE,         L"Physcial Drives" },
+			{ ID_GROUP_PHYSICALDRIVE,         L"Physical Drives" },
 			{ ID_GROUP_FS_NTFS,               L"NTFS"  },
 			{ ID_GROUP_FS_FAT,                L"FAT"  },
 			{ ID_GROUP_FS_UDF,                L"UDF"  },

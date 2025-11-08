@@ -55,14 +55,6 @@ public:
 		m_pView->m_hWnd = m_hWnd;
 		m_pView->m_dwFlags = m_dwViewStyle;
 
-#if 0
-		if( m_ConsoleTypeId == VOLUME_CONSOLE_FILE_MANAGER )
-			m_pView->SetState(0,1);
-		else if( m_ConsoleTypeId == VOLUME_CONSOLE_FILES || m_ConsoleTypeId == VOLUME_CONSOLE_FILE_LOCATION )
-			m_pView->SetState(0,2);
-#else
-		m_pView->SetState(0,2);
-#endif
 		return 0;
 	}
 

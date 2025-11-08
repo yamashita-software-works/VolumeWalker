@@ -86,7 +86,7 @@ public:
 
 			ASSERT(pFI != NULL);
 
-			pFI->ItemTypeFlag |= _FLG_COSTRY_DATA;
+			pFI->ItemTypeFlag |= _FLG_COSTLY_DATA;
 
 			Insert(m_hWndList,-1,i,(CFileItemEx*)pFI,0,I_IMAGECALLBACK);
 		}
@@ -113,12 +113,17 @@ public:
 		{
 			case COLUMN_VolumeRelativePath:
 			{
-				pdi->item.pszText = pItem->pFI->hdr.Path;
-
-				UNICODE_STRING u;
-				SplitVolumeRelativePath(pItem->pFI->hdr.Path,NULL,&u);
-				pdi->item.pszText = u.Buffer;
-				RemoveBackslash(pdi->item.pszText);
+				*pdi->item.pszText = NULL;
+				if( pItem->pFI->hdr.Path )
+				{
+					UNICODE_STRING u;
+					SplitVolumeRelativePath(pItem->pFI->hdr.Path,NULL,&u);
+					if( u.Buffer )
+					{
+						pdi->item.pszText = u.Buffer;
+						RemoveBackslash(pdi->item.pszText);
+					}
+				}
 				return 0;
 			}
 		}

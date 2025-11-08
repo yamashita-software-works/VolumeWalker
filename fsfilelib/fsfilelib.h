@@ -737,3 +737,10 @@ GetAlternateStreamInformation(
 	INT *pAltStreamCount,
 	FILE_STREAM_INFORMATION **StreamInformation
 	);
+
+EXTERN_C
+NTSTATUS
+APIENTRY
+FreeAlternateStreamInformation(
+	FILE_STREAM_INFORMATION *StreamInformation
+	);

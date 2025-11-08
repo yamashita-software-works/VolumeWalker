@@ -1,3 +1,13 @@
+### 0.1.37.0
+
+- Volume Informationウィンドウのグループ名スペルミス修正 "Physcial Drives" -> "Physical Drives"。
+
+- ソースコード内、定数のスペルミス修正 "COSTRY" -> "COSTLY"。
+
+- "View Files in Volume"を "Volume Files Browser"に名称変更。
+
+- Volume Files Browserウィンドウで、RootDirectories表示を有効化。
+
 ### 0.1.36.0
 
 - Volume FilesウィンドウでMirrorボリューム上のファイルを参照した時、\[Physical Drive\],\[Physical Offset\]が表示されない不具合を修正。   

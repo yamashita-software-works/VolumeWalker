@@ -238,7 +238,7 @@ public:
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_DISKPERFORMANCE,L"Disk &Performance");
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
-			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"View &Files in Volume");
+			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Volume &Files Browser");
 			AppendMenu(hMenu,MF_STRING,0,0);
 
 			hSubMenu = CreatePopupMenu();

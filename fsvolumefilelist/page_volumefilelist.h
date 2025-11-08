@@ -40,7 +40,7 @@
 #define _IS_CURDIR_NAME( fname ) (fname[0] == L'.' && fname[1] == L'\0')
 #define _IS_PARENT_DIR_NAME( fname ) (fname[0] == L'.' && fname[1] == L'.' && fname[2] == L'\0')
 
-#define _FLG_COSTRY_DATA             (0x1)
+#define _FLG_COSTLY_DATA             (0x1)
 #define _FLG_NTFS_SPECIALFILE        (0x800)
 
 #define _FILE_ACTION_RENAME          (0x10)
@@ -113,6 +113,7 @@ protected:
 	BOOL m_bRootDirectory;
 	BOOL m_bRemoteDevice;
 	BOOL m_bPreventToCommand;
+	BOOL m_bRootDirectoryList;
 
 	UINT m_columnShowStyleFlags[COLUMN_MaxCount];
 
@@ -180,6 +181,7 @@ public:
 		m_bRootDirectory = FALSE;
 		m_bRemoteDevice = FALSE;
 		m_bPreventToCommand = FALSE;
+		m_bRootDirectoryList = FALSE;
 		m_pszVolumeName = NULL;
 		m_pszVolumeDevice = NULL;
 		m_pszVolumeRootRelativePath = NULL;
@@ -442,7 +444,7 @@ public:
 			{
 				CFileLvItem *pItem = (CFileLvItem *)pnmlvcd->nmcd.lItemlParam;
 
-				if( (pItem->pFI->ItemTypeFlag & _FLG_COSTRY_DATA) == 0 )
+				if( (pItem->pFI->ItemTypeFlag & _FLG_COSTLY_DATA) == 0 )
 				{
 					GetCostlyFileInformationData(pItem->pFI);
 				}
@@ -1044,7 +1046,7 @@ public:
 
 	virtual LRESULT OnGetDispText(int id,NMLVDISPINFO *pdi, CFileLvItem *pItem)
 	{
-		if( !(pItem->pFI->ItemTypeFlag & _FLG_COSTRY_DATA) )
+		if( !(pItem->pFI->ItemTypeFlag & _FLG_COSTLY_DATA) )
 		{
 			GetCostlyFileInformationData( pItem->pFI );
 
@@ -1340,7 +1342,7 @@ public:
 					pItem->pFI->LastWriteTime  = pFI->LastWriteTime;
 					pItem->pFI->FileAttributes = pFI->FileAttributes;
 
-					pItem->pFI->ItemTypeFlag &= ~_FLG_COSTRY_DATA;
+					pItem->pFI->ItemTypeFlag &= ~_FLG_COSTLY_DATA;
 
 					InvalidateListItem(iItem);
 				}
@@ -1854,7 +1856,7 @@ public:
 		return S_OK;
 	}
 
-	void InitCostryFileItemInformation(CFileItemEx *pFI)
+	void InitCostlyFileItemInformation(CFileItemEx *pFI)
 	{
 	    pFI->NumberOfLinks = -1;
 		pFI->DeletePending = false;
@@ -1867,7 +1869,7 @@ public:
 
 	void UpdateFileItemInformation(HANDLE hVolume,HANDLE hFile,CFileItemEx *pFI)
 	{
-		pFI->ItemTypeFlag |= _FLG_COSTRY_DATA;
+		pFI->ItemTypeFlag |= _FLG_COSTLY_DATA;
 
 		if( pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
 		{
@@ -1959,7 +1961,7 @@ public:
 		else
 			return; // invalid case
 
-		InitCostryFileItemInformation(pFI);
+		InitCostlyFileItemInformation(pFI);
 
 		HANDLE hRootDirectory = NULL;
 		if( OpenRootDirectory(RootDirectory,0,&hRootDirectory) != STATUS_SUCCESS )
@@ -1998,7 +2000,7 @@ public:
 			CloseHandle(hRootDirectory);
 
 		// We've already tried to get the data.
-		pFI->ItemTypeFlag |= _FLG_COSTRY_DATA;
+		pFI->ItemTypeFlag |= _FLG_COSTLY_DATA;
 	}
 
 	virtual void GetCostlyFilesInformationOnPtrArray(PtrArray<CFileItemEx*> *pa)
@@ -2032,7 +2034,7 @@ public:
 			{
 				CFileItemEx *pFI = pa->Get(i);
 
-				InitCostryFileItemInformation(pFI);
+				InitCostlyFileItemInformation(pFI);
 
 				if( !_IS_CURDIR_NAME( pFI->hdr.FileName ) && !_IS_PARENT_DIR_NAME( pFI->hdr.FileName ) )
 				{
@@ -2050,7 +2052,7 @@ public:
 				}
 				else
 				{
-					pFI->ItemTypeFlag |= _FLG_COSTRY_DATA;
+					pFI->ItemTypeFlag |= _FLG_COSTLY_DATA;
 				}
 			}
 			CloseHandle(hCurDir);
@@ -2113,12 +2115,12 @@ public:
 			CloseHandle(hRootDirectory);
 
 			pFI->FlagsEx = FIF_EX_ROOTDIRECTORY;
-			pFI->ItemTypeFlag = _FLG_COSTRY_DATA; // todo: trick: avoid re-collect information.
+			pFI->ItemTypeFlag = _FLG_COSTLY_DATA; // todo: trick: avoid re-collect information.
 		}
 		else
 		{
 			pFI->FlagsEx = FIF_EX_INVALIDITEM|FIF_EX_ROOTDIRECTORY;
-			pFI->ItemTypeFlag = _FLG_COSTRY_DATA; // todo: trick: avoid re-collect information.
+			pFI->ItemTypeFlag = _FLG_COSTLY_DATA; // todo: trick: avoid re-collect information.
 		}
 
 		FreeMemory(RootDir);
@@ -2346,6 +2348,8 @@ public:
 
 			if( m_pHeaderBar )
 				m_pHeaderBar->EnableUsageSizeBar( TRUE );
+
+			m_bRootDirectoryList = false;
 		}
 		else
 		{
@@ -2364,6 +2368,8 @@ public:
 
 			if( m_pHeaderBar )
 				m_pHeaderBar->EnableUsageSizeBar( FALSE );
+
+			m_bRootDirectoryList = true;
 		}
 
 		//
@@ -2560,6 +2566,7 @@ public:
 				bEnable = (SelectItem->pszPath && *SelectItem->pszPath);
 
 			m_pHeaderBar->EnableButton(ID_UP_DIR, bEnable );
+			m_pHeaderBar->EnableButton(ID_TRAVERSE, bEnable );
 
 #else // Not use root directories list
 			if( m_pszVolumeDevice )
@@ -2902,10 +2909,17 @@ public:
 				continue;
 			}
 
-			if( pItem->pFI->hdr.Path != NULL )
-				pNtPath = CombinePath(pItem->pFI->hdr.Path,pItem->pFI->hdr.FileName);
+			if( m_bRootDirectoryList )
+			{
+				pNtPath = CombinePath(pItem->pFI->hdr.Path,L"\\");
+			}
 			else
-				pNtPath = CombinePath(GetCurPath(),pItem->pFI->hdr.FileName);
+			{
+				if( pItem->pFI->hdr.Path != NULL )
+					pNtPath = CombinePath(pItem->pFI->hdr.Path,pItem->pFI->hdr.FileName);
+				else
+					pNtPath = CombinePath(GetCurPath(),pItem->pFI->hdr.FileName);
+			}
 
 			pFiles->Add( pNtPath, pItem->pFI->FileAttributes );
 
@@ -3200,10 +3214,10 @@ public:
 
 	__forceinline void _get_sort_ex_date(CFileLvItem *pItem1,CFileLvItem *pItem2)
 	{
-		if( (pItem1->pFI->ItemTypeFlag & _FLG_COSTRY_DATA) == 0 )
+		if( (pItem1->pFI->ItemTypeFlag & _FLG_COSTLY_DATA) == 0 )
 			GetCostlyFileInformationData(pItem1->pFI);
 
-		if( (pItem2->pFI->ItemTypeFlag & _FLG_COSTRY_DATA) == 0 )
+		if( (pItem2->pFI->ItemTypeFlag & _FLG_COSTLY_DATA) == 0 )
 			GetCostlyFileInformationData(pItem2->pFI);
 	}
 
@@ -3393,6 +3407,10 @@ public:
 				break;
 #endif
 			case ID_TRAVERSE:
+				*puState = m_bRootDirectoryList ? UPDUI_DISABLED : UPDUI_ENABLED;
+				if( m_bPreventToCommand )
+					*puState = UPDUI_DISABLED;
+				break;
 			case ID_VIEW_REFRESH:
 				*puState = UPDUI_ENABLED;
 				if( m_bPreventToCommand )

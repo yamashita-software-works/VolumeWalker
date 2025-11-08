@@ -2262,3 +2262,14 @@ GetAlternateStreamInformation(
 
 	return Status;
 }
+
+EXTERN_C
+NTSTATUS
+APIENTRY
+FreeAlternateStreamInformation(
+	FILE_STREAM_INFORMATION *StreamInformation
+	)
+{
+	FreeMemory(StreamInformation);
+	return 0;
+}

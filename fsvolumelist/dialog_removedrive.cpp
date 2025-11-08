@@ -33,7 +33,7 @@ static HRESULT _DoRemoveDrive(HWND hWnd,PCWSTR pszNtDeviceName,PCWSTR pszDrive)
 	{
 		WCHAR szMessage[256];
 		StringCchPrintf(szMessage,ARRAYSIZE(szMessage),L"%s - %s",pszNtDeviceName,pszDrive);
-		_ErrorMessageBoxEx(hWnd,0,pszTitle,szMessage,hr,MB_OK|MB_ICONEXCLAMATION);
+		_ErrorMessageBoxEx(hWnd,0,pszTitle,szMessage,hr,MB_OK|MB_ICONSTOP);
 	}
 
 	return hr;

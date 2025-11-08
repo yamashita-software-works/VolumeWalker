@@ -52,4 +52,10 @@ public:
 	{
 		return E_NOTIMPL;
 	}
+
+	virtual UINT GetWndId() const
+	{
+		ASSERT(m_hWnd != NULL);
+		return (UINT)GetWindowLong(m_hWnd,GWL_ID);
+	}
 };

@@ -30,7 +30,7 @@
 #endif
 
 #ifndef _ENABLE_ROOTDIRECTORY_LIST
-#define _ENABLE_ROOTDIRECTORY_LIST          0
+#define _ENABLE_ROOTDIRECTORY_LIST          1
 #endif
 
 #ifndef _ENABLE_FILES_USE_SHELL_ICON
