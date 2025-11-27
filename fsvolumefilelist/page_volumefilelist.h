@@ -1225,7 +1225,7 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"Open Bash");
 #if _ENABLE_FILE_MANAGER
 			AppendMenu(hMenu,MF_STRING,0,NULL);
-			AppendMenu(hMenu,MF_STRING,ID_CHOOSE_VOLUME,            L"Choose Volume");
+			AppendMenu(hMenu,MF_STRING,ID_CHOOSE_VOLUME,            L"Select Volume");
 #endif
 		}
 		return 0;
@@ -1254,7 +1254,7 @@ public:
 				else
 				{
 					// Root Directories
-					psvc->WriteValue( GetParent(m_hWnd), C_KEY_VOLUME, L"" );
+					psvc->WriteValue( GetParent(m_hWnd), C_KEY_VOLUME, L"\\" );
 				}
 			}
 		}
@@ -1529,7 +1529,7 @@ public:
 				int cxIcon,cyIcon;
 				cxIcon = GetSystemMetrics(SM_CXSMICON);
 				cyIcon = GetSystemMetrics(SM_CYSMICON);
-				himl = ImageList_Create(cxIcon,cyIcon,ILC_COLOR32,8,8);
+				himl = ImageList_Create(cxIcon,cyIcon,ILC_COLOR32|ILC_MASK,8, 0);
 				m_imgDir = _LoadIconImage(himl,IDI_LIST_FOLDER,cxIcon,cyIcon);
 				m_imgUpOneDir = _LoadIconImage(himl,IDI_LIST_FOLDER_UP_ONE,cxIcon,cyIcon);
 				m_imgFile = _LoadIconImage(himl,IDI_LIST_FILE,cxIcon,cyIcon);
@@ -2243,7 +2243,7 @@ public:
 
 		SetRedraw(m_hWndList,FALSE);
 
-		if( !(pSel->Flags & SI_FLAG_ROOT_DIRECTORY) )
+		if( !(pSel->Flags & SI_FLAG_ROOT_DIRECTORY) && wcscmp(pszPath,L"\\") != 0 )
 		{
 			pa->Create( 4096 );
 
@@ -2357,10 +2357,8 @@ public:
 			// Make Root Directories List
 			//
 			_SafeMemFree(m_pszCurDir);
-			if( pSel->pszPath )
-				m_pszCurDir = _MemAllocString(pSel->pszPath);
-			else
-				m_pszCurDir = _MemAllocString(L"");
+
+			m_pszCurDir = _MemAllocString(L"");
 
 			pa->Create( 256 );
 
@@ -2524,31 +2522,28 @@ public:
 				CloseHandle(hRootDirectory);
 			}
 			FreeMemory(pszRoot);
-		}
 
-		if( m_pszVolumeDevice )
-		{
 			DosDriveFromNtDevicePath(m_pszVolumeDevice,m_szDosDrive,ARRAYSIZE(m_szDosDrive),0,NULL);
 		}
 
 		if( m_pHeaderBar )
 		{
-			if( SelectItem->pszPath )
+			if( (SelectItem->Flags & SI_FLAG_ROOT_DIRECTORY) || (SelectItem->pszPath && wcscmp(SelectItem->pszPath,L"\\") == 0) )
 			{
-				m_pHeaderBar->SetPathEx(m_pszVolumeDevice,m_pszVolumeRootRelativePath,m_szDosDrive,m_pszVolumeName);
+				m_pHeaderBar->SetText(L"Root Directories",L"");
 			}
 			else
 			{
-				m_pHeaderBar->SetText(L"Root Directories",L"");
+				m_pHeaderBar->SetPathEx(m_pszVolumeDevice,m_pszVolumeRootRelativePath,m_szDosDrive,m_pszVolumeName);
 			}
 
 #if _ENABLE_ROOTDIRECTORY_LIST // Enable root directories list
 			BOOL bRoot = NtPathIsRootDirectory(SelectItem->pszPath);
-			if( m_pszVolumeDevice )
+			if( m_pszVolumeDevice && *m_pszVolumeDevice != L'\0' )
 			{
 				if( !bRoot )
 				{
-					PWSTR pszRootDir = CombinePath(this->m_pszVolumeDevice,L"\\");
+					PWSTR pszRootDir = CombinePath(m_pszVolumeDevice,L"\\");
 					if( wcsicmp(SelectItem->pszPath,pszRootDir) == 0 )
 					{
 						bRoot = true;
@@ -2563,7 +2558,10 @@ public:
 			if( m_bRemoteDevice )
 				bEnable = !bRoot ? TRUE : FALSE;
 			else
-				bEnable = (SelectItem->pszPath && *SelectItem->pszPath);
+				if( (SelectItem->Flags & SI_FLAG_ROOT_DIRECTORY) || (SelectItem->pszPath && wcscmp(SelectItem->pszPath,L"\\") == 0) )
+					bEnable = FALSE; // Root directories
+				else
+					bEnable = (SelectItem->pszPath && *SelectItem->pszPath);
 
 			m_pHeaderBar->EnableButton(ID_UP_DIR, bEnable );
 			m_pHeaderBar->EnableButton(ID_TRAVERSE, bEnable );
@@ -2598,13 +2596,7 @@ public:
 		// - Update MDI frame title
 		// - Set MDI child frame title
 		//
-		WCHAR szVolumeName[MAX_PATH];
-		if( this->m_pszVolumeDevice )
-			StringCchCopy(szVolumeName,ARRAYSIZE(szVolumeName),this->m_pszVolumeDevice);
-		else
-			StringCchCopy(szVolumeName,ARRAYSIZE(szVolumeName),L"Root Directories");
-
-		SendMessage(GetActiveWindow(),PM_UPDATETITLE,0,(LPARAM)szVolumeName);
+		SendMessage(GetActiveWindow(),PM_UPDATETITLE,0,(LPARAM)L"Volume Files Browser");
 
 		if( (pszPreviousVolumeDevice && m_pszVolumeDevice && wcsicmp(pszPreviousVolumeDevice,m_pszVolumeDevice) != 0) ||  
             (pszPreviousVolumeDevice == NULL && this->m_pszVolumeDevice != NULL) ) // Root to Volume
@@ -2827,7 +2819,6 @@ public:
 
 		AppendMenu(hMenu,MF_STRING,0,NULL);
 		AppendMenu(hMenu,MF_STRING,ID_SEARCH,L"&Search\tCtrl+Shift+F");
-
 		AppendMenu(hMenu,MF_STRING,0,NULL);
 		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLECHECK,L"Count Selected &Files");
 
@@ -3421,7 +3412,7 @@ public:
 			case ID_OPEN_LOCATION_POWERSHELL:
 			case ID_OPEN_LOCATION_TERMINAL:
 			case ID_OPEN_LOCATION_BASH:
-				*puState = UPDUI_ENABLED;
+				*puState = !this->m_bRootDirectoryList ? UPDUI_ENABLED : UPDUI_DISABLED;
 				break;
 			case ID_HISTORY_BACKWARD:
 			case ID_HISTORY_FORWARD:

@@ -865,7 +865,17 @@ protected:
 			// command line
 			//
 			pApps->GetCommandLine(i,szBuffer,MAX_PATH);
-			mdmi.Path = _MemAllocString( szBuffer );
+			if( szBuffer[0] && PathIsFileSpec(szBuffer) )
+			{
+				PathUnquoteSpaces(szBuffer);
+				WCHAR sz[MAX_PATH];
+				PathSearchAndQualify(szBuffer,sz,MAX_PATH);
+				mdmi.Path = _MemAllocString( sz );
+			}
+			else
+			{
+				mdmi.Path = _MemAllocString( szBuffer );
+			}
 
 			//
 			// startup directory

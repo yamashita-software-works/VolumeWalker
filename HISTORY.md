@@ -1,3 +1,11 @@
+### 0.1.38.0
+
+- Storade Devicesウィンドウに \[Export All Items\] コマンドを追加。
+
+- Volume Drive Relation Viewウィンドウのツリーをテーマ適用表示に変更。
+
+- ソースコード、ライブラリの整理・更新。
+
 ### 0.1.37.0
 
 - Volume Informationウィンドウのグループ名スペルミス修正 "Physcial Drives" -> "Physical Drives"。

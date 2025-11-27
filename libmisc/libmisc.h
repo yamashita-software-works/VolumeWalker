@@ -541,6 +541,14 @@ ListViewEx_GetColumnIndexFromColumnId(
 	INT_PTR ColumnId
 	);
 
+int
+ListViewEx_GetTextColumns(
+	HWND hwndLV,
+	PWSTR **pColumns,
+	INT *pColumnCount,
+	SIZE_T *pColumnBufferSize
+	);
+
 VOID
 DrawListViewColumnMeter(
     HDC hdc,

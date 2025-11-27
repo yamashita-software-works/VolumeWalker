@@ -20,7 +20,6 @@
 #if _ENABLE_FILE_MANAGER
 #include "page_volumefilelist_filemanager.h"
 #include "page_volumefilelist_choosevolume.h"
-#include "page_volumefilelist_folders.h"
 #endif
 #include "interface.h"
 
@@ -30,7 +29,7 @@ class CFilesPageHost
 	CPageWndBase *m_pPageTable[VOLUME_CONSOLE_MAX_ID];
 	int m_nView;
 public:
-	HWND m_hWnd;
+	HWND m_hWndHost;
 	HWND GetPageHWND()
 	{
 		if( m_pPage == NULL )
@@ -42,7 +41,7 @@ public:
 public:
 	CFilesPageHost()
 	{
-		m_hWnd = NULL;
+		m_hWndHost = NULL;
 		m_pPage = NULL;
 		m_nView = -1;
 		m_dwFlags = 0;
@@ -51,18 +50,6 @@ public:
 
 	virtual ~CFilesPageHost()
 	{
-	}
-
-	HRESULT UpdateLayout(int cx,int cy,BOOL absSplitPos=FALSE)
-	{
-		int cyHeaderBar = 0;
-		HDWP hdwp = BeginDeferWindowPos(2);
-		if( m_pPage )
-		{
-			DeferWindowPos(hdwp,m_pPage->GetHwnd(),NULL,0,cyHeaderBar,cx,cy-cyHeaderBar,SWP_NOZORDER);
-		}
-		EndDeferWindowPos(hdwp);
-		return S_OK;
 	}
 
 public:
@@ -104,7 +91,7 @@ public:
 		{
 			pobj = (CPageWndBase*)new T ;
 			m_pPageTable[ wndId ] = pobj;
-			pobj->Create(m_hWnd,wndId,0,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,WS_EX_CONTROLPARENT);
+			pobj->Create(m_hWndHost,wndId,0,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,WS_EX_CONTROLPARENT);
 		}
 		else
 		{
@@ -133,12 +120,6 @@ public:
 			case VOLUME_CONSOLE_CHOOSE_VOLUME:
 			{
 				pNew = GetOrAllocWndObjct<CChooseVolumePage>(nView);
-				ASSERT(pNew != NULL);
-				break;
-			}
-			case VOLUME_CONSOLE_FOLDERS:
-			{
-				pNew = GetOrAllocWndObjct<CFoldersPage>(nView);
 				ASSERT(pNew != NULL);
 				break;
 			}
@@ -268,8 +249,8 @@ public:
 		}
 
 		RECT rc;
-		GetClientRect(m_hWnd,&rc);
-		UpdateLayout(_RECT_WIDTH(rc),_RECT_HIGHT(rc),TRUE);
+		GetClientRect(m_hWndHost,&rc);
+		SendMessage(m_hWndHost,WM_SIZE,0,MAKELPARAM(_RECT_WIDTH(rc),_RECT_HIGHT(rc)));
 
 		ChangePage(m_pPage,pPrev);
 

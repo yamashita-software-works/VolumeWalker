@@ -6,6 +6,7 @@
 #define ID_FILE_SAVE_AS                 0xE104
 #define ID_FILE_UPDATE                  0xE10A
 #define ID_FILE_SAVE_COPY_AS            0xE10B
+#define ID_FILE_EXPORT                  0xE10C
 
 // Edit commands
 #define ID_EDIT_CLEAR                   0xE120

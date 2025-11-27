@@ -123,8 +123,14 @@ public:
 			TreeView_SetItemHeight(hwndTree,cy);
 
 #if _ENABLE_DARK_MODE_TEST
+			_EnableVisualThemeStyle(hwndTree);
+
 			if( _IsDarkModeEnabled() )
-				InitDarkModeListView(hwndTree);
+			{
+			  	SetWindowTheme(hwndTree,L"DarkMode_Explorer", nullptr);
+				TreeView_SetBkColor(hwndTree,RGB(16,16,16));
+				TreeView_SetTextColor(hwndTree,RGB(224,224,224));
+			}
 #endif
 			m_hWndTree = hwndTree;
 		}
@@ -243,7 +249,7 @@ public:
 				UINT uFlags = TPM_LEFTALIGN|TPM_TOPALIGN;
 
 				AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
-				AppendMenu(hMenu,MF_STRING,ID_VIEW_FILELIST,L"Open File List");
+				AppendMenu(hMenu,MF_STRING,ID_VIEW_FILELIST,L"Open in Volume Files Browser");
 
 				TrackPopupMenuEx(hMenu,uFlags,pt.x,pt.y,GetActiveWindow(),NULL);
 

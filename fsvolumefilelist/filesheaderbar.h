@@ -288,7 +288,7 @@ public:
 
 	void EnableUsageSizeBar(BOOL bEnable)
 	{
-		if( IsWindowVisible(m_hWndMeterBox) != bEnable )
+		if( (GetWindowLong(m_hWndMeterBox,GWL_STYLE) & WS_VISIBLE) != bEnable )
 			ShowWindow( m_hWndMeterBox, bEnable ? SW_SHOW : SW_HIDE );
 	}
 

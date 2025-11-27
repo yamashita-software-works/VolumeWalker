@@ -23,7 +23,6 @@
 
 class CVolumeFilesWindow : public CBaseWindow
 {
-	HWND m_hwndSubView;
 	HWND m_hWndCtrlFocus;
 	UINT m_ConsoleTypeId;
 
@@ -38,7 +37,6 @@ public:
 	{
 		m_hWnd = NULL;
 		m_pView = NULL;
-		m_hwndSubView = NULL;
 		m_hWndCtrlFocus = NULL;
 		m_ConsoleTypeId = ConsoleTypeId;
 		m_dwViewStyle = 0;
@@ -52,7 +50,7 @@ public:
 	{
 		m_pView = &m_PageHost;
 
-		m_pView->m_hWnd = m_hWnd;
+		m_pView->m_hWndHost = m_hWnd;
 		m_pView->m_dwFlags = m_dwViewStyle;
 
 		return 0;
@@ -109,37 +107,8 @@ public:
 	{
 		if( m_hWndCtrlFocus == m_pView->GetPageHWND() )
 		{
-			switch( LOWORD(wParam) )
-			{
-#if 0
-				case ID_FILE_ROOTDIRECTORIES:
-				{
-					SELECT_ITEM sel = {0};
-					sel.ViewType  = VOLUME_CONSOLE_FILE_ROOTDIRECTORIES;
-					sel.pszCurDir = NULL;
-					sel.pszPath   = NULL;
-					sel.pszName   = NULL;
-					m_pView->SelectView(&sel);
-					break;
-				}
-#endif
-				case ID_FILE_VOLUMEFILES:
-				{
-					SELECT_ITEM sel = {0};
-					sel.ViewType  = VOLUME_CONSOLE_VOLUMEFILELIST;
-					sel.pszCurDir = NULL;
-					sel.pszPath   = NULL;
-					sel.pszName   = NULL;
-					m_pView->SelectView(&sel);
-					break;
-				}
-				default:
-				{
-					if( m_pView )
-						m_pView->InvokeCommand(LOWORD(wParam));
-					break;
-				}
-			}
+			if( m_pView )
+				m_pView->InvokeCommand(LOWORD(wParam));
 		}
 		return 0;
 	}
@@ -201,6 +170,9 @@ public:
 			case UI_SET_ICON:
 				DestroyIcon((HICON)SendMessage(GetParent(m_hWnd),WM_GETICON,ICON_SMALL,0));
 				SendMessage(GetParent(hWnd),WM_SETICON,(WPARAM)ICON_SMALL,lParam);
+				break;
+			case UI_INIT_LAYOUT:
+				InitLayout(NULL);
 				break;
 		}
 		return 0;
@@ -311,42 +283,33 @@ public:
 
 			m_ConsoleTypeId = ppg->ConsoleTypeId;
 		}
-		else if( ppg->pszPath != NULL && *ppg->pszPath != L'\0' )
+		else if( ppg->ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILELIST )
 		{
 			PWSTR pszPath;
+
+			ASSERT(( ppg->pszPath != NULL && *ppg->pszPath != L'\0' ));		
 
 			if( FindRootDirectory_W(ppg->pszPath,NULL) != STATUS_SUCCESS )
 			{
 				//
 				// NT volume/drive name without root directory.
 				//
-#if 0 // ***If Accept Volume Name in Root directory list***
-				pszPath = DuplicateString(ppg->pszPath);
-#else
 				// convert volume name to root directory
 				// "\Device\HarddiskVolume1" -> "\Device\HarddiskVolume1\"
+				//
 				if( !IsLastCharacterBackslash(ppg->pszPath) )
 					pszPath = CombinePath(ppg->pszPath,L"\\");
 				else
 					pszPath = DuplicateString(ppg->pszPath);
-#endif
 
 				if( pszPath )
 				{
-#if 0 // ***If Accept Volume Name in Root directory list***
-					sel.ViewType  = ppg->ConsoleTypeId;
-					sel.pszPath   = NULL;
-					sel.pszName   = NULL;
-					sel.pszCurDir = pszPath;
-					sel.Flags     = SI_FLAG_ROOT_DIRECTORY;
-#else
 					sel.ViewType  = ppg->ConsoleTypeId;
 					sel.pszPath   = pszPath;
 					sel.pszName   = NULL;
 					sel.pszCurDir = NULL;
-					sel.Flags     = 0;
+					sel.Flags     = ppg->dwFlags;
 					sel.Context   = ppg->Context;
-#endif
 
 					m_pView->SelectView(&sel);
 
@@ -369,6 +332,7 @@ public:
 					sel.pszCurDir = NULL;
 					sel.pszPath   = pszPath;
 					sel.pszName   = ppg->pszFileName;
+					sel.Flags     = ppg->dwFlags;
 					sel.Context   = ppg->Context;
 
 					m_pView->SelectView(&sel);
@@ -382,7 +346,7 @@ public:
 		else
 		{
 			//
-			// Root Directories
+			// Other Console
 			//
 			sel.ViewType  = ppg->ConsoleTypeId;
 			sel.pszCurDir = NULL;

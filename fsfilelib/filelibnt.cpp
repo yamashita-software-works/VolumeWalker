@@ -2205,8 +2205,8 @@ GetAlternateStreamInformation(
 
 	Status = NtQueryInformationFile(hFile,&IoStatus,pfsi,cb,FileStreamInformation);
 
-	if( Status == STATUS_SUCCESS )
-		return Status;
+	if( Status == STATUS_SUCCESS && (pfsi->NextEntryOffset == 0 && pfsi->StreamNameLength == 0) )
+		return STATUS_NO_MORE_ENTRIES;
 
 	// STATUS_BUFFER_OVERFLOW
 	// The output buffer was filled before all of the stream information could be returned. 

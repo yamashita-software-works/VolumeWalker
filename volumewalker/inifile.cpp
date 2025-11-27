@@ -773,7 +773,7 @@ BOOL DeleteMDIChildFrameSections()
 	return TRUE;
 }
 
-EXTERN_C INT GetConfigValue(HWND hWnd,UINT,LPCWSTR KeyName,PVOID Value,UINT cbValue)
+EXTERN_C INT WINAPI GetConfigValue(HWND hWnd,UINT,LPCWSTR KeyName,PVOID Value,UINT cbValue)
 {
 	CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(hWnd,_PROP_CONSOLE_VIEW_ID);
 
@@ -800,7 +800,7 @@ EXTERN_C INT WINAPI GetConfigValueInt(HWND hWnd,UINT,LPCWSTR KeyName,INT Default
 	return Default;
 }
 
-EXTERN_C INT SetConfigValue(HWND hWnd,UINT,LPCWSTR KeyName,PWSTR psz)
+EXTERN_C INT WINAPI SetConfigValue(HWND hWnd,UINT,LPCWSTR KeyName,PWSTR psz)
 {
 	CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(hWnd,_PROP_CONSOLE_VIEW_ID);
 

@@ -431,3 +431,96 @@ DrawListViewColumnMeter(
 		DeleteObject(hbr);
 	}
 }
+
+int
+ListViewEx_GetTextColumns(
+	HWND hwndLV,
+	PWSTR **pColumns,
+	INT *pColumnCount,
+	SIZE_T *pColumnBufferSize
+	)
+{
+	//
+	//  Callers must free the buffer by using the CoTaskMemFree function.
+	//
+	//  Return buffer layout:
+	//
+	//    0    1    2        n-1
+	//  [ptr][ptr][ptr] ... [ptr]aaaa\0bbbb\0cccc\0...\xxxx\0
+	//    |    |    |         |  |     |     |         |
+	//    +----------------------+     |     |         |
+	//         +-----------------------+     |         |
+	//              +------------------------+         |
+	//                        |                        |
+	//                        +------------------------+
+	//
+	int i,cColumns;
+	WCHAR szColumnText[MAX_PATH];
+	int cch = 0;
+
+	HWND hwndHD;
+	hwndHD = ListView_GetHeader(hwndLV);
+	if( hwndHD == NULL )
+	{
+		SetLastError( ERROR_INVALID_PARAMETER );
+		return -1;
+	}
+
+	cColumns = Header_GetItemCount(hwndHD);
+	if( cColumns == 0 )
+	{
+		SetLastError( ERROR_INVALID_PARAMETER );
+		return -1;
+	}
+
+	LVCOLUMN lvc = {0};
+	for(i = 0; i < cColumns; i++)
+	{
+		lvc.mask = LVCF_TEXT;
+		lvc.pszText = szColumnText;
+		lvc.cchTextMax = MAX_PATH;
+		ListView_GetColumn(hwndLV,i,&lvc);
+
+		cch += (int)(wcslen(szColumnText) + 1);
+	}
+
+	SIZE_T cbBufferSize = sizeof(PWSTR) * cColumns + sizeof(WCHAR) * cch;
+
+	PVOID pBuffer;
+	pBuffer = CoTaskMemAlloc( cbBufferSize );
+	if( pBuffer == NULL )
+	{
+		SetLastError( ERROR_NOT_ENOUGH_MEMORY );
+		return -1;
+	}
+
+	ZeroMemory(pBuffer,cbBufferSize);
+
+	PWSTR pszText;
+	pszText = (PWSTR)(((PBYTE)pBuffer) + (sizeof(PWSTR) * cColumns));
+
+	PWSTR *pTextPtr;
+	pTextPtr = (PWSTR *)pBuffer;
+
+	for(i = 0; i < cColumns; i++)
+	{
+		lvc.mask = LVCF_TEXT;
+		lvc.pszText = pszText;
+		lvc.cchTextMax = MAX_PATH;
+		ListView_GetColumn(hwndLV,i,&lvc);
+
+		pTextPtr[i] = pszText;
+
+		pszText += (wcslen(pszText) + 1);
+	}
+
+	*pColumns = (PWSTR *)pBuffer;
+	if( pColumnBufferSize )
+		*pColumnBufferSize = cbBufferSize;
+	if( pColumnCount )
+		*pColumnCount = cColumns;
+
+	SetLastError( ERROR_SUCCESS );
+
+	return cColumns;
+}

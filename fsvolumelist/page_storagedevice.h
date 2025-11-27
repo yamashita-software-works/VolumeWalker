@@ -19,6 +19,7 @@
 #include "column.h"
 #include "findhandler.h"
 #include <devguid.h>
+#include "xmlwrite.h"
 
 struct CStorageDeviceItem
 {
@@ -436,6 +437,8 @@ public:
 
 		HMENU hMenu = CreatePopupMenu();
 		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
+		AppendMenu(hMenu,MF_STRING,0,0);
+		AppendMenu(hMenu,MF_STRING,ID_FILE_EXPORT,L"&Export All Items");
 
 		POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 		ListViewEx_SimpleContextMenuHandler(NULL,m_hWndList,(HWND)wParam,hMenu,pt,0);
@@ -653,30 +656,27 @@ public:
 
 			FreeKnownHardwareProducts(hHardwareProduct);
 		}
-#if 1
+
 		if( GetKnownHardwareProducts(&hHardwareProduct,&GUID_DEVCLASS_VOLUME,0) )
 		{
 			EnumItems(hHardwareProduct,ID_GROUP_VOLUME);
 
 			FreeKnownHardwareProducts(hHardwareProduct);
 		}
-#endif
-#if 1
+
 		if( GetKnownHardwareProducts(&hHardwareProduct,&GUID_DEVCLASS_VOLUMESNAPSHOT,0) )
 		{
 			EnumItems(hHardwareProduct,ID_GROUP_VOLUMESNAPSHOT);
 
 			FreeKnownHardwareProducts(hHardwareProduct);
 		}
-#endif
-#if 1
+
 		if( GetKnownHardwareProducts(&hHardwareProduct,&GUID_DEVCLASS_FLOPPYDISK,0) )
 		{
 			EnumItems(hHardwareProduct,ID_GROUP_FLOPPYDISK);
 
 			FreeKnownHardwareProducts(hHardwareProduct);
 		}
-#endif
 
 		DoSort(m_Sort.CurrentSubItem,0);
 
@@ -795,6 +795,9 @@ public:
 			case ID_EDIT_COPY:
 				*State = ListView_GetSelectedCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
+			case ID_FILE_EXPORT:
+				*State = ListView_GetItemCount(m_hWndList) ? UPDUI_ENABLED : UPDUI_DISABLED;
+				return S_OK;
 			case ID_VIEW_REFRESH:
 			case ID_EDIT_FIND:
 			case ID_EDIT_FIND_NEXT:
@@ -814,6 +817,9 @@ public:
 				break;
 			case ID_VIEW_REFRESH:
 				OnCmdRefresh();
+				break;
+			case ID_FILE_EXPORT:
+				OnCmdExport();
 				break;
 		}
 		return S_OK;
@@ -835,5 +841,258 @@ public:
 	{
 		SELECT_ITEM sel = {0};
 		FillItems(&sel);
+	}
+
+	HRESULT GetSaveFilename(HWND hwnd,PWSTR *ppwszFilePath)
+	{
+		IFileDialog *pfd;
+    
+		HRESULT hr = CoCreateInstance(CLSID_FileSaveDialog, 
+								  NULL, 
+								  CLSCTX_INPROC_SERVER, 
+								  __uuidof(IFileDialog),(void**)&pfd);
+
+	    if (SUCCEEDED(hr))
+		{
+			DWORD dwOptions;
+			pfd->GetOptions(&dwOptions);
+			dwOptions |= FOS_OVERWRITEPROMPT;
+			pfd->SetOptions(dwOptions|FOS_FORCEFILESYSTEM);
+
+			{
+				COMDLG_FILTERSPEC *fileTypes = new COMDLG_FILTERSPEC[ 2 ];
+
+				fileTypes[0].pszName = L"XML File";
+				fileTypes[0].pszSpec = L"*.xml";
+
+				fileTypes[1].pszName = L"All Files";
+				fileTypes[1].pszSpec = L"*.*";
+
+				pfd->SetFileTypes(2,fileTypes);
+
+				pfd->SetFileTypeIndex(0);
+
+				delete[] fileTypes;
+			} 
+
+			WCHAR szComputerName[MAX_COMPUTERNAME_LENGTH + 1];
+			DWORD cch = ARRAYSIZE(szComputerName);
+			GetComputerName(szComputerName,&cch);
+			SYSTEMTIME st;
+			GetLocalTime(&st);
+			WCHAR szFileName[MAX_PATH];
+			StringCchPrintf(szFileName,MAX_PATH,L"StorageDevices-%s-%04d%02d%02d%02d%02d%02d",szComputerName,st.wYear,st.wMonth,st.wDay,st.wHour,st.wMinute,st.wSecond);
+			pfd->SetTitle( L"Export" );
+			pfd->SetFileName( szFileName );
+			pfd->SetDefaultExtension( L".xml" );
+
+			// Show the dialog
+			hr = pfd->Show(hwnd);
+        
+			if (SUCCEEDED(hr))
+			{
+				// Obtain the result of the user's interaction with the dialog.
+	            IShellItem *psiResult;
+		        hr = pfd->GetResult(&psiResult);
+            
+			    if (SUCCEEDED(hr))
+				{
+					LPWSTR name;
+					hr = psiResult->GetDisplayName(SIGDN_FILESYSPATH,&name);
+
+					if( SUCCEEDED(hr) )
+					{
+						*ppwszFilePath = name;
+					}
+
+					psiResult->Release();
+				}
+
+			}
+
+			pfd->Release();
+		}
+
+		return hr;
+	}
+
+	HRESULT WriteDateElemnt( IWriteFile *pWriter, PCWSTR ElementName, UINT DateTypeId, CStorageDeviceItem *pItem )
+	{
+		HRESULT hr;
+
+		WCHAR sz[260];
+
+		hr = pWriter->StartElement( ElementName );
+
+		NMLVDISPINFO nmlvdi = {0};
+		LARGE_INTEGER li = {0};
+		switch( DateTypeId )
+		{
+			case COLUMN_InstallDate:
+				li.HighPart = pItem->InstallDate.dwHighDateTime;
+				li.LowPart  = pItem->InstallDate.dwLowDateTime;
+				break;
+			case COLUMN_FirstInstallDate:
+				li.HighPart = pItem->FirstInstallDate.dwHighDateTime;
+				li.LowPart  = pItem->FirstInstallDate.dwLowDateTime;
+				break;
+			case COLUMN_LastArrivalDate:
+				li.HighPart = pItem->LastArrivalDate.dwHighDateTime;
+				li.LowPart  = pItem->LastArrivalDate.dwLowDateTime;
+				break;
+			case COLUMN_LastRemovalDate:
+				li.HighPart = pItem->LastRemovalDate.dwHighDateTime;
+				li.LowPart  = pItem->LastRemovalDate.dwLowDateTime;
+				break;
+		}
+
+		StringCchPrintf(sz,ARRAYSIZE(sz),L"0x%I64x",li.QuadPart);
+		hr = pWriter->AttributeString( L"Hex", sz );
+
+		nmlvdi.item.lParam = (LPARAM)pItem;
+		nmlvdi.item.pszText = sz;
+		nmlvdi.item.cchTextMax = ARRAYSIZE(sz);
+		OnDisp_DateTime(DateTypeId,&nmlvdi);
+
+		hr = pWriter->WriteString( sz );
+		hr = pWriter->EndElement();
+
+		return hr;
+	}
+
+	HRESULT WriteSanpshotInfo( IWriteFile *pWriter )
+	{
+		HRESULT hr;
+		DWORD cchBuffer;
+		WCHAR szBuffer[MAX_PATH];
+
+		cchBuffer = MAX_PATH;
+		GetComputerName(szBuffer,&cchBuffer);
+
+		hr = pWriter->StartElement( L"ComputerName" );
+		if( hr == S_OK )
+		{
+			hr = pWriter->WriteString( szBuffer );
+			pWriter->EndElement();
+		}
+		if( hr != S_OK )
+			return hr;
+
+		FILETIME ft;
+		GetSystemTimeAsFileTime(&ft);
+		_GetDateTimeStringFromFileTime(&ft,szBuffer,MAX_PATH);
+
+		hr = pWriter->StartElement( L"SnapshotTime" );
+		if( hr == S_OK )
+		{
+			hr = pWriter->WriteString( szBuffer );
+			pWriter->EndElement();
+		}
+
+		return hr;
+	}
+
+	void OnCmdExport()
+	{
+		HRESULT hr;
+
+		PWSTR pszFilePath = NULL;
+		hr = GetSaveFilename( GetActiveWindow(), &pszFilePath );
+		if( hr != S_OK )
+			return ;
+
+		IWriteFile *pWriter = NULL;
+
+		__try
+		{
+			hr = CreateWriter( &pWriter );
+			if( FAILED(hr) )
+				__leave;
+
+			hr = pWriter->Create( pszFilePath );
+			if( FAILED(hr) )
+				__leave;
+
+			hr = pWriter->StartElement( L"VolumeWalker" );
+			if( FAILED(hr) )
+				__leave;
+
+			hr = WriteSanpshotInfo( pWriter );
+			if( FAILED(hr) )
+				__leave;
+
+			hr = pWriter->StartElement( L"StorageDevices" );
+			if( FAILED(hr) )
+				__leave;
+
+			int i,cGroups = (int)ListView_GetGroupCount(m_hWndList);
+
+			WCHAR sz[MAX_PATH];
+
+			LVGROUP lvg = {0};
+			lvg.cbSize    = sizeof(lvg);
+			lvg.mask      = LVGF_HEADER|LVGF_GROUPID|LVGF_ITEMS;
+			lvg.pszHeader = sz;
+			lvg.cchHeader = ARRAYSIZE(sz);
+
+			for(i = 0; i < cGroups; i++)
+			{
+				ListView_GetGroupInfoByIndex(m_hWndList,i,&lvg);
+
+				LVITEMINDEX lvii;
+				lvii.iGroup = i; // index
+				lvii.iItem  = lvg.iFirstItem;
+
+				pWriter->StartElement( L"DeviceClass" );
+				pWriter->AttributeString( L"Name", lvg.pszHeader );
+
+				if( lvg.cItems > 0 )
+				{
+					do
+					{
+						lvii.iGroup = i; // Group index
+						CStorageDeviceItem *pItem = (CStorageDeviceItem *)ListViewEx_GetItemData(m_hWndList,lvii.iItem);
+
+						pWriter->StartElement( L"Device" );
+
+						{
+							pWriter->StartElement( L"FriendlyName" );
+							pWriter->WriteString( pItem->FriendlyName );
+							pWriter->EndElement();
+
+							WriteDateElemnt( pWriter, L"InstallDate",      COLUMN_InstallDate, pItem );
+							WriteDateElemnt( pWriter, L"FirstInstallDate", COLUMN_FirstInstallDate, pItem );
+							WriteDateElemnt( pWriter, L"LastArrivalDate",  COLUMN_LastArrivalDate, pItem );
+							WriteDateElemnt( pWriter, L"LastRemovalDate",  COLUMN_LastRemovalDate, pItem );
+
+							pWriter->StartElement( L"InstanceId" );
+							pWriter->WriteString( pItem->InstanceId );
+							pWriter->EndElement();
+						}
+
+						pWriter->EndElement();
+					}
+					while( ListView_GetNextItemIndex(m_hWndList,&lvii,LVNI_VISIBLEORDER|LVNI_SAMEGROUPONLY) );
+				}
+				else
+				{
+					; // no items
+				}
+
+				pWriter->EndElement();
+			}
+		}
+		__finally
+		{
+			hr = pWriter->EndElement();
+
+			if( pszFilePath )
+				CoTaskMemFree(pszFilePath);
+
+			pWriter->Commit();
+			pWriter->Close();
+	
+			pWriter->Release();
+		}
 	}
 };
