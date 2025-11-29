@@ -217,8 +217,10 @@ public:
 		{
 			GetClientRect(m_hWnd,&rc);
 			UpdateLayout(_RECT_WIDTH(rc),_RECT_HIGHT(rc),FALSE);
-			m_pView->InitLayout(&rc);
 		}
+
+		m_pView->InitLayout(&rc);
+
 		m_hWndCtrlFocus = m_pView->GetPageHWND();
 	}
 };

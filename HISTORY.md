@@ -1,3 +1,7 @@
+### 0.1.39.0
+
+- Volume Mount Pointウィンドウ,Minifilter Driverウィンドウを開くと空白のウィンドウが表示される不具合を修正。
+
 ### 0.1.38.0
 
 - Storade Devicesウィンドウに \[Export All Items\] コマンドを追加。
