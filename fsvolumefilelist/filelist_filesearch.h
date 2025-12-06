@@ -1,14 +1,18 @@
 #pragma once
 
+#include "fileitemdata.h"
+
 typedef struct _SEARCH_FROM_TO
 {
 	LARGE_INTEGER From;
 	LARGE_INTEGER To;
 } SEARCH_RANGE_VALUE;
 
+typedef ULONGLONG SEARCH_FLAGS;
+
 typedef struct _SEARCH_PARAMETER
 {
-	DWORD CompareFlag;
+	SEARCH_FLAGS CompareFlag;
 	DWORD FileAttributes;
 	SEARCH_RANGE_VALUE EndOfFile;
 	SEARCH_RANGE_VALUE AllocateSize;
@@ -49,7 +53,18 @@ SearchParamDialog(
 	SEARCH_PARAMETER *SearchParam
 	);
 
-HRESULT
-DeleteItemExPtr(
-	FILEITEMEX *pItemEx
-	);
+inline HRESULT DeleteItemExPtr(FILEITEMEX *pItemEx)
+{
+	if( pItemEx == NULL )
+		return E_INVALIDARG;
+	LocalFree( pItemEx->hdr.FileName );
+	LocalFree( pItemEx->hdr.Path );
+	DeleteFileItemEx(pItemEx);
+	return S_OK;
+}
+
+inline VOID InitDateTimeRange(SEARCH_RANGE_VALUE *psdt,SYSTEMTIME *pstFrom,SYSTEMTIME *pstTo)
+{
+	SystemTimeToTimeInteger(pstFrom,&psdt->From);
+	SystemTimeToTimeInteger(pstTo,&psdt->To);
+}

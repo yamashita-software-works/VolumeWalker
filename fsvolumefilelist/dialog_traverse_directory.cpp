@@ -304,54 +304,70 @@ private:
 
 /////////////////////////////////////////////////////////////////////////////////
 
-typedef struct _GTRDIRDLG_PARAM
+typedef struct _TRAVERSEDIRDLG_PARAM
 {
 	HWND hWndOwner;
+
+	PWSTR PathBuffer;
+	SIZE_T PathBufferLength;
+
 	IAutoComplete2 *autoComplete;
-	PWSTR Buffer;
-	SIZE_T BufferLength;
 	CCustomAutoCompleteSource *pcacs;
 
-	WCHAR szNtDevicePath[MAX_PATH];
-	WCHAR szDosDeviceName[MAX_PATH];
-	WCHAR szDosDrive[4];
-} GTRDIRDLG_PARAM;
+	WCHAR szNtVolumeName[MAX_PATH];
+	WCHAR szDosDrive[4]; // "C:"
+} TRAVERSEDIRDLG_PARAM;
 
-static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+static INT_PTR CALLBACK TraverseDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
 		case WM_INITDIALOG:
 		{
-			GTRDIRDLG_PARAM *pgp = (GTRDIRDLG_PARAM *)lParam;
+			HRESULT hr;
+
+			TRAVERSEDIRDLG_PARAM *pgp = (TRAVERSEDIRDLG_PARAM *)lParam;
 			SetWindowLongPtr(hDlg,DWLP_USER,lParam);
 
 			_CenterWindow(hDlg,pgp->hWndOwner);
 
-			SendDlgItemMessage(hDlg,IDC_EDIT,EM_SETLIMITTEXT,_NT_PATH_FULL_LENGTH,0);
-
+            //
+            // Initialize edit box
+            //
 			HWND hwndEdit = GetDlgItem(hDlg,IDC_EDIT);
+			SendMessage(hwndEdit,EM_SETLIMITTEXT,_NT_PATH_FULL_LENGTH,0);
 
-			HRESULT hr;
-			CCustomAutoCompleteSource *pcacs = pgp->pcacs;
+            //
+            // Initialize AutoComplete for edit box
+            //
+            if( pgp->autoComplete )
+            {
+    			CCustomAutoCompleteSource *pcacs = pgp->pcacs;
 
-			IUnknown *punk;
-			hr = pcacs->QueryInterface(__uuidof(IUnknown),(void **)&punk);
+			    IUnknown *punk;
+			    hr = pcacs->QueryInterface(__uuidof(IUnknown),(void **)&punk);
+                if( hr == S_OK )
+                {
+//++ todo: When Init() is called, reference count is increased by +2 in the AutoComplete instance.
+//         And this count is why never decrease?
+			        hr = pgp->autoComplete->Init(hwndEdit, punk, NULL, NULL);
+//--
+			        pgp->autoComplete->SetOptions( ACO_AUTOSUGGEST | ACO_UPDOWNKEYDROPSLIST | ACO_AUTOAPPEND );
 
-			hr = pgp->autoComplete->Init(hwndEdit, punk, NULL, NULL);
-			pgp->autoComplete->SetOptions( ACO_AUTOSUGGEST | ACO_UPDOWNKEYDROPSLIST | ACO_AUTOAPPEND );
+			        punk->Release();
+                }
+            }
 
-			punk->Release();
-
+            //
+            // Displays current volume/drive.
+            //
 			WCHAR szText[MAX_PATH];
-#if 0
-			if( pgp->szDosDrive[0] )
-				StringCchPrintf(szText,ARRAYSIZE(szText),L"%s (%s)",pgp->szDosDeviceName,pgp->szDosDrive);
+
+			if( *pgp->szDosDrive == L'\0' )
+				StringCchPrintf(szText,ARRAYSIZE(szText),L"%s",pgp->szNtVolumeName);
 			else
-				StringCchPrintf(szText,ARRAYSIZE(szText),L"%s",pgp->szDosDeviceName);
-#else
-			StringCchPrintf(szText,ARRAYSIZE(szText),L"%s",pgp->szDosDeviceName);
-#endif
+				StringCchPrintf(szText,ARRAYSIZE(szText),L"%s (%s)",pgp->szNtVolumeName,pgp->szDosDrive);
+			
 			SetDlgItemText(hDlg,IDC_VOLUME_NAME,szText);
 
 			return (INT_PTR)TRUE;
@@ -360,12 +376,13 @@ static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wPa
 		{
 			if( LOWORD(wParam) == IDOK )
 			{
-				GTRDIRDLG_PARAM *pgp = (GTRDIRDLG_PARAM *)GetWindowLongPtr(hDlg,DWLP_USER);
+				TRAVERSEDIRDLG_PARAM *pgp = (TRAVERSEDIRDLG_PARAM *)GetWindowLongPtr(hDlg,DWLP_USER);
 
-				*pgp->Buffer = L'\0';
+				*pgp->PathBuffer = L'\0';
 
 				int cchPath = _NT_PATH_FULL_LENGTH;
 				CStringBuffer szPath(_NT_PATH_FULL_LENGTH);
+
 				GetDlgItemText(hDlg,IDC_EDIT,szPath,cchPath);
 
 				if( wcscmp(szPath,L"..") == 0 )
@@ -377,12 +394,12 @@ static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wPa
 						{
 							RemoveBackslash(pszTempBuffer);
 							RemoveFileSpec(pszTempBuffer);
-							StringCchCopy(pgp->Buffer,pgp->BufferLength,pszTempBuffer);
+							StringCchCopy(pgp->PathBuffer,pgp->PathBufferLength,pszTempBuffer);
 						}
 						_SafeMemFree(pszTempBuffer);
 					}
 
-					if( *pgp->Buffer == L'\0' )
+					if( *pgp->PathBuffer == L'\0' )
 					{
 						MessageBeep(MB_ICONSTOP);	
 						break;
@@ -392,9 +409,9 @@ static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wPa
 				{
 					PWSTR pszFullPath;
 					if( szPath.c_str()[0] == L'\\' )
-						pszFullPath = CombinePath(pgp->szNtDevicePath,szPath);
+						pszFullPath = CombinePath(pgp->szNtVolumeName,szPath);
 					else
-						pszFullPath= CombinePath(pgp->pcacs->GetCurrentDirectory(),szPath);
+						pszFullPath = CombinePath(pgp->pcacs->GetCurrentDirectory(),szPath);
 
 					if( !PathFileExists(pszFullPath) )
 					{
@@ -405,7 +422,7 @@ static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wPa
 						}
 					}
 
-					StringCchCopy(pgp->Buffer,pgp->BufferLength,pszFullPath);
+					StringCchCopy(pgp->PathBuffer,pgp->PathBufferLength,pszFullPath);
 
 					FreeMemory(pszFullPath);
 				}
@@ -437,7 +454,7 @@ static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wPa
 //    pszCurDir    Pointer to a null-terminated current directory path buffer.
 //
 //    ppszNewPath  Returns a pointer to a null-terminated string containing
-//                 the destination path.@
+//                 the destination path.
 //                 The returned memory must be freed with CoTaskMemFree.
 //
 //    dwFlags      Reserved.
@@ -489,30 +506,28 @@ TraverseDirectoryDialog(
 	//
 	// Initialize Dialog Parameter
 	//
-	GTRDIRDLG_PARAM gp;
-	gp.Buffer       = pszBuffer;
-	gp.BufferLength = _NT_PATH_FULL_LENGTH;
+	TRAVERSEDIRDLG_PARAM gp;// = {0};
+	memset(&gp,0,sizeof(gp));
+	gp.PathBuffer       = pszBuffer;
+	gp.PathBufferLength = _NT_PATH_FULL_LENGTH;
 	gp.hWndOwner    = hWnd;
 	gp.pcacs        = pcacs;
-	ZeroMemory(gp.szNtDevicePath,sizeof(gp.szNtDevicePath));
-	ZeroMemory(gp.szDosDeviceName,sizeof(gp.szDosDeviceName));
-	ZeroMemory(gp.szDosDrive,sizeof(gp.szDosDrive));
 
 	//
 	// Get NT device path and Dos device name
 	//
 #if 0
-	NtPathParseDeviceName(pszCurDir,gp.szNtDevicePath,ARRAYSIZE(gp.szNtDevicePath),gp.szDosDeviceName,ARRAYSIZE(gp.szDosDeviceName));
+	NtPathParseDeviceName(pszCurDir,gp.szNtDevicePath,ARRAYSIZE(gp.szNtDevicePath),gp.szDeviceName,ARRAYSIZE(gp.szDeviceName));
 #else
-	NtPathGetVolumeName(pszCurDir,gp.szNtDevicePath,ARRAYSIZE(gp.szNtDevicePath));
+	NtPathGetVolumeName(pszCurDir,gp.szNtVolumeName,ARRAYSIZE(gp.szNtVolumeName));
 #endif
 
-	pcacs->pszNtDevice = gp.szNtDevicePath;
+	pcacs->pszNtDevice = gp.szNtVolumeName;
 
 	//
 	// Get MS-DOS drive
 	//
-	NtPathToDosPath(gp.szNtDevicePath,gp.szDosDrive,ARRAYSIZE(gp.szDosDrive));
+	NtPathToDosPath(pszCurDir,gp.szDosDrive,ARRAYSIZE(gp.szDosDrive));
 
 	//
 	// Create AutoComplete Object
@@ -521,14 +536,16 @@ TraverseDirectoryDialog(
 	hr = CoCreateInstance(CLSID_AutoComplete,NULL, 
 		                  CLSCTX_INPROC_SERVER,
 		                  __uuidof(IAutoComplete2),(void **)&pac);
-
-	gp.autoComplete = pac;
+    if( hr == S_OK )
+    {
+	    gp.autoComplete = pac;
+    }
 
 	//
 	// Start DialogBox
 	//
 	if( DialogBoxParamW(_GetResourceInstance(), MAKEINTRESOURCE(IDD_TRAVERSEDIRECTORY),
-			hWnd, &GotoDirectoryDlgProc,(LPARAM)&gp) == IDOK )
+			hWnd, &TraverseDirectoryDlgProc,(LPARAM)&gp) == IDOK )
 	{
 		if( wcscmp(pszBuffer,L".") == 0 )
 		{
@@ -567,11 +584,14 @@ _cleanup:
 
 	if( pac )
 	{
-		// workarounds: The unknown problem of exists unreleased objects when once opened the dropdown list.
-//		LONG lret;
-//		lret = pac->Release();
-//		ASSERT(lret == 0);
+		// workarounds: The problem of lefts unreleased objects when once opened the dropdown list.
+#if 0
+		LONG lret;
+		lret = pac->Release();
+		ASSERT(lret == 0);
+#else
 		while(  pac->Release() != 0 ) __noop;
+#endif
 	}
 
 	return hr;

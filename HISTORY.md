@@ -1,3 +1,19 @@
+### 0.1.40.0
+
+- Volume Files Browserウィンドウでアクセス不可のボリューム（アクセス権が無い、メディアの準備ができていない、認識できないボリュームなど）をエラーで表示した後、別のアクセス可能なボリュームを参照すると、ツールバーのメニューボタンが無効のままになる不具合を修正。
+
+- Volume Files Browserウィンドウに"GoTo Directory"コマンドを追加。
+
+- Volume Files Browserウィンドウのツールバーで、フォルダアイコンボタンの機能を\[Traverse in Volume\] から \[GoTo Directory\]に変更。
+
+- 上記に伴いVolume Files Browserウィンドウのショートカットキーの挙動を整理。   
+  |Key  |Command  |
+  |---|---|
+  |Ctrl+G|Goto Directory|
+  |Ctrl+Shift+G|Traverse in Volume|
+
+- Volume Files Browserウィンドウで、ディレクトリを読み取れずエラー表示になる時にビープ音の鳴動を廃止。
+
 ### 0.1.39.0
 
 - Volume Mount Pointウィンドウ,Minifilter Driverウィンドウを開くと空白のウィンドウが表示される不具合を修正。

@@ -101,6 +101,7 @@ INCLUDES=$(INCLUDES);..\inc
 SOURCES = \
 	dllmain.cpp\
 	filelistwindow.cpp\
+	dialog_goto_directory.cpp\
 	dialog_traverse_directory.cpp\
 	apps.cpp\
 	meterbox.cpp\

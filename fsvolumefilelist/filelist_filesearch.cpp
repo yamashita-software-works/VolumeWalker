@@ -22,7 +22,6 @@
 #include "filelist_directorytraverse.h"
 #include "filelist_filesearch.h"
 #include "resource.h"
-#include "fileitemdata.h"
 
 #define _DEBUG_SEARCH_RESULT_OUTPUT 0
 
@@ -165,7 +164,7 @@ static HRESULT CALLBACK SearchFileCallbackProc(ULONG CallbackReason,PVOID Callba
 			pszDestinationFullQualifyFile = CombinePath(pcfi->Path,pcfi->FileName);
 			if( pszDestinationFullQualifyFile )
 			{
-				DWORD dwMatched = 0;
+				SEARCH_FLAGS dwMatched = 0;
 
 				if( PathMatchSpecEx(pcfi->FileName,pscp->SearchParam->Name,PMSF_MULTIPLE|PMSF_DONT_STRIP_SPACES) == S_OK )
 				{
@@ -490,13 +489,7 @@ void DebugSearchResultOutput(HANDLE Handle)
 }
 #endif
 
-VOID InitDateTimeRange(SEARCH_RANGE_VALUE *psdt,SYSTEMTIME *pstFrom,SYSTEMTIME *pstTo)
-{
-	SystemTimeToTimeInteger(pstFrom,&psdt->From);
-	SystemTimeToTimeInteger(pstTo,&psdt->To);
-}
-
-VOID InitSearchParameter(SEARCH_PARAMETER *psp)
+static VOID InitSearchParameter(SEARCH_PARAMETER *psp)
 {
 	SYSTEMTIME stFrom,stTo;
 
@@ -511,24 +504,6 @@ VOID InitSearchParameter(SEARCH_PARAMETER *psp)
 	InitDateTimeRange(&psp->DateTime.Creation,&stFrom,&stTo);
 	InitDateTimeRange(&psp->DateTime.LastAccess,&stFrom,&stTo);
 	InitDateTimeRange(&psp->DateTime.Change,&stFrom,&stTo);
-}
-
-//----------------------------------------------------------------------------
-// 
-//  DeleteItemExPtr()
-//
-//  PURPOSE:
-//
-//----------------------------------------------------------------------------
-HRESULT
-DeleteItemExPtr(
-	FILEITEMEX *pItemEx
-	)
-{
-	LocalFree( pItemEx->hdr.FileName );
-	LocalFree( pItemEx->hdr.Path );
-	DeleteFileItemEx(pItemEx);
-	return S_OK;
 }
 
 //----------------------------------------------------------------------------

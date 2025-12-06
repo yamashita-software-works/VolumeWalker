@@ -1424,7 +1424,7 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 					if( frame.Guid.Data1 == VOLUME_CONSOLE_VOLUMEFILELIST )
 					{
-						if( frame.Path == NULL ) {
+						if( frame.Path == NULL || *frame.Path == L'\0' ) {
 							continue;
 						}
 					}

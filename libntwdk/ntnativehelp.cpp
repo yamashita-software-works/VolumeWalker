@@ -1354,6 +1354,49 @@ PWSTR CombinePath_U(PCWSTR pszPath,UNICODE_STRING *pusFileName)
     return psz;
 }
 
+PWSTR CombineVolumePath(PCWSTR pcwszVolume,PCWSTR pcwszVolumeRelativePath,PCWSTR pcwszFileName)
+{
+	//
+	// Parameters:
+	//
+	// pcwszVolume - "\Device\HarddiskVolumeX", "\??\C:", "\??\HarddiskVolume"
+	//
+	// pcwszVolumeRelativePath - "\", "\foo", "\foo\bar"
+	//
+	// pcwszFileName - "Filename.txt"
+	//
+	// Does not check for file existence and validation of path format.
+	//
+    WCHAR *psz;
+    SIZE_T cch;
+	SIZE_T cchVolume;
+	SIZE_T cchPath;
+	SIZE_T cchFileName;
+
+    cch = 0;
+	psz = NULL;
+
+	cchVolume = wcslen(pcwszVolume);
+	cchPath = wcslen(pcwszVolumeRelativePath);
+	if( !IsLastCharacterBackslash(pcwszVolumeRelativePath) )
+		cchPath++;
+	cchFileName = wcslen(pcwszFileName);
+
+    cch = cchVolume + cchPath + cchFileName + 1;
+    psz = AllocStringBuffer((ULONG)cch);
+
+    if( psz )
+    {
+        StringCchCopy(psz,cch,pcwszVolume);
+        StringCchCat(psz,cch,pcwszVolumeRelativePath);
+		if( !IsLastCharacterBackslash(pcwszVolumeRelativePath) )
+	        StringCchCat(psz,cch,L"\\");
+        StringCchCat(psz,cch,pcwszFileName);
+    }
+
+    return psz;
+}
+
 NTSTATUS CombineUnicodeStringPath(UNICODE_STRING *CombinedPath,UNICODE_STRING *Path,UNICODE_STRING *FileName)
 {
     if( CombinedPath == NULL || Path == NULL || FileName == NULL )

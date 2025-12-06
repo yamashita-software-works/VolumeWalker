@@ -103,6 +103,7 @@ PCWSTR FindFileName_W(PCWSTR pszPath);
 PWSTR CombinePath(PCWSTR pszPath,PCWSTR pszFileName);
 PWSTR CombinePath_U(PCWSTR pszPath,UNICODE_STRING *pusFileName);
 PWSTR CombinePathBuffer(PWSTR lpszDest,int cchDest,PCWSTR lpszDir,PCWSTR lpszFile);
+PWSTR CombineVolumePath(PCWSTR pcwszVolume,PCWSTR pcwszVolumeRelativePath,PCWSTR pcwszFileName);
 
 PWSTR DosPathNameToNtPathName(PCWSTR pszDosPath);
 PWSTR DosPathNameToNtPathName_W(PCWSTR pszDosPath);

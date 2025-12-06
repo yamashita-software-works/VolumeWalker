@@ -27,9 +27,7 @@
 #include "filesheaderbar.h"
 #include "fopfilelist.h"
 #include "dialog_traverse_directory.h"
-#if _ENABLE_FILE_MANAGER
 #include "dialog_goto_directory.h"
-#endif
 #include "fsvolumefilelist.h"
 #include "filelist_filesearch.h"
 #include "fileitemlist.h"
@@ -648,6 +646,7 @@ public:
 				pszFullPath = DuplicateString(pItem->pFI->hdr.FileName);
 
 			SELECT_ITEM sel = {0};
+			sel.mask = SI_MASK_VIEWTYPE | SI_MASK_PATH | SI_MASK_NAME | SI_MASK_CURDIR;
 			sel.ViewType  = GetConsoleId();
 			sel.pszPath   = pszFullPath;
 			sel.pszCurDir = DuplicateString(m_pszCurDir);
@@ -1211,12 +1210,8 @@ public:
 		if( ID_MENU == id )
 		{
 			AppendMenu(hMenu,MF_STRING,ID_UP_DIR,                   L"&Go Up One Directory\tAlt+UpArrow");
-#if _ENABLE_FILE_MANAGER
 			AppendMenu(hMenu,MF_STRING,ID_GOTO,                     L"&Goto Directory\tCtrl+G");
-			AppendMenu(hMenu,MF_STRING,ID_TRAVERSE,                 L"&Traverse in Volume\tCtrl+T");
-#else
-			AppendMenu(hMenu,MF_STRING,ID_TRAVERSE,                 L"&Traverse in Volume\tCtrl+T");
-#endif
+			AppendMenu(hMenu,MF_STRING,ID_TRAVERSE,                 L"&Traverse in Volume\tCtrl+Shift+G");
 			AppendMenu(hMenu,MF_STRING,0,NULL);
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"Open Explorer");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"Open Command Prompt");
@@ -2277,8 +2272,9 @@ public:
 				{
 					delete pa;
 					SetRedraw(m_hWndList,TRUE);
+#if 0 // 20251202	
 					MessageBeep(MB_ICONSTOP);
-	
+#endif
 					ListView_DeleteAllItems(m_hWndList);
 	
 					m_LastErrorCode = hr;
@@ -2585,6 +2581,8 @@ public:
 				m_bRootDirectory = bRoot;
 			}
 #endif
+			m_pHeaderBar->EnableButton(ID_GOTO,TRUE);
+			m_pHeaderBar->EnableMenuButton(TRUE);
 		}
 
 		//
@@ -2715,19 +2713,41 @@ public:
 	{
 		SELECT_ITEM File = {0};
 
-		if( m_pszCurDir && *m_pszCurDir != L'\0' )
-			File.pszPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+		if( m_pszCurDir && *m_pszCurDir != L'\0' ) {
+
+			if( HasPrefix(L"\\??\\",m_pszCurDir) )
+			{
+				if( iswalpha(m_pszCurDir[4]) && m_pszCurDir[5] == L':' )
+				{
+					// "\??\C:\xxx"
+					File.pszPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+				}
+				else
+				{
+					// "\??\HarddiskVolumeX", "\??\VolumeGuid{xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}"
+					File.pszPath = CombineVolumePath(m_pszVolumeDevice,m_pszVolumeRootRelativePath,pItem->pFI->hdr.FileName);
+				}
+			}
+			else
+			{
+				File.pszPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+			}
+		}
 		else
+		{
 			File.pszPath = CombinePath(pItem->pFI->hdr.Path,pItem->pFI->hdr.FileName);
-	
+		}
+
+		// Current Directory
 		if( m_pszCurDir && *m_pszCurDir != L'\0' )
 			File.pszCurDir = DuplicateString(m_pszCurDir);
 		else
 			File.pszCurDir = DuplicateString(pItem->pFI->hdr.Path);
 
-		File.pszName = DuplicateString(pItem->pFI->hdr.FileName);
+		// File Name
+//		File.pszName = DuplicateString(pItem->pFI->hdr.FileName);
 
-		if( File.pszPath && File.pszCurDir && File.pszName )
+		if( File.pszPath && File.pszCurDir )// && File.pszName )
 		{
 			WCHAR szDosPath[MAX_PATH];
 			ZeroMemory(szDosPath,sizeof(szDosPath));
@@ -2747,6 +2767,7 @@ public:
 			}
 			else
 			{
+				// e.g. network drive
 				PCWSTR RootDirectoryPart=NULL;
 				if( DosDriveFromNtDevicePath(File.pszPath,szDosPath,MAX_PATH,DDNTF_DEVICENAME_COMPARE,&RootDirectoryPart) == S_OK )
 				{
@@ -2769,11 +2790,11 @@ public:
 		}
 	
 		FreeMemory(File.pszCurDir);
-		FreeMemory(File.pszName);
+//		FreeMemory(File.pszName);
 		FreeMemory(File.pszPath);
 	}
 
-	int ChooseDirectoryAndSelectItem(int iItem,PCWSTR pszVolumeRelativeFilePath)
+	int TraverseDirectoryAndSelectItem(int iItem,PCWSTR pszVolumeRelativeFilePath)
 	{
 		PWSTR pszDirectoryPath = DuplicateString(pszVolumeRelativeFilePath);
 
@@ -2791,6 +2812,39 @@ public:
 		else
 		{
 			PWSTR pszSelectDir = CombinePath(m_pszVolumeName,pszDirectoryPath);
+			SELECT_ITEM sel = {0};
+			sel.pszPath = pszSelectDir;
+			UpdateData( &sel );
+			if( pszFileName )
+				SelectFileName(pszFileName);
+			FreeMemory(pszSelectDir);
+		}
+
+		FreeMemory(pszFileName);
+		FreeMemory(pszDirectoryPath);
+
+		return 0;
+	}
+
+	int GotoDirectoryAndSelectItem(int iItem,PCWSTR pszVolumeRelativeFilePath)
+	{
+		PWSTR pszDirectoryPath = DuplicateString(pszVolumeRelativeFilePath);
+
+		PWSTR pszFileName = (PWSTR)FindFileName_W(pszDirectoryPath);
+
+		pszFileName = DuplicateString(pszFileName);
+
+		RemoveFileSpec_W(pszDirectoryPath);
+
+		if( wcsicmp(m_pszCurDir,pszDirectoryPath) == 0 )
+		{
+			// Currently displayed directory in window.
+			if( pszFileName )
+				SelectFileName(pszFileName);
+		}
+		else
+		{
+			PWSTR pszSelectDir = DuplicateString(pszDirectoryPath);
 			SELECT_ITEM sel = {0};
 			sel.pszPath = pszSelectDir;
 			UpdateData( &sel );
@@ -2974,12 +3028,14 @@ public:
 		return S_OK;
 	}
 
-	int SelectFileName(PCWSTR pszName)
+	int SelectFileName(PCWSTR pszName,BOOL bEnsureVisible=TRUE)
 	{
 		int iItem = FindFileName(pszName);
 		if( iItem != -1 )
 		{
 			ListView_SetItemState(m_hWndList,iItem,LVNI_SELECTED|LVNI_FOCUSED,LVNI_SELECTED|LVNI_FOCUSED);
+			if( bEnsureVisible )
+				ListView_EnsureVisible(m_hWndList,iItem,FALSE);
 		}
 		return iItem;
 	}
@@ -3390,13 +3446,11 @@ public:
 				if( m_bPreventToCommand )
 					*puState = UPDUI_DISABLED;
 				break;
-#if _ENABLE_FILE_MANAGER
 			case ID_GOTO:
-#else
-			case ID_GOTO:
-				*puState = UPDUI_DISABLED;
+				*puState = UPDUI_ENABLED;
+				if( m_bPreventToCommand )
+					*puState = UPDUI_DISABLED;
 				break;
-#endif
 			case ID_TRAVERSE:
 				*puState = m_bRootDirectoryList ? UPDUI_DISABLED : UPDUI_ENABLED;
 				if( m_bPreventToCommand )
@@ -3597,10 +3651,10 @@ public:
 				OnFileSearch();
 				break;
 			case ID_TRAVERSE:
-				OnGotoDirectory(FALSE);
+				OnTraverseDirectory();
 				break;
 			case ID_GOTO:
-				OnGotoDirectory(TRUE);
+				OnGotoDirectory();
 				break;
 #if !_ENABLE_FILE_MANAGER
 			case ID_FILE_SIMPLECHECK:
@@ -3651,21 +3705,12 @@ public:
 		}
 	}
 
-	void OnGotoDirectory(BOOL bGoto)
+	void OnGotoDirectory()
 	{
 		HRESULT hr;
 		PWSTR pszNewPath;
 
-#if _ENABLE_FILE_MANAGER
-		if( bGoto )
-		{
-			hr = GotoDirectoryDialog(m_hWnd,m_pszCurDir,&pszNewPath,0);
-		}
-		else
-#endif
-		{
-			hr = TraverseDirectoryDialog(m_hWnd,m_pszCurDir,&pszNewPath,0);
-		}
+		hr = GotoDirectoryDialog(m_hWnd,m_pszCurDir,&pszNewPath,0);
 
 		if( hr == S_OK )
 		{
@@ -3684,13 +3729,41 @@ public:
 			}
 			else
 			{
-				// Show the specified file's directory and select it.
-/*++			PWSTR RootRelativePath;
-				SplitRootPath_W(pszNewPath,NULL,NULL,&RootRelativePath,NULL);
-				FreeMemory(RootRelativePath); --*/
+				// Show the specified directory and select the filename.
+				GotoDirectoryAndSelectItem(0,pszNewPath);
+			}
+			CoTaskMemFree(pszNewPath);
+		}
+	}
+
+	void OnTraverseDirectory()
+	{
+		HRESULT hr;
+		PWSTR pszNewPath;
+
+		hr = TraverseDirectoryDialog(m_hWnd,m_pszCurDir,&pszNewPath,0);
+
+		if( hr == S_OK )
+		{
+			ULONG fa = 0;
+			PathFileExists_W(pszNewPath,&fa);
+
+			if( fa & FILE_ATTRIBUTE_DIRECTORY )
+			{
+				// Show the specified directory.
+				SELECT_ITEM sel = {0};
+				sel.ViewType  = GetConsoleId();
+				sel.pszPath   = pszNewPath;
+				sel.pszCurDir = NULL;
+				sel.pszName   = NULL;
+				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
+			}
+			else
+			{
+				// Show the specified directory and select the filename.
 				UNICODE_STRING volume,path;
 				SplitVolumeRelativePath(pszNewPath,&volume,&path);
-				ChooseDirectoryAndSelectItem(0,path.Buffer);
+				TraverseDirectoryAndSelectItem(0,path.Buffer);
 			}
 			CoTaskMemFree(pszNewPath);
 		}
