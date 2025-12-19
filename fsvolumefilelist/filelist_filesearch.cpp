@@ -125,6 +125,95 @@ inline DWORD CompareLargeIntegerRange(LARGE_INTEGER li,SEARCH_RANGE_VALUE *Range
 	return( ((Range->From.QuadPart <= li.QuadPart) && (li.QuadPart <= Range->To.QuadPart)) ? ValueType : 0 );
 }
 
+static 
+SEARCH_FLAGS
+CompareFileDetailInformation(
+	SEARCH_FLAGS CompareFlag,
+	DWORD FileAttributes,
+	PCWSTR pszFileName,
+	PCWSTR pszCurDir
+	)
+{
+	NTSTATUS Status;
+	DWORD dwMatched = 0;
+
+	PWSTR RootDirectory=NULL,RootRelativePath=NULL;
+	ULONG cchRootDirectory=0,cchRootRelativePath=0;
+
+	if( pszCurDir == NULL || *pszCurDir == L'\0' )
+		SplitRootPath_W(pszFileName,&RootDirectory,&cchRootDirectory,&RootRelativePath,&cchRootRelativePath);
+	else if( pszCurDir )
+		SplitRootPath_W(pszCurDir,&RootDirectory,&cchRootDirectory,&RootRelativePath,&cchRootRelativePath);
+	else
+		return 0;
+
+	HANDLE hRootDirectory = NULL;
+	if( OpenRootDirectory(RootDirectory,0,&hRootDirectory) != STATUS_SUCCESS )
+	{
+		//
+		// The Root directory open failed. If so try open directory using
+		// full path string without splitting the volume and root relative path.
+		//
+		FreeMemory(RootRelativePath);
+		RootRelativePath = DuplicateString(pszCurDir); // duplicate full-path string
+		hRootDirectory = NULL;
+	}
+
+	HANDLE hCurDir;
+	if( (Status = OpenFile_W(&hCurDir,hRootDirectory,RootRelativePath,FILE_READ_ATTRIBUTES|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE)) == 0 )
+	{
+		HANDLE hFile;
+		ULONG DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
+		ULONG Option = FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT|FILE_SYNCHRONOUS_IO_NONALERT;
+		if( OpenFile_W(&hFile,hCurDir,pszFileName,DesiredAccess,FILE_SHARE_READ|FILE_SHARE_WRITE,Option) == 0 )
+		{
+			// Alternate Strem
+			if( CompareFlag & SEARCH_FLAG_ALT_STREAM )
+			{
+				INT AltStreamCount = 0;
+				FILE_STREAM_INFORMATION *StreamInformation;
+				if( GetAlternateStreamInformation(hFile,&AltStreamCount,&StreamInformation) == S_OK )
+				{
+					if( AltStreamCount > 0 )
+					{
+						FILE_STREAM_INFORMATION *p = StreamInformation;
+
+						do
+						{
+							if( memcmp(L"::$DATA",p->StreamName,p->StreamNameLength) != 0 ) // no name (default) stream
+							{
+								dwMatched |= SEARCH_FLAG_ALT_STREAM;
+								break;
+							}
+
+							if( p->NextEntryOffset == 0 )
+								break;
+
+							p = (FILE_STREAM_INFORMATION *)((ULONG_PTR)p + p->NextEntryOffset);
+						}
+						while( p != NULL );
+					}
+
+					FreeAlternateStreamInformation(StreamInformation);
+				}
+			}
+
+			// todo: ...
+
+			CloseHandle(hFile);
+		}
+		CloseHandle(hCurDir);
+	}
+
+	FreeMemory(RootRelativePath);
+	FreeMemory(RootDirectory);
+
+	if( hRootDirectory )
+		CloseHandle(hRootDirectory);
+
+	return dwMatched;
+}
+
 static HRESULT CALLBACK SearchFileCallbackProc(ULONG CallbackReason,PVOID CallbackData,PVOID Context)
 {
 	CALLBACK_FILE_INFORMATION *pcfi = (CALLBACK_FILE_INFORMATION *)CallbackData;
@@ -201,6 +290,17 @@ static HRESULT CALLBACK SearchFileCallbackProc(ULONG CallbackReason,PVOID Callba
 					dwMatched |= ((pscp->SearchParam->CompareFlag & SEARCH_FLAG_ALLOCATIONSIZE) 
 								? CompareLargeIntegerRange(pcfi->Information->AllocationSize,&pscp->SearchParam->AllocateSize,SEARCH_FLAG_ALLOCATIONSIZE) : 0);
 
+					//
+					// Comparing other file information, if flag on.
+					//
+					if( pscp->SearchParam->CompareFlag & SEARCH_FLAG_ALT_STREAM )
+					{
+						dwMatched |= CompareFileDetailInformation(pscp->SearchParam->CompareFlag,pcfi->Information->FileAttributes,pcfi->FileName,pcfi->Path);
+					}
+
+					//
+					// File matched
+					//
 					if( dwMatched != 0 )
 					{
 						FILEITEMEX *pItemEx = AllocateFileItemEx(NULL,0);

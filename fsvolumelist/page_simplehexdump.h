@@ -754,6 +754,7 @@ public:
 		StringCchCopy(m_rd.Name,ARRAYSIZE(m_rd.Name),pSelOffset->hdr.pszVolume);
 		m_rd.ReadOffset.QuadPart = pSelOffset->liStartOffset.QuadPart;
 		m_rd.BaseOffset.QuadPart = pSelOffset->liStartOffset.QuadPart;
+		_SafeMemFree(m_rd.Buffer);
 
 		//
 		// Allocation sector buffer and initialize sector size, extent size.

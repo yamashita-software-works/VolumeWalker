@@ -130,6 +130,7 @@ _GetClustersInformation(
         switch (dwErrorCode)
 		{
 	        case ERROR_HANDLE_EOF:
+				SetLastError( ERROR_FILE_NOT_FOUND ); // means stream not found
 	            bSuccess = true;
 		        break;
 	        case ERROR_MORE_DATA:

@@ -1222,6 +1222,8 @@ public:
 			AppendMenu(hMenu,MF_STRING,0,NULL);
 			AppendMenu(hMenu,MF_STRING,ID_CHOOSE_VOLUME,            L"Select Volume");
 #endif
+			AppendMenu(hMenu,MF_STRING,0,NULL);
+			AppendMenu(hMenu,MF_STRING,ID_FILE_CLUSTERLOCATION,L"Cl&uster Information...");
 		}
 		return 0;
 	}
@@ -2437,8 +2439,8 @@ public:
 	void DisablePage(DWORD dwErrorCode)
 	{
 		this->m_pHeaderBar->EnableButton(ID_UP_DIR, FALSE);
-		this->m_pHeaderBar->EnableButton(ID_GOTO, FALSE);
-		this->m_pHeaderBar->EnableMenuButton(FALSE);
+//		this->m_pHeaderBar->EnableButton(ID_GOTO, FALSE);
+//		this->m_pHeaderBar->EnableMenuButton(FALSE);
 		this->m_pHeaderBar->EnableUsageSizeBar(FALSE);
 		m_bPreventToCommand = TRUE;
 		m_LastErrorCode = dwErrorCode;
@@ -2597,13 +2599,14 @@ public:
 		SendMessage(GetActiveWindow(),PM_UPDATETITLE,0,(LPARAM)L"Volume Files Browser");
 
 		if( (pszPreviousVolumeDevice && m_pszVolumeDevice && wcsicmp(pszPreviousVolumeDevice,m_pszVolumeDevice) != 0) ||  
-            (pszPreviousVolumeDevice == NULL && this->m_pszVolumeDevice != NULL) ) // Root to Volume
+            (pszPreviousVolumeDevice == NULL && m_pszVolumeDevice != NULL) ||
+			(m_pszVolumeDevice == NULL) ) // Root to Volume
 		{
 			SELECT_ITEM sel = {0};
 			sel.ViewType  = GetConsoleId();
 			sel.pszPath   = NULL;
 			sel.pszCurDir = NULL;
-			sel.pszName   = NULL;
+			sel.pszName   = this->m_pszVolumeName;
 			sel.pszVolume = this->m_pszVolumeDevice;
 
 			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
@@ -2900,6 +2903,9 @@ public:
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hAppMenu,L"Open with &Application");
 		}
+
+		AppendMenu(hMenu,MF_STRING,0,NULL);
+		AppendMenu(hMenu,MF_STRING,ID_FILE_CLUSTERLOCATION,L"Cl&uster Information...");
 
 		return S_OK;
 	}
@@ -3409,6 +3415,7 @@ public:
 			case ID_EDIT_COPY:
 			case ID_OPEN:
 			case ID_FILE_SIMPLECHECK:
+			case ID_FILE_CLUSTERLOCATION:
 				*puState = ListView_GetSelectedCount(m_hWndList) ?  UPDUI_ENABLED : UPDUI_DISABLED;
 				break;
 			case ID_SEARCH:
@@ -3448,8 +3455,8 @@ public:
 				break;
 			case ID_GOTO:
 				*puState = UPDUI_ENABLED;
-				if( m_bPreventToCommand )
-					*puState = UPDUI_DISABLED;
+//				if( m_bPreventToCommand )
+//					*puState = UPDUI_DISABLED;
 				break;
 			case ID_TRAVERSE:
 				*puState = m_bRootDirectoryList ? UPDUI_DISABLED : UPDUI_ENABLED;
@@ -3676,6 +3683,9 @@ public:
 				OnChooseVolume();
 				break;
 #endif
+			case ID_FILE_CLUSTERLOCATION:
+				OnFileClusterLocation();
+				break;
 			default:
 				if( ID_OPEN_APP_FIRST <= CmdId && CmdId <= ID_OPEN_APP_LAST )
 				{
@@ -3715,23 +3725,29 @@ public:
 		if( hr == S_OK )
 		{
 			ULONG fa = 0;
-			PathFileExists_W(pszNewPath,&fa);
-
-			if( fa & FILE_ATTRIBUTE_DIRECTORY )
+			if( PathFileExists_W(pszNewPath,&fa) )
 			{
-				// Show the specified directory.
-				SELECT_ITEM sel = {0};
-				sel.ViewType  = GetConsoleId();
-				sel.pszPath   = pszNewPath;
-				sel.pszCurDir = NULL;
-				sel.pszName   = NULL;
-				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
+				if( fa & FILE_ATTRIBUTE_DIRECTORY )
+				{
+					// Show the specified directory.
+					SELECT_ITEM sel = {0};
+					sel.ViewType  = GetConsoleId();
+					sel.pszPath   = pszNewPath;
+					sel.pszCurDir = NULL;
+					sel.pszName   = NULL;
+					SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_CHANGE_DIRECTORY,(LPARAM)&sel);
+				}
+				else
+				{
+					// Show the specified directory and select the filename.
+					GotoDirectoryAndSelectItem(0,pszNewPath);
+				}
 			}
 			else
 			{
-				// Show the specified directory and select the filename.
-				GotoDirectoryAndSelectItem(0,pszNewPath);
+				MessageBeep(-1); // todo: error message
 			}
+
 			CoTaskMemFree(pszNewPath);
 		}
 	}
@@ -3989,6 +4005,35 @@ public:
 #endif
 	}
 #endif
+
+	void OnFileClusterLocation()
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( iItem == -1 )
+			return ;
+
+		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+		CFileItemEx *pFI = pItem->pFI;
+
+		PWSTR pszPath = NULL;
+		if( m_pszCurDir == NULL || *m_pszCurDir == L'\0' )
+			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILELIST )
+				pszPath = CombinePath(pFI->hdr.Path,L"\\");
+			else
+				pszPath = CombinePath(pFI->hdr.Path,pFI->hdr.FileName);
+		else if( pFI->hdr.Path == NULL )
+			pszPath = CombinePath(m_pszCurDir,pFI->hdr.FileName);
+		else
+			;
+
+		if( pszPath != NULL )
+		{
+			FileClusterInformationDialog(GetActiveWindow(),pszPath,0,nullptr);
+	
+			FreeMemory(pszPath);
+		}
+	}
 
 	void OnOpenItem()
 	{

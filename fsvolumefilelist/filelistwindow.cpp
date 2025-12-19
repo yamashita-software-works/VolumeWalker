@@ -399,12 +399,12 @@ public:
 			//
 			SIZE_T cchNewCurDir = wcslen(pSelectItem->pszCurDir) + 1; // length with a include extra character.
 			pszNewCurDir = _MemAllocStringBuffer( cchNewCurDir  );
-			wcscpy_s(pszNewCurDir,cchNewCurDir,pSelectItem->pszCurDir);
+			StringCchCopy(pszNewCurDir,cchNewCurDir,pSelectItem->pszCurDir);
 			RemoveFileSpec_W(pszNewCurDir);
 			if( wcsicmp(pszNewCurDir,pSelectItem->pszVolume) == 0 )
 			{
 				// We are to go the root directory.
-				wcscat_s(pszNewCurDir,cchNewCurDir,L"\\");
+				StringCchCat(pszNewCurDir,cchNewCurDir,L"\\");
 			}
 
 			SELECT_ITEM sel = {0};

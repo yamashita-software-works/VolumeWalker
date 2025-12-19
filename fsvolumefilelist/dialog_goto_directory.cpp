@@ -217,7 +217,11 @@ GotoDirectoryDialog(
 		}
 		else
 		{
+#if 0 // alphabet drive letter only
 			if( iswalpha(pszBuffer[0]) && pszBuffer[1] == L':' )
+#else // accept non-alphabetic drive letter
+			if( pszBuffer[1] == L':' )
+#endif
 			{
 				PWSTR NtPath;
 				GetNtPath(pszBuffer,&NtPath,0);

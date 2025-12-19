@@ -1,8 +1,8 @@
 //*****************************************************************************
 //
-//  filelist_filesearchparam.cpp
+//  dialog_filesearch_param.cpp
 //
-//  PURPOSE: Dialog implements for file search parameters.
+//  PURPOSE: Implements for file search parameters dialog.
 //
 //  AUTHOR:  YAMASHITA Katsuhiro
 //
@@ -81,7 +81,7 @@ namespace SearchParameterDialog
 				BOOL bEnable = (IsDlgButtonChecked(hwndDialog,idmap[i].checkBox) == BST_CHECKED);
 
 				if( idmap[i].CtrlId[0] )
-				EnableWindow( GetDlgItem(hwndDialog,idmap[i].CtrlId[0]), bEnable );
+					EnableWindow( GetDlgItem(hwndDialog,idmap[i].CtrlId[0]), bEnable );
 
 				if( idmap[i].CtrlId[1] )
 					EnableWindow( GetDlgItem(hwndDialog,idmap[i].CtrlId[1]), bEnable );
@@ -305,6 +305,49 @@ namespace SearchParameterDialog
 		SetWindowText(hwndMaxItemCound,sz);
 	}
 
+	struct {
+		UINT id;
+		SEARCH_FLAGS Flags;
+	} chkbox[] = {
+		// LowPart,HighPart
+		{IDC_CHECK1,SEARCH_FLAG_ATTRIBUTE},
+		{IDC_CHECK2,SEARCH_FLAG_DATETIME_LASTWRITE},
+		{IDC_CHECK3,SEARCH_FLAG_DATETIME_CREATION},
+		{IDC_CHECK4,SEARCH_FLAG_DATETIME_LASTACCESS},
+		{IDC_CHECK5,SEARCH_FLAG_DATETIME_CHANGE},
+		{IDC_CHECK6,SEARCH_FLAG_ENDOFFILE},
+		{IDC_CHECK7,SEARCH_FLAG_ALLOCATIONSIZE},
+		{IDC_CHECK8,SEARCH_FLAG_ATTR_MATCH_WHOLE_BITS},
+		{IDC_CHECK9,SEARCH_FLAG_ALT_STREAM},
+	};
+
+	VOID SetCompareFlag(SEARCH_FLAGS CompareFlags)
+	{
+		DWORD dwFlags = 0;
+		for(int i = 0; i < _countof(chkbox); i++)
+		{
+			if( chkbox[i].Flags & CompareFlags )
+			{
+				CheckDlgButton(hwndDialog,chkbox[i].id,BST_CHECKED);
+			}
+		}
+	}
+
+	DWORD GetCompareFlag()
+	{
+		DWORD dwFlags = 0;
+		for(int i = 0; i < _countof(chkbox); i++)
+		{
+			BOOL bEnable = (IsDlgButtonChecked(hwndDialog,chkbox[i].id) == BST_CHECKED);
+			if( bEnable )
+			{
+				dwFlags |= chkbox[i].Flags;
+			}
+		}
+
+		return dwFlags;
+	}
+
 	INT_PTR OnInitDialog(HWND hDlg,UINT,WPARAM,LPARAM lParam)
 	{
 		_CenterWindow(hDlg,GetActiveWindow());
@@ -341,6 +384,8 @@ namespace SearchParameterDialog
 
 		InitMaxFoundItemCount(SearchParam);
 
+		SetCompareFlag(SearchParam->CompareFlag);
+
 		UINT id[] = {IDC_CHECK1,IDC_CHECK2,IDC_CHECK3,IDC_CHECK4,IDC_CHECK5,IDC_CHECK6,IDC_CHECK7};
 		for( int i = 0; i < _countof(id); i++ )
 		{
@@ -356,45 +401,6 @@ namespace SearchParameterDialog
 		EnableOKbutton(hDlg);
 
 		return TRUE;
-	}
-
-	LARGE_INTEGER chkbox[] = {
-		// LowPart,HighPart
-		{IDC_CHECK1,SEARCH_FLAG_ATTRIBUTE},
-		{IDC_CHECK2,SEARCH_FLAG_DATETIME_LASTWRITE},
-		{IDC_CHECK3,SEARCH_FLAG_DATETIME_CREATION},
-		{IDC_CHECK4,SEARCH_FLAG_DATETIME_LASTACCESS},
-		{IDC_CHECK5,SEARCH_FLAG_DATETIME_CHANGE},
-		{IDC_CHECK6,SEARCH_FLAG_ENDOFFILE},
-		{IDC_CHECK7,SEARCH_FLAG_ALLOCATIONSIZE},
-		{IDC_CHECK8,SEARCH_FLAG_ATTR_MATCH_WHOLE_BITS},
-	};
-
-	VOID SetCompareFlag(ULONG CompareFlags)
-	{
-		DWORD dwFlags = 0;
-		for(int i = 0; i < _countof(chkbox); i++)
-		{
-			if( chkbox[i].LowPart & CompareFlags )
-			{
-				CheckDlgButton(hwndDialog,chkbox[i].HighPart,BST_CHECKED);
-			}
-		}
-	}
-
-	DWORD GetCompareFlag()
-	{
-		DWORD dwFlags = 0;
-		for(int i = 0; i < _countof(chkbox); i++)
-		{
-			BOOL bEnable = (IsDlgButtonChecked(hwndDialog,chkbox[i].LowPart) == BST_CHECKED);
-			if( bEnable )
-			{
-				dwFlags |= chkbox[i].HighPart;
-			}
-		}
-
-		return dwFlags;
 	}
 
 	DWORD GetFileAttributeFlags()
