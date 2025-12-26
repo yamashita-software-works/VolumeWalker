@@ -14,11 +14,7 @@
 //  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.
 //  Licensed under the MIT License.
 //
-#if _ENABLE_FILE_MANAGER
-#include "page_volumefilelist_filemanager.h"
-#else
 #include "page_volumefilelist.h"
-#endif
 #include "ntvolumenames.h"
 #include "ntobjecthelp.h"
 #include "fileitemlist.h"
@@ -350,7 +346,8 @@ public:
 		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLECHECK,L"Count Selected Files");
 
 		AppendMenu(hMenu,MF_STRING,0,NULL);
-		AppendMenu(hMenu,MF_STRING,ID_FILE_CLUSTERLOCATION,L"Cl&uster Information...");
+		AppendMenu(hMenu,MF_STRING,ID_FILE_CLUSTERLOCATION,L"Cl&uster Information");
+		AppendMenu(hMenu,MF_STRING,ID_FILE_STREAMINFORMATION,L"S&tream Information");
 
 		if( m_pOpenApplications == NULL )
 			CreateApplicationList(&m_pOpenApplications);
@@ -404,14 +401,7 @@ public:
 			case ID_HISTORY_BACKWARD:
 			case ID_HISTORY_FORWARD:
 			{
-				UIS_PAGE pg = {0};
-				pg.ConsoleTypeId = VOLUME_CONSOLE_VOLUMEFILELIST;
-				pg.pszPath       = NULL;
-				pg.pszFileName   = NULL;
-				pg.dwFlags       = 0x8;
-				SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
-				SetFocus(GetParent(m_hWnd));
-				return S_OK;
+				return S_OK; // nop
 			}
 		}
 		return T::InvokeCommand(CmdId);

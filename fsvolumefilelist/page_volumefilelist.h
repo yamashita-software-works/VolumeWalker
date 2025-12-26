@@ -1218,12 +1218,6 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_POWERSHELL, L"Open PowerShell");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_TERMINAL,   L"Open Terminal");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"Open Bash");
-#if _ENABLE_FILE_MANAGER
-			AppendMenu(hMenu,MF_STRING,0,NULL);
-			AppendMenu(hMenu,MF_STRING,ID_CHOOSE_VOLUME,            L"Select Volume");
-#endif
-			AppendMenu(hMenu,MF_STRING,0,NULL);
-			AppendMenu(hMenu,MF_STRING,ID_FILE_CLUSTERLOCATION,L"Cl&uster Information...");
 		}
 		return 0;
 	}
@@ -2905,7 +2899,8 @@ public:
 		}
 
 		AppendMenu(hMenu,MF_STRING,0,NULL);
-		AppendMenu(hMenu,MF_STRING,ID_FILE_CLUSTERLOCATION,L"Cl&uster Information...");
+		AppendMenu(hMenu,MF_STRING,ID_FILE_CLUSTERLOCATION,L"Cl&uster Information");
+		AppendMenu(hMenu,MF_STRING,ID_FILE_STREAMINFORMATION,L"S&tream Information");
 
 		return S_OK;
 	}
@@ -3416,6 +3411,7 @@ public:
 			case ID_OPEN:
 			case ID_FILE_SIMPLECHECK:
 			case ID_FILE_CLUSTERLOCATION:
+			case ID_FILE_STREAMINFORMATION:
 				*puState = ListView_GetSelectedCount(m_hWndList) ?  UPDUI_ENABLED : UPDUI_DISABLED;
 				break;
 			case ID_SEARCH:
@@ -3663,11 +3659,9 @@ public:
 			case ID_GOTO:
 				OnGotoDirectory();
 				break;
-#if !_ENABLE_FILE_MANAGER
 			case ID_FILE_SIMPLECHECK:
 				OnSimpleCheck();
 				break;
-#endif
 			case ID_OPEN_LOCATION_EXPLORER:
 			case ID_OPEN_LOCATION_CMDPROMPT:
 			case ID_OPEN_LOCATION_POWERSHELL:
@@ -3678,13 +3672,11 @@ public:
 			case ID_OPEN:
 				OnOpenItem();
 				break;
-#if _ENABLE_FILE_MANAGER
-			case ID_CHOOSE_VOLUME:
-				OnChooseVolume();
-				break;
-#endif
 			case ID_FILE_CLUSTERLOCATION:
 				OnFileClusterLocation();
+				break;
+			case ID_FILE_STREAMINFORMATION:
+				OnFileStreamInformation();
 				break;
 			default:
 				if( ID_OPEN_APP_FIRST <= CmdId && CmdId <= ID_OPEN_APP_LAST )
@@ -3785,7 +3777,6 @@ public:
 		}
 	}
 
-#if !_ENABLE_FILE_MANAGER
 	void OnSimpleCheck()
 	{
 		FS_SELECTED_FILELIST Files = {0};
@@ -3886,7 +3877,6 @@ public:
 
 		MsgBox(GetActiveWindow(),szMsgBuf,L"Quick Check on Selection items",MB_OK|MB_ICONINFORMATION);
 	}
-#endif
 
 	void OnFileSearch()
 	{
@@ -3987,25 +3977,6 @@ public:
 		FreeMemory(DeviceRoot);
 	}
 
-#if _ENABLE_FILE_MANAGER
-	void OnChooseVolume()
-	{
-#if 0
-		WCHAR szVolumeName[MAX_PATH];
-		if( ChooseVolumeDialog(GetActiveWindow(),szVolumeName,ARRAYSIZE(szVolumeName)) == S_OK )
-		{
-			; // todo:
-		}
-#else
-		UIS_PAGE pg = {0};
-		pg.ConsoleTypeId = VOLUME_CONSOLE_CHOOSE_VOLUME;
-		pg.pszPath       = NULL;
-		pg.pszFileName   = NULL;
-		SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
-#endif
-	}
-#endif
-
 	void OnFileClusterLocation()
 	{
 		int iItem = ListViewEx_GetCurSel(m_hWndList);
@@ -4032,6 +4003,55 @@ public:
 			FileClusterInformationDialog(GetActiveWindow(),pszPath,0,nullptr);
 	
 			FreeMemory(pszPath);
+		}
+	}
+
+	void OnFileStreamInformation()
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( iItem == -1 )
+			return ;
+
+		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+		CFileItemEx *pFI = pItem->pFI;
+
+		PWSTR pszPath = NULL;
+		if( m_pszCurDir == NULL || *m_pszCurDir == L'\0' )
+			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILELIST )
+				pszPath = CombinePath(pFI->hdr.Path,L"\\");
+			else
+				pszPath = CombinePath(pFI->hdr.Path,pFI->hdr.FileName);
+		else if( pFI->hdr.Path == NULL )
+			pszPath = CombinePath(m_pszCurDir,pFI->hdr.FileName);
+		else
+			;
+
+		if( pszPath != NULL )
+		{
+			HRESULT hr;
+
+			hr = FileSelectStreamDialog(GetActiveWindow(),pszPath,0,nullptr,FSSDF_NOOPENBUTTON);
+
+			FreeMemory(pszPath);
+
+			PCWSTR pszTitle = L"Stream Information";
+
+			if( hr == S_SSD_NO_STREAM )
+			{
+				MsgBox(GetActiveWindow(),L"No data stream.",pszTitle,MB_OK|MB_ICONINFORMATION);
+			}
+			else if( hr == S_SSD_DEFAULT_STREAM_ONLY )
+			{
+				MsgBox(GetActiveWindow(),L"This file has a default stream only.",pszTitle,MB_OK|MB_ICONINFORMATION);
+			}
+			else
+			{
+				if( FAILED(hr) )
+				{
+					_ErrorMessageBoxEx(GetActiveWindow(),0,pszTitle,NULL,hr,MB_OK|MB_ICONSTOP);
+				}
+			}
 		}
 	}
 

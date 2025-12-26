@@ -48,9 +48,6 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 			_MemInit();
 			InitializeLibMisc(hInstance,GetUserDefaultUILanguage());
 			InitLongPathBox(hInstance);
-#if _ENABLE_FILE_MANAGER
-			InitializeLongPathClipboard();
-#endif
 			break;
 		case DLL_PROCESS_DETACH:
 			_MemEnd();

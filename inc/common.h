@@ -84,23 +84,25 @@ typedef struct _SELECT_ITEM
 	PWSTR pszPath;
 	PWSTR pszName;
 	PWSTR pszCurDir;
-	union {             // Volume, Physical Drive, Storage Device
-		PWSTR pszVolume;
-		PWSTR pszPhysicalDrive;
-	};
+	PWSTR pszVolume;
+	PWSTR pszPhysicalDrive;
 	FILE_ID_DESCRIPTOR FileId;
 	UINT ViewType;
 	GUID Guid;
-	PAGE_CONTEXT *Context;
+	union {
+		PAGE_CONTEXT *Context;
+		PVOID ContextPtr;
+	};
 } SELECT_ITEM;
 
-#define SI_MASK_PATH     0x1
-#define SI_MASK_NAME     0x2
-#define SI_MASK_CURDIR   0x4
-#define SI_MASK_VIEWTYPE 0x8
-#define SI_MASK_FILEID   0x10
-#define SI_MASK_CONTEXT  0x20
-#define SI_MASK_VOLUME   0x100
+#define SI_MASK_PATH       0x1
+#define SI_MASK_NAME       0x2
+#define SI_MASK_CURDIR     0x4
+#define SI_MASK_VIEWTYPE   0x8
+#define SI_MASK_FILEID     0x10
+#define SI_MASK_CONTEXT    0x20
+#define SI_MASK_CONTEXTPTR 0x40
+#define SI_MASK_VOLUME     0x100
 
 #define SI_FLAG_NOT_ADD_TO_HISTORY 0x1
 #define SI_FLAG_ROOT_DIRECTORY     0x2

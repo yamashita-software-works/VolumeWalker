@@ -1,3 +1,11 @@
+### 0.1.42.0
+
+- Volume Files Browserウィンドウに\[Stream Information\]コマンドを追加。      
+代替ストリームを持つファイル,ディレクトリの場合、名前とサイズを表示します。   
+ファイル項目を選択し、コンテキストメニューを開いて選択してください。
+
+- ソースコードの整理。
+
 ### 0.1.41.0
 
 - Volume Files Browserウィンドウに\[Cluster Information\]コマンドを追加。   

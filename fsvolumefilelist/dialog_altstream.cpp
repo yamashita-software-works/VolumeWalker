@@ -46,10 +46,11 @@ typedef struct _STREAM_LIST_ITEM
 //////////////////////////////////////////////////////////////////////////////
 // Dialog Implementation
 
-struct CStreamNameSelectDialog : public CDialogWindow
+struct CStreamNameSelectDialog : public CDialogWindowEx
 {
 	HWND m_hWndList;
 	PCWSTR m_pszFileName;
+	DWORD m_dwFlags;
 
 	CUILayout m_Layout;
 
@@ -70,6 +71,7 @@ struct CStreamNameSelectDialog : public CDialogWindow
 		m_hWndList = NULL;
 		m_pVSI = NULL;
 		m_pszFileName = NULL;
+		m_dwFlags = 0;
 	}
 	
 	~CStreamNameSelectDialog()
@@ -236,12 +238,28 @@ struct CStreamNameSelectDialog : public CDialogWindow
 
 		SetDlgItemText(hDlg,IDC_TEXT,m_pszFileName);
 
+		if( m_dwFlags & FSSDF_NOOPENBUTTON )
+		{
+			ShowWindow(GetDlgItem(hDlg,IDOK),SW_HIDE);
+			SetDlgItemText(hDlg,IDC_DESCRIPTION,L"Alternate Stream Name and Size.");
+			SetWindowText(hDlg,L"Stream Information");
+		}
+
+		RECT rcList;
+		GetWindowRect(m_hWndList,&rcList);
+		MapWindowPoints(NULL,hDlg,(LPPOINT)&rcList,2);
+		CDialogWindowEx::m_cyHeaderHight = rcList.top;
+
+		CDialogWindowEx::OnInitDialog(hDlg);
+
 		return FALSE;
 	}
 
 	LRESULT OnDestroy(HWND hDlg,WPARAM wParam,LPARAM lParam)
 	{
 		STREAM_DIALOG_PARAM *pdlgParam = (STREAM_DIALOG_PARAM *)GetWindowLongPtr(hDlg,DWLP_USER);
+
+		CDialogWindowEx::OnDestory(hDlg);
 
 		HFONT hFont = (HFONT)SendMessage(m_hWndList,WM_GETFONT,0,0);
 		DeleteObject(hFont);
@@ -433,11 +451,14 @@ struct CStreamNameSelectDialog : public CDialogWindow
 		if( iItem == -1 )
 			return ;
 
-		STREAM_LIST_ITEM *pItem = (STREAM_LIST_ITEM *)ListViewEx_GetItemData(m_hWndList,iItem);
+		if( !(m_dwFlags & FSSDF_NOOPENBUTTON) )
+		{
+			STREAM_LIST_ITEM *pItem = (STREAM_LIST_ITEM *)ListViewEx_GetItemData(m_hWndList,iItem);
 
-		m_pVSI = pItem->pStreamInformation;
+			m_pVSI = pItem->pStreamInformation;
 
-		EndDialog(hDlg,IDOK);
+			EndDialog(hDlg,IDOK);
+		}
 	}
 
 	VOID OnCancel(HWND hDlg)
@@ -475,6 +496,20 @@ struct CStreamNameSelectDialog : public CDialogWindow
 		return 0;
 	}
 
+	virtual INT_PTR OnCtlColor(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		switch(uMsg)
+		{
+			case WM_CTLCOLORBTN:
+			case WM_CTLCOLORDLG:
+				return (INT_PTR)m_hbrBackground;
+			case WM_CTLCOLORSTATIC:
+				SetBkMode((HDC)wParam,TRANSPARENT);
+				return (INT_PTR)m_hbrHeader;
+		}
+		return 0;
+	}
+
 	//---------------------------------------------------------------------------
 	//
 	//  DialogProc()
@@ -500,24 +535,8 @@ struct CStreamNameSelectDialog : public CDialogWindow
 				return OnNotify(hDlg,wParam,lParam);
 			case WM_CONTEXTMENU:
 				return OnContextMenu(hDlg,wParam,lParam);
-			case WM_PAINT:
-			{
-				PAINTSTRUCT ps;
-				HDC hdc;
-				hdc = BeginPaint(hDlg,&ps);
-				RECT rc;
-				GetClientRect(hDlg,&rc);
-				rc.bottom = 1;
-				FillRect(hdc,&rc,GetSysColorBrush(COLOR_3DFACE));
-				EndPaint(hDlg,&ps);
-				break;
-			}
-			case WM_CTLCOLORBTN:
-			case WM_CTLCOLORSTATIC:
-			case WM_CTLCOLORDLG:
-				return (INT_PTR)GetStockObject(WHITE_BRUSH);
 		}
-		return 0;
+		return CDialogWindowEx::DlgProc(hDlg,uMsg,wParam,lParam);
 	}
 };
 
@@ -654,7 +673,7 @@ FileSelectStreamDialog(
 	VFS_FILE_STREAM_INFORMATION *pStmNames = NULL;
 	int cStmNames = 0;
 
-	if( pszFilePath == NULL || ppwszFileStreamName == NULL )
+	if( pszFilePath == NULL )
 		return E_INVALIDARG;
 
 	hr = GetAlternateStream( pszFilePath, &pStmNames, &cStmNames );
@@ -693,72 +712,80 @@ FileSelectStreamDialog(
 	if( dlg ) 
 	{
 		dlg->m_pszFileName = FindFileName_W( pszFilePath );
+		dlg->m_dwFlags = dwFlags;
 
 		if( dlg->DoModal(hWnd,IDD_FILE_STREAM_SELECT,(LPARAM)pParam,_GetResourceInstance()) == IDOK )
 		{
-			SIZE_T cch = 0;
-			PWSTR pName = dlg->m_pVSI->StreamName;
-
-			if( dwFlags & FSSDF_MAKEFULLPATH )
+			if( ppwszFileStreamName )
 			{
-				cch = wcslen( pName );
-				cch += wcslen( pszFilePath );
-				cch += 1; // terminate null
-
-				*ppwszFileStreamName = (PWSTR)LocalAlloc(LPTR,cch*sizeof(WCHAR));
-
-				if( *ppwszFileStreamName )
+				SIZE_T cch = 0;
+				PWSTR pName = dlg->m_pVSI->StreamName;
+	
+				if( dwFlags & FSSDF_MAKEFULLPATH )
 				{
-					hr = StringCchCopy(*ppwszFileStreamName,cch,pszFilePath);
-					if( SUCCEEDED(hr) )
-						hr = StringCchCat(*ppwszFileStreamName,cch,pName);
+					cch = wcslen( pName );
+					cch += wcslen( pszFilePath );
+					cch += 1; // terminate null
+	
+					*ppwszFileStreamName = (PWSTR)LocalAlloc(LPTR,cch*sizeof(WCHAR));
+	
+					if( *ppwszFileStreamName )
+					{
+						hr = StringCchCopy(*ppwszFileStreamName,cch,pszFilePath);
+						if( SUCCEEDED(hr) )
+							hr = StringCchCat(*ppwszFileStreamName,cch,pName);
+					}
+					else
+					{
+						hr = E_OUTOFMEMORY;
+						cch = 0;
+					}
+				}
+				else if( dwFlags & FSSDF_FILENAMEWITHSTREAMNAME )
+				{
+					PCWSTR pFileName = FindFileName_W( pszFilePath );
+	
+					cch = wcslen(pFileName) + 1;
+					cch += wcslen( pszFilePath );
+					cch += 1;
+	
+					*ppwszFileStreamName = (PWSTR)LocalAlloc(LPTR,cch*sizeof(WCHAR));
+	
+					if( *ppwszFileStreamName )
+					{
+						hr = StringCchCopy(*ppwszFileStreamName,cch,pFileName);
+						if( SUCCEEDED(hr) )
+							hr = StringCchCat(*ppwszFileStreamName,cch,pName);
+					}
+					else
+					{
+						hr = E_OUTOFMEMORY;
+						cch = 0;
+					}
 				}
 				else
 				{
-					hr = E_OUTOFMEMORY;
-					cch = 0;
+					*ppwszFileStreamName = StrDup(pName);
+	
+					if( *ppwszFileStreamName )
+					{
+						if( pcchFileStreamName )
+							cch = wcslen(*ppwszFileStreamName);
+						hr = S_OK;
+					}
+					else
+					{
+						hr = E_OUTOFMEMORY;
+					}
 				}
-			}
-			else if( dwFlags & FSSDF_FILENAMEWITHSTREAMNAME )
-			{
-				PCWSTR pFileName = FindFileName_W( pszFilePath );
-
-				cch = wcslen(pFileName) + 1;
-				cch += wcslen( pszFilePath );
-				cch += 1;
-
-				*ppwszFileStreamName = (PWSTR)LocalAlloc(LPTR,cch*sizeof(WCHAR));
-
-				if( *ppwszFileStreamName )
-				{
-					hr = StringCchCopy(*ppwszFileStreamName,cch,pFileName);
-					if( SUCCEEDED(hr) )
-						hr = StringCchCat(*ppwszFileStreamName,cch,pName);
-				}
-				else
-				{
-					hr = E_OUTOFMEMORY;
-					cch = 0;
-				}
+	
+				if( pcchFileStreamName )
+					*pcchFileStreamName = (DWORD)cch;
 			}
 			else
 			{
-				*ppwszFileStreamName = StrDup(pName);
-
-				if( *ppwszFileStreamName )
-				{
-					if( pcchFileStreamName )
-						cch = wcslen(*ppwszFileStreamName);
-					hr = S_OK;
-				}
-				else
-				{
-					hr = E_OUTOFMEMORY;
-				}
+				hr = S_OK;
 			}
-
-			if( pcchFileStreamName )
-				*pcchFileStreamName = (DWORD)cch;
 		}
 		else
 		{
