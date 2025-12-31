@@ -1,3 +1,11 @@
+### 0.1.43.0
+
+- Volume Files Browserウィンドウに\[Lookup Stream By LCN\]コマンドを公開。      
+このコマンドは管理者モードで実行時のみ使用できます。   
+ツールバーのメニューボタンから選択してください。
+
+- ソースコードの整理。
+
 ### 0.1.42.0
 
 - Volume Files Browserウィンドウに\[Stream Information\]コマンドを追加。      

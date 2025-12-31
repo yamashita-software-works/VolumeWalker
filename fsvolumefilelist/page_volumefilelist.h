@@ -1218,6 +1218,8 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_POWERSHELL, L"Open PowerShell");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_TERMINAL,   L"Open Terminal");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"Open Bash");
+			AppendMenu(hMenu,MF_STRING,0,NULL);
+			AppendMenu(hMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream By LCN...");
 		}
 		return 0;
 	}
@@ -2433,8 +2435,6 @@ public:
 	void DisablePage(DWORD dwErrorCode)
 	{
 		this->m_pHeaderBar->EnableButton(ID_UP_DIR, FALSE);
-//		this->m_pHeaderBar->EnableButton(ID_GOTO, FALSE);
-//		this->m_pHeaderBar->EnableMenuButton(FALSE);
 		this->m_pHeaderBar->EnableUsageSizeBar(FALSE);
 		m_bPreventToCommand = TRUE;
 		m_LastErrorCode = dwErrorCode;
@@ -2741,10 +2741,7 @@ public:
 		else
 			File.pszCurDir = DuplicateString(pItem->pFI->hdr.Path);
 
-		// File Name
-//		File.pszName = DuplicateString(pItem->pFI->hdr.FileName);
-
-		if( File.pszPath && File.pszCurDir )// && File.pszName )
+		if( File.pszPath && File.pszCurDir )
 		{
 			WCHAR szDosPath[MAX_PATH];
 			ZeroMemory(szDosPath,sizeof(szDosPath));
@@ -2787,7 +2784,6 @@ public:
 		}
 	
 		FreeMemory(File.pszCurDir);
-//		FreeMemory(File.pszName);
 		FreeMemory(File.pszPath);
 	}
 
@@ -3451,8 +3447,6 @@ public:
 				break;
 			case ID_GOTO:
 				*puState = UPDUI_ENABLED;
-//				if( m_bPreventToCommand )
-//					*puState = UPDUI_DISABLED;
 				break;
 			case ID_TRAVERSE:
 				*puState = m_bRootDirectoryList ? UPDUI_DISABLED : UPDUI_ENABLED;
@@ -3475,7 +3469,7 @@ public:
 			case ID_HISTORY_FORWARD:
 				*puState = UPDUI_ENABLED;
 				break;
-			case ID_CHOOSE_VOLUME:
+			case ID_LOOKUP_STREAM_BY_LCN:
 				*puState = UPDUI_ENABLED;
 				break;
 			default:
@@ -3653,14 +3647,14 @@ public:
 			case ID_SEARCH:
 				OnFileSearch();
 				break;
+			case ID_FILE_SIMPLECHECK:
+				OnSimpleCheck();
+				break;
 			case ID_TRAVERSE:
 				OnTraverseDirectory();
 				break;
 			case ID_GOTO:
 				OnGotoDirectory();
-				break;
-			case ID_FILE_SIMPLECHECK:
-				OnSimpleCheck();
 				break;
 			case ID_OPEN_LOCATION_EXPLORER:
 			case ID_OPEN_LOCATION_CMDPROMPT:
@@ -3678,6 +3672,10 @@ public:
 			case ID_FILE_STREAMINFORMATION:
 				OnFileStreamInformation();
 				break;
+			case ID_LOOKUP_STREAM_BY_LCN:
+				OnFileLookupStreamName();
+				break;
+
 			default:
 				if( ID_OPEN_APP_FIRST <= CmdId && CmdId <= ID_OPEN_APP_LAST )
 				{
@@ -3777,10 +3775,52 @@ public:
 		}
 	}
 
-	void OnSimpleCheck()
+	void OnFileSearch()
 	{
+		HWND hwndMainWnd = GetActiveWindow();
+
 		FS_SELECTED_FILELIST Files = {0};
 		if( MakeSelectedFileList(&Files) != S_OK )
+			return;
+
+		HANDLE hMatchedFiles;
+		FO_PARAM fop = {0};
+		fop.hwnd  = m_hWnd;
+		fop.cmd   = FO_SEARCH;
+		fop.Flags = 0x1; // todo:
+
+		HRESULT hr;
+		hr = Search(m_hWnd,&Files,&hMatchedFiles);
+
+		if( hr == S_OK )
+		{
+			if( FILGetItemCount(hMatchedFiles) > 0 )
+			{
+				OPEN_MDI_CHILDFRAME_PARAM *popen_mdi = (OPEN_MDI_CHILDFRAME_PARAM *)_CoTaskMemAllocZero( sizeof(OPEN_MDI_CHILDFRAME_PARAM) + sizeof(HANDLE) );
+				popen_mdi->Flags = 0;
+				popen_mdi->Path = (PWSTR)hMatchedFiles; // Set a Handle of FIL.
+				PostMessage(hwndMainWnd,WM_OPEN_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT,1),(LPARAM)popen_mdi);
+			}
+			else
+			{
+				MsgBox(GetActiveWindow(),L"File not found.",L"File Search",MB_OK|MB_ICONINFORMATION);
+				FILDestroy(hMatchedFiles);
+			}
+		}
+
+		CoTaskMemFree(Files.FileListBuffer);
+	}
+
+	void OnSimpleCheck()
+	{
+#if 0
+		T *pThis = static_cast<T*>(this);
+#else
+		CFileListPage *pThis = this;
+#endif
+
+		FS_SELECTED_FILELIST Files = {0};
+		if( pThis->MakeSelectedFileList(&Files) != S_OK )
 			return;
 
 		LARGE_INTEGER AllocationSize = {0};
@@ -3876,42 +3916,6 @@ public:
 			);
 
 		MsgBox(GetActiveWindow(),szMsgBuf,L"Quick Check on Selection items",MB_OK|MB_ICONINFORMATION);
-	}
-
-	void OnFileSearch()
-	{
-		HWND hwndMainWnd = GetActiveWindow();
-
-		FS_SELECTED_FILELIST Files = {0};
-		if( MakeSelectedFileList(&Files) != S_OK )
-			return;
-
-		HANDLE hMatchedFiles;
-		FO_PARAM fop = {0};
-		fop.hwnd  = m_hWnd;
-		fop.cmd   = FO_SEARCH;
-		fop.Flags = 0x1; // todo:
-
-		HRESULT hr;
-		hr = Search(m_hWnd,&Files,&hMatchedFiles);
-
-		if( hr == S_OK )
-		{
-			if( FILGetItemCount(hMatchedFiles) > 0 )
-			{
-				OPEN_MDI_CHILDFRAME_PARAM *popen_mdi = (OPEN_MDI_CHILDFRAME_PARAM *)_CoTaskMemAllocZero( sizeof(OPEN_MDI_CHILDFRAME_PARAM) + sizeof(HANDLE) );
-				popen_mdi->Flags = 0;
-				popen_mdi->Path = (PWSTR)hMatchedFiles; // Set a Handle of FIL.
-				PostMessage(hwndMainWnd,WM_OPEN_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT,1),(LPARAM)popen_mdi);
-			}
-			else
-			{
-				MsgBox(GetActiveWindow(),L"File not found.",L"File Search",MB_OK|MB_ICONINFORMATION);
-				FILDestroy(hMatchedFiles);
-			}
-		}
-
-		CoTaskMemFree(Files.FileListBuffer);
 	}
 
 	void OnOpenLocation(UINT uCmdId)
@@ -4052,6 +4056,17 @@ public:
 					_ErrorMessageBoxEx(GetActiveWindow(),0,pszTitle,NULL,hr,MB_OK|MB_ICONSTOP);
 				}
 			}
+		}
+	}
+
+	void OnFileLookupStreamName()
+	{
+		HRESULT (WINAPI *pfnLookupStreamNameDialog)(HWND hWnd,PWSTR pszVolumeName,DWORD dwFlags) = NULL;
+
+		(FARPROC&)pfnLookupStreamNameDialog = GetProcAddress( GetModuleHandle(L"fsvolumelist.dll"), "LookupStreamNameDialog" );
+		if( pfnLookupStreamNameDialog )
+		{
+			pfnLookupStreamNameDialog(GetActiveWindow(),this->m_pszVolumeDevice,0);
 		}
 	}
 
