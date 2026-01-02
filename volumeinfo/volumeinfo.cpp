@@ -790,7 +790,7 @@ VOID OpenConsole(HWND hWnd,UINT ConsoleTypeId,PCWSTR Param,UINT ParamType,BOOL b
 					}
 				}
 
-				if( sel.pszVolume )
+				if( sel.pszVolume || sel.pszPhysicalDrive )
 				{
 					STRING_STRUCT name = {0};
 					WCHAR szVolume[MAX_PATH];
