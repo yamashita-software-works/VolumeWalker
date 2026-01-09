@@ -14,7 +14,7 @@
 //  Copyright (C) YAMASHITA Katsuhiro. All rights reserved.
 //  Licensed under the MIT License.
 //
-#include "page_volumefilelist.h"
+#include "page_volumefilelist_filemanager.h"
 #include "ntvolumenames.h"
 #include "ntobjecthelp.h"
 #include "fileitemlist.h"
@@ -401,7 +401,7 @@ public:
 			case ID_HISTORY_BACKWARD:
 			case ID_HISTORY_FORWARD:
 			{
-				return S_OK; // nop
+				return S_OK; // NOP
 			}
 		}
 		return T::InvokeCommand(CmdId);

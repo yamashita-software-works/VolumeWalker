@@ -718,14 +718,12 @@ HWND OpenViewPage(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget = NULL,PVOID
 	switch( ConsoleTypeId )
 	{
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
-//		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 		{
 			sel.pszVolume = (PWSTR)pszOpenTarget;
 			sel.ViewType = ConsoleTypeId;
 			break;
 		}
 		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
-//		case VOLUME_CONSOLE_DISKLAYOUT:
 		{
 			sel.pszPhysicalDrive = (PWSTR)pszOpenTarget;
 			sel.ViewType = ConsoleTypeId;
@@ -754,12 +752,14 @@ VOID OpenConsole(HWND hWnd,UINT ConsoleTypeId,PCWSTR Param,UINT ParamType,BOOL b
 	HWND hwndCurView = g_hWndViewPage;
 	HWND hwndNewView = GetOpenedWindowHandle(ConsoleTypeId);
 
-	BOOL b = FALSE;
+	BOOL bCreateNew = FALSE;
 	if( hwndNewView == NULL )
 	{
 		hwndNewView = OpenViewPage(hWnd,ConsoleTypeId,(PCWSTR)Param);
 
 		SetWindowLongPtr(hwndNewView,GWLP_USERDATA,ConsoleTypeId);
+
+		bCreateNew = TRUE;
 	}
 	else
 	{
@@ -775,14 +775,12 @@ VOID OpenConsole(HWND hWnd,UINT ConsoleTypeId,PCWSTR Param,UINT ParamType,BOOL b
 				switch( ConsoleTypeId )
 				{
 					case VOLUME_CONSOLE_VOLUMEINFORMAION:
-//					case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 					{
 						sel.pszVolume = psz;
 						sel.ViewType = ConsoleTypeId;
 						break;
 					}
 					case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
-//					case VOLUME_CONSOLE_DISKLAYOUT:
 					{
 						sel.pszPhysicalDrive = psz;
 						sel.ViewType = ConsoleTypeId;
@@ -822,6 +820,10 @@ VOID OpenConsole(HWND hWnd,UINT ConsoleTypeId,PCWSTR Param,UINT ParamType,BOOL b
 		GetClientRect(hWnd,&rc);
 		UpdateLayout(_RECT_WIDTH(rc),_RECT_HIGHT(rc),hwndNewView);
 		EnableWindow(hwndNewView,TRUE);
+		if( bCreateNew ) {
+			GetClientRect(hwndNewView,&rc);
+			SendMessage(hwndNewView,WM_NOTIFY_MESSAGE,UI_INIT_LAYOUT,(LPARAM)&rc);
+		}
 		ShowWindow(hwndNewView,SW_SHOW);
 		g_hWndViewPage = hwndNewView;
 	}

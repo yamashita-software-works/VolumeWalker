@@ -39,5 +39,9 @@ SOURCES=\
 	menubar.cpp \
 	imagehelp.cpp \
 	themehelp.cpp \
-	openvolumelocation.cpp
+	openvolumelocation.cpp\
+	clipboardfilecopy.cpp\
+	dropsource.cpp\
+	droptarget.cpp\
+	dataobject.cpp
 

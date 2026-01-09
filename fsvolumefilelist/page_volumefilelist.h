@@ -33,7 +33,12 @@
 #include "fileitemlist.h"
 #include "runhelp.h"
 
-#define PM_UPDATE_FILELIST (PM_PRIVATEBASE + 1)
+#ifndef _ENABLE_NAME_ROW_FONT_SETTING
+#define _ENABLE_NAME_ROW_FONT_SETTING  0
+#endif
+
+#define PM_UPDATE_FILELIST           (PM_PRIVATEBASE + 1)
+#define PM_RESEND_SELECTED_ITEM_DATA (PM_PRIVATEBASE + 2)
 
 #define _IS_CURDIR_NAME( fname ) (fname[0] == L'.' && fname[1] == L'\0')
 #define _IS_PARENT_DIR_NAME( fname ) (fname[0] == L'.' && fname[1] == L'.' && fname[2] == L'\0')
@@ -44,6 +49,8 @@
 #define _FILE_ACTION_RENAME          (0x10)
 
 #define _MAX_LEADING_READ 128
+
+#define PVFM_ASYNC_ITEMSELECTED      (WM_APP+606)
 
 inline int _LoadIconImage(HIMAGELIST himl,UINT idIconRes,int cxIcon,int cyIcon) {
 	HICON hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(idIconRes),IMAGE_ICON,cxIcon,cyIcon,LR_DEFAULTCOLOR);
@@ -140,6 +147,7 @@ public:
 	PWSTR GetPath() const { return m_pszCurDir; }
 	PWSTR GetCurPath() const { return m_pszCurDir; }
 	HWND GetListView() const { return m_hWndList; }
+	BOOL IsCommandEnabled() const { return !m_bPreventToCommand; }
 
 	LARGE_INTEGER _GetFileId() const
 	{
@@ -285,16 +293,17 @@ public:
 
 		hwnd = m_pHeaderBar->Create(hWnd,0,L"",WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,WS_EX_CONTROLPARENT);
 
-		COLORREF crHighlightBack = RGB(247,247,247);
-		COLORREF crBack = GetSysColor(COLOR_3DFACE);
-
 		HEADERBARCOLOR ibc;
+		COLORREF crHighlightBack = RGB(247,247,247);
+		COLORREF crBack;
+		COLORREF crText;
+		COLORREF crHighlightText;
 
 		if( _IsDarkModeEnabled() ) 
 		{
-			COLORREF crBack = RGB(98,98,98);
-			COLORREF crText = RGB(214,214,214);
-			COLORREF crHighlightText = RGB(255,255,255);
+			crBack                  = RGB(98,98,98);
+			crText                  = RGB(214,214,214);
+			crHighlightText         = RGB(255,255,255);
 			ibc.crHighlightText     = crBack;
 			ibc.crHighlightBack     = crBack;
 			ibc.crNormalBack        = crBack;
@@ -306,12 +315,9 @@ public:
 		}
 		else
 		{
-			COLORREF crBack;
-			COLORREF crText;
-			crBack = RGB(243,243,243);
-			crText = RGB(0,0,0);
-
-			COLORREF crHighlightText = RGB(0,0,0);
+			crBack                  = RGB(243,243,243);
+			crText                  = RGB(0,0,0);
+			crHighlightText         = RGB(0,0,0);
 			ibc.crHighlightText     = crHighlightText;
 			ibc.crHighlightBack     = crBack;
 			ibc.crNormalBack        = crBack;
@@ -434,6 +440,99 @@ public:
 		if( pnmhdr->hwndFrom != m_hWndList )
 			return 0;
 
+#if _ENABLE_NAME_ROW_FONT_SETTING
+		if( pnmlvcd->nmcd.dwDrawStage == CDDS_PREPAINT )
+		{
+			return CDRF_NOTIFYITEMDRAW;
+		}
+
+		if( pnmlvcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT )
+		{
+				CFileLvItem *pItem = (CFileLvItem *)pnmlvcd->nmcd.lItemlParam;
+
+				if( (pItem->pFI->ItemTypeFlag & _FLG_COSTLY_DATA) == 0 )
+				{
+					GetCostlyFileInformationData(pItem->pFI);
+				}
+
+				if( _IsDarkModeEnabled() )
+				{
+					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+						pnmlvcd->clrText = RGB(223,223,223);
+					if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
+						pnmlvcd->clrText = RGB(0,255,255);
+
+					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
+						pnmlvcd->clrText = RGB(0,0,180);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
+						pnmlvcd->clrText = RGB(0,174,54);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
+						pnmlvcd->clrText = RGB(10,223,96);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
+						pnmlvcd->clrText = RGB(0,200,48);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
+						pnmlvcd->clrText = RGB(185,122,87);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SYSTEM )
+						pnmlvcd->clrText = RGB(180,40,223);
+
+					if( pItem->pFI->Wof )
+						pnmlvcd->clrText = RGB(128,0,80);
+				}
+				else
+				{
+					if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
+						pnmlvcd->clrText = RGB(118,118,118);
+
+					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
+						pnmlvcd->clrText = RGB(80,8,255);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
+						pnmlvcd->clrText = RGB(0,194,54);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
+						pnmlvcd->clrText = RGB(100,0,80);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
+						pnmlvcd->clrText = RGB(0,200,48);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
+						pnmlvcd->clrText = RGB(185,122,87);
+					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SYSTEM )
+						pnmlvcd->clrText = RGB(108,108,114);
+				}
+
+
+			return CDRF_NOTIFYSUBITEMDRAW|CDRF_NOTIFYPOSTPAINT|CDRF_NEWFONT;
+		}
+
+		if( pnmlvcd->nmcd.dwDrawStage == (CDDS_ITEMPREPAINT|CDDS_SUBITEM) )
+		{
+			HWND hwndHeader = ListView_GetHeader(m_hWndList);
+			HDITEM hi;
+			hi.mask = HDI_LPARAM;
+			Header_GetItem(hwndHeader,pnmlvcd->iSubItem,&hi);
+
+			switch( (int)(hi.lParam) )
+			{
+				case COLUMN_Name:
+				case COLUMN_Path:
+					SelectObject(pnmlvcd->nmcd.hdc,m_hFontName);
+					break;
+				default:
+					SelectObject(pnmlvcd->nmcd.hdc,m_hFont);
+					break;
+			}
+			return CDRF_NOTIFYPOSTPAINT;
+		}
+
+		if( pnmlvcd->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT)
+		{
+			if( IsXpThemeEnabled() )
+			{
+				if( pnmlvcd->nmcd.uItemState & CDIS_FOCUS )
+				{
+					DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&pnmlvcd->nmcd.rc);
+				}
+			}
+		}
+		return CDRF_DODEFAULT;
+#else
 		switch( pnmlvcd->nmcd.dwDrawStage )
 		{
 			case CDDS_PREPAINT:
@@ -502,12 +601,24 @@ public:
 				{
 					if( pnmlvcd->nmcd.uItemState & CDIS_FOCUS )
 					{
-						DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&pnmlvcd->nmcd.rc);
+						if( ListView_GetSelectedCount(m_hWndList) > 1 ) {
+							RECT rc = pnmlvcd->nmcd.rc;
+							COLORREF cr = RGB(50,130,246);
+							DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&rc,FALSE,cr);
+							rc.left += 1;
+							rc.right -= 1;
+							rc.top += 1;
+							rc.bottom -= 1;
+							DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&rc,TRUE);
+						} else {
+							DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&pnmlvcd->nmcd.rc);
+						}
 					}
 				}
 				return CDRF_DODEFAULT;
 			}
 		}
+#endif
 		return 0;
 	}
 
@@ -627,18 +738,8 @@ public:
 		return 0;
 	}
 
-	LRESULT OnItemChanged(NMHDR *pnmhdr)
+	void SendSelectedItemData(CFileLvItem *pItem)
 	{
-		NMLISTVIEW *pnmlv = (NMLISTVIEW *)pnmhdr;
-
-		if( ((pnmlv->uOldState == 0)|| ((pnmlv->uNewState & (LVIS_SELECTED)) == (LVIS_SELECTED))) 
-			 && ((pnmlv->uNewState & (LVIS_SELECTED|LVIS_FOCUSED)) == (LVIS_SELECTED|LVIS_FOCUSED)) )
-		{
-			CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(pnmhdr->hwndFrom,pnmlv->iItem);
-
-			if( wcscmp(pItem->pFI->hdr.FileName,L"..") == 0 )
-				return 0;
-
 			PWSTR pszFullPath;
 			if( m_pszCurDir && *m_pszCurDir != 0 )
 				pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
@@ -653,14 +754,69 @@ public:
 			sel.pszName   = DuplicateString(pItem->pFI->hdr.FileName);
 			sel.pszVolume = m_pszVolumeDevice;
 
+			FILEITEMEX *pFIEx = pItem->pFI;
+			sel.mask |= SI_MASK_CONTEXTPTR;
+			sel.ContextPtr = pFIEx;
+
 			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_ITEM_SELECTED,(LPARAM)&sel);
 
 			FreeMemory(sel.pszCurDir);
 			FreeMemory(sel.pszName);
 			FreeMemory(pszFullPath);
+	}
+
+	LRESULT OnItemChanged(NMHDR *pnmhdr)
+	{
+		NMLISTVIEW *pnmlv = (NMLISTVIEW *)pnmhdr;
+
+		if( pnmlv->uNewState != pnmlv->uOldState )
+		{
+			if( pnmlv->uNewState & LVIS_FOCUSED ) //|| GetSelectedCount() != m_selectedCount )
+			{
+				if( ListView_GetItemState(m_hWndList,pnmlv->iItem,LVIS_SELECTED) != 0 )
+				{
+					CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(pnmhdr->hwndFrom,pnmlv->iItem);
+					SendSelectedItemData(pItem);
+				}
+			}
+			else
+			{
+				if( ListView_GetItemState(m_hWndList,pnmlv->iItem,LVIS_FOCUSED|LVIS_SELECTED) == (LVIS_FOCUSED|LVIS_SELECTED) )
+				{
+					;// Reselet focused item
+				}
+				else 
+				{
+					// Clear Select
+					PostMessage(m_hWnd,PVFM_ASYNC_ITEMSELECTED,0,0);
+				}
+			}
 		}
 
 		return 0;
+	}
+
+	LRESULT OnAyncItemSelected(HWND,UINT,WPARAM,LPARAM)
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+
+		if( iItem == -1 )
+		{
+			SELECT_ITEM sel = {0};
+			sel.mask       = SI_MASK_VIEWTYPE | SI_MASK_PATH | SI_MASK_NAME | SI_MASK_CURDIR;
+			sel.ViewType   = GetConsoleId();
+			sel.pszPath    = NULL;
+			sel.pszCurDir  = NULL;
+			sel.pszName    = NULL;
+			sel.ContextPtr = NULL;
+			sel.pszVolume  = m_pszVolumeDevice;
+
+			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_ITEM_SELECTED,(LPARAM)&sel);
+
+			return (LRESULT)TRUE;
+		}
+
+		return (LRESULT)FALSE;
 	}
 
 	LRESULT OnItemActivate(NMHDR *pnmhdr)
@@ -1213,14 +1369,31 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_GOTO,                     L"&Goto Directory\tCtrl+G");
 			AppendMenu(hMenu,MF_STRING,ID_TRAVERSE,                 L"&Traverse in Volume\tCtrl+Shift+G");
 			AppendMenu(hMenu,MF_STRING,0,NULL);
-			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"Open Explorer");
+			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"Open Windows Explorer");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"Open Command Prompt");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_POWERSHELL, L"Open PowerShell");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_TERMINAL,   L"Open Terminal");
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"Open Bash");
 			AppendMenu(hMenu,MF_STRING,0,NULL);
 			AppendMenu(hMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream By LCN...");
+#if _ENABLE_FILELIST_SUB_PANE
+			AppendMenu(hMenu,MF_STRING,0,NULL);
+			AppendMenu(hMenu,MF_STRING,ID_VIEW_SELECTVOLUMEPANE,    L"Volume Selector");
+			AppendMenu(hMenu,MF_STRING,ID_VIEW_PROPERTYPANE,        L"Properties");
+#endif
+#if _ENABLE_PAGE_CHANGER
+			AppendMenu(hMenu,MF_STRING,0,NULL);
+			AppendMenu(hMenu,MF_STRING,ID_CHOOSE_VOLUME,            L"Select Volume");
+#endif
 		}
+		return 0;
+	}
+
+	LRESULT OnResendSelectedItemData(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetCurItemData(m_hWndList);
+		if( pItem )
+			SendSelectedItemData(pItem);
 		return 0;
 	}
 
@@ -1421,6 +1594,8 @@ public:
 	{
 		switch(uMsg)
 		{
+			case PVFM_ASYNC_ITEMSELECTED:
+				return OnAyncItemSelected(hWnd,uMsg,wParam,lParam);
 			case WM_SETFOCUS:
 				SetFocus(m_hWndList);
 				return 0;
@@ -1458,6 +1633,8 @@ public:
 				return OnChangePath(hWnd,uMsg,wParam,lParam);
 			case PM_MAKECONTEXTMENU:
 				return OnMakeContextMenu(hWnd,uMsg,wParam,lParam);
+			case PM_RESEND_SELECTED_ITEM_DATA:
+				return OnResendSelectedItemData(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -2605,7 +2782,19 @@ public:
 
 			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
 		}
+#if _ENABLE_FILELIST_SUB_PANE
+		if( 1 )
+		{
+			SELECT_ITEM sel = {0};
+			sel.ViewType  = GetConsoleId();
+			sel.pszPath   = this->m_pszCurDir;
+			sel.pszCurDir = NULL;
+			sel.pszName   = this->m_pszVolumeName;
+			sel.pszVolume = this->m_pszVolumeDevice;
 
+			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_UPDATE_SUBPANE,(LPARAM)&sel);
+		}
+#endif
 		_SafeMemFree(pszPreviousVolumeDevice);
 
 		return hr;
@@ -3469,6 +3658,7 @@ public:
 			case ID_HISTORY_FORWARD:
 				*puState = UPDUI_ENABLED;
 				break;
+			case ID_CHOOSE_VOLUME:
 			case ID_LOOKUP_STREAM_BY_LCN:
 				*puState = UPDUI_ENABLED;
 				break;
@@ -3666,6 +3856,11 @@ public:
 			case ID_OPEN:
 				OnOpenItem();
 				break;
+#if _ENABLE_PAGE_CHANGER
+			case ID_CHOOSE_VOLUME:
+				OnChooseVolume();
+				break;
+#endif
 			case ID_FILE_CLUSTERLOCATION:
 				OnFileClusterLocation();
 				break;
@@ -3980,6 +4175,17 @@ public:
 
 		FreeMemory(DeviceRoot);
 	}
+
+#if _ENABLE_PAGE_CHANGER
+	void OnChooseVolume()
+	{
+		UIS_PAGE pg = {0};
+		pg.ConsoleTypeId = VOLUME_CONSOLE_CHOOSE_VOLUME;
+		pg.pszPath       = NULL;
+		pg.pszFileName   = NULL;
+		SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
+	}
+#endif
 
 	void OnFileClusterLocation()
 	{

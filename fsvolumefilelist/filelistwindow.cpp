@@ -20,6 +20,21 @@
 #include "filelistview.h"
 #include "page_volumefilelist.h"
 #include "page_volumefilelist_search_result.h"
+#if _ENABLE_FILELIST_SUB_PANE
+#include "proppane_base.h"
+#include "volumepane.h"
+#endif
+
+inline int _GetTextWidth(HWND hWnd,HFONT hFont,PCWSTR psz)
+{
+	SIZE size;
+	HDC hdc = GetDC(hWnd);
+	HGDIOBJ hfontOld = SelectObject(hdc,hFont);
+	GetTextExtentPoint32(hdc,psz,lstrlen(psz),&size);
+	SelectObject(hdc,hfontOld);
+	ReleaseDC(hWnd,hdc);
+	return size.cx;
+}
 
 class CVolumeFilesWindow : public CBaseWindow
 {
@@ -28,6 +43,11 @@ class CVolumeFilesWindow : public CBaseWindow
 
 	CFilesPageHost m_PageHost;
 	CFilesPageHost *m_pView;
+
+#if _ENABLE_FILELIST_SUB_PANE
+	CPropPaneWindow *m_pPropPane;
+	CVolumeSelectPane *m_pVolPane;
+#endif
 
 public:
 	DWORD m_dwViewStyle;
@@ -40,6 +60,10 @@ public:
 		m_hWndCtrlFocus = NULL;
 		m_ConsoleTypeId = ConsoleTypeId;
 		m_dwViewStyle = 0;
+#if _ENABLE_FILELIST_SUB_PANE
+		m_pPropPane = NULL;
+		m_pVolPane = NULL;
+#endif
 	}
 
 	~CVolumeFilesWindow()
@@ -52,6 +76,11 @@ public:
 
 		m_pView->m_hWndHost = m_hWnd;
 		m_pView->m_dwFlags = m_dwViewStyle;
+
+#if _ENABLE_FILELIST_SUB_PANE
+		CreateVolummePane(FALSE);
+		CreatePropPane(FALSE);
+#endif
 
 		return 0;
 	}
@@ -105,23 +134,49 @@ public:
 
 	LRESULT OnCommand(HWND,UINT,WPARAM wParam,LPARAM)
 	{
+		UINT uCmdId = (UINT)LOWORD(wParam);
+
+#if _ENABLE_FILELIST_SUB_PANE
+		switch( uCmdId )
+		{
+			case ID_VIEW_SELECTVOLUMEPANE:
+				OnViewVolumeSelectorPane();
+				return 0;
+			case ID_VIEW_PROPERTYPANE:
+				OnViewPropertyPane();
+				return 0;
+		}
+#endif
+
 		if( m_hWndCtrlFocus == m_pView->GetPageHWND() )
 		{
 			if( m_pView )
-				m_pView->InvokeCommand(LOWORD(wParam));
+				m_pView->InvokeCommand(uCmdId);
 		}
 		return 0;
 	}
 
 	LRESULT OnQueryCmdState(HWND,UINT,WPARAM wParam,LPARAM lParam)
 	{
+		UINT *puState = (UINT *)lParam;
+		UINT uCmdId = (UINT)LOWORD(wParam);
+
+#if _ENABLE_FILELIST_SUB_PANE
+		switch( uCmdId )
+		{
+			case ID_VIEW_SELECTVOLUMEPANE:
+				*puState = UPDUI_ENABLED | (IsWindowVisibleEx(m_pVolPane->m_hWnd) ? UPDUI_CHECKED : 0);
+				return TRUE;
+			case ID_VIEW_PROPERTYPANE:
+				*puState = UPDUI_ENABLED | (IsWindowVisibleEx(m_pPropPane->m_hWnd) ? UPDUI_CHECKED : 0);
+				return TRUE;
+		}
+#endif
 		if( m_hWndCtrlFocus == m_pView->GetPageHWND() )
 		{
 			ASSERT( lParam != NULL );
 			if( lParam )
 			{
-				UINT *puState = (UINT *)lParam;
-				UINT uCmdId = (UINT)LOWORD(wParam);
 				if( m_pView->QueryCmdState((UINT)LOWORD(wParam),(UINT*)lParam) == S_OK )
 					return TRUE;
 			}
@@ -135,6 +190,9 @@ public:
 		{
 			case UI_NOTIFY_ITEM_SELECTED:    // SELECT_ITEM*
 			case UI_NOTIFY_VOLUME_SELECTED:  // SELECT_ITEM*
+#if _ENABLE_FILELIST_SUB_PANE
+			case UI_NOTIFY_UPDATE_SUBPANE:   // SELECT_ITEM*
+#endif
 				OnNotifyForwardToMainFrame(LOWORD(wParam),(PVOID)lParam);
 				break;
 			case UI_NOTIFY_ITEM_ACTIVATED:   // UIS_ITEM_ACTIVATED*
@@ -215,6 +273,9 @@ public:
 				if( m_pView )
 					return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam); // forward to current page
 				return 0;
+			case PPM_NOTIFY:
+				SendMessage(m_pView->GetPageHWND(),PM_RESEND_SELECTED_ITEM_DATA,0,0); // todo:
+				return 0;
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -229,14 +290,53 @@ public:
 			cy = _RECT_HIGHT(rc);
 		}
 
-		HDWP hdwp = BeginDeferWindowPos(1);
+#if _ENABLE_FILELIST_SUB_PANE
+		HDWP hdwp = BeginDeferWindowPos(2);
+
+		int cxPropPane = _DPI_Adjust_X(312);
+		int cxVolPane  = 0;//312;//_DPI_Adjust_X(312);
+
+		if( cx > 0 )
+		{
+			if( (int)((double)cx * 0.48) < cxPropPane )
+				cxPropPane = (int)((double)cx * 0.48);
+			if( cxPropPane < 100 )
+				cxPropPane = 0;
+
+			int cxWidth = _GetTextWidth(m_hWnd,m_pVolPane->GetListFont(),L"{88888888-8888-8888-8888-888888888888}");
+			cxVolPane = cxWidth + _DPI_Adjust_X(24) + GetSystemMetrics(SM_CXVSCROLL);
+		}
+
+		if( !IsWindowVisibleEx(m_pVolPane->m_hWnd) )
+			cxVolPane = 0;
+
+		if( !IsWindowVisibleEx(m_pPropPane->m_hWnd) )
+			cxPropPane = 0;
+
+		int split = 0; // todo:
 
 		if( m_pView && m_pView->GetPageHWND() )
 		{
-			DeferWindowPos(hdwp,m_pView->GetPageHWND(),NULL,0,0,cx,cy,SWP_NOZORDER);
+			DeferWindowPos(hdwp,m_pView->GetPageHWND(),NULL,cxVolPane,0,cx-cxPropPane-cxVolPane,cy,SWP_NOZORDER|SWP_NOCOPYBITS);
+		}
+
+		if( m_pVolPane )
+		{
+			DeferWindowPos(hdwp,m_pVolPane->m_hWnd,NULL,0,0,cxVolPane,cy,SWP_NOZORDER|SWP_NOCOPYBITS);
+		}
+
+		if( m_pPropPane )
+		{
+			DeferWindowPos(hdwp,m_pPropPane->m_hWnd,NULL,cx-cxPropPane+split,0,cxPropPane-split,cy,SWP_NOZORDER|SWP_NOCOPYBITS);
 		}
 
 		EndDeferWindowPos(hdwp);
+#else
+		if( m_pView && m_pView->GetPageHWND() )
+		{
+			SetWindowPos(m_pView->GetPageHWND(),NULL,0,0,cx,cy,SWP_NOZORDER|SWP_NOCOPYBITS);
+		}
+#endif
 	}
 
 	VOID InitData(PCWSTR pszDirectoryPath)
@@ -255,6 +355,23 @@ public:
 
 	VOID OnNotifyForwardToMainFrame(UINT code,PVOID pFile) // SELECT_ITEM* or UIS_ITEM_ACTIVATED *
 	{
+#if _ENABLE_FILELIST_SUB_PANE
+		if( m_pPropPane && UI_NOTIFY_ITEM_SELECTED == code && IsWindowVisibleEx(m_pPropPane->m_hWnd) )
+		{
+			SELECT_ITEM* p = (SELECT_ITEM*)pFile;
+			SendMessage(m_pPropPane->m_hWnd,PPM_SETPATH,(WPARAM)p->ContextPtr,(LPARAM)p->pszPath);
+		}
+		if( m_pVolPane && UI_NOTIFY_VOLUME_SELECTED == code )
+		{
+			SELECT_ITEM* p = (SELECT_ITEM*)pFile;
+			SendMessage(m_pVolPane->m_hWnd,VNM_SELECTVOLUME,0,(LPARAM)p->pszName);
+		}
+		if( m_pVolPane && UI_NOTIFY_UPDATE_SUBPANE == code )
+		{
+			SELECT_ITEM* pSel = (SELECT_ITEM*)pFile;
+			return;
+		}
+#endif
 		// Forward to MainFrame
 		HWND hwndMainWnd = GetActiveWindow(); // todo:
 		SendMessage(hwndMainWnd,WM_NOTIFY_MESSAGE,code,(LPARAM)pFile);
@@ -365,7 +482,13 @@ public:
 
 	LRESULT OnChangeDirectory(SELECT_ITEM* pSelectItem)
 	{
-		if( (pSelectItem->mask & SI_MASK_FILEID) && (pSelectItem->Flags &  _FLG_NTFS_SPECIALFILE) )
+		//
+		// Clear Properties
+		//
+#if _ENABLE_FILELIST_SUB_PANE
+		SendMessage(m_pPropPane->m_hWnd,PPM_SETPATH,(WPARAM)0,(LPARAM)0);
+#endif
+		if( (pSelectItem->mask & SI_MASK_FILEID) && (pSelectItem->Flags & _FLG_NTFS_SPECIALFILE) )
 		{
 			m_pView->SelectView(pSelectItem);
 			return 0;
@@ -443,6 +566,59 @@ public:
 		}
 		return 0;
 	}
+
+#if _ENABLE_FILELIST_SUB_PANE
+	void CreatePropPane(BOOL bVisible=TRUE)
+	{
+		m_pPropPane = new CPropPaneWindow();
+
+		DWORD dwStyle = WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS|(bVisible ? WS_VISIBLE : 0);
+		DWORD dwExStyle = WS_EX_CONTROLPARENT;
+		m_pPropPane->Create(m_hWnd,0,L"PropPane",dwStyle,dwExStyle);
+	}
+
+	void CreateVolummePane(BOOL bVisible=TRUE)
+	{
+		m_pVolPane = new CVolumeSelectPane();
+
+		DWORD dwStyle = WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS|(bVisible ? WS_VISIBLE : 0);
+		DWORD dwExStyle = WS_EX_CONTROLPARENT;
+		m_pVolPane->Create(m_hWnd,0,L"VolumePane",dwStyle,dwExStyle);
+	}
+
+	void OnViewVolumeSelectorPane()
+	{
+		ShowPane(m_pVolPane->m_hWnd);
+	}
+
+	void OnViewPropertyPane()
+	{
+		if( ShowPane(m_pPropPane->m_hWnd) )
+		{
+			SendMessage(m_pView->GetPageHWND(),PM_RESEND_SELECTED_ITEM_DATA,0,0);
+		}
+	}
+
+	BOOL ShowPane(HWND hwndPane)
+	{
+		int nCmdShow;
+		BOOL bEnable;
+		if( IsWindowVisibleEx( hwndPane ) )
+		{
+			bEnable = FALSE;
+			nCmdShow = SW_HIDE;
+		}
+		else
+		{
+			bEnable = TRUE;
+			nCmdShow = SW_SHOW;
+		}
+		ShowWindow(hwndPane,nCmdShow);
+		EnableWindow(hwndPane,bEnable);
+		UpdateLayout();
+		return bEnable;
+	}
+#endif
 };
 
 //////////////////////////////////////////////////////////////////////////////

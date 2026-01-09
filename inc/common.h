@@ -35,7 +35,7 @@ enum {
 	UI_SELECT_FILE              = 0x100E,
 	UI_NOTIFY_ITEM_SELECTED     = 0x2001,
 	UI_NOTIFY_VOLUME_SELECTED   = 0x2002,
-//	OBSOLETE                    = 0x2003,
+	UI_NOTIFY_UPDATE_SUBPANE    = 0x2003,
 //	OBSOLETE                    = 0x2004,
 	UI_NOTIFY_ITEM_ACTIVATED    = 0x2005,
 //	OBSOLETE                    = 0x3001,

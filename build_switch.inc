@@ -25,8 +25,16 @@
 #define _ENABLE_FILE_MANAGER                0
 #endif
 
-#ifndef _ENABLE_INTERNAL_COMMAND
-#define _ENABLE_INTERNAL_COMMAND            0
+#ifndef _ENABLE_FILELIST_DROPFILE
+#define _ENABLE_FILELIST_DROPFILE           0
+#endif
+
+#ifndef _ENABLE_FILELIST_DRAGFILE
+#define _ENABLE_FILELIST_DRAGFILE           0
+#endif
+
+#ifndef _ENABLE_INTERNAL_FEATURE
+#define _ENABLE_INTERNAL_FEATURE            0
 #endif
 
 #ifndef _ENABLE_ROOTDIRECTORY_LIST

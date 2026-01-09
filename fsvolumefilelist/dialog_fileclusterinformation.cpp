@@ -284,44 +284,64 @@ struct CClusterInformationDialog : public CDialogWindowEx
 			{
 				case 0: // VCN
 					if( pItem->Type == 0 )
+					{
 						StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->Cluster.Location->Vcn.QuadPart);
+					}
 					break;
 				case 1: // LCN Start
 					if( pItem->Type == 0 )
+					{
 						if( pItem->Cluster.Location->Lcn.QuadPart != -1 )
 							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->Cluster.Location->Lcn.QuadPart);
+					}
 					break;
 				case 2: // LCN End
 					if( pItem->Type == 0 )
+					{
 						if( pItem->Cluster.Location->Lcn.QuadPart != -1 )
 							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->Cluster.Location->Lcn.QuadPart
 								+ pItem->Cluster.Location->Count.QuadPart - 1);
+					}
 					break;
 				case 3: // Cluster Count
 					if( pItem->Type == 0 )
+					{
 						_CommaFormatString(pItem->Cluster.Location->Count.QuadPart,pnmlvdi->item.pszText);
+					}
 					break;
 				case 4: // Logical Offset
 					if( pItem->Type == 0 )
+					{
 						if( pItem->Cluster.Location->Lcn.QuadPart != -1 )
+						{
 							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->pdlgParam->pClusterInfo->BytesPerCluster
 								* pItem->Cluster.Location->Lcn.QuadPart);
+						}
+					}
 					break;
 				case 5: // Physical Drive
 					if( pItem->Type == 0 )
+					{
 						if( pItem->Cluster.Location->PhysicalOffsets )
 							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"PhysicalDrive%d",pItem->Cluster.Location->PhysicalOffsets->PhysicalOffset[0].DiskNumber);
+					}
 					else
+					{
 						if( pItem->Cluster.PhysicalOffset )
 							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"PhysicalDrive%d",pItem->Cluster.PhysicalOffset->DiskNumber);
+					}
 					break;
 				case 6: // Physical Offset
 					if( pItem->Type == 0 )
+					{
 						if( pItem->Cluster.Location->PhysicalOffsets )
 							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->Cluster.Location->PhysicalOffsets->PhysicalOffset[0].Offset);
+					}
 					else
+					{
 						if( pItem->Cluster.PhysicalOffset )
 							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->Cluster.PhysicalOffset->Offset);
+					}
 					break;
 				case 7: // Extent Size
 					StrFormatByteSizeW((pItem->pdlgParam->pClusterInfo->BytesPerCluster * pItem->Cluster.Location->Count.QuadPart),pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax);

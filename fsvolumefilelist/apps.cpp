@@ -53,11 +53,9 @@ HRESULT CreateApplicationList(IApplicationsReader **ppApps)
 
 	GetModuleFileName(NULL,szAppExecFile,MAX_PATH);
 
-#if 1
 	StringCchCopy(szIniFile,ARRAYSIZE(szIniFile),szAppExecFile);
 	PathRenameExtension(szIniFile,L".ini");
 	if( GetPrivateProfileString(L"General",L"AppFilePath",L"",szAppFile,MAX_PATH,szIniFile) == 0 )
-#endif
 	{
 		PathRemoveFileSpec(szAppExecFile);
 		PathCombine(szAppFile,szAppExecFile,L"applications.xml");

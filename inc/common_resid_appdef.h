@@ -101,6 +101,14 @@
 
 #ifndef _VOLUME_FILES
 #define _VOLUME_FILES
+#define ID_FILE_COPY                             40100
+#define ID_FILE_MOVE                             40101
+#define ID_FILE_MOVE_DIR_ENTRY                   40102
+#define ID_FILE_DELETE                           40103
+#define ID_FILE_RENAME                           40104
+#define ID_FILE_MKDIR                            40105
+#define ID_FILE_SETATTRIBUTES                    40106
+#define ID_FILE_SETDATETIME                      40107
 #define ID_FILE_SIMPLECHECK                      40112
 #define ID_GOTO_DIRECTORY                        ID_GOTO
 #define ID_FILE_CLUSTERLOCATION                  40113

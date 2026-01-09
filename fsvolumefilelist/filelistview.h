@@ -17,6 +17,12 @@
 #include "pagewbdbase.h"
 #include "page_volumefilelist.h"
 #include "page_volumefilelist_search_result.h"
+#if _ENABLE_FILE_MANAGER
+#include "page_volumefilelist_filemanager.h"
+#endif
+#if _ENABLE_PAGE_CHANGER
+#include "page_volumefilelist_choosevolume.h"
+#endif
 #include "interface.h"
 
 class CFilesPageHost
@@ -104,13 +110,29 @@ public:
 		{
 			case VOLUME_CONSOLE_VOLUMEFILELIST:
 			{
+#if _ENABLE_FILE_MANAGER || _ENABLE_FILELIST_DROPFILE || _ENABLE_FILELIST_DRAGFILE
+				pNew = GetOrAllocWndObjct<CFileManagerPage>(nView);
+#else
 				pNew = GetOrAllocWndObjct<CFileListPage>(nView);
+#endif
 				ASSERT(pNew != NULL);
 				break;
 			}
+#if _ENABLE_PAGE_CHANGER
+			case VOLUME_CONSOLE_CHOOSE_VOLUME:
+			{
+				pNew = GetOrAllocWndObjct<CChooseVolumePage>(nView);
+				ASSERT(pNew != NULL);
+				break;
+			}
+#endif
 			case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 			{
+#if _ENABLE_FILE_MANAGER
+				pNew = GetOrAllocWndObjct<CFileSearchResultPage<CFileManagerPage>>(nView);
+#else
 				pNew = GetOrAllocWndObjct<CFileSearchResultPage<CFileListPage>>(nView);
+#endif
 				ASSERT(pNew != NULL);
 				break;
 			}
@@ -205,6 +227,24 @@ public:
 					UpdateFileList(Path);
 				}
 				break;
+#if _ENABLE_PAGE_CHANGER
+			case VOLUME_CONSOLE_CHOOSE_VOLUME:
+				nPrevView = m_nView;
+				pPrev = _SelectPage( Path, bCreate );
+				if( bCreate || ((Path->Flags & 0x8)== 0) )
+				{
+					UpdateData(Path);
+				}
+				break;
+			case VOLUME_CONSOLE_FOLDERS:
+				nPrevView = m_nView;
+				pPrev = _SelectPage( Path, bCreate );
+				if( bCreate || ((Path->Flags & 0x8)== 0) )
+				{
+					UpdateData(Path);
+				}
+				break;
+#endif
 			default:
 				ASSERT(FALSE);
 				break;

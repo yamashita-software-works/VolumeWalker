@@ -29,6 +29,9 @@
 #include <commdlg.h>
 #include <vssym32.h>
 
+#include <gdiplus.h>
+using namespace Gdiplus;
+
 #if _MSC_VER <= 1500
 #define nullptr NULL
 #endif
@@ -114,6 +117,16 @@ enum {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+#if _ENABLE_FILE_MANAGER || _ENABLE_FILELIST_DROPFILE
+#include "clipboardfilecopy.h"
+#endif
+
+#if _ENABLE_FILE_MANAGER || _ENABLE_FILELIST_DRAGFILE || _ENABLE_FILELIST_DROPFILE
+
+#include "fsfiletools.h" // for FO_PARAM,FO_SEARCH
+
+#else
+
 //
 // FTM_FILEOPERATION
 //
@@ -140,10 +153,9 @@ enum {
 #define FOF_FILEOPERATIONLIST  0x0
 #define FOF_SELECTEDFILELIST   0x1
 
+#endif
 
-EXTERN_C
-HRESULT
-WINAPI
-InitializeVolumeFilesConsole(
-	DWORD dwFlags
-	);
+#define VNM_SELECTVOLUME     (WM_APP+1210)
+
+#define PPM_SETPATH          (WM_APP+125) // todo:
+#define PPM_NOTIFY           (WM_APP+606) // todo:
