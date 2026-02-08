@@ -18,8 +18,8 @@
 #define ID_VOLUMEMOUNTPOINT                      41015 
 #define ID_ENCRYPTIONVOLUME                      41016
 #define ID_RELATIONVIEW                          41017
-//                                               41018
-//                                               41019
+#define ID_VDSCONSOLE                            41018
+#define ID_SCRATCHPAD                            41019
 #define ID_FILE_VOLUMEFILES                      41020
 #define ID_FILE_CHANGEJOURNAL                    41021
 #define ID_FILE_ROOTDIRECTORIES                  41022

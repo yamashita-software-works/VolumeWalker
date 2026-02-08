@@ -10,7 +10,8 @@ CreateVolumeFileList(
 	LPARAM lParam
 	);
 
-#define CVFLF_USE_SHELL_ICON           0x1000
+#define VOLFILES_FLG_USE_SHELL_ICON    0x1000
+#define VOLFILES_FLG_USE_PROXY_OPEN    0x8000
 
 EXTERN_C
 HRESULT

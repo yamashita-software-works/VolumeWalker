@@ -42,8 +42,10 @@ typedef struct _FILEITEMEX
 	//extended part
 	ULONG FlagsEx;
 	ULONG ItemTypeFlag;                // user context flag
-	LARGE_INTEGER FirstLCN;
 	LARGE_INTEGER ParentFileId;        // todo: 128bit id not support
+	LARGE_INTEGER FirstLCN;
+	LARGE_INTEGER FileAreaOffset;
+	BOOLEAN ValidFileAreaOffset;
     DWORD NumberOfLinks;
     BOOLEAN DeletePending;
     BOOLEAN Directory;

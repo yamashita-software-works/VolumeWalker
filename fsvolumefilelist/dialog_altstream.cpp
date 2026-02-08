@@ -19,14 +19,6 @@
 #include "fsvolumefilelist.h"
 #include "ntobjecthelp.h"
 
-typedef struct _VFS_FILE_STREAM_INFORMATION
-{
-    LARGE_INTEGER StreamSize;
-    LARGE_INTEGER StreamAllocationSize;
-    WCHAR *StreamName;
-	INT Order;
-} VFS_FILE_STREAM_INFORMATION;
-
 typedef struct _STREAM_DIALOG_PARAM
 {
 	HWND hWndDialog;
@@ -539,114 +531,6 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 		return CDialogWindowEx::DlgProc(hDlg,uMsg,wParam,lParam);
 	}
 };
-
-inline INT GetAlternateStreamNameCount(FILE_STREAM_INFORMATION *StreamInformation)
-{
-	INT cNames = 0;
-	FILE_STREAM_INFORMATION *p = StreamInformation;
-	do
-	{
-		cNames++;
-		if( p->NextEntryOffset == 0 )
-			break;
-		p = (FILE_STREAM_INFORMATION *)((ULONG_PTR)p + p->NextEntryOffset);
-	}
-	while( p != NULL );
-	return cNames;
-}
-
-inline ULONG GetAlternateStreamNameTotalLength(FILE_STREAM_INFORMATION *StreamInformation)
-{
-	ULONG cb = 0;
-	FILE_STREAM_INFORMATION *p = StreamInformation;
-	do
-	{
-		cb += p->StreamNameLength;
-		cb += sizeof(WCHAR); // C terminate null
-		if( p->NextEntryOffset == 0 )
-			break;
-		p = (FILE_STREAM_INFORMATION *)((ULONG_PTR)p + p->NextEntryOffset);
-	}
-	while( p != NULL );
-	return cb;
-}
-
-HRESULT
-GetAlternateStream(
-	PCWSTR pszFilePath,
-	VFS_FILE_STREAM_INFORMATION **pAltStmNames,
-	INT *pAltStmNameCount
-	)
-{
-	NTSTATUS Status;
-	HRESULT hr;
-	DWORD dwMatched = 0;
-	HANDLE hFile;
-	ULONG DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
-	ULONG Option = FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT|FILE_SYNCHRONOUS_IO_NONALERT;
-
-	if( (Status = OpenFileEx_W(&hFile,pszFilePath,DesiredAccess,FILE_SHARE_READ|FILE_SHARE_WRITE,Option)) == STATUS_SUCCESS )
-	{
-		INT AltStreamCount = 0;
-		FILE_STREAM_INFORMATION *StreamInformation;
-
-		Status = GetAlternateStreamInformation(hFile,&AltStreamCount,&StreamInformation);
-
-		if( Status == STATUS_SUCCESS )
-		{
-			if( AltStreamCount > 0 )
-			{
-				ULONG cbNameBuffer = GetAlternateStreamNameTotalLength(StreamInformation);
-
-				ULONG cbBuffer = (sizeof(VFS_FILE_STREAM_INFORMATION) * AltStreamCount) + cbNameBuffer + sizeof(WCHAR);
-				PBYTE pb;
-				pb = (PBYTE)CoTaskMemAlloc( cbBuffer );
-				ZeroMemory(pb,cbBuffer);
-
-				FILE_STREAM_INFORMATION *p = StreamInformation;
-				int iIndex = 0;
-				VFS_FILE_STREAM_INFORMATION *pAltName = (VFS_FILE_STREAM_INFORMATION *)pb;
-				WCHAR *pNameStorePos = (WCHAR *)(pb + (sizeof(VFS_FILE_STREAM_INFORMATION) * AltStreamCount));
-				do
-				{
-					pAltName[iIndex].StreamSize = p->StreamSize;
-					pAltName[iIndex].StreamAllocationSize = p->StreamAllocationSize;
-					memcpy(pNameStorePos,p->StreamName,p->StreamNameLength);
-					pAltName[iIndex].StreamName = pNameStorePos;
-					pAltName[iIndex].Order = iIndex;
-					iIndex++;
-
-					pNameStorePos += (WCHAR_LENGTH( p->StreamNameLength) + 1);
-
-					if( p->NextEntryOffset == 0 )
-						break;
-
-					p = (FILE_STREAM_INFORMATION *)((ULONG_PTR)p + p->NextEntryOffset);
-				}
-				while( p != NULL );
-
-				*pAltStmNames = pAltName;
-				*pAltStmNameCount = iIndex;
-			}
-
-			FreeAlternateStreamInformation(StreamInformation);
-
-			hr = S_OK;
-		}
-		else
-		{
-			hr = HRESULT_FROM_WIN32( NtStatusToDosError(Status) );
-		}
-
-		CloseHandle(hFile);
-	}
-	else
-	{
-		hr = HRESULT_FROM_WIN32( NtStatusToDosError(Status) );
-	}
-
-	return hr;
-}
 
 //////////////////////////////////////////////////////////////////////////////
 

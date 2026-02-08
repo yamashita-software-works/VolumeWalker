@@ -1,6 +1,13 @@
 #pragma once
 
-__forceinline LPARAM TreeView_GetItemData(HWND hwndTV,HTREEITEM hItem) {
+inline void Edit_AddText(HWND hwndEdit,PCWSTR psz)
+{
+	SendMessage(hwndEdit,EM_SETSEL,(WPARAM)-1,(LPARAM)-1);
+	SendMessage(hwndEdit,EM_REPLACESEL,0,(LPARAM)psz);
+}
+
+inline LPARAM TreeView_GetItemData(HWND hwndTV,HTREEITEM hItem)
+{
     TVITEMEX tviex = {0};
     tviex.mask = TVIF_PARAM;
     tviex.hItem = hItem;
@@ -9,7 +16,8 @@ __forceinline LPARAM TreeView_GetItemData(HWND hwndTV,HTREEITEM hItem) {
     return 0;
 }
 
-__forceinline BOOL TreeView_GetItemText(HWND hwndTV,HTREEITEM hItem,PTSTR pszText,int cchTextMax) {
+inline BOOL TreeView_GetItemText(HWND hwndTV,HTREEITEM hItem,PTSTR pszText,int cchTextMax)
+{
     TVITEMEX tviex = {0};
     tviex.mask = TVIF_TEXT;
     tviex.hItem = hItem;
@@ -18,7 +26,8 @@ __forceinline BOOL TreeView_GetItemText(HWND hwndTV,HTREEITEM hItem,PTSTR pszTex
     return TreeView_GetItem(hwndTV,&tviex);
 }
 
-__forceinline BOOL TreeView_SetChildren(HWND hwndTV,HTREEITEM hItem,int cChildren) {
+inline BOOL TreeView_SetChildren(HWND hwndTV,HTREEITEM hItem,int cChildren)
+{
     TVITEMEX tviex = {0};
     tviex.mask = TVIF_CHILDREN;
     tviex.hItem = hItem;
@@ -190,6 +199,10 @@ inline BOOL ListViewEx_SetCurSel(HWND hwndLV,int iItem)
     return (BOOL)SendMessage(hwndLV, LVM_SETITEMSTATE, iItem, (LPARAM)(LVITEM *)&lvi);
 }
 
+//
+// Regenerates the WM_NOTIFY notification with notification code LVN_GETEMPTYMARKUP
+// using the LVM_RESETEMPTYTEXT message.
+//
 #ifndef LVM_RESETEMPTYTEXT
 #define LVM_RESETEMPTYTEXT (LVM_FIRST + 84)
 #endif

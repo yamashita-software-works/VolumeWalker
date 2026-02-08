@@ -238,6 +238,18 @@ EnumDirectoryFiles_W(
     );
 
 EXTERN_C
+HRESULT
+NTAPI
+EnumDirectoryFiles_ExW(
+	HANDLE DirectoryHandle,
+    PCWSTR Path,
+    PCWSTR FileNameFilter,
+    ULONG Flags,
+    FSDIRENUMCALLBACKPROC Callback,
+    PVOID Context
+    );
+
+EXTERN_C
 NTSTATUS
 NTAPI
 OpenFile_U(

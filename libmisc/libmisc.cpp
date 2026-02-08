@@ -623,7 +623,7 @@ BOOL WINAPI IsStringBackslashEnd(PCWSTR pszPath)
 //
 // Draw Helper
 //
-VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus,COLORREF crActiveFrame)
+VOID DrawFocusFrameEx(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus,COLORREF crActiveFrame,DWORD dwFlags,DFFSTRUCT *pdffs)
 {
     if( prc->left == 0 && prc->top == 0 && prc->right == 0 && prc->bottom == 0)
         return;
@@ -653,6 +653,12 @@ VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus,COLORREF crActiv
             else
                 r = 3;
 
+            if( dwFlags & DFFEXF_ADJUSTGRIDLINE ) {
+                if( ListView_GetExtendedListViewStyle(hWnd) & LVS_EX_GRIDLINES ) {
+                    prc->bottom -= 1;
+                }
+            }
+
             RoundRect(hdc,prc->left,prc->top,prc->right,prc->bottom,r,r);
 
             SelectObject(hdc,hpenPrev);
@@ -665,6 +671,11 @@ VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus,COLORREF crActiv
             DrawFocusRect(hdc,prc);
         }
     }
+}
+
+VOID DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus,COLORREF crActiveFrame)
+{
+    DrawFocusFrameEx(hWnd,hdc,prc,bDrawFocus,crActiveFrame,0,NULL);
 }
 
 //

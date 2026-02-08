@@ -302,3 +302,14 @@ HWND CreateMountedDriveWindow(HWND hWndParent)
 {
 	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_RELATIONVIEW);
 }
+
+HWND CreateVDSConsoleWindow(HWND hWndParent)
+{
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_VDSCONSOLE);
+}
+
+HWND CreateScratchPadWindow(HWND hWndParent)
+{
+	return _CreateViewWindow(hWndParent,VOLUME_CONSOLE_SCRATCHPAD);
+}
+

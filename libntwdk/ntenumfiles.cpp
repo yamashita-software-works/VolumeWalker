@@ -197,18 +197,41 @@ EnumDirectoryFiles_W(
     PVOID Context
     )
 {
+    return EnumDirectoryFiles_ExW(NULL,Path,FileNameFilter,Flags,Callback,Context);
+}
+
+EXTERN_C
+HRESULT
+NTAPI
+EnumDirectoryFiles_ExW(
+	HANDLE DirectoryHandle,
+    PCWSTR Path,
+    PCWSTR FileNameFilter,
+    ULONG Flags,
+    FSDIRENUMCALLBACKPROC Callback,
+    PVOID Context
+    )
+{
     HRESULT hr;
     NTSTATUS Status;
     PWSTR pR=NULL,pP=NULL;
     ULONG cchR=0,cchP=0;
     HANDLE hRoot = NULL;
 
-    if( (hr = SplitRootPath_W(Path,&pR,&cchR,&pP,&cchP)) != S_OK )
-        return hr;
-
-    if( cchP > 0 )
+    if( Path != NULL )
     {
-        if( OpenRootDirectory(pR,0,&hRoot) != STATUS_SUCCESS )
+        if( (hr = SplitRootPath_W(Path,&pR,&cchR,&pP,&cchP)) != S_OK )
+            return hr;
+    
+        if( cchP > 0 )
+        {
+            if( OpenRootDirectory(pR,0,&hRoot) != STATUS_SUCCESS )
+            {
+                FreeMemory(pP);
+                pP = DuplicateString(Path);
+            }
+        }
+        else
         {
             FreeMemory(pP);
             pP = DuplicateString(Path);
@@ -216,8 +239,7 @@ EnumDirectoryFiles_W(
     }
     else
     {
-        FreeMemory(pP);
-        pP = DuplicateString(Path);
+        hRoot = DirectoryHandle;
     }
 
     INTERNAL_CALLBACK_BUFFER cb;
@@ -226,10 +248,13 @@ EnumDirectoryFiles_W(
 
     Status = EnumFiles(hRoot,pP,FileNameFilter,Flags,&EnumFilesCallback,(ULONG_PTR)&cb);
 
-    NtClose(hRoot);
+	if( DirectoryHandle == NULL && hRoot != NULL )
+		NtClose(hRoot);
 
-    FreeMemory(pR);
-    FreeMemory(pP);
+	if( pR )
+	    FreeMemory(pR);
+	if( pP )
+		FreeMemory(pP);
 
     return HRESULT_FROM_WIN32( RtlNtStatusToDosError(Status) );
 }

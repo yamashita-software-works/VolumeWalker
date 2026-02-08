@@ -748,7 +748,7 @@ public:
 			if( !IsLastCharacterBackslash(szRootPath) )
 			AppendBackslash_W(szRootPath,_countof(szRootPath));
 
-			OpenConsole_SendMessage(VOLUME_CONSOLE_VOLUMEFILELIST,szRootPath);
+			OpenConsole_SendMessage(VOLUME_CONSOLE_VOLUMEFILES,szRootPath);
 		}
 	}
 

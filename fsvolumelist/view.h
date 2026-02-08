@@ -33,6 +33,8 @@
 #include "page_volumemountpoint.h"
 #include "page_encryptionvolume.h"
 #include "page_relationview.h"
+#include "page_vdsconsole.h"
+#include "page_scratchpad.h"
 
 class CViewBase
 {
@@ -197,6 +199,16 @@ public:
 				pNew = GetOrAllocWndObject<CVolumeDriveRelationViewPage>(nView);
 				break;
 			}
+			case VOLUME_CONSOLE_VDSCONSOLE:
+			{
+				pNew = GetOrAllocWndObject<CVDSConsolePage>(nView);
+				break;
+			}
+			case VOLUME_CONSOLE_SCRATCHPAD:
+			{
+				pNew = GetOrAllocWndObject<CScratchPadPage>(nView);
+				break;
+			}
 			default:
 				return NULL;
 		}
@@ -325,6 +337,12 @@ public:
 				_SelectPage( SelItem );
 				break;
 			case VOLUME_CONSOLE_RELATIONVIEW:
+				_SelectPage( SelItem );
+				break;
+			case VOLUME_CONSOLE_VDSCONSOLE:
+				_SelectPage( SelItem );
+				break;
+			case VOLUME_CONSOLE_SCRATCHPAD:
 				_SelectPage( SelItem );
 				break;
 			default:

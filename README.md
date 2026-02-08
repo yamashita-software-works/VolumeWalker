@@ -2,8 +2,6 @@
  
 Version 0.1 Preview
 
-**Build 0.1.10.0 からソフトウェア名称を FSVolumeWalker から VolumeWalker に変更しました。**
-
 ボリュームの情報を表示します。
 
 Windows APIやIOCTL,FSCTLで取得できるボリュームやドライブの情報を表示します。
@@ -105,7 +103,7 @@ https://www.microsoft.com/en-us/download/details.aspx?id=11800
 
 https://www.microsoft.com/en-us/download/details.aspx?id=8442
 
->[!WARNING]
+>[!NOTE]
 >ISOファイルを使ってSDKをインストールする場合、プラットフォームごとに異なるので注意してください。   
 >64bit環境にインストールする時は GRMSDKX_EN_DVD.iso を、
 >32bit環境にインストールする時は GRMSDK_EN_DVD.iso をダウンロードしてください。
@@ -126,7 +124,7 @@ SDK
 例)
 `C:\WinSDK\7.1 -> C:\Program Files\Microsoft SDKs\v7.1`
 
->[!WARNING]
+>[!NOTE]
 >ビルドに使用するsourcesファイル内に記述されたWDK/SDKルートパスがハードコードされているためです。
 >独自のインストール先を設定したい場合は、sourcesファイルを編集して当該パスを調整する必要があります。
 >編集する場合、sourcesファイルに記述するパスにはスペースを含めないでください。

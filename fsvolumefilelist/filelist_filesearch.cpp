@@ -44,6 +44,8 @@ typedef struct _SEARCH_CALLBACK_PARAM
 	BOOL bLimitReached;
 	SEARCH_PARAMETER *SearchParam;
 	HANDLE hMatchedFiles;
+	DWORD FileSystemFlags;
+	WCHAR FileSystemName[32];
 } SEARCH_CALLBACK_PARAM;
 
 typedef struct _SEARCH_THREAD_CONTEXT
@@ -374,6 +376,7 @@ DWORD WINAPI Search_ThreadProc(LPVOID lpParameter)
 
 	PCWSTR TargetFullQualifyPath = NULL;
 	DWORD dwError = 0;
+	ULONG MaxDirectoryLevel = 1024; // todo:
 
 	int i;
 	for(i = 0; i < (int)pFileList->Count; i++)
@@ -389,8 +392,26 @@ DWORD WINAPI Search_ThreadProc(LPVOID lpParameter)
 			TargetFullQualifyPath = fi.Name;
 		}
 
+		//
+		// Get volume information
+		//
+		DWORD FileSystemFlags = 0;
+		HANDLE hDir;
+		NTSTATUS Status;
+		if( (Status = OpenFileEx_W(&hDir,TargetFullQualifyPath,FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE|FILE_OPEN_FOR_BACKUP_INTENT)) == 0 )
+		{
+			GetVolumeInformationByHandleW(hDir,
+					nullptr,0,
+					nullptr,
+					nullptr,&pThreadContext->Search.FileSystemFlags,
+					pThreadContext->Search.FileSystemName,
+					ARRAYSIZE(pThreadContext->Search.FileSystemName));
+
+			CloseHandle(hDir);
+		}
+
 		pThreadContext->Search.pszSearchPath = (PWSTR)TargetFullQualifyPath;
-		pThreadContext->Search.SearchParam->MaxDirectoryLevel = 1024; // todo:
+		pThreadContext->Search.SearchParam->MaxDirectoryLevel = MaxDirectoryLevel;
 
 		BOOL bDirectory = IsDirectory( TargetFullQualifyPath );
 		if( bDirectory )

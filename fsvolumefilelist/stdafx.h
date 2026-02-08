@@ -159,3 +159,51 @@ enum {
 
 #define PPM_SETPATH          (WM_APP+125) // todo:
 #define PPM_NOTIFY           (WM_APP+606) // todo:
+
+FS_CLUSTER_INFORMATION *_CreateClusterInformationBuffer(PCWSTR pszFilePath);
+
+typedef struct _VFS_FILE_STREAM_INFORMATION
+{
+    LARGE_INTEGER StreamSize;
+    LARGE_INTEGER StreamAllocationSize;
+    WCHAR *StreamName;
+	INT Order;
+} VFS_FILE_STREAM_INFORMATION;
+
+HRESULT
+GetAlternateStream(
+	PCWSTR pszFilePath,
+	VFS_FILE_STREAM_INFORMATION **pAltStmNames,
+	INT *pAltStmNameCount
+	);
+
+inline INT GetAlternateStreamNameCount(FILE_STREAM_INFORMATION *StreamInformation)
+{
+	INT cNames = 0;
+	FILE_STREAM_INFORMATION *p = StreamInformation;
+	do
+	{
+		cNames++;
+		if( p->NextEntryOffset == 0 )
+			break;
+		p = (FILE_STREAM_INFORMATION *)((ULONG_PTR)p + p->NextEntryOffset);
+	}
+	while( p != NULL );
+	return cNames;
+}
+
+inline ULONG GetAlternateStreamNameTotalLength(FILE_STREAM_INFORMATION *StreamInformation)
+{
+	ULONG cb = 0;
+	FILE_STREAM_INFORMATION *p = StreamInformation;
+	do
+	{
+		cb += p->StreamNameLength;
+		cb += sizeof(WCHAR); // C terminate null
+		if( p->NextEntryOffset == 0 )
+			break;
+		p = (FILE_STREAM_INFORMATION *)((ULONG_PTR)p + p->NextEntryOffset);
+	}
+	while( p != NULL );
+	return cb;
+}

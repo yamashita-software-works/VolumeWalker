@@ -309,7 +309,7 @@ public:
 
 	virtual HRESULT OnInitPage(PVOID ptr,DWORD dwStyle,PVOID)
 	{
-		if( dwStyle & CVFLF_USE_SHELL_ICON )
+		if( dwStyle & VOLFILES_FLG_USE_SHELL_ICON )
 		{
 			m_bUseShellIcon = TRUE;
 		}

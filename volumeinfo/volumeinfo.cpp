@@ -470,12 +470,6 @@ namespace NavigationPane
 // About Box
 #include "..\build.h"
 
-static void Edit_AddText(HWND hwndEdit,PCWSTR psz)
-{
-	SendMessage(hwndEdit,EM_SETSEL,(WPARAM)-1,(LPARAM)-1);
-	SendMessage(hwndEdit,EM_REPLACESEL,0,(LPARAM)psz);
-}
-
 static void OSVersionText(HWND hwndEdit)
 {
 	WCHAR szText[MAX_PATH];

@@ -122,6 +122,8 @@ public:
                               GetModuleHandle(NULL), 
                               NULL); 
 
+		SendMessage(m_hWndList,WM_SETFONT,(WPARAM)m_hFont,0);
+
 		_EnableVisualThemeStyle(m_hWndList);
 
 		ListView_SetExtendedListViewStyle(m_hWndList,LVS_EX_DOUBLEBUFFER|LVS_EX_FULLROWSELECT|LVS_EX_HEADERDRAGDROP);
@@ -304,7 +306,6 @@ public:
 		{
 			if( COLUMN_Address == id )
 			{
-				CSimpleHexDumpItem *pItem = (CSimpleHexDumpItem *)pdi->item.lParam;
 #if 0
 				StringCchPrintf(pdi->item.pszText,pdi->item.cchTextMax,L"%016I64X",pdi->item.lParam);
 #else
@@ -316,7 +317,7 @@ public:
 			else if( COLUMN_DumpHex == id )
 			{
 				ZeroMemory(pdi->item.pszText,pdi->item.cchTextMax*sizeof(WCHAR));
-				PBYTE pb = ((CSimpleHexDumpItem *)pdi->item.lParam)->BufferPos;
+				PBYTE pb = pItem->BufferPos;
 				PWSTR psz = pdi->item.pszText;
 				SIZE_T cch = pdi->item.cchTextMax;
 				for(int i = 0; i < m_rd.ByteWidth; i++,psz += 3,cch -= 3,pb++)
@@ -330,7 +331,7 @@ public:
 				CHAR buf[64+1];
 				CHAR *psz = buf;
 				SIZE_T cch = _countof(buf);
-				PBYTE pb = ((CSimpleHexDumpItem *)pdi->item.lParam)->BufferPos;
+				PBYTE pb = pItem->BufferPos;
 				for(int i = 0; i < m_rd.ByteWidth; i++,psz++,cch--,pb++)
 				{
 #if 0
@@ -492,8 +493,8 @@ public:
 
 		static COLUMN columns_filelist[] = {
 			{ COLUMN_Address,   L"Address",    0, 0, LVCFMT_LEFT },
-			{ COLUMN_DumpHex,   L"Hex",        1, 0, LVCFMT_LEFT },
-			{ COLUMN_DumpChar,  L"Character",  2, 0, LVCFMT_LEFT },
+			{ COLUMN_DumpHex,   L"+0 +1 +2 +3 +4 +5 +6 +7 +8 +9 +A +B +C +D +E +F", 1, 0, LVCFMT_LEFT },
+			{ COLUMN_DumpChar,  L"0123456789ABCDEF",  2, 0, LVCFMT_LEFT },
 		};
 
 		m_columns.SetDefaultColumns(columns_filelist,ARRAYSIZE(columns_filelist));

@@ -570,6 +570,24 @@ DrawFocusFrame(
     COLORREF crActiveFrame
     );
 
+typedef struct _DFFSTRUCT
+{
+	DWORD cbSize; // reserved
+} DFFSTRUCT;
+
+#define DFFEXF_ADJUSTGRIDLINE (0x1)
+
+VOID
+DrawFocusFrameEx(
+	HWND hWnd,
+	HDC hdc,
+	RECT *prc,
+	BOOL bDrawFocus,
+	COLORREF crActiveFrame,
+	DWORD dwFlags,
+	DFFSTRUCT *pdffs
+	);
+
 // Make GUID string without brackets
 inline VOID GUIDStringRemoveBrackets(WCHAR *pszGuid) { 
     memmove(pszGuid,&pszGuid[1],sizeof(WCHAR)*36);

@@ -150,7 +150,6 @@ static void OSVersionText(HWND hwndEdit)
 	Edit_AddText(hwndEdit,szText);
 	Edit_AddText(hwndEdit,L"\r\n");
 
-
 	cb = sizeof(DWORD);
 	DWORD UBR = 0;
 	SHRegGetValue(HKEY_LOCAL_MACHINE,L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",L"UBR",SRRF_RT_REG_DWORD,NULL,&UBR,&cb);
@@ -274,7 +273,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 				WCHAR sz[64];
 				_GetDateTimeStringEx(t.QuadPart,sz,64,NULL,NULL,FALSE);
 
-				Edit_AddText(hwndEdit,L"\r\n");
+				Edit_AddText(hwndEdit,L"\r\n\r\n");
 				Edit_AddText(hwndEdit,L"System Install Date: ");
 				Edit_AddText(hwndEdit,sz);
 			}
@@ -361,6 +360,9 @@ HRESULT	LoadResourceModule()
       - VOLUME_CONSOLE_ENCRYPTIONVOLUME
       - VOLUME_CONSOLE_RELATIONVIEW
       - VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT
+      - VOLUME_CONSOLE_VIRTUALDISK
+      - VOLUME_CONSOLE_VDSCONSOLE
+      - VOLUME_CONSOLE_SCRATCHPAD
 
     These consoles are allow create instances per volume:
 
@@ -370,7 +372,7 @@ HRESULT	LoadResourceModule()
       - VOLUME_CONSOLE_DISKPERFORMANCE
       - VOLUME_CONSOLE_FILESYSTEMSTATISTICS
       - VOLUME_CONSOLE_SIMPLEHEXDUMP
-      - VOLUME_CONSOLE_VOLUMEFILELIST
+      - VOLUME_CONSOLE_VOLUMEFILES
 
 --*/
 // stl::map<> is preferred using.
@@ -391,9 +393,12 @@ static MDICHILDFRAMETABLE table[]= {
 	{VOLUME_CONSOLE_VOLUMEMOUNTPOINT,  0},
 	{VOLUME_CONSOLE_ENCRYPTIONVOLUME,  0},
 	{VOLUME_CONSOLE_RELATIONVIEW,      0},
+	{VOLUME_CONSOLE_VIRTUALDISK,       0},
+	{VOLUME_CONSOLE_VDSCONSOLE,        0},
 #if _ENABLE_FILELIST_SINGLETON
-	{VOLUME_CONSOLE_VOLUMEFILELIST,    0},
+	{VOLUME_CONSOLE_VOLUMEFILES,       0},
 #endif
+	{VOLUME_CONSOLE_SCRATCHPAD,        0},
 };
 
 int ClearWindowHandle(UINT_PTR ConsoleTypeId,HWND hwnd)
@@ -450,7 +455,7 @@ HWND FindSameWindowTitle(UINT ConsoleType,PCWSTR pszName)
 		do
 		{
 			CONSOLE_VIEW_ID *pcv = GetMDIConsoleId(hwnd);
-			if( pcv->wndId == ConsoleType )
+			if( pcv && pcv->wndId == ConsoleType )
 			{
 				GetWindowText(hwnd,szTitle,MAX_PATH);
 				if( _wcsicmp(szTitle,pszName) == 0 )
@@ -473,7 +478,7 @@ HWND FindSameWindowType(UINT ConsoleType,PCWSTR pszName)
 		do
 		{
 			CONSOLE_VIEW_ID *pcv = GetMDIConsoleId(hwnd);
-			if( pcv->wndId == ConsoleType )
+			if( pcv && pcv->wndId == ConsoleType )
 			{
 				return hwnd;
 			}
@@ -483,7 +488,7 @@ HWND FindSameWindowType(UINT ConsoleType,PCWSTR pszName)
 	return NULL;
 }
 
-HWND FindSameVolumeWindow(UINT ConsoleType,PCWSTR pszVolumeName)
+HWND FindSameWindowVolume(UINT ConsoleType,PCWSTR pszVolumeName)
 {
 	CStringBuffer sVolumeName(32768);
 	if( !NtPathGetVolumeName(pszVolumeName,sVolumeName,sVolumeName.GetBufferSize()) )
@@ -519,6 +524,68 @@ HWND FindSameVolumeWindow(UINT ConsoleType,PCWSTR pszVolumeName)
 	return NULL;
 }
 
+HWND FindSameWindowFilePath(UINT ConsoleType,PCWSTR pszPath)
+{
+	HWND hwndMDIChildFrame=NULL;
+	HWND hwnd;
+	hwnd = GetWindow(g_hWndMDIClient,GW_CHILD);
+	if( hwnd )
+	{
+		const int cchCurPath = 32768;
+		WCHAR *szCurPath = new WCHAR[cchCurPath];
+
+		do
+		{
+			MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwnd,GWLP_USERDATA);
+			CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(pd->hWndView,_PROP_CONSOLE_VIEW_ID);
+			if( pcv->wndId == ConsoleType )
+			{
+				SendMessage(pd->hWndView,PM_GETWORKINGDIRECTORY,cchCurPath,(LPARAM)szCurPath);
+
+				if( _wcsicmp(pszPath,szCurPath) == 0 )
+				{
+					hwndMDIChildFrame = hwnd;
+					break;
+				}
+			}
+
+		} while( hwnd = GetWindow(hwnd,GW_HWNDNEXT) );
+
+		delete[] szCurPath;
+	}
+	return hwndMDIChildFrame;
+}
+
+BOOL IsValidConsoleId( UINT ConsoleTypeId )
+{
+	switch( ConsoleTypeId )
+	{
+		case VOLUME_CONSOLE_VOLUMELIST:
+		case VOLUME_CONSOLE_PHYSICALDRIVELIST:
+		case VOLUME_CONSOLE_SHADOWCOPYLIST:
+		case VOLUME_CONSOLE_STORAGEDEVICE:
+		case VOLUME_CONSOLE_MOUNTEDDEVICE:
+		case VOLUME_CONSOLE_DOSDRIVELIST:
+		case VOLUME_CONSOLE_VOLUMEINFORMAION:
+		case VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION:
+		case VOLUME_CONSOLE_DISKLAYOUT:
+		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
+		case VOLUME_CONSOLE_SIMPLEHEXDUMP:
+		case VOLUME_CONSOLE_DISKPERFORMANCE:
+		case VOLUME_CONSOLE_VOLUMEMOUNTPOINT:
+		case VOLUME_CONSOLE_ENCRYPTIONVOLUME:
+		case VOLUME_CONSOLE_RELATIONVIEW:
+		case VOLUME_CONSOLE_VIRTUALDISK:
+		case VOLUME_CONSOLE_VDSCONSOLE:
+		case VOLUME_CONSOLE_FILTERDRIVER:
+		case VOLUME_CONSOLE_VOLUMEFILES:
+		case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
+		case VOLUME_CONSOLE_SCRATCHPAD:
+			return TRUE;
+	}
+	return FALSE;
+}
+
 VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *OptionParameter)
 {
 	GUID Guid = {0};
@@ -536,7 +603,9 @@ VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *O
 		case VOLUME_CONSOLE_VOLUMEMOUNTPOINT:
 		case VOLUME_CONSOLE_ENCRYPTIONVOLUME:
 		case VOLUME_CONSOLE_RELATIONVIEW:
+		case VOLUME_CONSOLE_VDSCONSOLE:
 		case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
+		case VOLUME_CONSOLE_SCRATCHPAD:
 			Guid.Data1 = (ULONG)ConsoleId;
 			break;
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
@@ -545,7 +614,7 @@ VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *O
 		case VOLUME_CONSOLE_DISKPERFORMANCE:
 		case VOLUME_CONSOLE_FILESYSTEMSTATISTICS:
 		case VOLUME_CONSOLE_SIMPLEHEXDUMP:
-		case VOLUME_CONSOLE_VOLUMEFILELIST:
+		case VOLUME_CONSOLE_VOLUMEFILES:
 		{
 			Guid.Data1 = (ULONG)ConsoleId;
 			GetSystemTimeAsFileTime( (LPFILETIME)Guid.Data4 );
@@ -589,6 +658,8 @@ PCWSTR GetConsoleTitle(UINT ConsoleTypeId)
 		{VOLUME_CONSOLE_VOLUMEMOUNTPOINT,   L"Volume Mount Point"},
 		{VOLUME_CONSOLE_ENCRYPTIONVOLUME,   L"BitLocker Drives"},
 		{VOLUME_CONSOLE_RELATIONVIEW,       L"Volume Drive Relation View"},
+		{VOLUME_CONSOLE_VDSCONSOLE,         L"VDS Console"},
+		{VOLUME_CONSOLE_SCRATCHPAD,         L"Scratch Pad"},
 	};
 
 	PCWSTR pszTitle = L"";
@@ -622,7 +693,7 @@ HICON GetConsoleIcon(UINT ConsoleTypeId,PCWSTR pszInitialPath)
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
 		FreeLibrary(hmod);
 	}
-	else if( ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILELIST || ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT )
+	else if( ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILES || ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT )
 	{
 		HMODULE hmod = LoadLibrary(L"shell32.dll");
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(16776),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
@@ -640,6 +711,13 @@ HICON GetConsoleIcon(UINT ConsoleTypeId,PCWSTR pszInitialPath)
 		HMODULE hmod = LoadLibrary(L"imageres.dll");
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(1031),IMAGE_ICON,16,16,LR_DEFAULTCOLOR); // Win10,Win11 only
 		FreeLibrary(hmod);
+	}
+	else if( ConsoleTypeId == VOLUME_CONSOLE_SCRATCHPAD )
+	{
+		SHSTOCKICONINFO shsi = {0};
+		shsi.cbSize = sizeof(shsi);
+		SHGetStockIconInfo(SIID_DOCNOASSOC,SHGSI_ICON|SHGSI_SMALLICON,&shsi);
+		hIcon = shsi.hIcon;
 	}
 	else
 	{
@@ -894,6 +972,9 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 {
 	HWND hwndChildFrame = NULL;
 
+	if( !IsValidConsoleId(ConsoleTypeId) )
+		return NULL;
+
 	switch( ConsoleTypeId )
 	{
 		case VOLUME_CONSOLE_DISKLAYOUT:
@@ -906,16 +987,15 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 			hwndChildFrame = FindSameWindowTitle(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
 			break;
 		}
-		case VOLUME_CONSOLE_VOLUMEFILELIST:
+		case VOLUME_CONSOLE_VOLUMEFILES:
 		{
 #if _ENABLE_FILELIST_SINGLETON
- 			hwndChildFrame = FindSameWindowType(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
+			if( GetKeyState(VK_SHIFT) < 0 )
+				hwndChildFrame = NULL;
+			else
+	 			hwndChildFrame = FindSameWindowType(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
 #else
-#if _ENABLE_ROOTDIRECTORY_LIST
-			hwndChildFrame = NULL;
-#else
-			hwndChildFrame = FindSameVolumeWindow(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
-#endif
+			hwndChildFrame = FindSameWindowVolume(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
 #endif
 			break;
 		}
@@ -957,7 +1037,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 			SendFileSearchResult(hwndChildFrame,ConsoleTypeId,pd,pOpenParam);
 		}
 #if _ENABLE_FILELIST_SINGLETON
-		else if( VOLUME_CONSOLE_VOLUMEFILELIST == ConsoleTypeId && pOpenParam )
+		else if( VOLUME_CONSOLE_VOLUMEFILES == ConsoleTypeId && pOpenParam )
 		{
 			SendFileListPath(hwndChildFrame,ConsoleTypeId,pd,pOpenParam);
 		}
@@ -1032,7 +1112,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 					SendHexDumpInformation(hwndMDIChild,pd->hWndView,pOpenParam);
 					break;
 				}
-				case VOLUME_CONSOLE_VOLUMEFILELIST:
+				case VOLUME_CONSOLE_VOLUMEFILES:
 				case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 				{
 					static HWND (WINAPI *pfnCreateVolumeFileList)(
@@ -1066,7 +1146,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 
 						SendUIInitLayout(hwndMDIChild,pd->hWndView);
 
-						if( VOLUME_CONSOLE_VOLUMEFILELIST == ConsoleTypeId )
+						if( VOLUME_CONSOLE_VOLUMEFILES == ConsoleTypeId )
 							SendFileListPath(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
 						else
 							SendFileSearchResult(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
@@ -1422,7 +1502,7 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 					if( IsVolumeNameRequiredConsole(&frame.Guid,(UINT)frame.Guid.Data1) && frame.Path == NULL )
 						continue;
 
-					if( frame.Guid.Data1 == VOLUME_CONSOLE_VOLUMEFILELIST )
+					if( frame.Guid.Data1 == VOLUME_CONSOLE_VOLUMEFILES )
 					{
 						if( frame.Path == NULL || *frame.Path == L'\0' ) {
 							continue;
@@ -1508,6 +1588,14 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 		}
 	}
 
+#if _ENABLE_TOOLS
+	INT State = MenuState;
+	if( CommandHandler::QueryCmdState(CmdId,State) )
+	{
+		return State;
+	}
+#endif
+
 	switch( CmdId )
 	{
 		case ID_STORAGEDEVICE:
@@ -1520,10 +1608,11 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 		case ID_VOLUMEMOUNTPOINT:
 		case ID_ENCRYPTIONVOLUME:
 		case ID_RELATIONVIEW:
+		case ID_VDSCONSOLE:
+		case ID_SCRATCHPAD:
 			return UPDUI_ENABLED;
+#if !_ENABLE_TOOLS
 		case ID_ATTACH_VIRTUALDISK_IMAGE:
-#if _ENABLE_TOOLS
-		case ID_CREATE_DISK_IMAGEFILE:
 #endif
 			return UPDUI_ENABLED;
 		case ID_ABOUT:
@@ -1652,6 +1741,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 				case ID_RELATIONVIEW:
 					OpenConsole(hWnd,VOLUME_CONSOLE_RELATIONVIEW);
+					break;
+				case ID_VDSCONSOLE:
+					OpenConsole(hWnd,VOLUME_CONSOLE_VDSCONSOLE);
+					break;
+				case ID_SCRATCHPAD:
+					OpenConsole(hWnd,VOLUME_CONSOLE_SCRATCHPAD);
 					break;
 				case ID_FILE_CLOSE:
 					CloseConsole();
@@ -1859,6 +1954,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	    }
 		else 
 	    { 
+#if _ENABLE_TOOLS
+			if( CommandHandler::Message(&msg) )
+			{
+				continue;
+			}
+#endif
 #if 1
 			// This code is follows reason:
 			//

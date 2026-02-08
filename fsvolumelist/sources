@@ -103,6 +103,7 @@ SOURCES = \
 	flthelp.cpp\
 	misc.cpp\
 	xmlwrite.cpp\
+	vdshelp.cpp\
 	dialogs.cpp\
 	dialog_lookupstreaminfo.cpp\
 	dialog_guideditor.cpp\

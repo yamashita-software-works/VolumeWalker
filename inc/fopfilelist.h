@@ -77,6 +77,7 @@ struct AllocMem
 //
 
 typedef enum {
+	FoItemNone=-1,
 	FoItemPath=0,
 	FoItemFile=1,
 	FoItemDirectory=2,

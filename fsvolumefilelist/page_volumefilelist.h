@@ -128,7 +128,7 @@ protected:
 
 	HRESULT m_LastErrorCode;
 
-	virtual UINT GetConsoleId() const { return VOLUME_CONSOLE_VOLUMEFILELIST; }
+	virtual UINT GetConsoleId() const { return VOLUME_CONSOLE_VOLUMEFILES; }
 
 	CHeaderBar *m_pHeaderBar;
 
@@ -142,6 +142,9 @@ protected:
 	int m_imgUpOneDir;
 	int m_imgDir;
 	int m_imgFile;
+
+	DWORD m_FileSystemFlags;
+	WCHAR m_FileSystemName[32];
 
 public:
 	PWSTR GetPath() const { return m_pszCurDir; }
@@ -197,6 +200,8 @@ public:
 		m_imgDir = I_IMAGENONE;
 		m_imgFile = I_IMAGENONE;
 		ZeroMemory(m_columnShowStyleFlags,sizeof(m_columnShowStyleFlags));
+		m_FileSystemFlags = 0;
+		ZeroMemory(m_FileSystemName,sizeof(m_FileSystemName));
 	}
 
 	virtual ~CFileListPage()
@@ -217,7 +222,7 @@ public:
 	{
 		SELECT_ITEM *pSelectItem = (SELECT_ITEM *)ptr;
 
-		if( dwFlags & CVFLF_USE_SHELL_ICON )
+		if( dwFlags & VOLFILES_FLG_USE_SHELL_ICON )
 		{
 			m_bUseShellIcon = TRUE;
 		}
@@ -527,99 +532,120 @@ public:
 			{
 				if( pnmlvcd->nmcd.uItemState & CDIS_FOCUS )
 				{
-					DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&pnmlvcd->nmcd.rc);
+					RECT rcFocus;
+					ListView_GetItemRect(m_hWndList,pnmlvcd->nmcd.dwItemSpec,&rcFocus,LVIR_SELECTBOUNDS);
+					DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&rcFocus);
 				}
 			}
 		}
 		return CDRF_DODEFAULT;
 #else
-		switch( pnmlvcd->nmcd.dwDrawStage )
+		if( pnmlvcd->nmcd.dwDrawStage == CDDS_PREPAINT )
 		{
-			case CDDS_PREPAINT:
-				return CDRF_NOTIFYITEMDRAW;
-			case CDDS_ITEMPREPAINT:
+			return CDRF_NOTIFYITEMDRAW;
+		}
+
+		if( pnmlvcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT )
+		{
+			CFileLvItem *pItem = (CFileLvItem *)pnmlvcd->nmcd.lItemlParam;
+
+			if( (pItem->pFI->ItemTypeFlag & _FLG_COSTLY_DATA) == 0 )
 			{
-				CFileLvItem *pItem = (CFileLvItem *)pnmlvcd->nmcd.lItemlParam;
-
-				if( (pItem->pFI->ItemTypeFlag & _FLG_COSTLY_DATA) == 0 )
-				{
-					GetCostlyFileInformationData(pItem->pFI);
-				}
-
-				if( _IsDarkModeEnabled() )
-				{
-					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-						pnmlvcd->clrText = RGB(223,223,223);
-					if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
-						pnmlvcd->clrText = RGB(0,255,255);
-
-					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
-						pnmlvcd->clrText = RGB(0,0,180);
-					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
-						pnmlvcd->clrText = RGB(0,174,54);
-					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
-						pnmlvcd->clrText = RGB(10,223,96);
-					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
-						pnmlvcd->clrText = RGB(0,200,48);
-					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
-						pnmlvcd->clrText = RGB(185,122,87);
-					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SYSTEM )
-						pnmlvcd->clrText = RGB(180,40,223);
-
-					if( pItem->pFI->Wof )
-						pnmlvcd->clrText = RGB(128,0,80);
-				}
-				else
-				{
-					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-						pnmlvcd->clrText = RGB(32,32,32);
-
-					if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
-						pnmlvcd->clrText = RGB(128,128,128);
-
-					if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
-						pnmlvcd->clrText = RGB(0,0,180);
-					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
-						pnmlvcd->clrText = RGB(0,174,54);
-					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
-						pnmlvcd->clrText = RGB(100,0,80);
-					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
-						pnmlvcd->clrText = RGB(0,200,48);
-					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
-						pnmlvcd->clrText = RGB(185,122,87);
-					else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SYSTEM )
-						pnmlvcd->clrText = RGB(108,108,114);
-
-					if( pItem->pFI->Wof )
-						pnmlvcd->clrText = RGB(128,0,80);
-				}
-				return CDRF_NOTIFYPOSTPAINT;
+				GetCostlyFileInformationData(pItem->pFI);
 			}
-			case CDDS_ITEMPOSTPAINT:
+
+			pnmlvcd->clrText = GetLineColor(pnmlvcd->clrText,pItem);
+
+			return CDRF_NOTIFYSUBITEMDRAW|CDRF_NOTIFYPOSTPAINT|CDRF_NEWFONT;
+		}
+
+		if( pnmlvcd->nmcd.dwDrawStage == (CDDS_ITEMPREPAINT|CDDS_SUBITEM) )
+		{
+			HWND hwndHeader = ListView_GetHeader(m_hWndList);
+			HDITEM hi;
+			hi.mask = HDI_LPARAM;
+			Header_GetItem(hwndHeader,pnmlvcd->iSubItem,&hi);
+
+			CFileLvItem *pItem = (CFileLvItem *)pnmlvcd->nmcd.lItemlParam;
+
+			switch( (int)(hi.lParam) )
 			{
-				if( IsXpThemeEnabled() )
+				case COLUMN_PhysicalDriveOffset:
+					if( !pItem->pFI->ValidFileAreaOffset )
+						pnmlvcd->clrText = RGB(210,0,0);
+					break;
+				default:
+					pnmlvcd->clrText = ListView_GetTextColor(m_hWndList);
+					pnmlvcd->clrText = GetLineColor(pnmlvcd->clrText,pItem);
+					break;
+			}
+			return CDRF_NOTIFYPOSTPAINT;
+		}
+
+		if( pnmlvcd->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT)
+		{
+			if( IsXpThemeEnabled() )
+			{
+				if( pnmlvcd->nmcd.uItemState & CDIS_FOCUS )
 				{
-					if( pnmlvcd->nmcd.uItemState & CDIS_FOCUS )
-					{
-						if( ListView_GetSelectedCount(m_hWndList) > 1 ) {
-							RECT rc = pnmlvcd->nmcd.rc;
-							COLORREF cr = RGB(50,130,246);
-							DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&rc,FALSE,cr);
-							rc.left += 1;
-							rc.right -= 1;
-							rc.top += 1;
-							rc.bottom -= 1;
-							DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&rc,TRUE);
-						} else {
-							DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&pnmlvcd->nmcd.rc);
-						}
-					}
+					RECT rcFocus;
+					ListView_GetItemRect(m_hWndList,pnmlvcd->nmcd.dwItemSpec,&rcFocus,LVIR_SELECTBOUNDS);
+					DrawFocusFrame(m_hWndList,pnmlvcd->nmcd.hdc,&rcFocus);
 				}
-				return CDRF_DODEFAULT;
 			}
 		}
+		return CDRF_DODEFAULT;
 #endif
 		return 0;
+	}
+
+	COLORREF GetLineColor(COLORREF& crOrgTextColor,CFileLvItem *pItem)
+	{
+		COLORREF clrText = crOrgTextColor;
+
+		if( _IsDarkModeEnabled() )
+		{
+			if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+				clrText = RGB(223,223,223);
+			if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
+				clrText = RGB(0,255,255);
+
+			if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
+				clrText = RGB(0,0,180);
+			else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
+				clrText = RGB(0,174,54);
+			else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
+				clrText = RGB(10,223,96);
+			else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
+				clrText = RGB(0,200,48);
+			else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
+				clrText = RGB(185,122,87);
+			else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SYSTEM )
+				clrText = RGB(180,40,223);
+
+			if( pItem->pFI->Wof )
+				clrText = RGB(128,0,80);
+		}
+		else
+		{
+			if( pItem->pFI->ItemTypeFlag & _FLG_NTFS_SPECIALFILE )
+				clrText = RGB(118,118,118);
+
+			if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_COMPRESSED )
+				clrText = RGB(80,8,255);
+			else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_ENCRYPTED )
+				clrText = RGB(0,194,54);
+			else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT )
+				clrText = RGB(100,0,80);
+			else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_VIRTUAL )
+				clrText = RGB(0,200,48);
+			else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SPARSE_FILE )
+				clrText = RGB(185,122,87);
+			else if( pItem->pFI->FileAttributes & FILE_ATTRIBUTE_SYSTEM )
+				clrText = RGB(108,108,114);
+		}
+
+		return clrText;
 	}
 
 	LRESULT OnHeaderEndDrag(NMHDR *pnmhdr)
@@ -740,29 +766,37 @@ public:
 
 	void SendSelectedItemData(CFileLvItem *pItem)
 	{
-			PWSTR pszFullPath;
-			if( m_pszCurDir && *m_pszCurDir != 0 )
-				pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+		PWSTR pszFullPath;
+		if( m_pszCurDir && *m_pszCurDir != 0 )
+		{
+			pszFullPath = CombinePath(m_pszCurDir,pItem->pFI->hdr.FileName);
+		}	
+		else
+		{
+			// Root directory path
+			if( IsLastCharacterBackslash(pItem->pFI->hdr.Path) )
+				pszFullPath = DuplicateString(pItem->pFI->hdr.Path);
 			else
-				pszFullPath = DuplicateString(pItem->pFI->hdr.FileName);
+				pszFullPath = CombinePath(pItem->pFI->hdr.Path,L"\\");
+		}
 
-			SELECT_ITEM sel = {0};
-			sel.mask = SI_MASK_VIEWTYPE | SI_MASK_PATH | SI_MASK_NAME | SI_MASK_CURDIR;
-			sel.ViewType  = GetConsoleId();
-			sel.pszPath   = pszFullPath;
-			sel.pszCurDir = DuplicateString(m_pszCurDir);
-			sel.pszName   = DuplicateString(pItem->pFI->hdr.FileName);
-			sel.pszVolume = m_pszVolumeDevice;
+		SELECT_ITEM sel = {0};
+		sel.mask = SI_MASK_VIEWTYPE | SI_MASK_PATH | SI_MASK_NAME | SI_MASK_CURDIR;
+		sel.ViewType  = GetConsoleId();
+		sel.pszPath   = pszFullPath;
+		sel.pszCurDir = DuplicateString(m_pszCurDir);
+		sel.pszName   = DuplicateString(pItem->pFI->hdr.FileName);
+		sel.pszVolume = m_pszVolumeDevice;
 
-			FILEITEMEX *pFIEx = pItem->pFI;
-			sel.mask |= SI_MASK_CONTEXTPTR;
-			sel.ContextPtr = pFIEx;
+		FILEITEMEX *pFIEx = pItem->pFI;
+		sel.mask |= SI_MASK_CONTEXTPTR;
+		sel.ContextPtr = pFIEx;
 
-			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_ITEM_SELECTED,(LPARAM)&sel);
+		SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_ITEM_SELECTED,(LPARAM)&sel);
 
-			FreeMemory(sel.pszCurDir);
-			FreeMemory(sel.pszName);
-			FreeMemory(pszFullPath);
+		FreeMemory(sel.pszCurDir);
+		FreeMemory(sel.pszName);
+		FreeMemory(pszFullPath);
 	}
 
 	LRESULT OnItemChanged(NMHDR *pnmhdr)
@@ -1046,7 +1080,7 @@ public:
 	LRESULT OnDisp_Lcn(UINT,NMLVDISPINFO *pnmlvdi)
 	{
 		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
-		if( pItem->pFI->FirstLCN.QuadPart != 0 && pItem->pFI->FirstLCN.QuadPart != -1)
+		if( pItem->pFI->FirstLCN.QuadPart != -1)
 			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->pFI->FirstLCN);
 		else
 			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"-");
@@ -1107,6 +1141,12 @@ public:
 			cb = pItem->pFI->EndOfFile.QuadPart;
 		else
 			cb = pItem->pFI->AllocationSize.QuadPart;
+
+		if( (cb == -1) || (pItem->pFI->FirstLCN.QuadPart == -1) )
+		{
+			pnmlvdi->item.pszText = L"-";
+			return 0;
+		}
 
 		UINT f = m_columnShowStyleFlags[ id ];
 		switch( f )
@@ -2032,7 +2072,7 @@ public:
 		pFI->DeletePending = false;
 		pFI->Directory = false;
 		pFI->Wof = false;
-		pFI->FirstLCN.QuadPart = 0;
+		pFI->FirstLCN.QuadPart = -1;
 		pFI->PhysicalDriveOffset.QuadPart = -1;
 		pFI->PhysicalDriveNumber = (ULONG)-1;
 	}
@@ -2073,33 +2113,18 @@ public:
 		{
 			if( m_bFillCostlyData )
 			{
-				if( 1 ) // bQuick
+				FS_CLUSTER_INFORMATION_BASIC_EX clusterex = {0};
+				if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
 				{
-					FS_CLUSTER_INFORMATION_BASIC_EX clusterex = {0};
-					if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
+					pFI->FirstLCN = clusterex.FirstLcn;
+					pFI->PhysicalDriveOffset = clusterex.PhysicalLocation;
+					pFI->PhysicalDriveNumber = clusterex.DiskNumber;
+					pFI->FileAreaOffset      = clusterex.FsSectorBase.FileAreaOffset;
+					pFI->ValidFileAreaOffset = clusterex.FsSectorBase.ValidFileAreaOffset;
+					if( !pFI->ValidFileAreaOffset && 
+						(wcsicmp(this->m_FileSystemName,L"NTFS") == 0 || wcsicmp(this->m_FileSystemName,L"ReFS") == 0) )
 					{
-						pFI->FirstLCN = clusterex.FirstLcn;
-						pFI->PhysicalDriveOffset = clusterex.PhysicalLocation;
-						pFI->PhysicalDriveNumber = clusterex.DiskNumber;
-					}
-				}
-				else if( 0 ) // bFull
-				{
-					FS_CLUSTER_INFORMATION *pci;
-					if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationAll,&pci,sizeof(pci)) == 0 )
-					{
-						pFI->FirstLCN = pci->Extents[0].Lcn;
-						pFI->PhysicalDriveOffset.QuadPart = pci->Extents[0].PhysicalOffsets[0].PhysicalOffset->Offset;
-						pFI->PhysicalDriveNumber = pci->Extents[0].PhysicalOffsets[0].PhysicalOffset->DiskNumber;
-						FreeClusterInformation(pci);
-					}
-				}
-				else // bBasic
-				{
-					FS_CLUSTER_INFORMATION_BASIC cluster = {0};
-					if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasic,&cluster,sizeof(cluster)) == 0 )
-					{
-						pFI->FirstLCN = cluster.FirstLcn;
+						pFI->ValidFileAreaOffset = true;
 					}
 				}
 			}
@@ -2271,7 +2296,7 @@ public:
 				}
 			}
 
-			if( pFI->AllocationSize.QuadPart != 0 )
+//			if( pFI->AllocationSize.QuadPart != 0 )
 			{
 				FS_CLUSTER_INFORMATION_BASIC_EX clusterex = {0};
 				if( ReadFileClusterInformaion(NULL,hRootDirectory,RootDir,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
@@ -2279,7 +2304,32 @@ public:
 					pFI->FirstLCN = clusterex.FirstLcn;
 					pFI->PhysicalDriveOffset = clusterex.PhysicalLocation;
 					pFI->PhysicalDriveNumber = clusterex.DiskNumber;
+					pFI->FileAreaOffset = clusterex.FsSectorBase.FileAreaOffset;
+					pFI->ValidFileAreaOffset = clusterex.FsSectorBase.ValidFileAreaOffset;
+
+					if( pFI->AllocationSize.QuadPart == 0 && pFI->EndOfFile.QuadPart == 0 )
+					{
+						pFI->AllocationSize.QuadPart = pFI->EndOfFile.QuadPart = clusterex.SectorsPerCluster * clusterex.FirstCount;
+					}
 				}
+				else
+				{
+					pFI->FirstLCN.QuadPart = -1;
+					pFI->PhysicalDriveOffset.QuadPart = -1;
+					pFI->PhysicalDriveNumber = -1;
+					pFI->FileAreaOffset.QuadPart = -1;
+					pFI->ValidFileAreaOffset = FALSE;
+					pFI->EndOfFile.QuadPart = -1;
+					pFI->AllocationSize.QuadPart = -1;
+				}
+			}
+
+			DWORD dwFileSystemFlags;
+			WCHAR szFileSystemName[32];
+			if( GetVolumeInformationByHandleW(hRootDirectory,nullptr,0,nullptr,nullptr,&dwFileSystemFlags,szFileSystemName,ARRAYSIZE(szFileSystemName)) )
+			{
+				if( !pFI->ValidFileAreaOffset && (wcsicmp(szFileSystemName,L"NTFS") == 0 || wcsicmp(szFileSystemName,L"ReFS") == 0))
+					pFI->ValidFileAreaOffset = true;
 			}
 
 			CloseHandle(hRootDirectory);
@@ -2415,6 +2465,14 @@ public:
 
 		if( !(pSel->Flags & SI_FLAG_ROOT_DIRECTORY) && wcscmp(pszPath,L"\\") != 0 )
 		{
+			HANDLE hDir;
+			NTSTATUS Status;
+			if( (Status = OpenFileEx_W(&hDir,pszPath,FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE|FILE_OPEN_FOR_BACKUP_INTENT)) == 0 )
+			{
+				GetVolumeInformationByHandleW(hDir,nullptr,0,nullptr,nullptr,&m_FileSystemFlags,m_FileSystemName,ARRAYSIZE(m_FileSystemName));
+				CloseHandle(hDir);
+			}
+
 			pa->Create( 4096 );
 
 			//
@@ -2524,6 +2582,9 @@ public:
 		}
 		else
 		{
+			m_FileSystemFlags = 0;
+			ZeroMemory(m_FileSystemName,sizeof(m_FileSystemName));
+
 			//
 			// Make Root Directories List
 			//
@@ -4199,7 +4260,7 @@ public:
 
 		PWSTR pszPath = NULL;
 		if( m_pszCurDir == NULL || *m_pszCurDir == L'\0' )
-			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILELIST )
+			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILES )
 				pszPath = CombinePath(pFI->hdr.Path,L"\\");
 			else
 				pszPath = CombinePath(pFI->hdr.Path,pFI->hdr.FileName);
@@ -4228,7 +4289,7 @@ public:
 
 		PWSTR pszPath = NULL;
 		if( m_pszCurDir == NULL || *m_pszCurDir == L'\0' )
-			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILELIST )
+			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILES )
 				pszPath = CombinePath(pFI->hdr.Path,L"\\");
 			else
 				pszPath = CombinePath(pFI->hdr.Path,pFI->hdr.FileName);
@@ -4287,7 +4348,7 @@ public:
 
 		sel.ViewType  = GetConsoleId();
 
-		if( m_pszCurDir && m_pszCurDir != L'\0' )
+		if( m_pszCurDir && *m_pszCurDir != L'\0' )
 		{
 			sel.pszCurDir = NULL;
 			sel.pszPath   = (PWSTR)_MemAllocString(m_pszCurDir);
@@ -4296,7 +4357,7 @@ public:
 		else
 		{ 
 			sel.pszCurDir = NULL;
-			sel.pszPath   = (PWSTR)NULL;
+			sel.pszPath   = (PWSTR)_MemAllocString(L"\\");
 			sel.pszName   = (PWSTR)NULL;
 		}
 

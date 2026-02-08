@@ -19,7 +19,7 @@
 #include <diskguid.h>
 #include <devpkey.h>
 #include <devguid.h>
-
+#include <vds.h>
 #if _ENABLE_DARK_MODE_TEST
 #include "darkmode.h"
 #pragma comment(lib, "uxtheme.lib")
@@ -142,6 +142,12 @@ CreateVolumeConsoleWindow(
 			break;
 		case VOLUME_CONSOLE_RELATIONVIEW:
 			hwndViewBase = CreateMountedDriveWindow(hwnd);
+			break;
+		case VOLUME_CONSOLE_VDSCONSOLE:
+			hwndViewBase = CreateVDSConsoleWindow(hwnd);
+			break;
+		case VOLUME_CONSOLE_SCRATCHPAD:
+			hwndViewBase = CreateScratchPadWindow(hwnd);
 			break;
 		default:
 			return NULL;

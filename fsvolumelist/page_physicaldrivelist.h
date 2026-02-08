@@ -736,6 +736,8 @@ public:
 				pdi->GetDetectSectorSize();
 
 				Insert(i,pDisks->Drive[i],pdi,pszPhysicalDisk,dwDriveNumber);
+
+				pdi->CloseDiskHandle();
 			}
 			else
 			{

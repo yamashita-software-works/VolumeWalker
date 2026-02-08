@@ -21,12 +21,12 @@ enum {
     VOLUME_CONSOLE_VOLUMEMOUNTPOINT,           /* 15 */
     VOLUME_CONSOLE_ENCRYPTIONVOLUME,           /* 16 */
     VOLUME_CONSOLE_RELATIONVIEW,               /* 17 */
-                                               /* 18 */
-                                               /* 19 */
-    VOLUME_CONSOLE_FILTERDRIVER=20,            /* 20 */
-    VOLUME_CONSOLE_VOLUMEFILELIST,             /* 21 */
-    VOLUME_CONSOLE_VOLUMEFILEMANAGER=VOLUME_CONSOLE_VOLUMEFILELIST, /* 21 */
+    VOLUME_CONSOLE_VIRTUALDISK,                /* 18 */
+    VOLUME_CONSOLE_VDSCONSOLE,                 /* 19 */
+    VOLUME_CONSOLE_FILTERDRIVER,               /* 20 */
+    VOLUME_CONSOLE_VOLUMEFILES,                /* 21 */
     VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT,     /* 22 */
+    VOLUME_CONSOLE_SCRATCHPAD,                 /* 23 */
     VOLUME_CONSOLE_MAX_ID,
     VOLUME_CONSOLE_COUNT = VOLUME_CONSOLE_MAX_ID,
 };

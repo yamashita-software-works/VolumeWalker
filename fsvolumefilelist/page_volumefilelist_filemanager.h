@@ -43,7 +43,7 @@ class CFileManagerPage :
 #endif
 {
 protected:
-	virtual UINT GetConsoleId() const { return VOLUME_CONSOLE_VOLUMEFILEMANAGER; }
+	virtual UINT GetConsoleId() const { return VOLUME_CONSOLE_VOLUMEFILES; }
 
 	virtual BOOL LoadColumns(HWND hWndList,PCWSTR pszColumnLayout,PCWSTR pszCurrentSortColumn)
 	{
@@ -128,7 +128,7 @@ public:
 		//
 		// Create drop target.
 		//
-		if( GetConsoleId() ==  VOLUME_CONSOLE_VOLUMEFILEMANAGER )
+		if( GetConsoleId() ==  VOLUME_CONSOLE_VOLUMEFILES )
 		{
 #if _ENABLE_FILELIST_DROPFILE
 			m_pDropTarget = new CDropTarget;

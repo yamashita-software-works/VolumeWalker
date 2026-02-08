@@ -106,7 +106,7 @@ _GetClustersInformation(
 						&dwBytesReturned,
 						NULL) )
 	{
-		rpb.FileAreaOffset.QuadPart = 0;  // invalid value / unavailable retrieval pointer base
+		rpb.FileAreaOffset.QuadPart = -1;  // invalid value / unavailable retrieval pointer base
 	}
 
 	inputVcn.StartingVcn.QuadPart = 0; // start at the beginning 
@@ -145,7 +145,8 @@ _GetClustersInformation(
 						pClusters = (FS_CLUSTER_INFORMATION *)_MemAllocZero( sizeof(FS_CLUSTER_INFORMATION) + ((rpBuf.ExtentCount - 1) * sizeof(FS_CLUSTER_INFORMATION)) );
 
 						// copy cluster heap base secotor offset
-						pClusters->ClusterHeapBase = rpb;
+						pClusters->ClusterHeapBase.FileAreaOffset.QuadPart = rpb.FileAreaOffset.QuadPart;
+						pClusters->ClusterHeapBase.ValidFileAreaOffset     = (rpb.FileAreaOffset.QuadPart != -1);
 					}
 					else
 					{
@@ -183,7 +184,8 @@ _GetClustersInformation(
 								LONGLONG LcnOffset = 0;
 
 								LcnOffset = rpBuf.Extents[i].Lcn.QuadPart * dwBytesPerCluster;
-								LcnOffset += (rpb.FileAreaOffset.QuadPart * dwBytesPerSector);
+								if( rpb.FileAreaOffset.QuadPart != -1 )
+									LcnOffset += (rpb.FileAreaOffset.QuadPart * dwBytesPerSector);
 
 								if( !_GetPhysicalLocation(hVolume,
 										LcnOffset,
@@ -247,6 +249,8 @@ ReadFileClusterInformaion_U(
 	DWORD dwWin32Error;
 	DWORD dwBytesPerCluster = 0;
 	DWORD dwBytesPerSector = 0;
+	DWORD dwFileSystemFlags;
+	WCHAR FileSystemName[16];
 
 	//
 	// Get information about the volume on which a file existing.
@@ -264,7 +268,7 @@ ReadFileClusterInformaion_U(
 					0)) != STATUS_SUCCESS )
 	{
 		//
-		// could not open the volume, try open use the path.
+		// If could not open the volume, try open use the path.
 		//
 		usVolumeRoot = *VolumeRootDirectoryName;
 
@@ -283,6 +287,9 @@ ReadFileClusterInformaion_U(
 			dwBytesPerSector  = SizeInfo->BytesPerSector;
 			FreeMemory(SizeInfo);
 		}
+
+		GetVolumeInformationByHandleW(hVolumeRoot,NULL,0,NULL,NULL,&dwFileSystemFlags,FileSystemName,ARRAYSIZE(FileSystemName));
+
 		CloseHandle(hVolumeRoot);
 	}
 
@@ -318,9 +325,17 @@ ReadFileClusterInformaion_U(
 			{
 				// Get Lcn only
 				Status = OpenFile_U(&hVolume,NULL,&usVolumeDevice,
-							FILE_READ_ATTRIBUTES|SYNCHRONIZE,
+							GENERIC_READ|SYNCHRONIZE,
 							FILE_SHARE_READ|FILE_SHARE_WRITE,
 							fOption|FILE_SYNCHRONOUS_IO_ALERT|FILE_NO_INTERMEDIATE_BUFFERING);
+
+				if( Status != 0 )
+				{
+					Status = OpenFile_U(&hVolume,NULL,&usVolumeDevice,
+								FILE_READ_ATTRIBUTES|SYNCHRONIZE,
+								FILE_SHARE_READ|FILE_SHARE_WRITE,
+								fOption|FILE_SYNCHRONOUS_IO_ALERT|FILE_NO_INTERMEDIATE_BUFFERING);
+				}
 			}
 
 			if( Status == STATUS_FILE_IS_A_DIRECTORY )
@@ -370,6 +385,8 @@ ReadFileClusterInformaion_U(
 					((FS_CLUSTER_INFORMATION_BASIC *)Data)->Split             = pClusters->ExtentCount;
 					((FS_CLUSTER_INFORMATION_BASIC *)Data)->SectorsPerCluster = dwBytesPerCluster;
 					((FS_CLUSTER_INFORMATION_BASIC *)Data)->BytesPerSector    = dwBytesPerSector;
+					((FS_CLUSTER_INFORMATION_BASIC *)Data)->FsSectorBase.FileAreaOffset.QuadPart = pClusters->ClusterHeapBase.FileAreaOffset.QuadPart != -1 ? pClusters->ClusterHeapBase.FileAreaOffset.QuadPart : 0;
+					((FS_CLUSTER_INFORMATION_BASIC *)Data)->FsSectorBase.ValidFileAreaOffset = (pClusters->ClusterHeapBase.FileAreaOffset.QuadPart != -1);
 					if( cbData == sizeof(FS_CLUSTER_INFORMATION_BASIC_EX) )
 					{
 						if( pClusters->Extents[0].PhysicalOffsets )

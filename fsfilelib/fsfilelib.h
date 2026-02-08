@@ -391,6 +391,12 @@ typedef enum _FS_CLUSTER_INFORMATION_CLASS
 	ClusterInformationBasicWithPhysicalLocation,
 } FS_CLUSTER_INFORMATION_CLASS;
 
+typedef struct _FS_RETRIEVAL_POINTER_BASE
+{
+    LARGE_INTEGER FileAreaOffset; // sector offset to the first allocatable unit on the filesystem
+	BOOLEAN ValidFileAreaOffset;
+} FS_RETRIEVAL_POINTER_BASE;
+
 // Physical offset information
 typedef struct _FS_VOLUME_PHYSICAL_OFFSET
 {
@@ -412,6 +418,7 @@ typedef struct _FS_CLUSTER_INFORMATION_BASIC
     ULONG Split;
     ULONG SectorsPerCluster;
     ULONG BytesPerSector;
+	FS_RETRIEVAL_POINTER_BASE FsSectorBase;
 } FS_CLUSTER_INFORMATION_BASIC;
 
 typedef struct _FS_CLUSTER_INFORMATION_BASIC_EX
@@ -421,6 +428,7 @@ typedef struct _FS_CLUSTER_INFORMATION_BASIC_EX
     ULONG Split;
     ULONG SectorsPerCluster;
     ULONG BytesPerSector;
+	FS_RETRIEVAL_POINTER_BASE FsSectorBase;
 	ULONG DiskNumber;
 	LARGE_INTEGER PhysicalLocation;
 } FS_CLUSTER_INFORMATION_BASIC_EX;
@@ -438,7 +446,7 @@ typedef struct _FS_CLUSTER_INFORMATION
 {
     ULONG BytesPerCluster;
     ULONG BytesPerSector;
-    RETRIEVAL_POINTER_BASE ClusterHeapBase; // The volume-relative sector offset to the first allocatable unit on the file system.
+    FS_RETRIEVAL_POINTER_BASE ClusterHeapBase;
     ULONG ExtentCount;
     FS_CLUSTER_LOCATION Extents[ANYSIZE_ARRAY];
 } FS_CLUSTER_INFORMATION;

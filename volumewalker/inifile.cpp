@@ -272,7 +272,7 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 				WriteSectionString(pszSection,L"Volume",sz);
 				break;
 			}
-			case VOLUME_CONSOLE_VOLUMEFILELIST:
+			case VOLUME_CONSOLE_VOLUMEFILES:
 			{
 				SendMessage(hwndView,PM_SAVECONFIG,0,(LPARAM)&svc);
 				break;

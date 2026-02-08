@@ -1156,7 +1156,7 @@ public:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_FILESYSTEMSTATISTICS );
 				break;
 			case ID_FILE_SIMPLEFILELIST:
-				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_VOLUMEFILELIST );
+				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_VOLUMEFILES );
 				break;
 			case ID_HEXDUMP:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );

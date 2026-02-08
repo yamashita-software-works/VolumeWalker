@@ -1567,6 +1567,7 @@ BOOL GetDiskDriveLayoutEx(HANDLE hDisk,PDRIVE_LAYOUT_INFORMATION_EX *DriveLayout
 	DWORD cbReturned = 0;
 	DRIVE_LAYOUT_INFORMATION_EX *pDriveLayout = NULL;
     DWORD cbOutBufferSize = 0;
+	DWORD dwError = 0;
 
 	*DriveLayoutBuffer = NULL;
 
@@ -1576,7 +1577,10 @@ BOOL GetDiskDriveLayoutEx(HANDLE hDisk,PDRIVE_LAYOUT_INFORMATION_EX *DriveLayout
 	for(;;)
 	{
 		if( pDriveLayout == NULL )
+		{
+			dwError = ERROR_OUTOFMEMORY;
 			break;
+		}
 
 		bRet = DeviceIoControl(hDisk,
 						IOCTL_DISK_GET_DRIVE_LAYOUT_EX,
@@ -1584,7 +1588,7 @@ BOOL GetDiskDriveLayoutEx(HANDLE hDisk,PDRIVE_LAYOUT_INFORMATION_EX *DriveLayout
 						pDriveLayout,cbOutBufferSize,
 						&cbReturned,NULL);
 
-		DWORD dwError = GetLastError();
+		dwError = GetLastError();
 		if( !bRet && (dwError == ERROR_INSUFFICIENT_BUFFER || dwError == ERROR_MORE_DATA) )
 		{
 			StorageMemFree( pDriveLayout );
@@ -1592,8 +1596,8 @@ BOOL GetDiskDriveLayoutEx(HANDLE hDisk,PDRIVE_LAYOUT_INFORMATION_EX *DriveLayout
 			cbOutBufferSize += 4096;
 
 			pDriveLayout = (DRIVE_LAYOUT_INFORMATION_EX*)StorageMemAlloc( cbOutBufferSize );
-			if( pDriveLayout )
-				continue;
+
+			continue;
 		}
 		break;
 	}
@@ -1602,6 +1606,8 @@ BOOL GetDiskDriveLayoutEx(HANDLE hDisk,PDRIVE_LAYOUT_INFORMATION_EX *DriveLayout
 	{
 		*DriveLayoutBuffer = (DRIVE_LAYOUT_INFORMATION_EX*)StorageMemReAlloc(pDriveLayout,cbReturned);
 	}
+
+	SetLastError( dwError );
 
 	return ((*DriveLayoutBuffer) != NULL);
 }

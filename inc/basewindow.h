@@ -87,7 +87,7 @@ public:
 	static BOOL RegisterClass(HINSTANCE hInstance)
 	{
 		WNDCLASS wndClass;
-	    wndClass.style         = 0;
+	    wndClass.style         = CS_DBLCLKS;
 		wndClass.cbClsExtra    = 0;
 	    wndClass.cbWndExtra    = sizeof(LONG_PTR) + DLGWINDOWEXTRA;
 		wndClass.hCursor       = LoadCursor(NULL,IDC_ARROW);
@@ -129,10 +129,14 @@ class CDialogWindow : public CWindowHandle
 		LPARAM lParam;
 	} INITDLGPARAM;
 
+protected:
+	int m_dialogmode;
+
 public:
 	CDialogWindow()
 	{
 		m_hWnd = NULL;
+		m_dialogmode = -1;
 	}
 
 	virtual ~CDialogWindow()
@@ -174,6 +178,8 @@ public:
 
 	virtual INT_PTR DoModal(HWND hWnd,UINT_PTR idRes,LPARAM lParam=0,HINSTANCE hInstance=NULL)
 	{
+		m_dialogmode = 0;
+
 		if( hInstance == NULL )
 			hInstance = GETINSTANCE(hWnd);
 
@@ -185,6 +191,8 @@ public:
 
 	virtual HWND Create(HWND hWnd,UINT_PTR idRes,LPARAM lParam=0,HINSTANCE hInstance=NULL)
 	{
+		m_dialogmode = 1;
+
 		if( hInstance == NULL )
 			hInstance = GETINSTANCE(hWnd);
 

@@ -46,6 +46,7 @@ struct CClusterInformationDialog : public CDialogWindowEx
 {
 	HWND m_hWndList;
 	PCWSTR m_pszFileName;
+	PCWSTR m_pszPath;
 
 	CUILayout m_Layout;
 
@@ -124,7 +125,8 @@ struct CClusterInformationDialog : public CDialogWindowEx
 		open_mdi.Flags = 0;
 		open_mdi.Path = (PWSTR)pItem->pdlgParam->szVolumeName;
 		open_mdi.StartOffset.QuadPart = 
-					(pItem->pdlgParam->pClusterInfo->BytesPerCluster * pItem->Cluster.Location->Lcn.QuadPart);
+					(pItem->pdlgParam->pClusterInfo->BytesPerCluster * pItem->Cluster.Location->Lcn.QuadPart)+(pItem->pdlgParam->pClusterInfo->ClusterHeapBase.FileAreaOffset.QuadPart * pItem->pdlgParam->pClusterInfo->BytesPerSector);
+
 		SendMessage(GetWindow(m_hWnd,GW_OWNER),WM_OPEN_MDI_CHILDFRAME,MAKEWPARAM(VOLUME_CONSOLE_SIMPLEHEXDUMP,0),(LPARAM)&open_mdi);
 	}
 
@@ -177,6 +179,7 @@ struct CClusterInformationDialog : public CDialogWindowEx
 			PWSTR Text;
 			int fmt;
 		} Columns[] = {
+			{L"Offset",            LVCFMT_LEFT},
 			{L"VCN",               LVCFMT_RIGHT},
 			{L"LCN Start",         LVCFMT_RIGHT},
 			{L"LCN End",           LVCFMT_RIGHT},
@@ -266,6 +269,41 @@ struct CClusterInformationDialog : public CDialogWindowEx
 		return 0;
 	}
 
+	LRESULT	OnCunstomDraw(NMLVCUSTOMDRAW *pnmcd)
+	{
+		LRESULT lResult = 0;
+
+		if( pnmcd->nmcd.dwDrawStage == CDDS_PREPAINT )
+		{
+			return CDRF_NOTIFYITEMDRAW;
+		}
+
+		if( pnmcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT )
+		{
+			return CDRF_NOTIFYSUBITEMDRAW;
+		}
+
+		if( pnmcd->nmcd.dwDrawStage == (CDDS_ITEMPREPAINT|CDDS_SUBITEM) )
+		{
+			switch( pnmcd->iSubItem )
+			{
+				case 5: // Logical Offset
+				case 7: // Physical Offset
+				{
+					CI_LIST_ITEM *pItem = (CI_LIST_ITEM *)pnmcd->nmcd.lItemlParam;
+					if( pItem->pdlgParam->pClusterInfo->ClusterHeapBase.FileAreaOffset.QuadPart == -1 )
+						pnmcd->clrText = RGB(200,0,0);
+					break;
+				}
+				default:
+					pnmcd->clrText = ListView_GetTextColor(m_hWndList);
+					break;
+			}
+			return CDRF_NEWFONT;
+		}
+		return CDRF_DODEFAULT;
+	}
+
 	LRESULT OnGetDispInfo(NMLVDISPINFO* pnmlvdi)
 	{
 		if( pnmlvdi->item.mask & LVIF_IMAGE )
@@ -282,20 +320,23 @@ struct CClusterInformationDialog : public CDialogWindowEx
 
 			switch( pnmlvdi->item.iSubItem )
 			{
-				case 0: // VCN
+				case 0: // Cluster Offset
+					StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"%016I64X",pItem->Cluster.Location->Vcn.QuadPart * 4096); // todo:
+					break;
+				case 1: // VCN
 					if( pItem->Type == 0 )
 					{
 						StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->Cluster.Location->Vcn.QuadPart);
 					}
 					break;
-				case 1: // LCN Start
+				case 2: // LCN Start
 					if( pItem->Type == 0 )
 					{
 						if( pItem->Cluster.Location->Lcn.QuadPart != -1 )
 							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->Cluster.Location->Lcn.QuadPart);
 					}
 					break;
-				case 2: // LCN End
+				case 3: // LCN End
 					if( pItem->Type == 0 )
 					{
 						if( pItem->Cluster.Location->Lcn.QuadPart != -1 )
@@ -303,23 +344,24 @@ struct CClusterInformationDialog : public CDialogWindowEx
 								+ pItem->Cluster.Location->Count.QuadPart - 1);
 					}
 					break;
-				case 3: // Cluster Count
+				case 4: // Cluster Count
 					if( pItem->Type == 0 )
 					{
 						_CommaFormatString(pItem->Cluster.Location->Count.QuadPart,pnmlvdi->item.pszText);
 					}
 					break;
-				case 4: // Logical Offset
+				case 5: // Logical Offset
 					if( pItem->Type == 0 )
 					{
 						if( pItem->Cluster.Location->Lcn.QuadPart != -1 )
 						{
-							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->pdlgParam->pClusterInfo->BytesPerCluster
-								* pItem->Cluster.Location->Lcn.QuadPart);
+							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",
+								(pItem->pdlgParam->pClusterInfo->BytesPerCluster * pItem->Cluster.Location->Lcn.QuadPart)+(pItem->pdlgParam->pClusterInfo->ClusterHeapBase.FileAreaOffset.QuadPart * pItem->pdlgParam->pClusterInfo->BytesPerSector)
+								);
 						}
 					}
 					break;
-				case 5: // Physical Drive
+				case 6: // Physical Drive
 					if( pItem->Type == 0 )
 					{
 						if( pItem->Cluster.Location->PhysicalOffsets )
@@ -331,7 +373,7 @@ struct CClusterInformationDialog : public CDialogWindowEx
 							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"PhysicalDrive%d",pItem->Cluster.PhysicalOffset->DiskNumber);
 					}
 					break;
-				case 6: // Physical Offset
+				case 7: // Physical Offset
 					if( pItem->Type == 0 )
 					{
 						if( pItem->Cluster.Location->PhysicalOffsets )
@@ -343,7 +385,7 @@ struct CClusterInformationDialog : public CDialogWindowEx
 							StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->Cluster.PhysicalOffset->Offset);
 					}
 					break;
-				case 7: // Extent Size
+				case 8: // Extent Size
 					StrFormatByteSizeW((pItem->pdlgParam->pClusterInfo->BytesPerCluster * pItem->Cluster.Location->Count.QuadPart),pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax);
 					break;
 			}
@@ -372,6 +414,9 @@ struct CClusterInformationDialog : public CDialogWindowEx
 	{
 		switch( ((NMHDR *)lParam)->code )
 		{
+			case NM_CUSTOMDRAW:
+				SetWindowLongPtr(hDlg,DWLP_MSGRESULT,(LONG_PTR)OnCunstomDraw((LPNMLVCUSTOMDRAW)lParam));
+				return TRUE;
 			case LVN_GETDISPINFO:
 				OnGetDispInfo((NMLVDISPINFO*)lParam);
 				return TRUE;
@@ -643,39 +688,58 @@ FileClusterInformationDialog(
 {
 	HRESULT hr;
 
-	WCHAR *pszStreamName = NULL;
-	DWORD cchStreamName = 0;
+	DWORD FileSystemFlags = 0;
+	HANDLE hFile;
+	NTSTATUS Status;
+	if( (Status = OpenFileEx_W(&hFile,pszFilePath,FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_OPEN_FOR_BACKUP_INTENT)) == 0 )
+	{
+		GetVolumeInformationByHandleW(hFile,nullptr,0,nullptr,nullptr,&FileSystemFlags,nullptr,0);
 
-	hr = FileSelectStreamDialog(hWnd,pszFilePath,&pszStreamName,&cchStreamName,FSSDF_MAKEFULLPATH);
-
-	if( hr == S_FALSE )
-	{
-		return S_FALSE; // user cancel
+		CloseHandle(hFile);
 	}
-	else if( hr == S_SSD_NO_STREAM )
+	else
 	{
-		;
-	}
-	else if( hr == S_SSD_DEFAULT_STREAM_ONLY )
-	{
-		;
-	}
-	else if( FAILED(hr) )
-	{
+		hr = HRESULT_FROM_WIN32( NtStatusToDosError(Status) );
 		_ErrorMessageBoxEx(hWnd,0,g_pszTitle,NULL,hr,MB_OK|MB_ICONSTOP);
 		return hr;
 	}
 
-	if( pszStreamName )
+	WCHAR *pszStreamName = NULL;
+	DWORD cchStreamName = 0;
+
+	if(FILE_NAMED_STREAMS & FileSystemFlags)
 	{
-		// Remove stream type string (e.g. "::$DATA")
-		WCHAR *p;
-		p = wcsrchr(pszStreamName,L':');
-		if( p )
+		hr = FileSelectStreamDialog(hWnd,pszFilePath,&pszStreamName,&cchStreamName,FSSDF_MAKEFULLPATH);
+
+		if( hr == S_FALSE )
 		{
-			*p = L'\0';
-			if( *(p - 1) == L':' )
-				*(--p) = L'\0';
+			return S_FALSE; // user cancel
+		}
+		else if( hr == S_SSD_NO_STREAM )
+		{
+			;
+		}
+		else if( hr == S_SSD_DEFAULT_STREAM_ONLY )
+		{
+			;
+		}
+		else if( FAILED(hr) )
+		{
+			_ErrorMessageBoxEx(hWnd,0,g_pszTitle,NULL,hr,MB_OK|MB_ICONSTOP);
+			return hr;
+		}
+
+		if( pszStreamName )
+		{
+			// Remove stream type string (e.g. "::$DATA")
+			WCHAR *p;
+			p = wcsrchr(pszStreamName,L':');
+			if( p )
+			{
+				*p = L'\0';
+				if( *(p - 1) == L':' )
+					*(--p) = L'\0';
+			}
 		}
 	}
 
@@ -720,6 +784,7 @@ FileClusterInformationDialog(
 			pszName++;
 
 		dlg->m_pszFileName = pszName;
+		dlg->m_pszPath = (pszStreamName ? pszStreamName : pszFilePath);
 
 		dlg->DoModal(hWnd,IDD_FILE_CLUSTER_LAYOUT,(LPARAM)pParam,_GetResourceInstance());
 

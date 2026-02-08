@@ -42,7 +42,7 @@ PTSTR   _MemAllocStringCatDebug(PCTSTR psz1,PCTSTR psz2,LPSTR File,int Line);
 
 #if _USE_INTERNAL_MEMORY_DEBUG
 #define AllocMemory(cb)         _MemAllocZeroDebug(cb,(LPSTR)__FILE__,__LINE__)
-#define FreeMemory(p)           _MemFree(p)
+#define FreeMemory(p)           if(p) { _MemFree(p); }
 #define ReallocMemory(pv,cb)    _MemReAllocDebug(pv,cb,(LPSTR)__FILE__,__LINE__)
 #define ReAllocateHeap(pv,cb)   _MemReAllocDebug(pv,cb,(LPSTR)__FILE__,__LINE__)
 #define AllocStringBufferCb(cb) ((PWSTR)_MemAllocZeroDebug(cb,(LPSTR)__FILE__,__LINE__))

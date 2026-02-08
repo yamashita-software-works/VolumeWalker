@@ -108,7 +108,7 @@ public:
 
 		switch( nView )
 		{
-			case VOLUME_CONSOLE_VOLUMEFILELIST:
+			case VOLUME_CONSOLE_VOLUMEFILES:
 			{
 #if _ENABLE_FILE_MANAGER || _ENABLE_FILELIST_DROPFILE || _ENABLE_FILELIST_DRAGFILE
 				pNew = GetOrAllocWndObjct<CFileManagerPage>(nView);
@@ -211,7 +211,7 @@ public:
 
 		switch( Path->ViewType )
 		{
-			case VOLUME_CONSOLE_VOLUMEFILELIST:
+			case VOLUME_CONSOLE_VOLUMEFILES:
 				nPrevView = m_nView;
 				pPrev = _SelectPage( Path, bCreate );
 				if( bCreate || ((Path->Flags & 0x8)== 0) )
@@ -236,14 +236,14 @@ public:
 					UpdateData(Path);
 				}
 				break;
-			case VOLUME_CONSOLE_FOLDERS:
-				nPrevView = m_nView;
-				pPrev = _SelectPage( Path, bCreate );
-				if( bCreate || ((Path->Flags & 0x8)== 0) )
-				{
-					UpdateData(Path);
-				}
-				break;
+//			case VOLUME_CONSOLE_FOLDERS:
+//				nPrevView = m_nView;
+//				pPrev = _SelectPage( Path, bCreate );
+//				if( bCreate || ((Path->Flags & 0x8)== 0) )
+//				{
+//					UpdateData(Path);
+//				}
+//				break;
 #endif
 			default:
 				ASSERT(FALSE);

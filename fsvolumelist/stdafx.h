@@ -86,15 +86,14 @@ HWND CreateDiskPerformanceWindow(HWND hWndParent);
 HWND CreateVolumeMountPointWindow(HWND hWndParent);
 HWND CreateEncryptionVolumeWindow(HWND hWndParent);
 HWND CreateMountedDriveWindow(HWND hWndParent);
+HWND CreateVDSConsoleWindow(HWND hWndParent);
+HWND CreateScratchPadWindow(HWND hWndParent);
 
 inline VOID _DrawFocusFrame(HWND hWnd,HDC hdc,RECT *prc,BOOL bDrawFocus=FALSE)
 {
 	const COLORREF crActiveFrame = RGB(80,110,190);
-#if 1
-	const COLORREF crDarkModeActiveFrame = RGB(172,172,172);
-#else
-	const COLORREF crDarkModeActiveFrame = RGB(255,255,0);
-#endif
+//	const COLORREF crDarkModeActiveFrame = RGB(172,172,172);
+	const COLORREF crDarkModeActiveFrame = RGB(96,205,255);
 	DrawFocusFrame(hWnd,hdc,prc,bDrawFocus,
 			_IsDarkModeEnabled() ? crDarkModeActiveFrame : crActiveFrame);
 }
@@ -181,6 +180,21 @@ enum {
 	COLUMN_PersistentVolumeID,
 	COLUMN_MaxItem,
 	COLUMN_MaxCount=COLUMN_MaxItem,
+};
+
+enum {
+	COLUMN_VDS_None=0,
+    COLUMN_VDS_Name,
+    COLUMN_VDS_DiskAddress,
+    COLUMN_VDS_FriendlyName,
+    COLUMN_VDS_AdaptorName,
+    COLUMN_VDS_DevicePath,
+	COLUMN_VDS_PartitionStyle,
+	COLUMN_VDS_Status,
+	COLUMN_VDS_Size,
+	COLUMN_VDS_BusType,
+	COLUMN_VDS_MaxItem,
+	COLUMN_VDS_MaxCount=COLUMN_VDS_MaxItem,
 };
 
 extern const COLUMN_NAME *GetColumnNameTable();

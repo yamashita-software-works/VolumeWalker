@@ -113,3 +113,167 @@ HFONT GetIconFont()
 	hFontIcon = CreateFontIndirect(&lf);
 	return hFontIcon;
 }
+
+FS_CLUSTER_INFORMATION *_CreateClusterInformationBuffer(PCWSTR pszFilePath)
+{
+	NTSTATUS Status;
+	UNICODE_STRING usFileName;
+	DWORD dwError;
+
+	if( IsRootDirectory_W(pszFilePath) )
+	{
+		usFileName.Buffer =  L"";
+	}
+	else
+	{
+		SplitPathFileName_W(pszFilePath,NULL,&usFileName);
+	}
+
+	PWSTR Path;
+	Path = DuplicateString(pszFilePath);
+	if( Path == NULL )
+	{
+		SetLastError(ERROR_OUTOFMEMORY);
+		return NULL;
+	}
+
+	FS_CLUSTER_INFORMATION *pci = NULL;
+	PWSTR RootDirectory=NULL,RootRelativePath=NULL;
+	ULONG cchRootDirectory=0,cchRootRelativePath=0;
+	PWSTR FileName = NULL;
+	RemoveFileSpec(Path);
+	SplitRootPath_W(Path,&RootDirectory,&cchRootDirectory,&RootRelativePath,&cchRootRelativePath);
+	FreeMemory(Path);
+
+	if( RootDirectory && RootRelativePath )
+	{
+		HANDLE hRootDirectory = NULL;
+		if( OpenRootDirectory(RootDirectory,0,&hRootDirectory) != STATUS_SUCCESS )
+		{
+			//
+			// The Root directory open failed. If so try open directory using
+			// full path string without splitting the volume and root relative path.
+			//
+			FreeMemory(RootRelativePath);
+			RootRelativePath = NULL;
+			hRootDirectory = NULL;
+		}
+	
+		HANDLE hCurDir;
+		if( (Status = OpenFile_W(&hCurDir,hRootDirectory,RootRelativePath,FILE_READ_ATTRIBUTES|SYNCHRONIZE,
+							FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE)) == STATUS_SUCCESS )
+		{
+			HANDLE hFile;
+			ULONG DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
+			ULONG Option = FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT|FILE_SYNCHRONOUS_IO_NONALERT;
+			if( (Status = OpenFile_W(&hFile,hCurDir,usFileName.Buffer,DesiredAccess,FILE_SHARE_READ|FILE_SHARE_WRITE,Option)) == STATUS_SUCCESS )
+			{
+				dwError = ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationAll,&pci,sizeof(pci));
+	
+				CloseHandle(hFile);
+			}
+			else
+			{
+				dwError = NtStatusToDosError(Status);
+			}
+	
+			CloseHandle(hCurDir);
+		}
+		else
+		{
+			dwError = NtStatusToDosError(Status);
+		}
+
+		if( hRootDirectory )
+			CloseHandle(hRootDirectory);
+	}
+	else
+	{
+		dwError = ERROR_OUTOFMEMORY;
+	}
+
+	FreeMemory(RootRelativePath);
+	FreeMemory(RootDirectory);
+
+	SetLastError(dwError);
+
+	return pci;
+}
+
+
+HRESULT
+GetAlternateStream(
+	PCWSTR pszFilePath,
+	VFS_FILE_STREAM_INFORMATION **pAltStmNames,
+	INT *pAltStmNameCount
+	)
+{
+	NTSTATUS Status;
+	HRESULT hr;
+	DWORD dwMatched = 0;
+	HANDLE hFile;
+	ULONG DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
+	ULONG Option = FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT|FILE_SYNCHRONOUS_IO_NONALERT;
+
+	if( (Status = OpenFileEx_W(&hFile,pszFilePath,DesiredAccess,FILE_SHARE_READ|FILE_SHARE_WRITE,Option)) == STATUS_SUCCESS )
+	{
+		INT AltStreamCount = 0;
+		FILE_STREAM_INFORMATION *StreamInformation;
+
+		Status = GetAlternateStreamInformation(hFile,&AltStreamCount,&StreamInformation);
+
+		if( Status == STATUS_SUCCESS )
+		{
+			if( AltStreamCount > 0 )
+			{
+				ULONG cbNameBuffer = GetAlternateStreamNameTotalLength(StreamInformation);
+
+				ULONG cbBuffer = (sizeof(VFS_FILE_STREAM_INFORMATION) * AltStreamCount) + cbNameBuffer + sizeof(WCHAR);
+				PBYTE pb;
+				pb = (PBYTE)CoTaskMemAlloc( cbBuffer );
+				ZeroMemory(pb,cbBuffer);
+
+				FILE_STREAM_INFORMATION *p = StreamInformation;
+				int iIndex = 0;
+				VFS_FILE_STREAM_INFORMATION *pAltName = (VFS_FILE_STREAM_INFORMATION *)pb;
+				WCHAR *pNameStorePos = (WCHAR *)(pb + (sizeof(VFS_FILE_STREAM_INFORMATION) * AltStreamCount));
+				do
+				{
+					pAltName[iIndex].StreamSize = p->StreamSize;
+					pAltName[iIndex].StreamAllocationSize = p->StreamAllocationSize;
+					memcpy(pNameStorePos,p->StreamName,p->StreamNameLength);
+					pAltName[iIndex].StreamName = pNameStorePos;
+					pAltName[iIndex].Order = iIndex;
+					iIndex++;
+
+					pNameStorePos += (WCHAR_LENGTH( p->StreamNameLength) + 1);
+
+					if( p->NextEntryOffset == 0 )
+						break;
+
+					p = (FILE_STREAM_INFORMATION *)((ULONG_PTR)p + p->NextEntryOffset);
+				}
+				while( p != NULL );
+
+				*pAltStmNames = pAltName;
+				*pAltStmNameCount = iIndex;
+			}
+
+			FreeAlternateStreamInformation(StreamInformation);
+
+			hr = S_OK;
+		}
+		else
+		{
+			hr = HRESULT_FROM_WIN32( NtStatusToDosError(Status) );
+		}
+
+		CloseHandle(hFile);
+	}
+	else
+	{
+		hr = HRESULT_FROM_WIN32( NtStatusToDosError(Status) );
+	}
+
+	return hr;
+}
