@@ -210,10 +210,16 @@ int parse_free_string_token(wchar_t *token_ptr_array[],int token_ptr_array_count
 	return 0;
 }
 
+typedef struct _SCPDFONT {
+	int PointSize;
+	BYTE CharSet;
+	WCHAR FaceName[LF_FACESIZE];
+} SCPDFONT;
+
 inline
 BOOL
 GetScratchPadFont(
-	LOGFONT& lf
+	SCPDFONT& sf
 	)
 {
 	WCHAR wszBuffer[MAX_PATH];
@@ -233,20 +239,20 @@ GetScratchPadFont(
 
 		if( TokenArray[0] )
 		{
-			StringCchCopy(lf.lfFaceName,LF_FACESIZE,TokenArray[0]);
+			StringCchCopy(sf.FaceName,LF_FACESIZE,TokenArray[0]);
 		}
 
 		if( TokenArray[1] )
 		{
 			iPointSize = _wtoi(TokenArray[1]);
 			HDC hdc = GetWindowDC(NULL);
-			lf.lfHeight = -MulDiv(iPointSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+			sf.PointSize = iPointSize;
 			ReleaseDC(NULL,hdc);
 		}
 
 		if( TokenArray[2] )
 		{
-			lf.lfCharSet = (BYTE)_wtoi(TokenArray[2]);
+			sf.CharSet = (BYTE)_wtoi(TokenArray[2]);
 		}
 
 #if 0
@@ -267,7 +273,6 @@ GetScratchPadFont(
 class CScratchPadPage :	public CPageWndBase
 {
 	HWND m_hWndEdit;
-	HFONT m_hFont;
 
 public:
 	CScratchPadPage()
@@ -284,18 +289,23 @@ public:
 
 		m_hWndEdit = CreateRichEdit(m_hWnd,0,0,0,0,GetModuleHandle(NULL));
 
-		LOGFONT lf = {0};
-		if( !GetScratchPadFont(lf) )
+		SCPDFONT sf = {0};
+		if( !GetScratchPadFont(sf) )
 		{
-			HDC hdc = GetWindowDC(m_hWnd);
-			lf.lfHeight = -MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72);
-			ReleaseDC(m_hWnd,hdc);
-			lf.lfCharSet = DEFAULT_CHARSET;
-			StringCchCopy(lf.lfFaceName,_countof(lf.lfFaceName),L"Consolas");
+			sf.PointSize = 9;
+			sf.CharSet = ANSI_CHARSET;
+			StringCchCopy(sf.FaceName,_countof(sf.FaceName),L"Consolas");
 		}
-		m_hFont = CreateFontIndirect( &lf );
 
-		SendMessage(m_hWndEdit,WM_SETFONT,(WPARAM)m_hFont,0);
+		HDC hdc = GetWindowDC(m_hWnd);
+		CHARFORMAT2 cf;
+		ZeroMemory(&cf,sizeof(cf));
+		cf.cbSize = sizeof(cf);
+		cf.dwMask = CFM_FACE|CFM_SIZE|CFM_CHARSET;
+		cf.yHeight = sf.PointSize * 20;
+		cf.bCharSet = sf.CharSet;
+		StringCchCopy(cf.szFaceName,ARRAYSIZE(cf.szFaceName),sf.FaceName);
+		SendMessage(m_hWndEdit,EM_SETCHARFORMAT,SCF_ALL,(LPARAM)&cf);
 
 		PWSTR pszDocText=NULL;
 		if( LoadScratchPadDocument(&pszDocText) )
@@ -335,12 +345,6 @@ public:
 	LRESULT OnDestroy(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		SaveDocument();
-
-		if( m_hFont ) {
-			DeleteObject(m_hFont);
-			m_hFont = NULL;
-		}
-
 		return 0;
 	}
 

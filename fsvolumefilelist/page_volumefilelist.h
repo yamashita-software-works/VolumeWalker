@@ -571,7 +571,9 @@ public:
 			switch( (int)(hi.lParam) )
 			{
 				case COLUMN_PhysicalDriveOffset:
-					if( !pItem->pFI->ValidFileAreaOffset )
+					if( pItem->pFI->PhysicalDriveOffset.QuadPart == 0 || pItem->pFI->PhysicalDriveOffset.QuadPart == -1 )
+						;
+					else if( !pItem->pFI->ValidFileAreaOffset )
 						pnmlvcd->clrText = RGB(210,0,0);
 					break;
 				default:
@@ -1416,15 +1418,6 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"Open Bash");
 			AppendMenu(hMenu,MF_STRING,0,NULL);
 			AppendMenu(hMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream By LCN...");
-#if _ENABLE_FILELIST_SUB_PANE
-			AppendMenu(hMenu,MF_STRING,0,NULL);
-			AppendMenu(hMenu,MF_STRING,ID_VIEW_SELECTVOLUMEPANE,    L"Volume Selector");
-			AppendMenu(hMenu,MF_STRING,ID_VIEW_PROPERTYPANE,        L"Properties");
-#endif
-#if _ENABLE_PAGE_CHANGER
-			AppendMenu(hMenu,MF_STRING,0,NULL);
-			AppendMenu(hMenu,MF_STRING,ID_CHOOSE_VOLUME,            L"Select Volume");
-#endif
 		}
 		return 0;
 	}
@@ -2109,33 +2102,41 @@ public:
 		else
 			RootDirectory = DuplicateString(m_pszCurDir);
 
-		if( pFI->AllocationSize.QuadPart != 0 )
+		if( m_bFillCostlyData )
 		{
-			if( m_bFillCostlyData )
+			FS_CLUSTER_INFORMATION_BASIC_EX clusterex = {0};
+			if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
 			{
-				FS_CLUSTER_INFORMATION_BASIC_EX clusterex = {0};
-				if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
-				{
-					pFI->FirstLCN = clusterex.FirstLcn;
-					pFI->PhysicalDriveOffset = clusterex.PhysicalLocation;
-					pFI->PhysicalDriveNumber = clusterex.DiskNumber;
-					pFI->FileAreaOffset      = clusterex.FsSectorBase.FileAreaOffset;
-					pFI->ValidFileAreaOffset = clusterex.FsSectorBase.ValidFileAreaOffset;
-					if( !pFI->ValidFileAreaOffset && 
-						(wcsicmp(this->m_FileSystemName,L"NTFS") == 0 || wcsicmp(this->m_FileSystemName,L"ReFS") == 0) )
-					{
-						pFI->ValidFileAreaOffset = true;
-					}
-				}
+				pFI->FirstLCN            = clusterex.FirstLcn;
+				pFI->PhysicalDriveOffset = clusterex.PhysicalLocation;
+				pFI->PhysicalDriveNumber = clusterex.DiskNumber;
+				pFI->FileAreaOffset      = clusterex.FsSectorBase.FileAreaOffset;
+				pFI->ValidFileAreaOffset = clusterex.FsSectorBase.ValidFileAreaOffset;
+			}
+			else
+			{
+				pFI->FirstLCN.QuadPart            = -1;
+				pFI->PhysicalDriveOffset.QuadPart = -1;
+				pFI->PhysicalDriveNumber          = -1;
+				pFI->FileAreaOffset.QuadPart      = -1;
+				pFI->ValidFileAreaOffset          = FALSE;
+			}
+
+			if( !pFI->ValidFileAreaOffset && 
+				(wcsicmp(this->m_FileSystemName,L"NTFS") == 0 || wcsicmp(this->m_FileSystemName,L"ReFS") == 0) )
+			{
+				pFI->ValidFileAreaOffset = true;
 			}
 		}
-		else
+
+		if( pFI->AllocationSize.QuadPart != 0 )
 		{
 			if( (pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 )
 			{
 				pFI->Wof = (GetWofInformation(hFile,NULL,NULL) == S_OK);
 			}
 		}
+
 		FreeMemory(RootDirectory);
 	}
 
@@ -2296,32 +2297,28 @@ public:
 				}
 			}
 
-//			if( pFI->AllocationSize.QuadPart != 0 )
+			FS_CLUSTER_INFORMATION_BASIC_EX clusterex = {0};
+			if( ReadFileClusterInformaion(NULL,hRootDirectory,RootDir,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
 			{
-				FS_CLUSTER_INFORMATION_BASIC_EX clusterex = {0};
-				if( ReadFileClusterInformaion(NULL,hRootDirectory,RootDir,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
-				{
-					pFI->FirstLCN = clusterex.FirstLcn;
-					pFI->PhysicalDriveOffset = clusterex.PhysicalLocation;
-					pFI->PhysicalDriveNumber = clusterex.DiskNumber;
-					pFI->FileAreaOffset = clusterex.FsSectorBase.FileAreaOffset;
-					pFI->ValidFileAreaOffset = clusterex.FsSectorBase.ValidFileAreaOffset;
+				pFI->FirstLCN            = clusterex.FirstLcn;
+				pFI->PhysicalDriveOffset = clusterex.PhysicalLocation;
+				pFI->PhysicalDriveNumber = clusterex.DiskNumber;
+				pFI->FileAreaOffset      = clusterex.FsSectorBase.FileAreaOffset;
+				pFI->ValidFileAreaOffset = clusterex.FsSectorBase.ValidFileAreaOffset;
+			}
+			else
+			{
+				pFI->FirstLCN.QuadPart            = -1;
+				pFI->PhysicalDriveOffset.QuadPart = -1;
+				pFI->PhysicalDriveNumber          = -1;
+				pFI->FileAreaOffset.QuadPart      = -1;
+				pFI->ValidFileAreaOffset          = FALSE;
+			}
 
-					if( pFI->AllocationSize.QuadPart == 0 && pFI->EndOfFile.QuadPart == 0 )
-					{
-						pFI->AllocationSize.QuadPart = pFI->EndOfFile.QuadPart = clusterex.SectorsPerCluster * clusterex.FirstCount;
-					}
-				}
-				else
-				{
-					pFI->FirstLCN.QuadPart = -1;
-					pFI->PhysicalDriveOffset.QuadPart = -1;
-					pFI->PhysicalDriveNumber = -1;
-					pFI->FileAreaOffset.QuadPart = -1;
-					pFI->ValidFileAreaOffset = FALSE;
-					pFI->EndOfFile.QuadPart = -1;
-					pFI->AllocationSize.QuadPart = -1;
-				}
+			if( !pFI->ValidFileAreaOffset && 
+				(wcsicmp(this->m_FileSystemName,L"NTFS") == 0 || wcsicmp(this->m_FileSystemName,L"ReFS") == 0) )
+			{
+				pFI->AllocationSize.QuadPart = pFI->EndOfFile.QuadPart = clusterex.SectorsPerCluster * clusterex.FirstCount;
 			}
 
 			DWORD dwFileSystemFlags;
@@ -2843,19 +2840,7 @@ public:
 
 			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
 		}
-#if _ENABLE_FILELIST_SUB_PANE
-		if( 1 )
-		{
-			SELECT_ITEM sel = {0};
-			sel.ViewType  = GetConsoleId();
-			sel.pszPath   = this->m_pszCurDir;
-			sel.pszCurDir = NULL;
-			sel.pszName   = this->m_pszVolumeName;
-			sel.pszVolume = this->m_pszVolumeDevice;
 
-			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_UPDATE_SUBPANE,(LPARAM)&sel);
-		}
-#endif
 		_SafeMemFree(pszPreviousVolumeDevice);
 
 		return hr;

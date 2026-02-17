@@ -1,3 +1,9 @@
+### 0.1.46.0
+
+- Scratch Padウィンドウの表示を改善（フォントの設定方法を変更）。
+
+- Volume Files BrowserウィンドウのPhysical Offset関係の処理を調整。
+
 ### 0.1.45.0
 
 - VDS Consoleウィンドウを追加。
