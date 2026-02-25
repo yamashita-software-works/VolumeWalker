@@ -28,6 +28,7 @@ typedef struct _VOLUME_DEVICE_INFORMATION
 		ULONG ObjectId : 1;
 		ULONG ControlInformation : 1;
 		ULONG SectorSizeInformation : 1;
+		ULONG PersistentVolumeState : 1;
 	} State;
 
 	// FILE_FS_VOLUME_INFORMATION
@@ -85,6 +86,8 @@ typedef struct _VOLUME_DEVICE_INFORMATION
     CHAR RecognitionFileSystem[9];
 
 	PVOID VirtualHardDiskInformation;                      // Pointer to Virtual Hard Disk Information Buffer
+
+	ULONG PersistentVolumeState;
 
 	union
 	{

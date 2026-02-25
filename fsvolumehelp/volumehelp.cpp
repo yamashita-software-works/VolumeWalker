@@ -135,7 +135,7 @@ FS_VOLUME_ATTIBUTE_DESCRIPTION attrDesc[] = {
 	_FS_VOLUME_ATTIBUTE_DESCRIPTION( FILE_SUPPORTS_BLOCK_REFCOUNTING ),
 };
 
-BOOL GetVolumeAttributeFlag(int iIndex,DWORD *pdwFlag)
+BOOL WINAPI GetVolumeAttributeFlag(int iIndex,DWORD *pdwFlag)
 {
 	if( iIndex < 0 || iIndex >= _countof(attrDesc) )
 		return FALSE;
@@ -157,6 +157,77 @@ int	WINAPI GetVolumeAttributeString(int iIndex,PWSTR psz,DWORD cch)
 		return 0;
 
 	StringCchCopy(psz,cch,attrDesc[iIndex].Name);
+
+	return (int)wcslen(psz);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+typedef struct _FS_PERSISTENT_VOLUME_STATE_DESCRIPTION
+{
+	ULONG Flag;
+	PCWSTR Name;
+	PCWSTR Description; // Reserved
+} FS_PERSISTENT_VOLUME_STATE_DESCRIPTION;
+
+#define PERSISTENT_VOLUME_STATE_SHORT_NAME_CREATION_DISABLED        (0x00000001)
+#define PERSISTENT_VOLUME_STATE_VOLUME_SCRUB_DISABLED               (0x00000002) // _WIN32_WINNT_WIN8
+#define PERSISTENT_VOLUME_STATE_GLOBAL_METADATA_NO_SEEK_PENALTY     (0x00000004) // _WIN32_WINNT_WINBLUE
+#define PERSISTENT_VOLUME_STATE_LOCAL_METADATA_NO_SEEK_PENALTY      (0x00000008) // _WIN32_WINNT_WINBLUE
+#define PERSISTENT_VOLUME_STATE_NO_HEAT_GATHERING                   (0x00000010) // _WIN32_WINNT_WINBLUE
+#define PERSISTENT_VOLUME_STATE_CONTAINS_BACKING_WIM                (0x00000020) // _WIN32_WINNT_WIN7
+#define PERSISTENT_VOLUME_STATE_BACKED_BY_WIM                       (0x00000040) // _WIN32_WINNT_WIN7
+#define PERSISTENT_VOLUME_STATE_NO_WRITE_AUTO_TIERING               (0x00000080) // _WIN32_WINNT_WINTHRESHOLD
+#define PERSISTENT_VOLUME_STATE_TXF_DISABLED                        (0x00000100) // _WIN32_WINNT_WINTHRESHOLD
+#define PERSISTENT_VOLUME_STATE_REALLOCATE_ALL_DATA_WRITES          (0x00000200) // NTDDI_WIN10_RS5
+#define PERSISTENT_VOLUME_STATE_CHKDSK_RAN_ONCE                     (0x00000400) // NTDDI_WIN10_MN
+#define PERSISTENT_VOLUME_STATE_MODIFIED_BY_CHKDSK                  (0x00000800) // NTDDI_WIN10_MN
+#define PERSISTENT_VOLUME_STATE_DAX_FORMATTED                       (0x00001000) // NTDDI_WIN10_MN
+#define PERSISTENT_VOLUME_STATE_DEV_VOLUME                          (0x00002000) // NTDDI_WIN11_ZN
+#define PERSISTENT_VOLUME_STATE_TRUSTED_VOLUME                      (0x00004000) // NTDDI_WIN11_ZN
+
+#define _FS_PERSISTENT_VOLUME_STATE_DESCRIPTION(f,d)  { f, L#f, d }
+
+FS_PERSISTENT_VOLUME_STATE_DESCRIPTION persistentVolumeState[] = {
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_SHORT_NAME_CREATION_DISABLED,    L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_VOLUME_SCRUB_DISABLED,           L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_GLOBAL_METADATA_NO_SEEK_PENALTY, L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_LOCAL_METADATA_NO_SEEK_PENALTY,  L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_NO_HEAT_GATHERING,               L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_CONTAINS_BACKING_WIM,            L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_BACKED_BY_WIM,                   L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_NO_WRITE_AUTO_TIERING,           L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_TXF_DISABLED,                    L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_REALLOCATE_ALL_DATA_WRITES,      L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_CHKDSK_RAN_ONCE,                 L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_MODIFIED_BY_CHKDSK,              L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_DAX_FORMATTED,                   L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_DEV_VOLUME,                      L"" ),
+	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_TRUSTED_VOLUME,                  L"" ),
+};
+
+BOOL GetPersistentVolumeStateFlag(int iIndex,DWORD *pdwFlag)
+{
+	if( iIndex < 0 || iIndex >= _countof(persistentVolumeState) )
+		return FALSE;
+
+	if( pdwFlag == NULL )
+		return FALSE;
+
+	*pdwFlag = persistentVolumeState[iIndex].Flag;
+
+	return TRUE;
+}
+
+int	WINAPI GetPersistentVolumeStateString(int iIndex,PWSTR psz,DWORD cch)
+{
+	if( iIndex < 0 || iIndex >= _countof(persistentVolumeState) )
+		return 0;
+
+	if( psz == NULL )
+		return 0;
+
+	StringCchCopy(psz,cch,persistentVolumeState[iIndex].Name);
 
 	return (int)wcslen(psz);
 }
@@ -1280,6 +1351,34 @@ LONG GetRetrievalPointerBase(HANDLE hVolume,RETRIEVAL_POINTER_BASE *RetrievalPoi
 	return bSuccess ? ERROR_SUCCESS : GetLastError();
 }
 
+LONG GetPersistentVolumeInformation(HANDLE hVolume,PULONG VolumeFlags)
+{
+	BOOL bSuccess;
+	DWORD dwBytesReturned;
+	FILE_FS_PERSISTENT_VOLUME_INFORMATION PersistVolInfo = { 0 };
+
+    PersistVolInfo.VolumeFlags = 0;      // Return Flags
+    PersistVolInfo.FlagMask    = 0x4FFF; // PERSISTENT_VOLUME_STATE_*
+    PersistVolInfo.Version     = 1;      // Version 1
+    PersistVolInfo.Reserved    = 0;
+
+	bSuccess = DeviceIoControl(hVolume, 
+						FSCTL_QUERY_PERSISTENT_VOLUME_STATE, 
+						&PersistVolInfo,
+						sizeof(FILE_FS_PERSISTENT_VOLUME_INFORMATION),
+						&PersistVolInfo,
+						sizeof(FILE_FS_PERSISTENT_VOLUME_INFORMATION),
+						&dwBytesReturned,
+						NULL);
+
+	if( bSuccess && VolumeFlags )
+	{
+		*VolumeFlags = PersistVolInfo.VolumeFlags;
+	}
+
+	return bSuccess ? ERROR_SUCCESS : GetLastError();
+}
+
 BOOL
 GetDiskExtents(
 	HANDLE hVolume,
@@ -1838,6 +1937,11 @@ CreateVolumeInformationBuffer(
 			{
 				if( GetReFSVolumeData(hRootDirectory,&pVolumeInfo->refs.data) == 0 )
 					pVolumeInfo->State.RefsData = TRUE;
+			}
+
+			if( GetPersistentVolumeInformation(hRootDirectory,&pVolumeInfo->PersistentVolumeState) == 0 )
+			{
+				pVolumeInfo->State.PersistentVolumeState = TRUE;
 			}
 		}
 

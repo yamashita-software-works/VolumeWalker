@@ -32,6 +32,8 @@ EXPORTS
 	VolumeMemFree
 	VolumeMemAlloc
 	VolumeDuplicateString
+	GetPersistentVolumeStateFlag
+	GetPersistentVolumeStateString
 
 	;
 	; Utility

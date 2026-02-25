@@ -25,12 +25,6 @@ MountdevQueryUniqueId(
     PMOUNTDEV_UNIQUE_ID *pUniqueId
     );
 
-BOOL
-GetVolumeAttributeFlag(
-    int iIndex,
-    DWORD *pdwFlag
-    );
-
 int
 GetDeviceTypeString(
     DWORD DeviceType,
@@ -192,9 +186,9 @@ StorageDetectSectorSize(
 ULONG
 WINAPI
 StorageMediumProductTypeDescriptor(
-	HANDLE hDevice,
-	LPDWORD pdwMediumProductType
-	);
+    HANDLE hDevice,
+    LPDWORD pdwMediumProductType
+    );
 
 ULONG
 WINAPI
@@ -206,48 +200,48 @@ StorageGetMediaTypes(
 ULONG
 WINAPI
 StorageGetDeviceCapacity(
-	HANDLE hDevice,
-	PSTORAGE_READ_CAPACITY DeviceCapacity
-	);
+    HANDLE hDevice,
+    PSTORAGE_READ_CAPACITY DeviceCapacity
+    );
 
 EXTERN_C
 PVOID
 WINAPI
 StorageMemAlloc(
-	SIZE_T cb
-	);
+    SIZE_T cb
+    );
 
 EXTERN_C
 PVOID
 WINAPI
 StorageMemReAlloc(
-	PVOID ptr,
-	SIZE_T cb
-	);
+    PVOID ptr,
+    SIZE_T cb
+    );
 
 ULONG
 WINAPI
 StorageMemFree(
-	PVOID pv
-	);
+    PVOID pv
+    );
 
 LONG
 WINAPI
 VolumeMemFree(
-	PVOID pv
-	);
+    PVOID pv
+    );
 
 PVOID
 WINAPI
 VolumeMemAlloc(
-	SIZE_T cb
-	);
+    SIZE_T cb
+    );
 
 PWSTR
 WINAPI
 VolumeDuplicateString(
-	PWSTR psz
-	);
+    PWSTR psz
+    );
 
 
 //
@@ -258,17 +252,17 @@ VolumeDuplicateString(
 ULONG
 WINAPI
 StorageAdapterDescriptor(
-	HANDLE hDevice,
-	PVOID pBuffer,
-	ULONG cbBuffer
-	);
+    HANDLE hDevice,
+    PVOID pBuffer,
+    ULONG cbBuffer
+    );
 
 ULONG
 WINAPI
 StorageDeviceIdDescriptor(
-	HANDLE hDevice,
-	STORAGE_DEVICE_ID_DESCRIPTOR **DeviceId
-	);
+    HANDLE hDevice,
+    STORAGE_DEVICE_ID_DESCRIPTOR **DeviceId
+    );
 
 //
 // FSCTL wrapper functions
@@ -295,8 +289,8 @@ GetReFSVolumeData(
 HRESULT
 WINAPI
 IsSetDirtyBit(
-	HANDLE Handle
-	);
+    HANDLE Handle
+    );
 
 //
 // IOCTL wrapper functions
@@ -305,24 +299,24 @@ EXTERN_C
 HRESULT
 WINAPI
 QueryDiskPerformance(
-	PCWSTR pszDeviceName,
-	DISK_PERFORMANCE *DiskPerf,
-	INT cbDiskPerf
-	);
+    PCWSTR pszDeviceName,
+    DISK_PERFORMANCE *DiskPerf,
+    INT cbDiskPerf
+    );
 
 EXTERN_C
 HRESULT
 WINAPI
 StopDiskPerformance(
-	PCWSTR pszDeviceName
-	);
+    PCWSTR pszDeviceName
+    );
 
 EXTERN_C
 HRESULT
 WINAPI
 StopDiskPerformanceAll(
-	ULONG Flags
-	);
+    ULONG Flags
+    );
 
 #define SDPF_STOP_VOLUMES          0x0
 #define SDPF_STOP_PHYSICAL_DRIVES  0x1
@@ -396,9 +390,31 @@ VolumeFs_GetVolumeAttributeFlag(
     DWORD *pdwFlag
     );
 
+BOOL
+WINAPI
+GetVolumeAttributeFlag(
+    int iIndex,
+    DWORD *pdwFlag
+    );
+
 INT
 WINAPI
 GetVolumeAttributeString(
+    int iIndex,
+    PWSTR psz,
+    DWORD cch
+    );
+
+BOOL
+WINAPI
+GetPersistentVolumeStateFlag(
+    int iIndex,
+    DWORD *pdwFlag
+    );
+
+int
+WINAPI
+GetPersistentVolumeStateString(
     int iIndex,
     PWSTR psz,
     DWORD cch
@@ -426,19 +442,19 @@ EXTERN_C
 ULONG
 WINAPI
 AttachVirtualDiskFile(
-	HANDLE *phVhd,
-	PCWSTR pszFilename,
-	ULONG AccessMask,
-	ULONG AttachFlags
-	);
+    HANDLE *phVhd,
+    PCWSTR pszFilename,
+    ULONG AccessMask,
+    ULONG AttachFlags
+    );
 
 EXTERN_C
 ULONG
 WINAPI
 DetachVirtualDiskFile(
-	HANDLE hVhd,
-	PCWSTR pszFilename
-	);
+    HANDLE hVhd,
+    PCWSTR pszFilename
+    );
 
 //
 // MS-DOS drive information helper
@@ -461,8 +477,8 @@ typedef struct _DOS_DRIVE_INFORMATION {
     PWSTR Device;
     PWSTR VolumeLabel;                    
     PWSTR FileSystemName;
-	CHAR DirtyBit;
-	BOOLEAN VirtualDiskVolume;
+    CHAR DirtyBit;
+    BOOLEAN VirtualDiskVolume;
 } DOS_DRIVE_INFORMATION;
 
 typedef struct _DOS_DRIVE_INFORMATION_ARRAY {
@@ -516,23 +532,23 @@ DestroyVolumeInformationBuffer(
 HRESULT
 WINAPI
 GetStatisticsData(
-	PCWSTR pszVolumeRoot,
-	PBYTE *Buffer,
-	SIZE_T *BufferSize,
-	PFILESYSTEM_STATISTICS **StatisticsPtrArray,
-	SIZE_T *StatisticsPtrArraySize,
-	PULONG StatisticsPtrArrayCount,
-	PFILESYSTEM_STATISTICS_EX *StatisticsEx,
-	SIZE_T *StatisticsExSize
-	);
+    PCWSTR pszVolumeRoot,
+    PBYTE *Buffer,
+    SIZE_T *BufferSize,
+    PFILESYSTEM_STATISTICS **StatisticsPtrArray,
+    SIZE_T *StatisticsPtrArraySize,
+    PULONG StatisticsPtrArrayCount,
+    PFILESYSTEM_STATISTICS_EX *StatisticsEx,
+    SIZE_T *StatisticsExSize
+    );
 
 HRESULT
 WINAPI
 FreeStatisticsData(
-	PBYTE Buffer,
-	PFILESYSTEM_STATISTICS *StatisticsPtrArray,
-	PFILESYSTEM_STATISTICS_EX StatisticsEx
-	);
+    PBYTE Buffer,
+    PFILESYSTEM_STATISTICS *StatisticsPtrArray,
+    PFILESYSTEM_STATISTICS_EX StatisticsEx
+    );
 
 #define GetNTFSStatistics(p) ((NTFS_STATISTICS *)((PBYTE)p + sizeof(FILESYSTEM_STATISTICS)))
 #define GetNTFSStatisticsEx(p) ((NTFS_STATISTICS_EX *)((PBYTE)p + sizeof(FILESYSTEM_STATISTICS_EX)))
@@ -546,18 +562,18 @@ FreeStatisticsData(
 HRESULT
 WINAPI
 CalcStatisticsDiffEx(
-	PVOID pDiff, 
-	PVOID pData1, 
-	PVOID pData2
-	);
+    PVOID pDiff, 
+    PVOID pData1, 
+    PVOID pData2
+    );
 
 HRESULT
 WINAPI
 CalcStatisticsDiffNtfsEx(
-	PVOID pDiff, 
-	PVOID pData1, 
-	PVOID pData2
-	);
+    PVOID pDiff, 
+    PVOID pData1, 
+    PVOID pData2
+    );
 
 //
 // Usn Change Journal Information
@@ -566,10 +582,10 @@ EXTERN_C
 HRESULT
 NTAPI
 GetVolumeUsnJornalDataInformation(
-	HANDLE Handle,
-	__in VOLUME_FS_USN_JOURNAL_DATA *QuataInfoList,
-	__inout ULONG *pcbQuataInfoList
-	);
+    HANDLE Handle,
+    __in VOLUME_FS_USN_JOURNAL_DATA *QuataInfoList,
+    __inout ULONG *pcbQuataInfoList
+    );
 
 //
 // Volume related Shell Helper Functions
@@ -578,8 +594,8 @@ EXTERN_C
 HICON 
 WINAPI
 GetDiskDeviceIcon(
-	__in PCWSTR DeviceName
-	);
+    __in PCWSTR DeviceName
+    );
 
 //
 // Assign Drive
@@ -588,9 +604,9 @@ EXTERN_C
 HRESULT
 WINAPI
 DLEditAssignDrive(
-	__in PCWSTR pszDriveLetter,
-	__in PCWSTR pszNTDevice
-	);
+    __in PCWSTR pszDriveLetter,
+    __in PCWSTR pszNTDevice
+    );
 
 //
 // Remove Drive
@@ -599,8 +615,8 @@ EXTERN_C
 HRESULT
 WINAPI
 DLEditRemoveDrive(
-	__in PCWSTR pszDriveLetter
-	);
+    __in PCWSTR pszDriveLetter
+    );
 
 #ifdef __cplusplus
 }

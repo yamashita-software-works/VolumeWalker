@@ -41,6 +41,7 @@ enum {
 	ID_GROUP_QUOTA,
 	ID_GROUP_USN_JOURNAL_DATA,
 	ID_GROUP_VIRTUAL_DISK,
+	ID_GROUP_PERSISTENT_VOLUME_STATE,
 };
 
 typedef struct _VOLBASICINFOITEM
@@ -966,6 +967,7 @@ public:
 			{ ID_GROUP_FS_UDF,                L"UDF"  },
 			{ ID_GROUP_FS_REFS,               L"ReFS"  },
 			{ ID_GROUP_FILESYSTEM_ATTRIBUTES, L"File System Attributes" },
+			{ ID_GROUP_PERSISTENT_VOLUME_STATE, L"Persistent Volume State" },
 			{ ID_GROUP_MEDIATYPES,            L"Media Types" },
 			{ ID_GROUP_CONTROL,               L"System Control" },
 			{ ID_GROUP_QUOTA,                 L"Quota" },
@@ -1201,6 +1203,7 @@ public:
 			ID_GROUP_FS_REFS,
 			ID_GROUP_PHYSICALDRIVE,
 			ID_GROUP_FILESYSTEM_ATTRIBUTES,
+			ID_GROUP_PERSISTENT_VOLUME_STATE,
 			ID_GROUP_NAME,
 			ID_GROUP_CONTROL,
 			ID_GROUP_QUOTA,
@@ -1243,6 +1246,10 @@ public:
 				case ID_GROUP_FILESYSTEM_ATTRIBUTES:
 					if( pvdi->State.AttributeInformation )
 						FillFileSystemeAttributes(pvdi->FileSystemAttributes);
+					break;
+				case ID_GROUP_PERSISTENT_VOLUME_STATE:
+					if( pvdi->State.PersistentVolumeState )
+						FillPersistentVolumeState(pvdi->PersistentVolumeState);
 					break;
 				case ID_GROUP_MEDIATYPES:
 					if( pvdi->pMediaTypes )
@@ -1666,6 +1673,59 @@ public:
 
 					iItem++;
 #endif
+				}
+
+				dwMask <<= 1;
+				i++;
+			}
+		}
+	}
+
+	VOID FillPersistentVolumeState(DWORD dwPersistentVolumeState)
+	{
+		WCHAR sz[MAX_PATH];
+		LVITEM lvi = {0};
+		lvi.iGroupId = ID_GROUP_PERSISTENT_VOLUME_STATE;
+
+		int iItem = ListView_GetItemCount(m_hWndList);
+
+		// Persisten Volume State
+		lvi.mask = LVIF_TEXT|LVIF_IMAGE|LVIF_PARAM|LVIF_INDENT|LVIF_GROUPID;
+		lvi.pszText = L"Persistent Volume State";
+		lvi.lParam = 0;
+		lvi.iImage = 0;
+		lvi.iItem = iItem;
+		lvi.iIndent = _SET_INDENT(1);
+		ListView_InsertItem(m_hWndList,&lvi);
+
+		StringCchPrintf(sz,MAX_PATH,L"0x%08X",dwPersistentVolumeState);
+		ListView_SetItemText(m_hWndList,iItem,1,sz);
+
+		iItem++;
+
+		if( dwPersistentVolumeState != 0 )
+		{
+			// Flags
+			int i = 0;
+			DWORD Flag = 0;
+			DWORD dwMask = 0x1;
+			while( GetPersistentVolumeStateFlag(i,&Flag) )
+			{
+				if( dwPersistentVolumeState & Flag )
+				{
+					StringCchPrintf(sz,MAX_PATH,L"0x%08X",Flag);
+					lvi.mask = LVIF_TEXT|LVIF_IMAGE|LVIF_PARAM|LVIF_INDENT|LVIF_GROUPID;
+					lvi.pszText = sz;
+					lvi.lParam = 0;
+					lvi.iImage = 0;
+					lvi.iItem = iItem;
+					lvi.iIndent = _SET_INDENT(2);
+					ListView_InsertItem(m_hWndList,&lvi);
+
+					GetPersistentVolumeStateString(i,sz,MAX_PATH);
+					ListView_SetItemText(m_hWndList,iItem,1,sz);
+
+					iItem++;
 				}
 
 				dwMask <<= 1;

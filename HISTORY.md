@@ -1,3 +1,8 @@
+### 0.1.47.0
+
+- Volume InformationウィンドウにPersistent Volume Stateグループを追加。   
+  PERSISTENT_VOLUME_STATE_* フラグを表示します。
+
 ### 0.1.46.0
 
 - Scratch Padウィンドウの表示を改善（フォントの設定方法を変更）。
