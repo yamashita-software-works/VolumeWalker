@@ -26,9 +26,7 @@
 #include "resource.h"
 #include "find.h"
 #include "inifile.h"
-#if _ENABLE_TOOLS
 #include "command.h"
-#endif
 #include "..\fsvolumelist\fsvolumelist.h"
 #include "..\fsvolumefilelist\fsvolumefilelist.h"
 
@@ -50,10 +48,9 @@ static PCWSTR g_pszIniFileName = L"";  // for debug only
 #else
 static PCWSTR g_pszIniFileName = L"";
 #endif
-#define _LAYOUT_FILENAME L"layout.ini"
-#if _ENABLE_TOOLS
 static HANDLE g_hCommand;
-#endif
+
+#define _LAYOUT_FILENAME L"layout.ini"
 
 HINSTANCE _GetInstanceHandle()
 {
@@ -786,18 +783,21 @@ HMENU _LoadMenu(UINT idMenu)
 	if( hMenu == NULL )
 		return NULL;
 
-#if _ENABLE_TOOLS
-	MakeVolumeCommandMenu(g_hCommand,hMenu,idMenu);
-#else
 	HMENU hSubMenu = GetSubMenu(hMenu,0);
 	int iPos = -1;
 	if( idMenu == IDR_MDICHILDFRAME )
 		iPos = GetMenuItemCount(hSubMenu) - 3;
 	else if(idMenu == IDR_MAINFRAME )
 		iPos = GetMenuItemCount(hSubMenu) - 1;
-	InsertMenu(hSubMenu,iPos,MF_BYPOSITION|MF_STRING,ID_ATTACH_VIRTUALDISK_IMAGE,L"Attach Virtual Disk Image...");
-	InsertMenu(hSubMenu,iPos+1,MF_BYPOSITION|MF_SEPARATOR,0,0);
-#endif
+
+	HMENU hToolMenu;
+	hToolMenu = MakeVolumeCommandMenu(g_hCommand);
+	if( hToolMenu )
+	{
+		InsertMenu(hSubMenu,iPos,MF_BYPOSITION|MF_POPUP,(UINT_PTR)hToolMenu,L"&Tools");
+		InsertMenu(hSubMenu,iPos+1,MF_BYPOSITION|MF_SEPARATOR,0,NULL);
+	}
+
 	return hMenu;
 }
 
@@ -1588,13 +1588,11 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 		}
 	}
 
-#if _ENABLE_TOOLS
 	INT State = MenuState;
 	if( CommandHandler::QueryCmdState(CmdId,State) )
 	{
 		return State;
 	}
-#endif
 
 	switch( CmdId )
 	{
@@ -1610,10 +1608,6 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 		case ID_RELATIONVIEW:
 		case ID_VDSCONSOLE:
 		case ID_SCRATCHPAD:
-			return UPDUI_ENABLED;
-#if !_ENABLE_TOOLS
-		case ID_ATTACH_VIRTUALDISK_IMAGE:
-#endif
 			return UPDUI_ENABLED;
 		case ID_ABOUT:
 		case ID_EXIT:
@@ -1656,19 +1650,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			g_hWndMDIClient = CreateMDIClient(hWnd);
 			FindText_Initialize();
-#if _ENABLE_TOOLS
+
 			g_hCommand = CreateCommandHandler(hWnd);
-#endif
+
 			g_pMainApp = new CApplication;
+
 			break; 
 		} 
 		case WM_DESTROY:
 		{
 			delete g_pMainApp;
 
-#if _ENABLE_TOOLS
 			CloseCommandHandler(g_hCommand);
-#endif
+
 			//
 			// Save configuration main frame and each MDI MDI child/view/page window.
 			//
@@ -1699,16 +1693,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if( (QueryCmdState(wmId,UPDUI_DISABLED,0,0) & UPDUI_DISABLED) != 0 )
 				break;
 
-#if _ENABLE_TOOLS
 			ForwardCommand(g_hCommand,wmId);
-#else
-			switch (wmId)
-			{
-				case ID_ATTACH_VIRTUALDISK_IMAGE:
-					VirtualDiskAttachDialog(hWnd,nullptr,0);
-					break;
-			}
-#endif
 
 			switch (wmId)
 			{
@@ -1869,6 +1854,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			break;
 		}
+		case WM_NOTIFY_MESSAGE:
+		{
+			switch( LOWORD(wParam) )
+			{
+				case UI_NOTIFY_ITEM_SELECTED:
+					return 0; // (SELECT_ITEM *)lParam
+			}
+			return 0;
+		}
 		case PM_MAKECONTEXTMENU:
 		{
 			// Not used feature in this application. must returns zero.
@@ -1954,12 +1948,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	    }
 		else 
 	    { 
-#if _ENABLE_TOOLS
 			if( CommandHandler::Message(&msg) )
 			{
 				continue;
 			}
-#endif
 #if 1
 			// This code is follows reason:
 			//

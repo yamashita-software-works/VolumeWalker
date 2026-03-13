@@ -42,6 +42,7 @@ enum {
 	ID_GROUP_USN_JOURNAL_DATA,
 	ID_GROUP_VIRTUAL_DISK,
 	ID_GROUP_PERSISTENT_VOLUME_STATE,
+	ID_GROUP_FS_NTFSEX,
 };
 
 typedef struct _VOLBASICINFOITEM
@@ -387,8 +388,10 @@ public:
 			case 1:
 				if( pItem->Type <= diGenericMax )
 					GetInfoText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
-				else if( pItem->Type <= diNtfsMax )
+				else if( diNtfsBase <= pItem->Type &&  pItem->Type <= diNtfsMax )
 					GetNtfsInfoText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
+				else if( diNtfsExBase <= pItem->Type &&  pItem->Type <= diNtfsExMax )
+					GetNtfsExInfoText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
 				else if( diUdfBase <= pItem->Type &&  pItem->Type <= diUdfMax )
 					GetUdfInfoText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
 				else if( diRefsBase <= pItem->Type &&  pItem->Type <= diRefsMax )
@@ -720,6 +723,38 @@ public:
 		}
 	}
 
+	VOID GetNtfsExInfoText(int iItemType,PWSTR *pszText,int cchText)
+	{
+		**pszText = L'\0';
+
+		NTFS_EXTENDED_VOLUME_DATA_EX *pNtfsExData = &m_pvdi->ntfs.extdata;
+
+		switch( iItemType )
+		{
+			case diNtfsExVersion:
+				StringCchPrintf(*pszText,cchText,L"%u.%u",pNtfsExData->MajorVersion,pNtfsExData->MinorVersion);
+				break;
+			case diNtfsExLfsVersion:
+				StringCchPrintf(*pszText,cchText,L"%u.%u",pNtfsExData->LfsMajorVersion,pNtfsExData->LfsMinorVersion);
+				break;
+			case diNtfsExBytesPerPhysicalSector:
+				_CommaFormatString(pNtfsExData->BytesPerPhysicalSector,*pszText);
+				break;
+			case diNtfsExMaxDeviceTrimExtentCount:
+				_CommaFormatString(pNtfsExData->MaxDeviceTrimExtentCount,*pszText);
+				break;
+			case diNtfsExMaxDeviceTrimByteCount:
+				_CommaFormatString(pNtfsExData->MaxDeviceTrimByteCount,*pszText);
+				break;
+			case diNtfsExMaxVolumeTrimExtentCount:
+				_CommaFormatString(pNtfsExData->MaxVolumeTrimExtentCount,*pszText);
+				break;
+			case diNtfsExMaxVolumeTrimByteCount:
+				_CommaFormatString(pNtfsExData->MaxVolumeTrimByteCount,*pszText);
+				break;
+		}
+	}
+
 	VOID GetUdfInfoText(int iItemType,PWSTR *pszText,int cchText)
 	{
 		**pszText = L'\0';
@@ -963,6 +998,7 @@ public:
 			{ ID_GROUP_GENERIC,               L"General" },
 			{ ID_GROUP_PHYSICALDRIVE,         L"Physical Drives" },
 			{ ID_GROUP_FS_NTFS,               L"NTFS"  },
+			{ ID_GROUP_FS_NTFSEX,             L"NTFS Extended Volume Data"  },
 			{ ID_GROUP_FS_FAT,                L"FAT"  },
 			{ ID_GROUP_FS_UDF,                L"UDF"  },
 			{ ID_GROUP_FS_REFS,               L"ReFS"  },
@@ -1122,6 +1158,26 @@ public:
 		return ++iItem;
 	}
 
+	INT Insert_NTFSExInfo(int iItem,VOLUME_DEVICE_INFORMATION *pvdi)
+	{
+		int iGroupId = ID_GROUP_FS_NTFSEX;
+
+		UINT uInfoId[] = {
+			diNtfsExVersion,
+			diNtfsExLfsVersion,
+            diNtfsExBytesPerPhysicalSector,
+            diNtfsExMaxDeviceTrimExtentCount,
+            diNtfsExMaxDeviceTrimByteCount,
+            diNtfsExMaxVolumeTrimExtentCount,
+            diNtfsExMaxVolumeTrimByteCount,
+		};
+		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
+		{
+			iItem = Insert(m_hWndList,iGroupId,iItem+i,uInfoId[i]);
+		}
+		return ++iItem;
+	}
+
 	INT Insert_UDFInfo(int iItem,VOLUME_DEVICE_INFORMATION *pvdi)
 	{
 		int iGroupId = ID_GROUP_FS_UDF;
@@ -1198,6 +1254,7 @@ public:
 			ID_GROUP_SIZE,
 			ID_GROUP_MEDIATYPES,
 			ID_GROUP_FS_NTFS,
+			ID_GROUP_FS_NTFSEX,
 			ID_GROUP_FS_FAT,
 			ID_GROUP_FS_UDF,
 			ID_GROUP_FS_REFS,
@@ -1232,8 +1289,12 @@ public:
 						FillExtentInformation(pvdi->pVolumeDiskExtents);
 					break;
 				case ID_GROUP_FS_NTFS:
-					if( _wcsicmp(pvdi->FileSystemName,L"NTFS") == 0 )
+					if( _wcsicmp(pvdi->FileSystemName,L"NTFS") == 0 && pvdi->State.NtfsData )
 						iItem = Insert_NTFSInfo(-1,pvdi);
+					break;
+				case ID_GROUP_FS_NTFSEX:
+					if( _wcsicmp(pvdi->FileSystemName,L"NTFS") == 0 && pvdi->State.NtfsData )
+						iItem = Insert_NTFSExInfo(-1,pvdi);
 					break;
 				case ID_GROUP_FS_UDF:
 					if( _wcsicmp(pvdi->FileSystemName,L"UDF") == 0 && pvdi->State.UdfData )

@@ -40,10 +40,13 @@ public:
 
 class CBaseWindow : public CWindowHandle
 {
+protected:
+	BOOL m_bAutoDelete;
 public:
-	CBaseWindow()
+	CBaseWindow(BOOL bAutoDelete=true)
 	{
 		m_hWnd = NULL;
+		m_bAutoDelete = bAutoDelete;
 	}
 
 	virtual ~CBaseWindow()
@@ -76,7 +79,8 @@ public:
 
 			if( uMsg == WM_NCDESTROY )
 			{
-				delete pwnd;
+				if( pwnd->m_bAutoDelete )
+					delete pwnd;
 				DetachBaseWindowObject(hWnd);
 			}
 		}

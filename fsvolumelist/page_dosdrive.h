@@ -1162,11 +1162,7 @@ public:
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_SIMPLEHEXDUMP );
 				break;
 			case ID_DISKPERFORMANCE:
-#if 0
-				OpenDiskPerformance( ListViewEx_GetCurSel(m_hWndList) );
-#else
 				OpenInformationView( ListViewEx_GetCurSel(m_hWndList), VOLUME_CONSOLE_DISKPERFORMANCE );
-#endif
 				break;
 			case ID_OPEN_LOCATION_EXPLORER:
 				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 0 );

@@ -449,9 +449,12 @@ public:
 			}
 		}
 
+		int cxView = cx - cxPropPane - cxVolPane;
+		int cyView = cy - cyInfoPane;
+
 		if( m_pView && m_pView->GetPageHWND() )
 		{
-			DeferWindowPos(hdwp,m_pView->GetPageHWND(),NULL,cxVolPane,0,cx-cxPropPane-cxVolPane,cy-cyInfoPane-1,SWP_NOZORDER|SWP_NOCOPYBITS);
+			DeferWindowPos(hdwp,m_pView->GetPageHWND(),NULL,cxVolPane,0,cxView,cyView,SWP_NOZORDER|SWP_NOCOPYBITS);
 		}
 
 		if( m_pVolPane && IsWindowVisibleEx(m_pVolPane->m_hWnd) )
@@ -466,7 +469,7 @@ public:
 
 		if( m_pInfoPane && IsWindowVisibleEx(m_pInfoPane->m_hWnd) )
 		{
-			DeferWindowPos(hdwp,m_pInfoPane->m_hWnd,NULL,cxVolPane,yInfoPaneSplitter+1,cx-cxPropPane-cxVolPane,cyInfoPane-1,SWP_NOZORDER|SWP_NOCOPYBITS);
+			DeferWindowPos(hdwp,m_pInfoPane->m_hWnd,NULL,cxVolPane,yInfoPaneSplitter+1,cxView,cyInfoPane-1,SWP_NOZORDER|SWP_NOCOPYBITS);
 		}
 
 		EndDeferWindowPos(hdwp);

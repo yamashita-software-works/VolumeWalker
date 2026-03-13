@@ -1929,7 +1929,7 @@ CreateVolumeInformationBuffer(
 
 			if( wcsicmp(pVolumeInfo->FileSystemName,L"ntfs") == 0 )
 			{
-				if( GetNtfsVolumeData(hRootDirectory,(NTFS_VOLUME_DATA_BUFFER *)&pVolumeInfo->ntfs,sizeof(pVolumeInfo->ntfs)) )
+				if( GetNtfsVolumeData(hRootDirectory,(NTFS_VOLUME_DATA_BUFFER *)&pVolumeInfo->ntfs,sizeof(pVolumeInfo->ntfs)) == 0 )
 					pVolumeInfo->State.NtfsData = TRUE;
 			}
 

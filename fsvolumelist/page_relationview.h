@@ -249,7 +249,7 @@ public:
 				UINT uFlags = TPM_LEFTALIGN|TPM_TOPALIGN;
 
 				AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
-				AppendMenu(hMenu,MF_STRING,ID_VIEW_FILELIST,L"Open in Volume Files Browser");
+				AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Open in Volume Files Browser");
 
 				TrackPopupMenuEx(hMenu,uFlags,pt.x,pt.y,GetActiveWindow(),NULL);
 
@@ -704,7 +704,7 @@ public:
 			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_DISABLED; // currentary, not supported.
 				return S_OK;
-			case ID_VIEW_FILELIST:
+			case ID_FILE_SIMPLEFILELIST:
 			{
 				HTREEITEM hItem = TreeView_GetSelection(m_hWndTree);
 				if( hItem )
@@ -728,7 +728,7 @@ public:
 			case ID_VIEW_REFRESH:
 				OnCmdRefresh();
 				break;
-			case ID_VIEW_FILELIST:
+			case ID_FILE_SIMPLEFILELIST:
 				OnCmdOpenFilelist();
 				break;
 		}

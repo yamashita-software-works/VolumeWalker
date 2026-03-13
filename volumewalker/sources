@@ -91,6 +91,7 @@ INCLUDES=$(INCLUDES);..\fsvolumelist
 SOURCES = \
 	stdafx.cpp \
 	inifile.cpp \
+	command.cpp \
 	misc.cpp \
 	mdichild.cpp \
 	volumewalker.cpp \

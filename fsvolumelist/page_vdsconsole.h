@@ -128,7 +128,16 @@ public:
 
 		RECT rc;
 		GetClientRect(hWnd,&rc);
-		FillRect(hdc,&rc,GetSysColorBrush(COLOR_WINDOW));
+
+		HBRUSH hbr;
+		if( _IsDarkModeEnabled() )
+			hbr = CreateSolidBrush(RGB(0,0,0));
+		else
+			hbr = CreateSolidBrush(GetSysColor(COLOR_WINDOW));
+
+		FillRect(hdc,&rc,hbr);
+
+		DeleteObject(hbr);
 
 		if( m_dwErrorCode != 0 )
 		{
@@ -148,6 +157,8 @@ public:
 			RECT rcText = rc;
 			DrawText(hdc,pMessage,-1,&rcText,DT_VCENTER|DT_CENTER|DT_CALCRECT);
 			rc.top = ((rc.bottom - rc.top) - (rcText.bottom - rcText.top))/2;
+			if( _IsDarkModeEnabled() )
+				SetTextColor(hdc,RGB(87,87,87));
 			DrawText(hdc,pMessage,-1,&rc,DT_CENTER);
 	
 			SelectObject(hdc,hfontOld);

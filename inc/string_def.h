@@ -12,7 +12,10 @@
 #define diGenericMax                             99
 
 #define diNtfsBase                               100
-#define diNtfsMax                                199
+#define diNtfsMax                                149
+
+#define diNtfsExBase                             150
+#define diNtfsExMax                              199
 
 #define diUdfBase                                200
 #define diUdfMax                                 299
@@ -64,6 +67,14 @@
 #define diNtfsMft2StartLcn                       (diNtfsBase + 11)
 #define diNtfsMftZoneStart                       (diNtfsBase + 12)
 #define diNtfsMftZoneEnd                         (diNtfsBase + 13)
+
+#define diNtfsExVersion                          (diNtfsExBase + 0)
+#define diNtfsExLfsVersion                       (diNtfsExBase + 1)
+#define diNtfsExBytesPerPhysicalSector           (diNtfsExBase + 2)
+#define diNtfsExMaxDeviceTrimExtentCount         (diNtfsExBase + 3)
+#define diNtfsExMaxDeviceTrimByteCount           (diNtfsExBase + 4)
+#define diNtfsExMaxVolumeTrimExtentCount         (diNtfsExBase + 5)
+#define diNtfsExMaxVolumeTrimByteCount           (diNtfsExBase + 6)
 
 #define diUdfDirectoryCount                      (diUdfBase + 0)
 #define diUdfFileCount                           (diUdfBase + 1)

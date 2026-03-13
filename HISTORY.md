@@ -1,3 +1,14 @@
+### 0.1.48.0
+
+- VolumeInfoのツリーに項目を追加。   
+     - Volume Mount Point   
+     - Encryption Volumes   
+     - VDS Console   
+
+- Volume Informationウィンドウに"NTFS Extended Volume Data"グループを追加。
+
+- ソースコードの整理・更新。
+
 ### 0.1.47.0
 
 - Volume InformationウィンドウにPersistent Volume Stateグループを追加。   

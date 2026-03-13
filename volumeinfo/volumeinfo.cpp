@@ -202,10 +202,14 @@ namespace NavigationPane
 	
 		InsertBlank( TVI_ROOT, TVI_LAST );
 	
-		InsertItem( VOLUME_CONSOLE_FILTERDRIVER,                 L"Filter Driver" );
-	
+		InsertItem( VOLUME_CONSOLE_VOLUMEMOUNTPOINT,             L"Volume Mount Point" );
+		InsertItem( VOLUME_CONSOLE_ENCRYPTIONVOLUME,             L"Encryption Volumes" );
+		InsertItem( VOLUME_CONSOLE_VDSCONSOLE,                   L"VDS Console");
+
 		InsertBlank( TVI_ROOT, TVI_LAST );
-	
+
+		InsertItem( VOLUME_CONSOLE_FILTERDRIVER,                 L"Filter Driver" );
+
 		TreeEnumVolumes(hTreeVol);
 		TreeEnumPhysicalDrives(hTreePD);
 	}
@@ -611,7 +615,6 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 //////////////////////////////////////////////////////////////////////////////
 
-// stl::map<> is the preferred using.
 typedef struct {
 	UINT ConsoleId;
 	HWND hWnd;
@@ -628,6 +631,10 @@ static MDICHILDFRAMETABLE table[]= {
 	{VOLUME_CONSOLE_FILTERDRIVER,            0},
 	{VOLUME_CONSOLE_VOLUMEINFORMAION,        0},
 	{VOLUME_CONSOLE_PHYSICALDRIVEINFORMAION, 0},
+    {VOLUME_CONSOLE_VOLUMEMOUNTPOINT,        0},
+    {VOLUME_CONSOLE_ENCRYPTIONVOLUME,        0},
+    {VOLUME_CONSOLE_RELATIONVIEW,            0},
+    {VOLUME_CONSOLE_VDSCONSOLE,              0},
 };
 
 int ClearWindowHandle(UINT_PTR ConsoleTypeId,HWND hwnd)

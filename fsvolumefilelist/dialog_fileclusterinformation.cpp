@@ -291,7 +291,7 @@ struct CClusterInformationDialog : public CDialogWindowEx
 				case 7: // Physical Offset
 				{
 					CI_LIST_ITEM *pItem = (CI_LIST_ITEM *)pnmcd->nmcd.lItemlParam;
-					if( pItem->pdlgParam->pClusterInfo->ClusterHeapBase.FileAreaOffset.QuadPart == -1 )
+					if( !pItem->pdlgParam->pClusterInfo->ClusterHeapBase.ValidFileAreaOffset )
 						pnmcd->clrText = RGB(200,0,0);
 					break;
 				}

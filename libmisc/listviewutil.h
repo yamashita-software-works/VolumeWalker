@@ -121,6 +121,6 @@ inline void InitDarkModeListView(HWND hListView,LVDARKMODECOLOR *pcrset=NULL)
     SetWindowSubclass(hListView, &SubclassProc, 0, reinterpret_cast<DWORD_PTR>(pInfo) );
 
     HWND hHeader = ListView_GetHeader(hListView);
-    SetWindowTheme(hHeader,   L"ItemsView", nullptr); // or DarkMode_ItemsView
-    SetWindowTheme(hListView, L"ItemsView", nullptr); // or DarkMode_ItemsView
+    SetWindowTheme(hHeader,   L"DarkMode_ItemsView", nullptr); // or ItemsView
+    SetWindowTheme(hListView, L"DarkMode_ItemsView", nullptr); // or ItemsView
 }

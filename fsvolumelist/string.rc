@@ -88,6 +88,17 @@ END
 
 STRINGTABLE
 BEGIN
+    diNtfsExVersion                          "NTFS Version"
+    diNtfsExLfsVersion                       "Log File Service Version"
+    diNtfsExBytesPerPhysicalSector           "BytesPerPhysicalSector"
+    diNtfsExMaxDeviceTrimExtentCount         "Max Device Trim Extent Count"
+    diNtfsExMaxDeviceTrimByteCount           "Max Device Trim Byte Count"
+    diNtfsExMaxVolumeTrimExtentCount         "Max Volume Trim Extent Count"
+    diNtfsExMaxVolumeTrimByteCount           "Max Volume Trim Byte Count"
+END
+
+STRINGTABLE
+BEGIN
     diRefsVersion                            "Version"
     diRefsMajorVersion                       "Major Version"
     diRefsMinorVersion                       "Minor Version"

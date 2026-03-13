@@ -14,6 +14,19 @@
 #define _BIT_ON  1
 #define _BIT_OFF 0
 
+typedef struct {
+  DWORD ByteCount;
+  USHORT MajorVersion;            // Major version for an NTFS volume.
+  USHORT MinorVersion;            // Minor version for an NTFS volume.
+  DWORD BytesPerPhysicalSector;   // Number of bytes per physical sector on the device.
+  USHORT LfsMajorVersion;         // Major version of the Log File Service (LFS) used by NTFS.
+  USHORT LfsMinorVersion;         // Minor version of the Log File Service (LFS) used by NTFS.
+  DWORD MaxDeviceTrimExtentCount; // Maximum number of trim extents that the device can handle in a single trim operation.
+  DWORD MaxDeviceTrimByteCount;   // Maximum number of bytes that can be trimmed in a single device trim operation.
+  DWORD MaxVolumeTrimExtentCount; // Maximum number of trim extents that the volume can handle in a single trim operation.
+  DWORD MaxVolumeTrimByteCount;   // Maximum number of bytes that can be trimmed in a single volume trim operation.
+} NTFS_EXTENDED_VOLUME_DATA_EX, *PNTFS_EXTENDED_VOLUME_DATA_EX;
+
 typedef struct _VOLUME_DEVICE_INFORMATION
 {
 	struct {
@@ -93,7 +106,7 @@ typedef struct _VOLUME_DEVICE_INFORMATION
 	{
 		struct {
 			NTFS_VOLUME_DATA_BUFFER data;
-			NTFS_EXTENDED_VOLUME_DATA extdata;
+			NTFS_EXTENDED_VOLUME_DATA_EX extdata;
 		} ntfs;
 		struct {
 			FILE_QUERY_ON_DISK_VOL_INFO_BUFFER DiskVolumeInfo;
