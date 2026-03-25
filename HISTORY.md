@@ -1,3 +1,8 @@
+### 0.1.49.0
+
+- Volume Informationウィンドウに"Size Detail Information"グループを追加。   
+`fsutil volume diskFree <Volume>` と同等の情報を表示します。
+
 ### 0.1.48.0
 
 - VolumeInfoのツリーに項目を追加。   
