@@ -39,7 +39,7 @@ static HRESULT _DoAssignDrive(HWND hWnd,PCWSTR pszNtDeviceName,PCWSTR pszDrive)
 	return hr;
 }
 
-typedef struct _VOLUMELABELEDIT_DIALOG_PARAM
+typedef struct _ASSIGN_DRIVE_DIALOG_PARAM
 {
 	HWND hWnd;
 	WCHAR szNtDeviceName[MAX_PATH];

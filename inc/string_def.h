@@ -26,6 +26,9 @@
 #define diRefsBase                               400
 #define diRefsMax                                499
 
+#define diSizeExBase                             500
+#define diSizeExMax                              519
+
 //
 // Volume Information
 //
@@ -103,6 +106,20 @@
 #define diRefsSlowTierDataFillRatio              (diRefsBase + 13)
 #define diRefsDestagesFastTierToSlowTierRate     (diRefsBase + 14)
 #define diRefsMetadataChecksumType               (diRefsBase + 15)
+
+#define diActualTotalAllocationUnits             (diSizeExBase + 0)
+#define diActualAvailableAllocationUnits         (diSizeExBase + 1)
+#define diActualPoolUnavailableAllocationUnits   (diSizeExBase + 2)
+#define diCallerTotalAllocationUnits             (diSizeExBase + 3)
+#define diCallerAvailableAllocationUnits         (diSizeExBase + 4)
+#define diCallerPoolUnavailableAllocationUnits   (diSizeExBase + 5)
+#define diUsedAllocationUnits                    (diSizeExBase + 6)
+#define diTotalReservedAllocationUnits           (diSizeExBase + 7)
+#define diVolumeStorageReserveAllocationUnits    (diSizeExBase + 8)
+#define diAvailableCommittedAllocationUnits      (diSizeExBase + 9)
+#define diPoolAvailableAllocationUnits           (diSizeExBase + 10)
+#define diSizeExSectorsPerAllocationUnit         (diSizeExBase + 11)
+#define diSizeExBytesPerSector                   (diSizeExBase + 12)
 
 //
 // Physical Drive Information

@@ -96,198 +96,11 @@ HMENU MakeVolumeCommandMenu(HANDLE /*hCommand*/)
 	return hToolMenu;
 }
 
-HWND CreateToolPadWindow(HWND hWnd)
-{
-#if 0
-	// Modal Dialog
-	HRESULT (WINAPI *pfnToolPadWindow)(HWND hWnd) = NULL;
-	HMODULE hModule;
-	hModule = LoadLibrary( _DLL_VOLUMETOOLS );
-	if( hModule )
-	{
-		(FARPROC&)pfnToolPadWindow = GetProcAddress(hModule,"ToolPadWindow");
-		if( pfnToolPadWindow )
-		{
-			pfnToolPadWindow(hWnd);
-		}
-		FreeLibrary(hModule);
-	}
-#else
-	// Modeless Dialog
-	HWND hwnd = NULL;
-	HWND (WINAPI *pfnCreateToolPadWindow)(HWND hWnd) = NULL;
-	HMODULE hModule;
-	hModule = LoadLibrary( _DLL_VOLUMETOOLS );
-	if( hModule )
-	{
-		(FARPROC&)pfnCreateToolPadWindow = GetProcAddress(hModule,"CreateToolPadWindow");
-		if( pfnCreateToolPadWindow )
-		{
-			hwnd = pfnCreateToolPadWindow(hWnd);
-		}
-		FreeLibrary(hModule);
-	}
-#endif
-	return hwnd;
-}
-
 namespace CommandHandler
 {
-	HWND hWndToolPad = NULL;
-
-	VOID OpenToolWindow(HWND hWnd,HWND *phWndTool)
-	{
-		if( !IsWindow(*phWndTool) )
-		{
-			*phWndTool = NULL;
-		}
-		else
-		{
-			if( IsWindowVisible(*phWndTool) )
-			{
-				ShowWindow(*phWndTool,SW_HIDE);
-			}
-			else
-			{
-				ShowWindow(*phWndTool,SW_SHOWNA);
-			}
-			return ;
-		}
-		
-		if( *phWndTool == NULL )
-		{
-			*phWndTool = CreateWindowEx(0,L"VolumeToolsHostWndClass",NULL,WS_OVERLAPPEDWINDOW|WS_VISIBLE,
-										 CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, hWnd, NULL, _GetResourceInstance(), NULL);
-			{
-					HMODULE hLib;
-					hLib = LoadLibraryEx( L"imageres.dll", NULL, LOAD_LIBRARY_AS_IMAGE_RESOURCE );
-					HICON hIcon = (HICON)LoadImage(hLib,MAKEINTRESOURCE(72),IMAGE_ICON,GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),LR_DEFAULTCOLOR);
-					SendMessage(*phWndTool,WM_SETICON,ICON_SMALL,(LPARAM)hIcon);
-					FreeLibrary(hLib);
-				SetWindowText(*phWndTool,L"Hanako Window");
-			}
-		}
-	
-		if( *phWndTool )
-		{
-			CreateToolPadWindow(*phWndTool);
-
-			SIZE size = { 640, 480 };
-			RECT rcMainWnd;
-			RECT rc;
-			int x,y,cx,cy;
-			PWSTR pszSectionName = L"ToolPad";
-			if( ReadSectionRect(pszSectionName,L"Window",&rc) == 0 )
-			{
-				GetWindowRect(hWnd,&rcMainWnd);
-				rcMainWnd.right -=  (size.cx + 48);
-				rcMainWnd.bottom -=  (size.cy + 48);
-				x = rcMainWnd.right;
-				y = rcMainWnd.bottom;
-				cx = size.cx;
-				cy = size.cy;
-			}
-			else
-			{
-				x = rc.left;
-				y = rc.top;
-				cx = rc.right;
-				cy = rc.bottom;
-			}
-	
-			SetWindowPos(*phWndTool,NULL,x,y,cx,cy,SWP_NOZORDER|SWP_NOACTIVATE);
-	
-			ShowWindow(*phWndTool,SW_SHOWNOACTIVATE);
-		}
-	}
-
 	VOID OnAttachViryualDiskImageFile(HWND hWnd)
 	{
 		VirtualDiskAttachDialog(hWnd,nullptr,0);
-	}
-
-	VOID OnCreateDiskImageFile(HWND hWnd)
-	{
-		HANDLE Handle;
-		HRESULT (WINAPI *CreateDiskImageDialog)(
-			__in HWND hWnd,
-			__in PWSTR Reserved1,
-			__in PWSTR Reserved2,
-			__in PVOID ReservedPtr,
-			__inout_opt	 HANDLE *phHandle
-			) = NULL;
-		HMODULE hModule;
-		hModule = GetModuleHandle( _DLL_VOLUMETOOLS );
-		if( hModule == NULL )
-			hModule = LoadLibrary( _DLL_VOLUMETOOLS );
-		if( hModule )
-		{
-			(FARPROC&)CreateDiskImageDialog = GetProcAddress(hModule,"CreateDiskImageDialog");
-			if( CreateDiskImageDialog )
-			{
-				CreateDiskImageDialog(hWnd,0,0,0,&Handle);
-			}
-		}
-	}
-
-	VOID OnRestoreDiskImageFile(HWND hWnd)
-	{
-		HANDLE Handle;
-		HRESULT (WINAPI *RestoreDiskImageDialog)(
-			__in HWND hWnd,
-			__in PWSTR Reserved1,
-			__in PWSTR Reserved2,
-			__in PVOID ReservedPtr,
-			__inout_opt	 HANDLE *phHandle
-			) = NULL;
-		HMODULE hModule;
-		hModule = GetModuleHandle( _DLL_VOLUMETOOLS );
-		if( hModule == NULL )
-			hModule = LoadLibrary( _DLL_VOLUMETOOLS );
-		if( hModule )
-		{
-			(FARPROC&)RestoreDiskImageDialog = GetProcAddress(hModule,"RestoreDiskImageDialog");
-			if( RestoreDiskImageDialog )
-			{
-				RestoreDiskImageDialog(hWnd,0,0,0,&Handle);
-			}
-		}
-	}
-
-	VOID OnToolPadWindow(HWND hWnd)
-	{
-#if 0
-		HRESULT (WINAPI *pfnToolPadWindow)(HWND hWnd) = NULL;
-		HMODULE hModule;
-		hModule = LoadLibrary( _DLL_VOLUMETOOLS );
-		if( hModule )
-		{
-			(FARPROC&)pfnToolPadWindow = GetProcAddress(hModule,"ToolPadWindow");
-			if( pfnToolPadWindow )
-			{
-				pfnToolPadWindow(hWnd);
-			}
-			FreeLibrary(hModule);
-		}
-#else
-		hWndToolPad = CreateToolPadWindow(hWnd);
-#endif
-	}
-
-	VOID OnLaunchPadWindow(HWND hWnd)
-	{
-		HRESULT (WINAPI *pfnLaunchPadWindow)(HWND hWnd) = NULL;
-		HMODULE hModule;
-		hModule = LoadLibrary( _DLL_VOLUMETOOLS );
-		if( hModule )
-		{
-			(FARPROC&)pfnLaunchPadWindow = GetProcAddress(hModule,"LaunchPadWindow");
-			if( pfnLaunchPadWindow )
-			{
-				pfnLaunchPadWindow(hWnd);
-			}
-			FreeLibrary(hModule);
-		}
 	}
 
 	//
@@ -295,8 +108,6 @@ namespace CommandHandler
 	//
 	BOOL Message(MSG *pmsg)
 	{
-		if( hWndToolPad && IsWindow(hWndToolPad) && IsDialogMessage(hWndToolPad,pmsg) )
-			return TRUE;
 		return FALSE;
 	}
 
@@ -308,16 +119,6 @@ namespace CommandHandler
 		switch( CmdId )
 		{
 			case ID_ATTACH_VIRTUALDISK_IMAGE:
-#if _ENABLE_TOOL_DISKIMAGE
-			case ID_CREATE_DISK_IMAGEFILE:
-			case ID_RESTORE_DISK_IMAGEFILE:
-#endif
-#if _ENABLE_TOOL_LAUNCHPAD
-			case ID_LAUNCHPAD_WINDOW:
-#endif
-#if _ENABLE_TOOL_TOOLPAD
-			case ID_TOOLPAD_WINDOW:
-#endif
 				State = UPDUI_ENABLED;
 				return TRUE;
 		}
@@ -339,24 +140,6 @@ BOOL ForwardCommand(HANDLE hCommand,UINT idCmd)
 		case ID_ATTACH_VIRTUALDISK_IMAGE:
 			CommandHandler::OnAttachViryualDiskImageFile(hWnd);
 			break;
-#if _ENABLE_TOOL_DISKIMAGE
-		case ID_CREATE_DISK_IMAGEFILE:
-			CommandHandler::OnCreateDiskImageFile(hWnd);
-			break;
-		case ID_RESTORE_DISK_IMAGEFILE:
-			CommandHandler::OnRestoreDiskImageFile(hWnd);
-			break;
-#endif
-#if _ENABLE_TOOL_LAUNCHPAD
-		case ID_LAUNCHPAD_WINDOW:
-			CommandHandler::OnLaunchPadWindow(hWnd);
-			break;
-#endif
-#if _ENABLE_TOOL_TOOLPAD
-		case ID_TOOLPAD_WINDOW:
-			CommandHandler::OnToolPadWindow(hWnd);
-			break;
-#endif
 	}
 
 	return SetLastError(ERROR_SUCCESS),TRUE;

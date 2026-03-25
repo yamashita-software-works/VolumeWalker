@@ -262,6 +262,16 @@ GetVolumeFsInformation(
             *Buffer = AllocAndGetInformaion( Handle, FileFsControlInformation, Status );
             break;
         }
+		case VOLFS_FULL_SIZE_INFORMATION_EX:
+		{
+            *Buffer = AllocAndGetInformaion( Handle, FileFsFullSizeInformationEx, Status );
+            break;
+		}
+		case VOLFS_GUID_INFORMATION:
+		{
+            *Buffer = AllocAndGetInformaion( Handle, FileFsGuidInformation, Status );
+            break;
+		}
         default:
             return STATUS_INVALID_PARAMETER;
     }

@@ -213,3 +213,20 @@ BEGIN
     diNonCachedDiskReads                 "NonCached Disk Reads"
     diNonCachedDiskWrites                "NonCached Disk Writes"
 END
+
+STRINGTABLE
+BEGIN
+    diActualTotalAllocationUnits               "Actual Total Allocation Bytes"
+    diActualAvailableAllocationUnits           "Actual Available Allocation Bytes"
+    diActualPoolUnavailableAllocationUnits     "Actual Pool Unavailable Allocation Bytes"
+    diCallerTotalAllocationUnits               "Caller Total Allocation Bytes"
+    diCallerAvailableAllocationUnits           "Caller Available Allocation Bytes"
+    diCallerPoolUnavailableAllocationUnits     "Caller Pool Unavailable Allocation Bytes"
+    diUsedAllocationUnits                      "Used Allocation Bytes"
+    diTotalReservedAllocationUnits             "Total Reserved Allocation Bytes"
+    diVolumeStorageReserveAllocationUnits      "Volume Storage Reserve Allocation Bytes"
+    diAvailableCommittedAllocationUnits        "Available Committed Allocation Bytes"
+    diPoolAvailableAllocationUnits             "Pool Available Allocation Bytes"
+    diSizeExSectorsPerAllocationUnit           "Sectors Per Allocation Unit"
+    diSizeExBytesPerSector                     "Bytes Per Sector"
+END

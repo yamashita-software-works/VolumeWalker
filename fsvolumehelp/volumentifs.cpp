@@ -101,6 +101,24 @@ VOID GatherNtVolumeDeviceInformation( HANDLE Handle, VOLUME_DEVICE_INFORMATION *
 		FreeMemory(pSectorSize);
 	}
 
+	// Full Size Information Ex.
+	FILE_FS_FULL_SIZE_INFORMATION_EX *pFullSizeInfoEx;
+	if( GetVolumeFsInformation(Handle,VOLFS_FULL_SIZE_INFORMATION_EX,(void**)&pFullSizeInfoEx) == STATUS_SUCCESS )
+	{
+		memcpy(&pVolDevInfo->SizeInfoEx,pFullSizeInfoEx,sizeof(FILE_FS_FULL_SIZE_INFORMATION_EX));
+		pVolDevInfo->State.SizeInformationEx = _BIT_ON;
+		FreeMemory(pFullSizeInfoEx);
+	}
+
+	// FsGUID
+	FILE_FS_GUID_INFORMATION *pFsGuid;
+	if( GetVolumeFsInformation(Handle,VOLFS_GUID_INFORMATION,(void**)&pFsGuid) == STATUS_SUCCESS )
+	{
+		pVolDevInfo->FsGuid = pFsGuid->FsGuid;
+		pVolDevInfo->State.FsGuid = _BIT_ON;
+		FreeMemory(pFsGuid);
+	}
+
 	// Device Type
 	if( GetVolumeDeviceType(Handle,&pVolDevInfo->DeviceType,&pVolDevInfo->Characteristics) == STATUS_SUCCESS )
 	{

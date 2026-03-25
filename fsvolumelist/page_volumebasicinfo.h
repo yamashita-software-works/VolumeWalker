@@ -42,7 +42,8 @@ enum {
 	ID_GROUP_USN_JOURNAL_DATA,
 	ID_GROUP_VIRTUAL_DISK,
 	ID_GROUP_PERSISTENT_VOLUME_STATE,
-	ID_GROUP_FS_NTFSEX,
+	ID_GROUP_FS_NTFS_EX,
+	ID_GROUP_SIZE_EX
 };
 
 typedef struct _VOLBASICINFOITEM
@@ -396,6 +397,8 @@ public:
 					GetUdfInfoText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
 				else if( diRefsBase <= pItem->Type &&  pItem->Type <= diRefsMax )
 					GetRefsInfoText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
+				else if( diSizeExBase <= pItem->Type &&  pItem->Type <= diSizeExMax )
+					GetSizeInfoExText(pItem->Type,&pdi->item.pszText,pdi->item.cchTextMax);
 				break;
 		}
 		return 0;	
@@ -418,16 +421,20 @@ public:
 		}
 	}
 
-	VOID makeSizeText(ULONGLONG cb,PWSTR *pszText,int cchText)
+	VOID makeSizeText(ULONGLONG cb,PWSTR *pszText,int cchText,BOOL bUnit=true)
 	{
 		_CommaFormatString(cb,*pszText);
 
-		{
-			WCHAR sz[MAX_PATH];
-			StrFormatByteSizeW(cb,sz,MAX_PATH);
-			StringCchCat(*pszText,cchText,L" (");
-			StringCchCat(*pszText,cchText,sz);
-			StringCchCat(*pszText,cchText,L")");
+		if( bUnit )
+		{ // if want display value by unit.
+			if( cb >= 1024 )
+			{
+				WCHAR sz[MAX_PATH];
+				StrFormatByteSizeW(cb,sz,MAX_PATH);
+				StringCchCat(*pszText,cchText,L" (");
+				StringCchCat(*pszText,cchText,sz);
+				StringCchCat(*pszText,cchText,L")");
+			}
 		}
 	}
 
@@ -807,12 +814,6 @@ public:
 			case diRefsVersion:
 				StringCchPrintf(*pszText,cchText,L"%d.%d",RefsData.MajorVersion,RefsData.MinorVersion);
 				break;
-/*			case diRefsMajorVersion:
-				StringCchPrintf(*pszText,cchText,L"%d",RefsData.MajorVersion);
-				break;
-			case diRefsMinorVersion:
-				StringCchPrintf(*pszText,cchText,L"%d",RefsData.MinorVersion);
-				break; */
 			case diRefsVolumeSerialNumber:
 				StringCchPrintf(*pszText,cchText,L"0x%I64X",RefsData.VolumeSerialNumber.QuadPart);
 				break;
@@ -851,6 +852,58 @@ public:
 				break;
 			case diRefsMetadataChecksumType:
 				StringCchPrintf(*pszText,cchText,L"0x%X",RefsData.MetadataChecksumType);
+				break;
+		}
+	}
+
+	VOID GetSizeInfoExText(int iItemType,PWSTR *pszText,int cchText)
+	{
+		**pszText = L'\0';
+
+		FILE_FS_FULL_SIZE_INFORMATION_EX *SizeEx = &m_pvdi->SizeInfoEx;
+
+		ULONGLONG clsSize = (SizeEx->SectorsPerAllocationUnit * SizeEx->BytesPerSector); // display bytes
+
+		switch( iItemType )
+		{
+            case diActualTotalAllocationUnits:
+				makeSizeText(SizeEx->ActualTotalAllocationUnits * clsSize,pszText,cchText);
+				break;
+            case diActualAvailableAllocationUnits:
+				makeSizeText(SizeEx->ActualAvailableAllocationUnits * clsSize,pszText,cchText);
+				break;
+            case diActualPoolUnavailableAllocationUnits:
+				makeSizeText(SizeEx->ActualPoolUnavailableAllocationUnits * clsSize,pszText,cchText);
+				break;
+            case diCallerTotalAllocationUnits:
+				makeSizeText(SizeEx->CallerTotalAllocationUnits * clsSize,pszText,cchText);
+				break;
+            case diCallerAvailableAllocationUnits:
+				makeSizeText(SizeEx->CallerAvailableAllocationUnits * clsSize,pszText,cchText);
+				break;
+            case diCallerPoolUnavailableAllocationUnits:
+				makeSizeText(SizeEx->CallerPoolUnavailableAllocationUnits * clsSize,pszText,cchText);
+				break;
+            case diUsedAllocationUnits:
+				makeSizeText(SizeEx->UsedAllocationUnits * clsSize,pszText,cchText);
+				break;
+            case diTotalReservedAllocationUnits:
+				makeSizeText(SizeEx->TotalReservedAllocationUnits * clsSize,pszText,cchText);
+				break;
+            case diVolumeStorageReserveAllocationUnits:
+				makeSizeText(SizeEx->VolumeStorageReserveAllocationUnits * clsSize,pszText,cchText);
+				break;
+            case diAvailableCommittedAllocationUnits:
+				makeSizeText(SizeEx->AvailableCommittedAllocationUnits * clsSize,pszText,cchText);
+				break;
+            case diPoolAvailableAllocationUnits:
+				makeSizeText(SizeEx->PoolAvailableAllocationUnits * clsSize,pszText,cchText);
+				break;
+            case diSizeExSectorsPerAllocationUnit:
+				_CommaFormatString(SizeEx->SectorsPerAllocationUnit,*pszText);
+				break;
+            case diSizeExBytesPerSector:
+				_CommaFormatString(SizeEx->BytesPerSector,*pszText);
 				break;
 		}
 	}
@@ -997,8 +1050,9 @@ public:
 			{ ID_GROUP_SIZE,                  L"Size"  },
 			{ ID_GROUP_GENERIC,               L"General" },
 			{ ID_GROUP_PHYSICALDRIVE,         L"Physical Drives" },
+			{ ID_GROUP_SIZE_EX,               L"Size Detail Information"  },
 			{ ID_GROUP_FS_NTFS,               L"NTFS"  },
-			{ ID_GROUP_FS_NTFSEX,             L"NTFS Extended Volume Data"  },
+			{ ID_GROUP_FS_NTFS_EX,            L"NTFS Extended Volume Data"  },
 			{ ID_GROUP_FS_FAT,                L"FAT"  },
 			{ ID_GROUP_FS_UDF,                L"UDF"  },
 			{ ID_GROUP_FS_REFS,               L"ReFS"  },
@@ -1160,7 +1214,7 @@ public:
 
 	INT Insert_NTFSExInfo(int iItem,VOLUME_DEVICE_INFORMATION *pvdi)
 	{
-		int iGroupId = ID_GROUP_FS_NTFSEX;
+		int iGroupId = ID_GROUP_FS_NTFS_EX;
 
 		UINT uInfoId[] = {
 			diNtfsExVersion,
@@ -1228,6 +1282,33 @@ public:
 		return ++iItem;
 	}
 
+	INT Insert_SizeInfoEx(int iItem,VOLUME_DEVICE_INFORMATION *pvdi)
+	{
+		int iGroupId = ID_GROUP_SIZE_EX;
+
+		UINT uInfoId[] = {
+            diActualTotalAllocationUnits,
+            diActualAvailableAllocationUnits,
+            diActualPoolUnavailableAllocationUnits,
+            diCallerTotalAllocationUnits,
+            diCallerAvailableAllocationUnits,
+            diCallerPoolUnavailableAllocationUnits,
+            diUsedAllocationUnits,
+            diTotalReservedAllocationUnits,
+            diVolumeStorageReserveAllocationUnits,
+            diAvailableCommittedAllocationUnits,
+            diPoolAvailableAllocationUnits,
+//          diSizeExSectorsPerAllocationUnit,
+//          diSizeExBytesPerSector,
+		};	        
+
+		for(int i = 0; i < ARRAYSIZE(uInfoId); i++)
+		{
+			iItem = Insert(m_hWndList,iGroupId,iItem+i,uInfoId[i]);
+		}
+		return ++iItem;
+	}
+
 	HRESULT FillItems(VOLUME_DEVICE_INFORMATION *pvdi)
 	{
 		SetRedraw(m_hWndList,FALSE);
@@ -1254,7 +1335,7 @@ public:
 			ID_GROUP_SIZE,
 			ID_GROUP_MEDIATYPES,
 			ID_GROUP_FS_NTFS,
-			ID_GROUP_FS_NTFSEX,
+			ID_GROUP_FS_NTFS_EX,
 			ID_GROUP_FS_FAT,
 			ID_GROUP_FS_UDF,
 			ID_GROUP_FS_REFS,
@@ -1266,6 +1347,7 @@ public:
 			ID_GROUP_QUOTA,
 			ID_GROUP_USN_JOURNAL_DATA,
 			ID_GROUP_VIRTUAL_DISK,
+			ID_GROUP_SIZE_EX,
 		};
 
 		int iItem = 0;
@@ -1292,7 +1374,7 @@ public:
 					if( _wcsicmp(pvdi->FileSystemName,L"NTFS") == 0 && pvdi->State.NtfsData )
 						iItem = Insert_NTFSInfo(-1,pvdi);
 					break;
-				case ID_GROUP_FS_NTFSEX:
+				case ID_GROUP_FS_NTFS_EX:
 					if( _wcsicmp(pvdi->FileSystemName,L"NTFS") == 0 && pvdi->State.NtfsData )
 						iItem = Insert_NTFSExInfo(-1,pvdi);
 					break;
@@ -1305,7 +1387,7 @@ public:
 						iItem = Insert_ReFSInfo(-1,pvdi);
 					break;
 				case ID_GROUP_FILESYSTEM_ATTRIBUTES:
-					if( pvdi->State.AttributeInformation )
+					if( pvdi->State. AttributeInformation )
 						FillFileSystemeAttributes(pvdi->FileSystemAttributes);
 					break;
 				case ID_GROUP_PERSISTENT_VOLUME_STATE:
@@ -1331,6 +1413,10 @@ public:
 				case ID_GROUP_VIRTUAL_DISK:
 					if( pvdi->VirtualDiskVolume )
 						FillVirtualDiskInformation();
+					break;
+				case ID_GROUP_SIZE_EX:
+					if( pvdi->State.SizeInformationEx )
+						iItem = Insert_SizeInfoEx(-1,pvdi);
 					break;
 			}
 		}
@@ -2123,7 +2209,7 @@ public:
 		//
 		RECT rc;
 		GetClientRect(m_hWndList,&rc);
-		int cw0=_DPI_Adjust_X(280),cw1=_DPI_Adjust_X(380);
+		int cw0=_DPI_Adjust_X(320),cw1=_DPI_Adjust_X(380);
 		if( IsRectEmpty(&rc) || _RECT_WIDTH(rc) > (cw0 + cw1) ) {
 			ListView_SetColumnWidth(m_hWndList,1,cw1);
 			ListView_SetColumnWidth(m_hWndList,0,cw0);

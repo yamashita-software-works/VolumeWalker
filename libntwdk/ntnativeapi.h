@@ -668,6 +668,21 @@ typedef enum _FILE_INFORMATION_CLASS_EX {
     FileStorageReserveIdInformation,         // 74
     FileCaseSensitiveInformationForceAccessCheck, // 75
     FileKnownFolderInformation,              // 76
+    FileStatBasicInformation,                       // 77
+    FileId64ExtdDirectoryInformation,               // 78
+    FileId64ExtdBothDirectoryInformation,           // 79
+    FileIdAllExtdDirectoryInformation,              // 80
+    FileIdAllExtdBothDirectoryInformation,          // 81
+    FileStreamReservationInformation,               // 82
+
+        //
+        //  It is an internal special request.
+        //  This operation should only be issued to the IOManager
+        //  through the Filter Manager. NtSetInformationFile/NtQueryInformationFile
+        //  and a file system should never receive this.
+        //
+
+    FileMupProviderInfo,                            // 83
 } FILE_INFORMATION_CLASS_EX, *PFILE_INFORMATION_CLASS_EX;
 
 #endif
@@ -921,6 +936,11 @@ typedef enum _FSINFOCLASS {
     FileFsObjectIdInformation,   // 8
     FileFsDriverPathInformation, // 9
     FileFsVolumeFlagsInformation,// 10
+    FileFsSectorSizeInformation,    // 11
+    FileFsDataCopyInformation,      // 12
+    FileFsMetadataSizeInformation,  // 13
+    FileFsFullSizeInformationEx,    // 14
+    FileFsGuidInformation,          // 15
     FileFsMaximumInformation
 } FS_INFORMATION_CLASS, *PFS_INFORMATION_CLASS;
 
@@ -997,6 +1017,10 @@ typedef struct _FILE_FS_FULL_SIZE_INFORMATION_EX {
     ULONG     BytesPerSector;
 } FILE_FS_FULL_SIZE_INFORMATION_EX, *PFILE_FS_FULL_SIZE_INFORMATION_EX;
 
+typedef struct _FILE_FS_GUID_INFORMATION {
+    GUID FsGuid;
+} FILE_FS_GUID_INFORMATION, *PFILE_FS_GUID_INFORMATION;
+
 //
 //  Flag definitions for FILE_FS_SECTOR_SIZE_INFORMATION structure
 //
@@ -1026,6 +1050,7 @@ typedef enum _FSINFOCLASS {
     FileFsDataCopyInformation,      // 12
     FileFsMetadataSizeInformation,  // 13
     FileFsFullSizeInformationEx,    // 14
+    FileFsGuidInformation,          // 15
     FileFsMaximumInformation
 } FS_INFORMATION_CLASS, *PFS_INFORMATION_CLASS;
 --*/
@@ -1033,6 +1058,7 @@ typedef enum _FSINFOCLASS {
 #define FileFsDataCopyInformation     ((FS_INFORMATION_CLASS)12)
 #define FileFsMetadataSizeInformation ((FS_INFORMATION_CLASS)13)
 #define FileFsFullSizeInformationEx   ((FS_INFORMATION_CLASS)14)
+#define FileFsGuidInformation         ((FS_INFORMATION_CLASS)15)
 
 //////////////////////////////////////////////////////////////////////////////
 

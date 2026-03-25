@@ -10,6 +10,7 @@
 #include <mountdev.h>
 #include "winfsctl.h"
 #include "ntvolumehelp.h"
+#include "ntnativeapi.h"
 
 #define _BIT_ON  1
 #define _BIT_OFF 0
@@ -42,6 +43,8 @@ typedef struct _VOLUME_DEVICE_INFORMATION
 		ULONG ControlInformation : 1;
 		ULONG SectorSizeInformation : 1;
 		ULONG PersistentVolumeState : 1;
+		ULONG SizeInformationEx : 1;
+		ULONG FsGuid : 1;
 	} State;
 
 	// FILE_FS_VOLUME_INFORMATION
@@ -115,5 +118,9 @@ typedef struct _VOLUME_DEVICE_INFORMATION
 			REFS_VOLUME_DATA_BUFFER data;
 		} refs;
 	};
+
+	FILE_FS_FULL_SIZE_INFORMATION_EX  SizeInfoEx;
+	FILE_FS_METADATA_SIZE_INFORMATION MetaDataSize;
+	GUID FsGuid;
 
 } VOLUME_DEVICE_INFORMATION, *PVOLUME_DEVICE_INFORMATION;
