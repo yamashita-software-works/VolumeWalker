@@ -233,12 +233,12 @@ public:
 		{
 			HMENU hSubMenu;
 
-			AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Open &Information");
-			AppendMenu(hMenu,MF_STRING,ID_FILESYSTEMSTATISTICS,L"Open File System &Statistics");
+			AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Volume &Information");
+			AppendMenu(hMenu,MF_STRING,ID_FILESYSTEMSTATISTICS,L"File System &Statistics");
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_DISKPERFORMANCE,L"Disk &Performance");
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
-			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Volume &Files Browser");
+			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Volume &File Explorer");
 			AppendMenu(hMenu,MF_STRING,0,0);
 
 			hSubMenu = CreatePopupMenu();
@@ -249,15 +249,17 @@ public:
 				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"&Command Prompt");
 				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"&Bash");
 			}
-			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Open &Location");
+			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Open in She&ll");
 
 			hSubMenu = CreatePopupMenu();
 			{
 				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_LABEL,         L"Edit &Volume Label...");
 				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_OBJECT_ID,     L"Edit Volume &Object Id...");
 				AppendMenu(hSubMenu,MF_STRING,0,NULL);
-				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_REMOVE_DRIVE,      L"Remove Drive");
 				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_ASSIGN_DRIVE,      L"Assign Drive...");
+				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_REMOVE_DRIVE,      L"Remove Drive");
+				AppendMenu(hSubMenu,MF_STRING,0,NULL);
+				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_MOUNT_FOLDER,      L"Mount to Folder...");
 				AppendMenu(hSubMenu,MF_STRING,0,NULL);
 				AppendMenu(hSubMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream Name by LCN...");
 			}
@@ -1408,6 +1410,9 @@ public:
 					}
 				}
 				break;
+			case ID_DLEDIT_MOUNT_FOLDER:
+				*State = (ListView_GetSelectedCount(m_hWndList) == 1) ? UPDUI_ENABLED : UPDUI_DISABLED;
+				return S_OK;
 		}
 		return S_FALSE;
 	}
@@ -1466,6 +1471,9 @@ public:
 				break;
 			case ID_DLEDIT_REMOVE_DRIVE:
 				OnCmdRemoveDrive();
+				break;
+			case ID_DLEDIT_MOUNT_FOLDER:
+				OnCmdMountToFolder();
 				break;
 		}
 		return S_OK;
@@ -1561,6 +1569,22 @@ public:
 					pItem->Drive,
 					NULL,0,
 					0) == S_OK )
+			{
+				UpdateItem(iItem);
+			}
+		}
+	}
+
+	void OnCmdMountToFolder()
+	{
+		int iItem;
+		CVolumeItem *pItem = GetCurItem(&iItem);
+		if( pItem )
+		{
+			if( CreateMountPointDialog(GetActiveWindow(),
+					pItem->VolumeName,
+					NULL,
+					MPDF_APPENDPREFIX_NT) == S_OK )
 			{
 				UpdateItem(iItem);
 			}

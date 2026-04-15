@@ -137,7 +137,7 @@ OpenVolumeLocationByShell(
     {
         WCHAR buf[MAX_PATH];
         StringCchPrintf(buf,MAX_PATH,L"0x%08X",hr);
-        _ErrorMessageBoxEx(hWnd,0,L"Open Location",L"",HRESULT_CODE(hr),MB_OK|MB_ICONEXCLAMATION);
+        _ErrorMessageBoxEx(hWnd,0,L"Open",buf,HRESULT_CODE(hr),MB_OK|MB_ICONEXCLAMATION);
     }
 
     return hr;

@@ -653,7 +653,7 @@ public:
 
 		if( m_hwndPropLV )
 		{
-			SetWindowPos(m_hwndPropLV,NULL,0,cySplit+1,cx-cxSplit,cy-cySplit-1,SWP_NOZORDER|SWP_NOCOPYBITS);
+			SetWindowPos(m_hwndPropLV,NULL,0,cySplit+1,cx-cxSplit,cy-cySplit,SWP_NOZORDER|SWP_NOCOPYBITS);
 
 			{
 				RECT rc;
@@ -673,7 +673,7 @@ public:
 				RECT rc;
 				GetClientRect(m_hwndVolumeLV,&rc);
 				int cxValue = ListView_GetColumnWidth(m_hwndVolumeLV,0);
-				ListView_SetColumnWidth(m_hwndVolumeLV,1,_RECT_WIDTH(rc)-cxValue);
+				ListView_SetColumnWidth(m_hwndVolumeLV,1,_RECT_WIDTH(rc)-cxValue-1);
 			}
 
 			SetWindowPos(m_hwndExtentLV,NULL,cx-cxSplit+1,cytb,cxSplit-1,cy-cytb,SWP_NOZORDER|SWP_NOCOPYBITS);

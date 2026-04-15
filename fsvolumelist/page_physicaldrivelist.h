@@ -194,8 +194,8 @@ public:
 
 		if( SendMessage(GetActiveWindow(),PM_MAKECONTEXTMENU,MAKEWPARAM(VOLUME_CONSOLE_PHYSICALDRIVELIST,0),(LPARAM)hMenu) == 0 )
 		{
-			AppendMenu(hMenu,MF_STRING,ID_PHYSICALDRIVEINFORMATION,L"Open &Information");
-			AppendMenu(hMenu,MF_STRING,ID_DRIVELAYOUT,L"Open Drive &Layout");
+			AppendMenu(hMenu,MF_STRING,ID_PHYSICALDRIVEINFORMATION,L"Disk Drive &Information");
+			AppendMenu(hMenu,MF_STRING,ID_DRIVELAYOUT,L"Drive &Layout");
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_DISKPERFORMANCE,L"Disk &Performance");
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Sector &Dump");

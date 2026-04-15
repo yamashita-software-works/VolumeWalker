@@ -29,9 +29,6 @@
 #include <commdlg.h>
 #include <vssym32.h>
 
-#include <gdiplus.h>
-using namespace Gdiplus;
-
 #if _MSC_VER <= 1500
 #define nullptr NULL
 #endif
@@ -155,10 +152,11 @@ enum {
 
 #endif
 
-#define VNM_SELECTVOLUME     (WM_APP+1210)
-
-#define PPM_SETPATH          (WM_APP+125) // todo:
-#define PPM_NOTIFY           (WM_APP+606) // todo:
+#if _ENABLE_FILELIST_SUB_PANE
+#define VNM_SELECTVOLUME     (WM_APP+1210) // todo:
+#define PPM_SETPATH          (WM_APP+125)  // todo:
+#define PPM_NOTIFY           (WM_APP+606)  // todo:
+#endif
 
 FS_CLUSTER_INFORMATION *_CreateClusterInformationBuffer(PCWSTR pszFilePath);
 

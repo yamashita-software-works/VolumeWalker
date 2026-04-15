@@ -12,8 +12,6 @@
 //*    2022.04.02 SDI frame ver created.                                      *
 //*    2022.12.24 MDI frame ver with based on VC++ generated code created.    *
 //*    2023.02.24 MDI frame ver with new main frame created.                  *
-//*    2024.04.15 Experimentally implemented Volume Contents Console.         *
-//*    2024.10.24 Volume Contents Console has been obsoleted.                 *
 //*                                                                           *
 //*****************************************************************************
 //
@@ -791,7 +789,7 @@ HMENU _LoadMenu(UINT idMenu)
 		iPos = GetMenuItemCount(hSubMenu) - 1;
 
 	HMENU hToolMenu;
-	hToolMenu = MakeVolumeCommandMenu(g_hCommand);
+	hToolMenu = CommandHandler::MakeVolumeCommandMenu(g_hCommand);
 	if( hToolMenu )
 	{
 		InsertMenu(hSubMenu,iPos,MF_BYPOSITION|MF_POPUP,(UINT_PTR)hToolMenu,L"&Tools");
@@ -1693,7 +1691,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if( (QueryCmdState(wmId,UPDUI_DISABLED,0,0) & UPDUI_DISABLED) != 0 )
 				break;
 
-			ForwardCommand(g_hCommand,wmId);
+			CommandHandler::ForwardCommand(g_hCommand,wmId);
 
 			switch (wmId)
 			{
@@ -1860,6 +1858,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				case UI_NOTIFY_ITEM_SELECTED:
 					return 0; // (SELECT_ITEM *)lParam
+				case UI_NOTIFY_CLOSED:
+					CommandHandler::NotifyClose((HWND)lParam);
+					return 0;
 			}
 			return 0;
 		}
@@ -1948,7 +1949,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	    }
 		else 
 	    { 
-			if( CommandHandler::Message(&msg) )
+			if( CommandHandler::PreTranslateMessage(&msg) )
 			{
 				continue;
 			}

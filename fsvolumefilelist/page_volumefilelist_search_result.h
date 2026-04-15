@@ -344,11 +344,11 @@ public:
 
 		AppendMenu(hMenu,MF_STRING,0,NULL);
 		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLECHECK,L"Count Selected Files");
-
+#if 0
 		AppendMenu(hMenu,MF_STRING,0,NULL);
 		AppendMenu(hMenu,MF_STRING,ID_FILE_CLUSTERLOCATION,L"Cl&uster Information");
 		AppendMenu(hMenu,MF_STRING,ID_FILE_STREAMINFORMATION,L"S&tream Information");
-
+#endif
 		if( m_pOpenApplications == NULL )
 			CreateApplicationList(&m_pOpenApplications);
 

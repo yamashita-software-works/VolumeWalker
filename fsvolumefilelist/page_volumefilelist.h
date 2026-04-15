@@ -1411,11 +1411,11 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_GOTO,                     L"&Goto Directory\tCtrl+G");
 			AppendMenu(hMenu,MF_STRING,ID_TRAVERSE,                 L"&Traverse in Volume\tCtrl+Shift+G");
 			AppendMenu(hMenu,MF_STRING,0,NULL);
-			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"Open Windows Explorer");
-			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"Open Command Prompt");
-			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_POWERSHELL, L"Open PowerShell");
-			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_TERMINAL,   L"Open Terminal");
-			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"Open Bash");
+			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"Open in Explorer");
+			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"Open in Command Prompt");
+			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_POWERSHELL, L"Open in PowerShell");
+			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_TERMINAL,   L"Open in Terminal");
+			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"Open in Bash");
 			AppendMenu(hMenu,MF_STRING,0,NULL);
 			AppendMenu(hMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream By LCN...");
 		}
@@ -2199,7 +2199,7 @@ public:
 		pFI->ItemTypeFlag |= _FLG_COSTLY_DATA;
 	}
 
-	virtual void GetCostlyFilesInformationOnPtrArray(PtrArray<CFileItemEx*> *pa)
+	virtual void GetCostlyFilesInformationOnPtrArray(PtrArray<CFileItemEx*> *pa,int cMinimum=_MAX_LEADING_READ)
 	{
 		NTSTATUS Status;
 
@@ -2224,7 +2224,7 @@ public:
 		{
 			int i,cFiles = pa->GetCount();
 
-			cFiles = min(cFiles,_MAX_LEADING_READ);
+			cFiles = min(cFiles,cMinimum);
 
 			for(i = 0; i < cFiles; i++)
 			{
@@ -2502,9 +2502,7 @@ public:
 				{
 					delete pa;
 					SetRedraw(m_hWndList,TRUE);
-#if 0 // 20251202	
-					MessageBeep(MB_ICONSTOP);
-#endif
+
 					ListView_DeleteAllItems(m_hWndList);
 	
 					m_LastErrorCode = hr;
@@ -2570,7 +2568,10 @@ public:
 			//
 			// Get information enumerated files.
 			//
-			GetCostlyFilesInformationOnPtrArray(pa);
+#if 0
+			int cViewItems = ListView_GetCountPerPage(m_hWndList);
+			GetCostlyFilesInformationOnPtrArray(pa,cViewItems);
+#endif
 
 			if( m_pHeaderBar )
 				m_pHeaderBar->EnableUsageSizeBar( TRUE );
@@ -2589,7 +2590,7 @@ public:
 
 			m_pszCurDir = _MemAllocString(L"");
 
-			pa->Create( 256 );
+			pa->Create( 1024 );
 
 			EnumRootDirectories(pa);
 
@@ -2825,7 +2826,7 @@ public:
 		// - Update MDI frame title
 		// - Set MDI child frame title
 		//
-		SendMessage(GetActiveWindow(),PM_UPDATETITLE,0,(LPARAM)L"Volume Files Browser");
+		SendMessage(GetActiveWindow(),PM_UPDATETITLE,0,(LPARAM)L"Volume File Explorer");
 
 		if( (pszPreviousVolumeDevice && m_pszVolumeDevice && wcsicmp(pszPreviousVolumeDevice,m_pszVolumeDevice) != 0) ||  
             (pszPreviousVolumeDevice == NULL && m_pszVolumeDevice != NULL) ||
@@ -3128,11 +3129,11 @@ public:
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hAppMenu,L"Open with &Application");
 		}
-
+#if 0
 		AppendMenu(hMenu,MF_STRING,0,NULL);
 		AppendMenu(hMenu,MF_STRING,ID_FILE_CLUSTERLOCATION,L"Cl&uster Information");
 		AppendMenu(hMenu,MF_STRING,ID_FILE_STREAMINFORMATION,L"S&tream Information");
-
+#endif
 		return S_OK;
 	}
 
@@ -3641,8 +3642,10 @@ public:
 			case ID_EDIT_COPY:
 			case ID_OPEN:
 			case ID_FILE_SIMPLECHECK:
+#if 0
 			case ID_FILE_CLUSTERLOCATION:
 			case ID_FILE_STREAMINFORMATION:
+#endif
 				*puState = ListView_GetSelectedCount(m_hWndList) ?  UPDUI_ENABLED : UPDUI_DISABLED;
 				break;
 			case ID_SEARCH:
@@ -3907,12 +3910,14 @@ public:
 				OnChooseVolume();
 				break;
 #endif
+#if 0
 			case ID_FILE_CLUSTERLOCATION:
 				OnFileClusterLocation();
 				break;
 			case ID_FILE_STREAMINFORMATION:
 				OnFileStreamInformation();
 				break;
+#endif
 			case ID_LOOKUP_STREAM_BY_LCN:
 				OnFileLookupStreamName();
 				break;
@@ -4232,7 +4237,7 @@ public:
 		SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
 	}
 #endif
-
+#if 0
 	void OnFileClusterLocation()
 	{
 		int iItem = ListViewEx_GetCurSel(m_hWndList);
@@ -4310,7 +4315,7 @@ public:
 			}
 		}
 	}
-
+#endif
 	void OnFileLookupStreamName()
 	{
 		HRESULT (WINAPI *pfnLookupStreamNameDialog)(HWND hWnd,PWSTR pszVolumeName,DWORD dwFlags) = NULL;

@@ -249,7 +249,7 @@ public:
 				UINT uFlags = TPM_LEFTALIGN|TPM_TOPALIGN;
 
 				AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
-				AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Open in Volume Files Browser");
+				AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"&Open in Volume File Explorer");
 
 				TrackPopupMenuEx(hMenu,uFlags,pt.x,pt.y,GetActiveWindow(),NULL);
 

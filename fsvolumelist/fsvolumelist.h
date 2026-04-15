@@ -76,3 +76,15 @@ RemoveDriveLetterDialog(
 	);
 
 #define RDDF_CHOOSE_DRIVE_UI  (0x1000)
+
+EXTERN_C
+HRESULT
+WINAPI
+CreateMountPointDialog(
+	__in HWND hWnd,
+	__in PCWSTR pszVolumeName,
+	__in PCWSTR pszPointPointFolderPath,
+	__in DWORD dwFlags
+	);
+
+#define MPDF_APPENDPREFIX_NT (0x1)

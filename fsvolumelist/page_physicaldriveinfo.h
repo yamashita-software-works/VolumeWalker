@@ -261,6 +261,23 @@ public:
 		}
 	}
 
+	VOID makeSizeText(ULONGLONG cb,PWSTR *pszText,int cchText,BOOL bUnit=true)
+	{
+		StringCchPrintf(*pszText,cchText,L"0x%I64X",cb);
+
+		if( bUnit )
+		{ // if want display value by unit.
+			if( cb >= 1024 )
+			{
+				WCHAR sz[MAX_PATH];
+				StrFormatByteSizeW(cb,sz,MAX_PATH);
+				StringCchCat(*pszText,cchText,L" (");
+				StringCchCat(*pszText,cchText,sz);
+				StringCchCat(*pszText,cchText,L")");
+			}
+		}
+	}
+
 	VOID GetInfoText(int iItemType,PWSTR *pszText,int cchText)
 	{
 		WCHAR szBuffer[MAX_PATH]; // work buffer
@@ -274,7 +291,7 @@ public:
 				break;
 			case diPhysicalDiskSize:
 				if( m_pdi->pGeometry )
-					StrFormatByteSizeW(m_pdi->pGeometry->DiskSize.QuadPart,*pszText,cchText);
+					makeSizeText(m_pdi->pGeometry->DiskSize.QuadPart,pszText,cchText);
 				break;
 			case diPartitionStyle:
 				if( m_pdi->pDriveLayout )

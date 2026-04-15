@@ -352,9 +352,11 @@ public:
 				if( m_pView )
 					return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam); // forward to current page
 				return 0;
+#if _ENABLE_FILELIST_SUB_PANE
 			case PPM_NOTIFY:
-				SendMessage(m_pView->GetPageHWND(),PM_RESEND_SELECTED_ITEM_DATA,0,0); // todo:
+				SendMessage(m_pView->GetPageHWND(),PM_RESEND_SELECTED_ITEM_DATA,0,0);
 				return 0;
+#endif
 		}
 #if _ENABLE_FILELIST_SUB_PANE
 		LRESULT lResult;

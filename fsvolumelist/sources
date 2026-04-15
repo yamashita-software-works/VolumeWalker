@@ -112,6 +112,7 @@ SOURCES = \
 	dialog_virtualdisk_attach.cpp\
 	dialog_assigndrive.cpp\
 	dialog_removedrive.cpp\
+	dialog_createmountpoint.cpp\
 	fsvolumelist.rc
 
 #----------------------------------------------------------

@@ -58,13 +58,16 @@
 #define ID_SET_VOLUME_OBJECT_ID                  41067
 //                                               41068
 #define ID_CREATE_DISK_IMAGEFILE                 41069
-#define ID_LAUNCHPAD_WINDOW                      41070
-#define ID_TOOLPAD_WINDOW                        41071
-#define ID_ATTACH_VIRTUALDISK_IMAGE              41072
-#define ID_DETTACH_VIRTUALDISK                   41073
-#define ID_VIRTUALDISKFILES                      41074
-#define ID_DLEDIT_REMOVE_DRIVE                   41075
-#define ID_DLEDIT_ASSIGN_DRIVE                   41076
+#define ID_RESTORE_DISK_IMAGEFILE                41070
+#define ID_LAUNCHPAD_WINDOW                      41071
+#define ID_TOOLPAD_WINDOW                        41072
+#define ID_ATTACH_VIRTUALDISK_IMAGE              41073
+#define ID_DETTACH_VIRTUALDISK                   41074
+#define ID_VIRTUALDISKFILES                      41075
+#define ID_DLEDIT_REMOVE_DRIVE                   41076
+#define ID_DLEDIT_ASSIGN_DRIVE                   41077
+#define ID_DLEDIT_MOUNT_FOLDER                   41078
+#define ID_DLEDIT_UNMOUNT_FOLDER                 41079
 
 #define ID_EDIT_COPY_COUMN_FIRST                 41100
 #define ID_EDIT_COPY_COUMN_LAST                  41149

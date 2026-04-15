@@ -182,9 +182,67 @@ DLEditAssignDrive(
 	}
 	else
 	{
-		DEBUG_PRINT("GetVolumeNameForVolumeMountPoint failed",GetLastError());
+		DEBUG_PRINT("DefineDosDevice failed",GetLastError());
 		hr = HRESULT_FROM_WIN32( GetLastError() );
 	}
 
 	return hr;
+}
+
+//----------------------------------------------------------------------------
+//
+//  MountVolumeToFolder()
+//
+//  PURPOSE:
+//
+//----------------------------------------------------------------------------
+EXTERN_C
+HRESULT
+WINAPI
+MountVolumeToFolder(
+	PCWSTR pszMountPointFolder,
+	PCWSTR pszVolumeName
+	)
+{ 
+	BOOL bResult;
+	WCHAR Buf[MAX_PATH]; // temporary buffer for volume name
+
+	// We should do some error checking on the inputs. Make sure there 
+	// are colons and backslashes in the right places, and so on 
+#if 1
+	bResult = GetVolumeNameForVolumeMountPoint(pszVolumeName,Buf,MAX_PATH);
+
+	if( !bResult )
+	{
+		return HRESULT_FROM_WIN32( GetLastError() );
+	}
+#else
+	StringCchCopy(Buf,MAX_PATH,pszVolumeName);
+#endif
+
+	bResult = SetVolumeMountPoint(pszMountPointFolder,Buf);
+
+	if( !bResult )
+	{
+		return HRESULT_FROM_WIN32( GetLastError() );
+	}
+
+   return S_OK;
+}
+
+//----------------------------------------------------------------------------
+//
+//  UnmountVolumeFromFolder()
+//
+//  PURPOSE:
+//
+//----------------------------------------------------------------------------
+EXTERN_C
+HRESULT
+WINAPI
+UnmountVolumeFromFolder(
+	__in PCWSTR pszMountPointFolder
+	)
+{
+	return E_NOTIMPL;
 }

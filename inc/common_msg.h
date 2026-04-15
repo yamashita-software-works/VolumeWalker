@@ -251,13 +251,6 @@ typedef struct _QM_PARAM
 } QM_PARAM;
 
 //////////////////////////////////////////////////////////////////////////////
-// IViewBaseWindow::GetString/GetStringBstrWM_QUERY_MESSAGE application use sub function
-
-enum {
-	VIEW_STR_TITLE=1,
-};
-
-//////////////////////////////////////////////////////////////////////////////
 // Configuration
 
 #define PM_GETCONFIGOBJECT    (PM_BASE+50)

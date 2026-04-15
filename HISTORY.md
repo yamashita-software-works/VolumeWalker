@@ -1,3 +1,17 @@
+### 0.1.50.0
+
+- ウィンドウの名称を変更。   
+"Volume Files Browser" を "Volume File Explorer"に変更。
+
+- 一部のメニュー文言を見直し。   
+  ex) "Open Location" ->  "Open in Shell"
+
+- Volume Listウィンドウに\[Mount to Folder\]コマンドを追加。
+
+- Disk Drive Informationウィンドウの"Physical Disk Size"項目にサイズを16進数でも表示する様に変更。
+
+- 仕様見直しの為、Volume File Explorerウィンドウの \[Cluster Information\]と\[Stream Information\]コマンドを無効化。
+
 ### 0.1.49.0
 
 - Volume Informationウィンドウに"Size Detail Information"グループを追加。   

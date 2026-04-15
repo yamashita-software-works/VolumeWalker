@@ -177,12 +177,12 @@ public:
 		{
 			HMENU hSubMenu;
 
-			AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Open &Information");
-			AppendMenu(hMenu,MF_STRING,ID_FILESYSTEMSTATISTICS,L"Open File System &Statistics");
+			AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Volume &Information");
+			AppendMenu(hMenu,MF_STRING,ID_FILESYSTEMSTATISTICS,L"File System &Statistics");
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_DISKPERFORMANCE,L"Disk &Performance");
 			AppendMenu(hMenu,MF_STRING,ID_HEXDUMP,L"Cluster &Dump");
-			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Volume &Files Browser");
+			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Volume &File Explorer");
 			AppendMenu(hMenu,MF_STRING,0,0);
 			hSubMenu = CreatePopupMenu();
 			{
@@ -192,7 +192,7 @@ public:
 				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"&Command Prompt");
 				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"&Bash");
 			}
-			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Open &Location");
+			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Open in She&ll");
 
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");

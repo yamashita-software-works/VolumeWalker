@@ -618,6 +618,26 @@ DLEditRemoveDrive(
     __in PCWSTR pszDriveLetter
     );
 
+//
+// Mount Volume to Mount Point Folder
+//
+EXTERN_C
+HRESULT
+WINAPI
+MountVolumeToFolder(
+    __in PCWSTR pszMountPointFolder,
+    __in PCWSTR pszVolumeName
+    );
+
+//
+// Unmount Volume from Folder
+//
+EXTERN_C
+HRESULT
+WINAPI
+UnmountVolumeFromFolder(
+    __in PCWSTR pszMountPointFolder
+    );
 #ifdef __cplusplus
 }
 #endif
