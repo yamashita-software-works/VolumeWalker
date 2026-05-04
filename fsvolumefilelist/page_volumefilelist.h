@@ -1783,7 +1783,6 @@ public:
 			{ COLUMN_FileId,              L"FileId",                0},
 			{ COLUMN_FileIndex,           L"FileIndex",             0},
 			{ COLUMN_ShortName,           L"ShortName",             0},
-			{ COLUMN_Extension,           L"Extension",             0},
 			{ COLUMN_Path,                L"Path",                  0},
 			{ COLUMN_Lcn,                 L"Lcn",                   0},
 			{ COLUMN_PhysicalDriveNumber, L"PhysicalDrive",         0}, 

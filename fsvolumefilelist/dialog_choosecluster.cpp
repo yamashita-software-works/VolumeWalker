@@ -1,8 +1,8 @@
 //****************************************************************************
 //*                                                                          *
-//*  dialog_fileclusterinformation.cpp                                       *
+//*  dialog_choosecluster.cpp                                                *
 //*                                                                          *
-//*  File cluster information viewer                                         *
+//*  File cluster select window                                              *
 //*                                                                          *
 //*  Author:  YAMASHITA Katsuhiro                                            *
 //*                                                                          *
@@ -18,7 +18,7 @@
 #include "uilayout.h"
 #include "fsvolumefilelist.h"
 
-static PCWSTR g_pszTitle =  L"Cluster Information";
+static PCWSTR g_pszTitle =  L"Choose Cluster";
 
 typedef struct _CI_DIALOG_PARAM
 {
@@ -50,10 +50,13 @@ struct CClusterInformationDialog : public CDialogWindowEx
 
 	CUILayout m_Layout;
 
+	CHOOSE_CLUSTER_LOCATION *m_pClusterLocation;
+
 	CClusterInformationDialog()
 	{
 		m_hWndList = NULL;
 		m_pszFileName = NULL;
+		m_pClusterLocation = NULL;
 	}
 	
 	~CClusterInformationDialog()
@@ -245,7 +248,7 @@ struct CClusterInformationDialog : public CDialogWindowEx
 
 	LRESULT OnDestroy(HWND hDlg,WPARAM wParam,LPARAM lParam)
 	{
-		CDialogWindowEx::OnDestory(hDlg);
+		CDialogWindowEx::OnDestroy(hDlg);
 
 		CI_DIALOG_PARAM *pdlgParam = (CI_DIALOG_PARAM *)GetWindowLongPtr(hDlg,DWLP_USER);
 
@@ -269,7 +272,7 @@ struct CClusterInformationDialog : public CDialogWindowEx
 		return 0;
 	}
 
-	LRESULT	OnCunstomDraw(NMLVCUSTOMDRAW *pnmcd)
+	LRESULT	OnCustomDraw(NMLVCUSTOMDRAW *pnmcd)
 	{
 		LRESULT lResult = 0;
 
@@ -410,12 +413,24 @@ struct CClusterInformationDialog : public CDialogWindowEx
 		return 0;
 	}
 
+	LRESULT OnItemChagned(NMHDR *pnmhdr)
+	{
+		UpdateOKButton();
+		return 0;
+	}
+
+	void UpdateOKButton()
+	{	
+		EnableWindow(GetDlgItem(m_hWnd,IDOK),
+					ListView_GetSelectedCount(m_hWndList));
+	}
+
 	LRESULT OnNotify(HWND hDlg,WPARAM wParam,LPARAM lParam)
 	{
 		switch( ((NMHDR *)lParam)->code )
 		{
 			case NM_CUSTOMDRAW:
-				SetWindowLongPtr(hDlg,DWLP_MSGRESULT,(LONG_PTR)OnCunstomDraw((LPNMLVCUSTOMDRAW)lParam));
+				SetWindowLongPtr(hDlg,DWLP_MSGRESULT,(LONG_PTR)OnCustomDraw((LPNMLVCUSTOMDRAW)lParam));
 				return TRUE;
 			case LVN_GETDISPINFO:
 				OnGetDispInfo((NMLVDISPINFO*)lParam);
@@ -425,6 +440,8 @@ struct CClusterInformationDialog : public CDialogWindowEx
 				return TRUE;
 			case LVN_ITEMACTIVATE:
 				return OnItemActivate((NMHDR*)lParam);
+			case LVN_ITEMCHANGED:
+				return OnItemChagned((NMHDR*)lParam);
 		}
 		return 0;
 	}
@@ -482,6 +499,69 @@ struct CClusterInformationDialog : public CDialogWindowEx
 	VOID OnOK(HWND hDlg)
 	{
 		CI_DIALOG_PARAM *pdlgParam = (CI_DIALOG_PARAM *)GetWindowLongPtr(hDlg,DWLP_USER);
+
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( iItem == -1 )
+			return;
+
+		CI_LIST_ITEM *pItem = (CI_LIST_ITEM *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+		if( pItem->Type == 0 )
+		{
+			if( pItem->Cluster.Location->Lcn.QuadPart == -1 )
+				return;
+		}
+		else
+		{
+			if( pItem->Cluster.PhysicalOffset == NULL )
+				return;
+		}
+
+		if( m_pClusterLocation )
+		{
+			StringCchCopy(m_pClusterLocation->szVolumeName,ARRAYSIZE(m_pClusterLocation->szVolumeName),pItem->pdlgParam->szVolumeName);
+
+			m_pClusterLocation->Offset.QuadPart = 
+					(pItem->pdlgParam->pClusterInfo->BytesPerCluster * pItem->Cluster.Location->Lcn.QuadPart)+(pItem->pdlgParam->pClusterInfo->ClusterHeapBase.FileAreaOffset.QuadPart * pItem->pdlgParam->pClusterInfo->BytesPerSector);
+
+			m_pClusterLocation->Vcn = pItem->Cluster.Location->Vcn;
+			m_pClusterLocation->Lcn = pItem->Cluster.Location->Lcn;
+			m_pClusterLocation->Count = pItem->Cluster.Location->Count;
+
+			WCHAR szBuf[MAX_PATH];
+			ZeroMemory(szBuf,sizeof(szBuf));
+			if( pItem->Type == 0 )
+			{
+				if( pItem->Cluster.Location->PhysicalOffsets )
+				{
+					StringCchPrintf(szBuf,MAX_PATH,L"PhysicalDrive%d",pItem->Cluster.Location->PhysicalOffsets->PhysicalOffset[0].DiskNumber);
+				}
+			}
+			else
+			{
+				if( pItem->Cluster.PhysicalOffset )
+				{
+					StringCchPrintf(szBuf,MAX_PATH,L"PhysicalDrive%d",pItem->Cluster.PhysicalOffset->DiskNumber);
+				}
+			}
+
+			StringCchCopy(m_pClusterLocation->szPhysicalDrive,ARRAYSIZE(m_pClusterLocation->szPhysicalDrive),szBuf);
+
+			LONGLONG n = -1;
+
+			if( pItem->Type == 0 )
+			{
+				if( pItem->Cluster.Location->PhysicalOffsets )
+					n = pItem->Cluster.Location->PhysicalOffsets->PhysicalOffset[0].Offset;
+			}
+			else
+			{
+				if( pItem->Cluster.PhysicalOffset )
+					n = pItem->Cluster.PhysicalOffset->Offset;
+			}
+
+			m_pClusterLocation->PhysicalDriveOffset.QuadPart = n;
+		}
 		EndDialog(hDlg,IDOK);
 	}
 
@@ -668,10 +748,10 @@ static FS_CLUSTER_INFORMATION *_CreateClusterInformationBuffer(PCWSTR pszFilePat
 
 //---------------------------------------------------------------------------
 //
-//  FileClusterInformationDialog()
+//  ChooseClusterLocationDialog()
 //
 //  PURPOSE: 
-//    File Cluster Location Viewer Dialog.
+//    Choose File Cluster Location Dialog.
 //
 //  PATAMETERS:
 //
@@ -679,11 +759,11 @@ static FS_CLUSTER_INFORMATION *_CreateClusterInformationBuffer(PCWSTR pszFilePat
 EXTERN_C
 HRESULT
 WINAPI
-FileClusterInformationDialog(
+ChooseClusterLocationDialog(
 	HWND hWnd,
 	PCWSTR pszFilePath,
 	UINT Reserved,
-	PVOID Ptr
+	CHOOSE_CLUSTER_LOCATION *ClusterLocation
 	)
 {
 	HRESULT hr;
@@ -709,7 +789,7 @@ FileClusterInformationDialog(
 
 	if(FILE_NAMED_STREAMS & FileSystemFlags)
 	{
-		hr = FileSelectStreamDialog(hWnd,pszFilePath,&pszStreamName,&cchStreamName,FSSDF_MAKEFULLPATH);
+		hr = ChooseStreamDialog(hWnd,pszFilePath,&pszStreamName,&cchStreamName,FSSDF_MAKEFULLPATH);
 
 		if( hr == S_FALSE )
 		{
@@ -785,8 +865,12 @@ FileClusterInformationDialog(
 
 		dlg->m_pszFileName = pszName;
 		dlg->m_pszPath = (pszStreamName ? pszStreamName : pszFilePath);
+		dlg->m_pClusterLocation = ClusterLocation;
 
-		dlg->DoModal(hWnd,IDD_FILE_CLUSTER_LAYOUT,(LPARAM)pParam,_GetResourceInstance());
+		if( dlg->DoModal(hWnd,IDD_FILE_CLUSTER_LAYOUT,(LPARAM)pParam,_GetResourceInstance()) == IDOK )
+		{
+			;
+		}
 
 		delete dlg;
 

@@ -1,6 +1,6 @@
 //****************************************************************************
 //*                                                                          *
-//*  dialog_altstream.cpp                                                    *
+//*  dialog_choosestream.cpp                                                 *
 //*                                                                          *
 //*  Stream select dialog                                                    *
 //*                                                                          *
@@ -230,12 +230,12 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 
 		SetDlgItemText(hDlg,IDC_TEXT,m_pszFileName);
 
-		if( m_dwFlags & FSSDF_NOOPENBUTTON )
-		{
-			ShowWindow(GetDlgItem(hDlg,IDOK),SW_HIDE);
-			SetDlgItemText(hDlg,IDC_DESCRIPTION,L"Alternate Stream Name and Size.");
-			SetWindowText(hDlg,L"Stream Information");
-		}
+		//if( m_dwFlags & FSSDF_NOOPENBUTTON )
+		//{
+		//	ShowWindow(GetDlgItem(hDlg,IDOK),SW_HIDE);
+		//	SetDlgItemText(hDlg,IDC_DESCRIPTION,L"Alternate Stream Name and Size.");
+		//	SetWindowText(hDlg,L"Stream Information");
+		//}
 
 		RECT rcList;
 		GetWindowRect(m_hWndList,&rcList);
@@ -251,7 +251,7 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 	{
 		STREAM_DIALOG_PARAM *pdlgParam = (STREAM_DIALOG_PARAM *)GetWindowLongPtr(hDlg,DWLP_USER);
 
-		CDialogWindowEx::OnDestory(hDlg);
+		CDialogWindowEx::OnDestroy(hDlg);
 
 		HFONT hFont = (HFONT)SendMessage(m_hWndList,WM_GETFONT,0,0);
 		DeleteObject(hFont);
@@ -443,14 +443,11 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 		if( iItem == -1 )
 			return ;
 
-		if( !(m_dwFlags & FSSDF_NOOPENBUTTON) )
-		{
-			STREAM_LIST_ITEM *pItem = (STREAM_LIST_ITEM *)ListViewEx_GetItemData(m_hWndList,iItem);
+		STREAM_LIST_ITEM *pItem = (STREAM_LIST_ITEM *)ListViewEx_GetItemData(m_hWndList,iItem);
 
-			m_pVSI = pItem->pStreamInformation;
+		m_pVSI = pItem->pStreamInformation;
 
-			EndDialog(hDlg,IDOK);
-		}
+		EndDialog(hDlg,IDOK);
 	}
 
 	VOID OnCancel(HWND hDlg)
@@ -536,7 +533,7 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 
 //----------------------------------------------------------------------------
 //
-//  FileSelectStreamDialog()
+//  ChooseStreamDialog()
 //
 //  PURPOSE:
 //
@@ -544,7 +541,7 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 EXTERN_C
 HRESULT
 WINAPI
-FileSelectStreamDialog(
+ChooseStreamDialog(
 	HWND hWnd,
 	PCWSTR pszFilePath,
 	PWSTR *ppwszFileStreamName,

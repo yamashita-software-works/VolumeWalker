@@ -60,8 +60,6 @@ public:
 	{
 		CWaitCursor wait;
 
-		HRESULT hr = E_FAIL;
-
 		//
 		// The Handle is using for FILXxx functions handling file item list.
 		// This pointer list is container of pointers to file items that search result.
@@ -91,7 +89,7 @@ public:
 
 		SetRedraw(m_hWndList,TRUE);
 
-		return hr;
+		return S_OK;
 	}
 
 	virtual HRESULT UpdateData(PVOID pFile)
@@ -206,7 +204,6 @@ public:
 			{ COLUMN_FileId,              L"FileId",                0},
 			{ COLUMN_FileIndex,           L"FileIndex",             0},
 			{ COLUMN_ShortName,           L"ShortName",             0},
-			{ COLUMN_Extension,           L"Extension",             0},
 			{ COLUMN_VolumeRelativePath,  L"VolumeRelativePath",    0},
 		};
 		m_columns.SetColumnNameMap( _countof(column_name_map), column_name_map );
@@ -344,11 +341,7 @@ public:
 
 		AppendMenu(hMenu,MF_STRING,0,NULL);
 		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLECHECK,L"Count Selected Files");
-#if 0
-		AppendMenu(hMenu,MF_STRING,0,NULL);
-		AppendMenu(hMenu,MF_STRING,ID_FILE_CLUSTERLOCATION,L"Cl&uster Information");
-		AppendMenu(hMenu,MF_STRING,ID_FILE_STREAMINFORMATION,L"S&tream Information");
-#endif
+
 		if( m_pOpenApplications == NULL )
 			CreateApplicationList(&m_pOpenApplications);
 

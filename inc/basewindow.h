@@ -137,10 +137,17 @@ protected:
 	int m_dialogmode;
 
 public:
+	enum {
+		Unknown = -1,
+		Modal = 0,
+		Modeless = 1,
+		Persistent = 2,
+	};
+
 	CDialogWindow()
 	{
 		m_hWnd = NULL;
-		m_dialogmode = -1;
+		m_dialogmode = Unknown;
 	}
 
 	virtual ~CDialogWindow()
@@ -182,7 +189,8 @@ public:
 
 	virtual INT_PTR DoModal(HWND hWnd,UINT_PTR idRes,LPARAM lParam=0,HINSTANCE hInstance=NULL)
 	{
-		m_dialogmode = 0;
+		if( m_dialogmode == Unknown )
+			m_dialogmode = Modal;
 
 		if( hInstance == NULL )
 			hInstance = GETINSTANCE(hWnd);
@@ -195,7 +203,8 @@ public:
 
 	virtual HWND Create(HWND hWnd,UINT_PTR idRes,LPARAM lParam=0,HINSTANCE hInstance=NULL)
 	{
-		m_dialogmode = 1;
+		if( m_dialogmode == Unknown )
+			m_dialogmode = Modeless;
 
 		if( hInstance == NULL )
 			hInstance = GETINSTANCE(hWnd);
@@ -227,7 +236,7 @@ public:
 		m_hbrBackground = CreateSolidBrush(RGB(255,255,255)); // todo:
 	}
 
-	void OnDestory(HWND hDlg)
+	void OnDestroy(HWND hDlg)
 	{
 		if( m_hbrBackground )
 			DeleteObject(m_hbrBackground);
