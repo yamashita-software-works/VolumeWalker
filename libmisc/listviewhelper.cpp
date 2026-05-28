@@ -34,6 +34,11 @@ ListViewEx_SimpleContextMenuHandler(
 	{
 		// context menu key
 		iSelItem = ListView_GetNextItem(hWndList,-1,LVNI_SELECTED|LVNI_FOCUSED);
+		
+		// The context menu will not be displayed if the focused item 
+		// is not visible within the client area.
+		if( !ListView_IsItemVisible(hWndList,iSelItem) )
+			iSelItem = (UINT)-1;
 	}
 	else
 	{
@@ -60,7 +65,8 @@ ListViewEx_SimpleContextMenuHandler(
 		{
 			if( pt.x == -1 && pt.y == -1 )
 			{
-				pt.x = rcItem.left;
+//				pt.x = rcItem.left;   // BUGBUG:20260526
+				pt.x = 0;
 				pt.y = rcItem.bottom;
 			}
 

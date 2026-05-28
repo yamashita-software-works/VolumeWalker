@@ -56,6 +56,18 @@ PVOID WinLocalReAlloc(PVOID pMem,SIZE_T uBytes,ULONG uFlags);
 PVOID WinLocalFree(PVOID pMem);
 SIZE_T WinLocalSize(PVOID pMem);
 
+__forceinline void FileTimeToLargeInteger(FILETIME& ft,LARGE_INTEGER& li)
+{
+    li.HighPart = ft.dwHighDateTime;
+    li.LowPart  = ft.dwLowDateTime;
+}
+
+__forceinline void LargeIntegerToFileTime(LARGE_INTEGER& li,FILETIME& ft)
+{
+    ft.dwHighDateTime = li.HighPart;
+    ft.dwLowDateTime  = li.LowPart;
+}
+
 #ifdef __cplusplus
 };
 #endif

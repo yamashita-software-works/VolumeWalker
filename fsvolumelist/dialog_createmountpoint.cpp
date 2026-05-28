@@ -102,7 +102,9 @@ struct CCreateMountPointDialog : public CDialogWindow
 
 		UpdateOKButton();
 
-		return TRUE;
+		SetFocus(m_hwndEditPath);
+
+		return FALSE;
 	}
 
 	LRESULT OnDestroy(HWND hDlg,WPARAM wParam,LPARAM lParam)

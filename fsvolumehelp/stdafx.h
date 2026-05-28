@@ -19,6 +19,7 @@
 
 #define NTSTATUS LONG
 
+#include "..\build_switch.inc"
 #include "mem.h"
 
 extern DWORD GetOSVersion();

@@ -20,7 +20,7 @@
 
 enum {
 	UI_INIT_LAYOUT              = 0x1001,
-//	OBSOLETE                    = 0x1002,
+	UI_INIT_LAYOUT_EX           = 0x1002,
 	UI_SELECT_ITEM              = 0x1003,
 	UI_SET_FILE                 = 0x1004,
 	UI_SET_DIRECTORY            = 0x1005,

@@ -342,6 +342,9 @@ public:
 		AppendMenu(hMenu,MF_STRING,0,NULL);
 		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLECHECK,L"Count Selected Files");
 
+		AppendMenu(hMenu,MF_STRING,0,NULL);
+		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEDUMP,L"Simple Binary &Dump");
+
 		if( m_pOpenApplications == NULL )
 			CreateApplicationList(&m_pOpenApplications);
 

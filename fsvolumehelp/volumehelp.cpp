@@ -206,7 +206,7 @@ FS_PERSISTENT_VOLUME_STATE_DESCRIPTION persistentVolumeState[] = {
 	_FS_PERSISTENT_VOLUME_STATE_DESCRIPTION( PERSISTENT_VOLUME_STATE_TRUSTED_VOLUME,                  L"" ),
 };
 
-BOOL GetPersistentVolumeStateFlag(int iIndex,DWORD *pdwFlag)
+BOOL WINAPI GetPersistentVolumeStateFlag(int iIndex,DWORD *pdwFlag)
 {
 	if( iIndex < 0 || iIndex >= _countof(persistentVolumeState) )
 		return FALSE;

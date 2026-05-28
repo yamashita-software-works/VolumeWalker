@@ -104,6 +104,7 @@ SOURCES = \
 	dialog_traverse_directory.cpp\
 	dialog_goto_directory.cpp\
 	dialog_filesearch_param.cpp\
+	dialog_binarydump.cpp\
 	apps.cpp\
 	meterbox.cpp\
 	filelist_directorytraverse.cpp\

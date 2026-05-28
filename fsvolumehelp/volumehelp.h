@@ -638,6 +638,39 @@ WINAPI
 UnmountVolumeFromFolder(
     __in PCWSTR pszMountPointFolder
     );
+
+#if _ENABLE_EXTERNAL_PROXY_OPEN
+//
+// External Create/Open File
+//
+EXTERN_C
+NTSTATUS
+NTAPI
+ProxyCreateFile(
+    HANDLE *Handle,
+    HANDLE hRoot,
+    UNICODE_STRING *pNtPathName,
+    ULONG DesiredAccess,
+    ULONG FileAttributes,
+    ULONG ShareAccess,
+    ULONG CreateDisposition,
+    ULONG CreateOptions,
+    PVOID SecurityDescriptor
+    );
+
+EXTERN_C
+NTSTATUS
+WINAPI
+ProxyOpenFile(
+    HANDLE *Handle,
+    HANDLE hRoot,
+    UNICODE_STRING *pNtPathName,
+    ULONG DesiredAccess,
+    ULONG ShareAccess,
+    ULONG OpenOptions
+    );
+#endif
+
 #ifdef __cplusplus
 }
 #endif

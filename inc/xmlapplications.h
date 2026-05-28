@@ -63,6 +63,7 @@ public:
 		_SafeMemFree(AppPath);
 		_SafeMemFree(Parameters);
 		_SafeMemFree(AppendPath);
+		_SafeMemFree(GroupName);
 	}
 
 	VOID SetFriendlyName(PCWSTR psz)

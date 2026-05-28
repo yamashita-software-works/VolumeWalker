@@ -157,9 +157,9 @@ EXTERN_C
 NTSTATUS
 NTAPI
 SetFileBasicInformation(
-	HANDLE hFile,
-	NT_FILE_BASIC_INFORMATION *pfbi
-	);
+    HANDLE hFile,
+    NT_FILE_BASIC_INFORMATION *pfbi
+    );
 
 EXTERN_C
 NTSTATUS
@@ -173,27 +173,27 @@ EXTERN_C
 NTSTATUS
 NTAPI
 QueryAttributesFile(
-	HANDLE hRoot,
-	PCWSTR pszFileName,
-	NT_FILE_BASIC_INFORMATION *FileBasicInfo
-	);
+    HANDLE hRoot,
+    PCWSTR pszFileName,
+    NT_FILE_BASIC_INFORMATION *FileBasicInfo
+    );
 
 EXTERN_C
 NTSTATUS
 NTAPI
 GetFileSizeByHandle(
-	HANDLE hFile,
-	LARGE_INTEGER *pSize,
-	LARGE_INTEGER *pAllocationSize
-	);
+    HANDLE hFile,
+    LARGE_INTEGER *pSize,
+    LARGE_INTEGER *pAllocationSize
+    );
 
 EXTERN_C
 NTSTATUS
 NTAPI
 GetFileId(
-	HANDLE hFile,
-	LARGE_INTEGER *pFildId
-	);
+    HANDLE hFile,
+    LARGE_INTEGER *pFildId
+    );
 
 #ifndef _WINDOWS_
 // win32 compatible SYSTEMTIME structure
@@ -213,33 +213,33 @@ EXTERN_C
 VOID
 NTAPI
 LocalSystemTimeToTimeInteger(
-	SYSTEMTIME *pst,
-	LARGE_INTEGER *pliTime
-	);
+    SYSTEMTIME *pst,
+    LARGE_INTEGER *pliTime
+    );
 
 EXTERN_C
 VOID
 NTAPI
 TimeIntegerToLocalSystemTime(
-	LARGE_INTEGER *pnSysTime,
-	SYSTEMTIME *ps
-	);
+    LARGE_INTEGER *pnSysTime,
+    SYSTEMTIME *ps
+    );
 
 EXTERN_C
 VOID
 NTAPI
 SystemTimeToTimeInteger(
-	SYSTEMTIME *pst,
-	LARGE_INTEGER *pliTime
-	);
+    SYSTEMTIME *pst,
+    LARGE_INTEGER *pliTime
+    );
 
 EXTERN_C
 VOID
 NTAPI
 TimeIntegerToSystemTime(
-	LARGE_INTEGER *pnSysTime,
-	SYSTEMTIME *pst
-	);
+    LARGE_INTEGER *pnSysTime,
+    SYSTEMTIME *pst
+    );
 
 EXTERN_C
 VOID
@@ -247,4 +247,93 @@ NTAPI
 SecondsSince1970ToTime(
     IN ULONG ElapsedSeconds,
     OUT PLARGE_INTEGER Time
-	);
+    );
+
+//
+// DateTime Helper
+//
+#ifndef _DTH_1MS_UNITS_100NS
+#define _DTH_1MS_UNITS_100NS   (10000)
+#endif
+
+#ifndef _DTH_1SEC_UNITS_100NS
+#define _DTH_1SEC_UNITS_100NS  (10000000)
+#endif
+
+#ifndef _FILETIME_
+typedef struct _FILETIME {
+    DWORD dwLowDateTime;
+    DWORD dwHighDateTime;
+} FILETIME, *PFILETIME, *LPFILETIME;
+#define _FILETIME_
+#endif
+
+
+#ifdef __cplusplus
+__forceinline DWORD _GetAbsTimeLessThen1msPart(LARGE_INTEGER& abstime)
+{
+    return (abstime.QuadPart % _DTH_1MS_UNITS_100NS);
+}
+
+__forceinline LONGLONG _SetAbsTimeLessThen1msPart64(LONGLONG& abstime,DWORD dwVal)
+{
+    return ((abstime / _DTH_1MS_UNITS_100NS) * _DTH_1MS_UNITS_100NS) + dwVal;
+}
+
+__forceinline VOID _SetAbsTimeLessThen1msPartLargeInteger(LARGE_INTEGER& abstime,DWORD dwVal)
+{
+    abstime.QuadPart = ((abstime.QuadPart / _DTH_1MS_UNITS_100NS) * _DTH_1MS_UNITS_100NS) + dwVal;
+}
+
+__forceinline VOID _SetAbsTimeLessThen1msPartFileTime(FILETIME& ft,DWORD dwVal)
+{
+    LARGE_INTEGER li;
+    li.HighPart = ft.dwHighDateTime;
+    li.LowPart = ft.dwLowDateTime;
+    _SetAbsTimeLessThen1msPart64(li.QuadPart,dwVal);
+    ft.dwHighDateTime = li.HighPart;
+    ft.dwLowDateTime = li.LowPart;
+}
+#else
+#define _GetAbsTimeLessThen1msPart(abstime)  (abstime.QuadPart % _DTH_1MS_UNITS_100NS)
+#define _SetAbsTimeLessThen1msPart64(abstime,dwVal) (((abstime / _DTH_1MS_UNITS_100NS) * _DTH_1MS_UNITS_100NS) + dwVal)
+#define _SetAbsTimeLessThen1msPartLargeInteger(abstime,dwVal) \
+            (((abstime.QuadPart / _DTH_1MS_UNITS_100NS) * _DTH_1MS_UNITS_100NS) + dwVal)
+#define _SetAbsTimeLessThen1msPartFileTime(ft,dwVal) \
+            (((((LARGE_INTEGER*)(&ft))->QuadPart / _DTH_1MS_UNITS_100NS) * _DTH_1MS_UNITS_100NS) + dwVal)
+#endif
+
+//
+// MS-DOS FAT DateTime Helper
+//
+typedef struct _DOSFATDATE
+{
+    union
+    {
+        struct {
+            USHORT day   : 5;
+            USHORT month : 4;
+            USHORT year  : 7;
+        };
+        USHORT w;
+    };
+} DOSFATDATE;
+
+typedef struct _DOSFATTIME
+{
+    union
+    {
+        struct {
+            USHORT second : 5;
+            USHORT minute : 6;
+            USHORT hour   : 5;
+        };
+        USHORT w;
+    };
+} DOSFATTIME;
+
+typedef struct _DOSFATDATETIME
+{
+    DOSFATDATE dd;
+    DOSFATTIME dt;
+} DOSFATDATETIME;

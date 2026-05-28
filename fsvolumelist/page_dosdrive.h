@@ -194,6 +194,17 @@ public:
 			}
 			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Open in She&ll");
 
+			hSubMenu = CreatePopupMenu();
+			{
+				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_LABEL,         L"Edit &Volume Label...");
+				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_OBJECT_ID,     L"Edit Volume &Object Id...");
+				AppendMenu(hSubMenu,MF_STRING,0,NULL);
+				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_MOUNT_FOLDER,      L"Mount to Folder...");
+				AppendMenu(hSubMenu,MF_STRING,0,NULL);
+				AppendMenu(hSubMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream Name by LCN...");
+			}
+			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Action");
+
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
 			SetMenuDefaultItem(hMenu,ID_VOLUMEINFORMATION,FALSE);
@@ -1135,6 +1146,12 @@ public:
 			case ID_EDIT_FIND_PREVIOUS:
 				*State = UPDUI_ENABLED;
 				return S_OK;
+			case ID_SET_VOLUME_LABEL:
+			case ID_SET_VOLUME_OBJECT_ID:
+			case ID_DLEDIT_MOUNT_FOLDER:
+			case ID_LOOKUP_STREAM_BY_LCN:
+				*State = (ListView_GetSelectedCount(m_hWndList) == 1) ? UPDUI_ENABLED : UPDUI_DISABLED;
+				return S_OK;
 		}
 		return S_FALSE;
 	}
@@ -1179,8 +1196,30 @@ public:
 			case ID_OPEN_LOCATION_BASH:
 				OpenLocation( ListViewEx_GetCurSel(m_hWndList), 4 );
 				break;
+			case ID_SET_VOLUME_LABEL:
+				OnCmdEditVolumeLabel();
+				break;
+			case ID_SET_VOLUME_OBJECT_ID:
+				OnCmdEditVolumeObjectId();
+				break;
+			case ID_DLEDIT_MOUNT_FOLDER:
+				OnCmdMountToFolder();
+				break;
+			case ID_LOOKUP_STREAM_BY_LCN:
+				OnCmdLookupStreamByLCN();
+				break;
 		}
 		return S_OK;
+	}
+
+	CDosDriveItem *GetCurItem(int *piItem=NULL)
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( piItem )
+			*piItem = iItem;
+		if( iItem == -1 )
+			return NULL;
+		return (CDosDriveItem *)ListViewEx_GetItemData(m_hWndList,iItem);
 	}
 
 	void OnCmdEditCopy()
@@ -1199,5 +1238,77 @@ public:
 	{
 		SELECT_ITEM sel = {0};
 		FillItems(&sel);
+	}
+
+	void OnCmdEditVolumeLabel()
+	{
+		int iItem;
+		CDosDriveItem *pItem = GetCurItem(&iItem);
+		if( pItem )
+		{
+			WCHAR szNewVolumeLabel[MAX_PATH];
+			if( VolumeLabelEditDialog(GetActiveWindow(),pItem->szDrive,0,pItem->pDriveInfo->VolumeLabel,szNewVolumeLabel,ARRAYSIZE(szNewVolumeLabel)) == S_OK )
+			{
+				_SafeMemFree(pItem->pDriveInfo->VolumeLabel);
+				pItem->pDriveInfo->VolumeLabel = _MemAllocString( szNewVolumeLabel );
+				InvalidateListItem(iItem);
+			}
+		}
+	}
+
+	void OnCmdEditVolumeObjectId()
+	{
+		CDosDriveItem *pItem = GetCurItem();
+		if( pItem )
+		{
+			VolumeObjectIdEditDialog(GetActiveWindow(),pItem->szDrive,0);
+		}
+	}
+
+	void OnCmdMountToFolder()
+	{
+		int iItem;
+		CDosDriveItem *pItem = GetCurItem(&iItem);
+		if( pItem )
+		{
+			if( CreateMountPointDialog(GetActiveWindow(),
+					pItem->szDrive,
+					NULL,
+					MPDF_APPENDPREFIX_NT) == S_OK )
+			{
+				;
+			}
+		}
+	}
+
+	void OnCmdLookupStreamByLCN()
+	{
+		CDosDriveItem *pItem = GetCurItem();
+		if( pItem )
+		{
+PWSTR NtDosPath = DosPathNameToNtPathName_W(pItem->szDrive);
+			LookupStreamNameDialog(GetActiveWindow(),NtDosPath,0);
+			FreeMemory(NtDosPath);
+		}
+	}
+
+	void InvalidateListItem(int iItem)
+	{
+		int i,cColumns;
+		cColumns = ListViewEx_GetColumnCount(m_hWndList);
+		for(i = 0; i < cColumns; i++)
+			ListView_SetItemText(m_hWndList,iItem,i,LPSTR_TEXTCALLBACK);
+	
+		LVITEM lvi={0};
+		lvi.mask      = LVIF_TEXT|LVIF_IMAGE|LVIF_STATE;
+		lvi.iItem     = iItem;
+		lvi.iImage    = I_IMAGECALLBACK;
+		lvi.state     = 0;
+		lvi.stateMask = LVIS_OVERLAYMASK;
+		lvi.pszText   = LPSTR_TEXTCALLBACK;
+	
+		ListView_SetItem(m_hWndList,&lvi);
+	
+		ListView_RedrawItems(m_hWndList,iItem,iItem);
 	}
 };

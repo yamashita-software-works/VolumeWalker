@@ -28,6 +28,7 @@ BOOL HasValidIniFile();
 EXTERN_C INT WINAPI GetConfigValue(HWND,UINT,LPCWSTR KeyName,PVOID Value,UINT cbValue);
 EXTERN_C INT WINAPI GetConfigValueInt(HWND,UINT,LPCWSTR KeyName,INT Default);
 EXTERN_C INT WINAPI SetConfigValue(HWND,UINT,LPCWSTR KeyName,PWSTR Value);
+EXTERN_C INT WINAPI SetConfigValueInt(HWND hWnd,UINT,LPCWSTR KeyName,INT nVal);
 
 struct CLoadViewConfig : public ILoadViewConfig
 {
@@ -61,6 +62,6 @@ struct CSaveViewConfig : public ISaveViewConfig
 
 	virtual INT WriteValueInt(HWND hwndView,PCWSTR KeyName,INT Value)
 	{
-		return 0;//SetConfigValue(hwndView,0,KeyName,Value);
+		return SetConfigValueInt(hwndView,0,KeyName,Value);
 	}
 };

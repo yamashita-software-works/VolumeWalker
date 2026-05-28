@@ -119,7 +119,10 @@ protected:
 	BOOL m_bRemoteDevice;
 	BOOL m_bPreventToCommand;
 	BOOL m_bRootDirectoryList;
-
+#if _ENABLE_EXTERNAL_PROXY_OPEN
+	BOOL m_bUseProxyOpen;
+	BOOL m_bProxyOpenedDir;
+#endif
 	UINT m_columnShowStyleFlags[COLUMN_MaxCount];
 
 	HANDLE m_hWatchHandle;
@@ -191,6 +194,10 @@ public:
 		m_bRemoteDevice = FALSE;
 		m_bPreventToCommand = FALSE;
 		m_bRootDirectoryList = FALSE;
+#if _ENABLE_EXTERNAL_PROXY_OPEN
+		m_bUseProxyOpen = FALSE;
+		m_bProxyOpenedDir = FALSE;
+#endif
 		m_pszVolumeName = NULL;
 		m_pszVolumeDevice = NULL;
 		m_pszVolumeRootRelativePath = NULL;
@@ -226,6 +233,13 @@ public:
 		{
 			m_bUseShellIcon = TRUE;
 		}
+
+#if _ENABLE_EXTERNAL_PROXY_OPEN
+		if( dwFlags & VOLFILES_FLG_USE_PROXY_OPEN )
+		{
+			m_bUseProxyOpen = TRUE;
+		}
+#endif
 
 		CStringBuffer columnLayoutString(32768);
 		CStringBuffer columnCurrentSort(256);
@@ -1144,7 +1158,8 @@ public:
 		else
 			cb = pItem->pFI->AllocationSize.QuadPart;
 
-		if( (cb == -1) || (pItem->pFI->FirstLCN.QuadPart == -1) )
+//		if( (cb == -1) || (pItem->pFI->FirstLCN.QuadPart == -1) ) // 20260527
+		if( cb == -1 )
 		{
 			pnmlvdi->item.pszText = L"-";
 			return 0;
@@ -1430,7 +1445,7 @@ public:
 		return 0;
 	}
 
-	LRESULT OnSaveConfig(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	LRESULT OnSaveConfig(HWND /*hWnd*/, UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam)
 	{
 		ISaveViewConfig *psvc = (ISaveViewConfig *)lParam;
 
@@ -1474,10 +1489,13 @@ public:
 
 			PCWSTR pColumnName = m_columns.IdToName( ColumnId );
 
-			WCHAR sz[64];
-			StringCchPrintf(sz,ARRAYSIZE(sz),L"%s,%d",pColumnName,m_Sort.Direction==1?0:1);
+			if( pColumnName )
+			{
+				WCHAR sz[64];
+				StringCchPrintf(sz,ARRAYSIZE(sz),L"%s,%d",pColumnName,m_Sort.Direction==1?0:1);
 
-			psvc->WriteValue( GetParent(m_hWnd), C_KEY_CURRENTSORTCOLUMN, sz );
+				psvc->WriteValue( GetParent(m_hWnd), C_KEY_CURRENTSORTCOLUMN, sz );
+			}
 		}
 
 		return 0;
@@ -2485,7 +2503,40 @@ public:
 					StringCchCopy(szNtPath,_NT_PATH_FULL_LENGTH ,pszPath);
 	
 					hr = EnumDirectoryFiles_W(szNtPath,NULL,0,&EnumCallbackProc,(PVOID)pa);
-	
+
+#if _ENABLE_EXTERNAL_PROXY_OPEN
+					if( m_bUseProxyOpen && hr == E_ACCESSDENIED )
+					{
+						NTSTATUS Status;
+						HRESULT hrExt = E_FAIL;
+						HANDLE Handle = NULL;
+						UNICODE_STRING usPath;
+
+						RtlInitUnicodeString(&usPath,pszPath);
+
+						Status = ProxyOpenFile(&Handle,NULL,&usPath,
+										FILE_LIST_DIRECTORY|SYNCHRONIZE,
+										FILE_SHARE_READ|FILE_SHARE_WRITE,
+										FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT);
+
+						if( Status == STATUS_SUCCESS )
+						{
+							hrExt = EnumDirectoryFiles_ExW(Handle,NULL,NULL,0,&EnumCallbackProc,(PVOID)pa);
+							CloseHandle(Handle);
+						}
+
+						if( SUCCEEDED(hrExt) )
+						{
+							hr = S_OK;
+						}
+
+						m_bProxyOpenedDir = ((hr == S_OK) ? TRUE : FALSE);
+					}
+					else
+					{
+						m_bProxyOpenedDir = FALSE;
+					}
+#endif
 					// always save curdir
 					_SafeMemFree(m_pszCurDir);
 					m_pszCurDir = _MemAllocString(szNtPath);
@@ -3128,11 +3179,10 @@ public:
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hAppMenu,L"Open with &Application");
 		}
-#if 0
+
 		AppendMenu(hMenu,MF_STRING,0,NULL);
-		AppendMenu(hMenu,MF_STRING,ID_FILE_CLUSTERLOCATION,L"Cl&uster Information");
-		AppendMenu(hMenu,MF_STRING,ID_FILE_STREAMINFORMATION,L"S&tream Information");
-#endif
+		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEDUMP,L"Simple Binary &Dump");
+
 		return S_OK;
 	}
 
@@ -3641,10 +3691,7 @@ public:
 			case ID_EDIT_COPY:
 			case ID_OPEN:
 			case ID_FILE_SIMPLECHECK:
-#if 0
-			case ID_FILE_CLUSTERLOCATION:
-			case ID_FILE_STREAMINFORMATION:
-#endif
+			case ID_FILE_SIMPLEDUMP:
 				*puState = ListView_GetSelectedCount(m_hWndList) ?  UPDUI_ENABLED : UPDUI_DISABLED;
 				break;
 			case ID_SEARCH:
@@ -3904,21 +3951,12 @@ public:
 			case ID_OPEN:
 				OnOpenItem();
 				break;
-#if _ENABLE_PAGE_CHANGER
-			case ID_CHOOSE_VOLUME:
-				OnChooseVolume();
-				break;
-#endif
-#if 0
-			case ID_FILE_CLUSTERLOCATION:
-				OnFileClusterLocation();
-				break;
-			case ID_FILE_STREAMINFORMATION:
-				OnFileStreamInformation();
-				break;
-#endif
 			case ID_LOOKUP_STREAM_BY_LCN:
 				OnFileLookupStreamName();
+				break;
+			case ID_FILE_SIMPLEDUMP:
+				OnFileSimpleDump();
+				break;
 				break;
 
 			default:
@@ -4226,95 +4264,6 @@ public:
 		FreeMemory(DeviceRoot);
 	}
 
-#if _ENABLE_PAGE_CHANGER
-	void OnChooseVolume()
-	{
-		UIS_PAGE pg = {0};
-		pg.ConsoleTypeId = VOLUME_CONSOLE_CHOOSE_VOLUME;
-		pg.pszPath       = NULL;
-		pg.pszFileName   = NULL;
-		SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
-	}
-#endif
-#if 0
-	void OnFileClusterLocation()
-	{
-		int iItem = ListViewEx_GetCurSel(m_hWndList);
-		if( iItem == -1 )
-			return ;
-
-		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
-
-		CFileItemEx *pFI = pItem->pFI;
-
-		PWSTR pszPath = NULL;
-		if( m_pszCurDir == NULL || *m_pszCurDir == L'\0' )
-			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILES )
-				pszPath = CombinePath(pFI->hdr.Path,L"\\");
-			else
-				pszPath = CombinePath(pFI->hdr.Path,pFI->hdr.FileName);
-		else if( pFI->hdr.Path == NULL )
-			pszPath = CombinePath(m_pszCurDir,pFI->hdr.FileName);
-		else
-			;
-
-		if( pszPath != NULL )
-		{
-			FileClusterInformationDialog(GetActiveWindow(),pszPath,0,nullptr);
-	
-			FreeMemory(pszPath);
-		}
-	}
-
-	void OnFileStreamInformation()
-	{
-		int iItem = ListViewEx_GetCurSel(m_hWndList);
-		if( iItem == -1 )
-			return ;
-
-		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
-
-		CFileItemEx *pFI = pItem->pFI;
-
-		PWSTR pszPath = NULL;
-		if( m_pszCurDir == NULL || *m_pszCurDir == L'\0' )
-			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILES )
-				pszPath = CombinePath(pFI->hdr.Path,L"\\");
-			else
-				pszPath = CombinePath(pFI->hdr.Path,pFI->hdr.FileName);
-		else if( pFI->hdr.Path == NULL )
-			pszPath = CombinePath(m_pszCurDir,pFI->hdr.FileName);
-		else
-			;
-
-		if( pszPath != NULL )
-		{
-			HRESULT hr;
-
-			hr = FileSelectStreamDialog(GetActiveWindow(),pszPath,0,nullptr,FSSDF_NOOPENBUTTON);
-
-			FreeMemory(pszPath);
-
-			PCWSTR pszTitle = L"Stream Information";
-
-			if( hr == S_SSD_NO_STREAM )
-			{
-				MsgBox(GetActiveWindow(),L"No data stream.",pszTitle,MB_OK|MB_ICONINFORMATION);
-			}
-			else if( hr == S_SSD_DEFAULT_STREAM_ONLY )
-			{
-				MsgBox(GetActiveWindow(),L"This file has a default stream only.",pszTitle,MB_OK|MB_ICONINFORMATION);
-			}
-			else
-			{
-				if( FAILED(hr) )
-				{
-					_ErrorMessageBoxEx(GetActiveWindow(),0,pszTitle,NULL,hr,MB_OK|MB_ICONSTOP);
-				}
-			}
-		}
-	}
-#endif
 	void OnFileLookupStreamName()
 	{
 		HRESULT (WINAPI *pfnLookupStreamNameDialog)(HWND hWnd,PWSTR pszVolumeName,DWORD dwFlags) = NULL;
@@ -4323,6 +4272,35 @@ public:
 		if( pfnLookupStreamNameDialog )
 		{
 			pfnLookupStreamNameDialog(GetActiveWindow(),this->m_pszVolumeDevice,0);
+		}
+	}
+
+	void OnFileSimpleDump()
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( iItem == -1 )
+			return ;
+
+		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+		CFileItemEx *pFI = pItem->pFI;
+
+		PWSTR pszPath = NULL;
+		if( m_pszCurDir == NULL || *m_pszCurDir == L'\0' )
+			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILES )
+				pszPath = CombinePath(pFI->hdr.Path,L"\\");
+			else
+				pszPath = CombinePath(pFI->hdr.Path,pFI->hdr.FileName);
+		else if( pFI->hdr.Path == NULL )
+			pszPath = CombinePath(m_pszCurDir,pFI->hdr.FileName);
+		else
+			;
+
+		if( pszPath != NULL )
+		{
+			QuickBinaryDumpDialog(GetActiveWindow(),pszPath,nullptr,0,0);
+	
+			FreeMemory(pszPath);
 		}
 	}
 

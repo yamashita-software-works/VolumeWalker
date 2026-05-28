@@ -224,21 +224,32 @@ public:
 			pt.x = GET_X_LPARAM(lParam);
 			pt.y = GET_Y_LPARAM(lParam);
 
-			RECT rc;
-			TreeView_GetItemRect(m_hWndTree,hItem,&rc,TRUE);
+			RECT rcItem;
+			TreeView_GetItemRect(m_hWndTree,hItem,&rcItem,TRUE);
 
 			if( pt.x == -1 && pt.y == -1 )
 			{
-				MapWindowPoints(m_hWndTree,NULL,(LPPOINT)&rc,2);
-				pt.x = rc.left;
-				pt.y = rc.bottom;
-				bOnTheItem = TRUE;
+				RECT rcClient;
+				GetClientRect(m_hWndTree,&rcClient);
+
+				RECT rcX;
+				if( IntersectRect(&rcX,&rcClient,&rcItem) )
+				{
+					MapWindowPoints(m_hWndTree,NULL,(LPPOINT)&rcX,2);
+					pt.x = rcX.left;
+					pt.y = rcX.bottom;
+					bOnTheItem = TRUE;
+				}
+				else
+				{
+					bOnTheItem = FALSE;
+				}
 			}
 			else
 			{
 				POINT ptClient = pt;
 				MapWindowPoints(NULL,m_hWndTree,&ptClient,1);
-				bOnTheItem = ( PtInRect(&rc,ptClient) );
+				bOnTheItem = ( PtInRect(&rcItem,ptClient) );
 			}
 
 			if( bOnTheItem )

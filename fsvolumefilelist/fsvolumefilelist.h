@@ -51,3 +51,14 @@ ChooseStreamDialog(
 
 #define S_SSD_NO_STREAM                MAKE_HRESULT(SEVERITY_SUCCESS,1,1)
 #define S_SSD_DEFAULT_STREAM_ONLY      MAKE_HRESULT(SEVERITY_SUCCESS,1,2)
+
+EXTERN_C
+HRESULT
+WINAPI
+QuickBinaryDumpDialog(
+	__in HWND hWnd,
+	__in_opt PCWSTR pszStreamName,
+	__in_opt PBYTE pb,
+	__in_opt ULONG cb,
+	__in_opt DWORD dwFlags
+	);

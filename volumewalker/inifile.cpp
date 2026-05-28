@@ -814,3 +814,21 @@ EXTERN_C INT WINAPI SetConfigValue(HWND hWnd,UINT,LPCWSTR KeyName,PWSTR psz)
 
 	return WriteSectionString(szSection,KeyName,psz);
 }
+
+EXTERN_C INT WINAPI SetConfigValueInt(HWND hWnd,UINT,LPCWSTR KeyName,INT nVal)
+{
+	CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(hWnd,_PROP_CONSOLE_VIEW_ID);
+
+	if( pcv == NULL )
+		return 0;
+
+	WCHAR szSection[MAX_PATH];
+
+	StringFromGUID( &pcv->wndGuid, szSection, _countof(szSection) );
+	GUIDStringRemoveBrackets(szSection);
+
+	WCHAR szVal[128];
+	StringCchPrintf(szVal,ARRAYSIZE(szVal),L"%d",nVal);
+
+	return WriteSectionString(szSection,KeyName,szVal);
+}

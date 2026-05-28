@@ -20,12 +20,6 @@
 #include "filelistview.h"
 #include "page_volumefilelist.h"
 #include "page_volumefilelist_search_result.h"
-#if _ENABLE_FILELIST_SUB_PANE
-#include "panebase_volumes.h"
-#include "panebase_property.h"
-#include "panebase_information.h"
-#include "simplesplitwindow.h"
-#endif
 
 inline int _GetTextWidth(HWND hWnd,HFONT hFont,PCWSTR psz)
 {
@@ -38,26 +32,13 @@ inline int _GetTextWidth(HWND hWnd,HFONT hFont,PCWSTR psz)
 	return size.cx;
 }
 
-#if _ENABLE_FILELIST_SUB_PANE
-class CVolumeFilesWindow : 
-	public CBaseWindow,
-	public CSimpleVSplitWindowEx<CVolumeFilesWindow>,
-	public CSimpleHSplitWindowEx<CVolumeFilesWindow>
-#else
 class CVolumeFilesWindow : public CBaseWindow
-#endif
 {
 	HWND m_hWndCtrlFocus;
 	UINT m_ConsoleTypeId;
 
 	CFilesPageHost m_PageHost;
 	CFilesPageHost *m_pView;
-
-#if _ENABLE_FILELIST_SUB_PANE
-	CPropPaneWindow *m_pPropPane;
-	CVolumeSelectPane *m_pVolPane;
-	CInfoPaneWindow *m_pInfoPane;
-#endif
 
 public:
 	DWORD m_dwViewStyle;
@@ -69,16 +50,6 @@ public:
 		m_hWndCtrlFocus = NULL;
 		m_ConsoleTypeId = ConsoleTypeId;
 		m_dwViewStyle = 0;
-#if _ENABLE_FILELIST_SUB_PANE
-		m_pPropPane = NULL;
-		m_pVolPane = NULL;
-		m_pInfoPane = NULL;
-		m_xVolumeSplitter = 0;
-		m_xPropSplitter = -1;
-		m_cxPropPane = 0;
-		m_yInfoSplitter = -1;
-		m_cyInfoPane = -1;
-#endif
 	}
 
 	~CVolumeFilesWindow()
@@ -91,15 +62,6 @@ public:
 
 		m_pView->m_hWndHost = m_hWnd;
 		m_pView->m_dwFlags = m_dwViewStyle;
-
-#if _ENABLE_FILELIST_SUB_PANE
-		CreateVolummePane(FALSE);
-		CreatePropPane(FALSE);
-		CreateInfoPane(FALSE);
-		m_xVolumeSplitter = _DPI_Adjust_X(320);
-		m_cxPropPane      = _DPI_Adjust_X(320);
-		m_cyInfoPane      = -1;
-#endif
 
 		return 0;
 	}
@@ -120,55 +82,6 @@ public:
 
 	LRESULT OnEraseBkGnd(HWND hWnd,UINT,WPARAM wParam,LPARAM lParam)
 	{
-#if _ENABLE_FILELIST_SUB_PANE
-		HDC hdcMem;
-		HBITMAP hBmp,hOrgBmp;
-		RECT rc;
-
-		GetClientRect(hWnd,&rc);
-		int cx = _RECT_WIDTH(rc);
-		int cy = _RECT_HIGHT(rc);
-
-		HDC hdc = (HDC)wParam;
-
-		hdcMem = CreateCompatibleDC(hdc);
-		hBmp = CreateCompatibleBitmap(hdc,cx,cy);
-
-		hOrgBmp = (HBITMAP)SelectObject(hdcMem,hBmp);
-
-		HBRUSH hbr = CreateSolidBrush(GetSysColor(COLOR_WINDOW));
-		FillRect(hdcMem,&rc,hbr);
-		DeleteObject(hbr);
-
-		HBRUSH hbrSplitter = CreateSolidBrush(RGB(222,222,234));
-
-		rc.left = m_xVolumeSplitter - 1;  // Left Align Pane
-		rc.right = rc.left + 1;
-		FillRect(hdc,&rc,hbrSplitter);
-
-		rc.left = m_xPropSplitter;        // Right Align Pane
-		rc.right = rc.left + 1;
-		FillRect(hdc,&rc,hbrSplitter);
-
-		rc.top    = m_yInfoSplitter - 1;  // Bottom Align Pane
-		rc.bottom = rc.top + 2;
-		rc.left   = 0;
-		rc.right  = cx;
-		FillRect(hdc,&rc,hbrSplitter);
-
-		DeleteObject(hbrSplitter);
-
-		BitBlt(hdc,
-			0,0,
-			_RECT_WIDTH(rc),
-			_RECT_HIGHT(rc),
-			hdcMem,0,0,SRCCOPY);
-
-		SelectObject(hdcMem,hOrgBmp);
-
-		DeleteObject(hBmp);
-		DeleteDC(hdcMem);
-#endif
 		return (LRESULT)TRUE;
 	}
 
@@ -209,21 +122,6 @@ public:
 	{
 		UINT uCmdId = (UINT)LOWORD(wParam);
 
-#if _ENABLE_FILELIST_SUB_PANE
-		switch( uCmdId )
-		{
-			case ID_VIEW_SELECTVOLUMEPANE:
-				OnViewVolumeSelectorPane();
-				return 0;
-			case ID_VIEW_PROPERTYPANE:
-				OnViewPropertyPane();
-				return 0;
-			case ID_VIEW_INFORMATIONPANE:
-				OnViewInformationPane();
-				return 0;
-		}
-#endif
-
 		if( m_hWndCtrlFocus == m_pView->GetPageHWND() )
 		{
 			if( m_pView )
@@ -237,20 +135,6 @@ public:
 		UINT *puState = (UINT *)lParam;
 		UINT uCmdId = (UINT)LOWORD(wParam);
 
-#if _ENABLE_FILELIST_SUB_PANE
-		switch( uCmdId )
-		{
-			case ID_VIEW_SELECTVOLUMEPANE:
-				*puState = UPDUI_ENABLED | (IsWindowVisibleEx(m_pVolPane->m_hWnd) ? UPDUI_CHECKED : 0);
-				return TRUE;
-			case ID_VIEW_PROPERTYPANE:
-				*puState = UPDUI_ENABLED | (IsWindowVisibleEx(m_pPropPane->m_hWnd) ? UPDUI_CHECKED : 0);
-				return TRUE;
-			case ID_VIEW_INFORMATIONPANE:
-				*puState = UPDUI_ENABLED | (IsWindowVisibleEx(m_pInfoPane->m_hWnd) ? UPDUI_CHECKED : 0);
-				return TRUE;
-		}
-#endif
 		if( m_hWndCtrlFocus == m_pView->GetPageHWND() )
 		{
 			ASSERT( lParam != NULL );
@@ -269,9 +153,6 @@ public:
 		{
 			case UI_NOTIFY_ITEM_SELECTED:    // SELECT_ITEM*
 			case UI_NOTIFY_VOLUME_SELECTED:  // SELECT_ITEM*
-#if _ENABLE_FILELIST_SUB_PANE
-			case UI_NOTIFY_UPDATE_SUBPANE:   // SELECT_ITEM*
-#endif
 				OnNotifyForwardToMainFrame(LOWORD(wParam),(PVOID)lParam);
 				break;
 			case UI_NOTIFY_ITEM_ACTIVATED:   // UIS_ITEM_ACTIVATED*
@@ -352,23 +233,7 @@ public:
 				if( m_pView )
 					return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam); // forward to current page
 				return 0;
-#if _ENABLE_FILELIST_SUB_PANE
-			case PPM_NOTIFY:
-				SendMessage(m_pView->GetPageHWND(),PM_RESEND_SELECTED_ITEM_DATA,0,0);
-				return 0;
-#endif
 		}
-#if _ENABLE_FILELIST_SUB_PANE
-		LRESULT lResult;
-		if( CSimpleVSplitWindowEx::ProcessWindowMessage(hWnd,uMsg,wParam,lParam,lResult) )
-		{
-			return lResult;
-		}
-		if( CSimpleHSplitWindowEx::ProcessWindowMessage(hWnd,uMsg,wParam,lParam,lResult) )
-		{
-			return lResult;
-		}
-#endif
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
 
@@ -382,105 +247,10 @@ public:
 			cy = _RECT_HIGHT(rc);
 		}
 
-#if _ENABLE_FILELIST_SUB_PANE
-		HDWP hdwp = BeginDeferWindowPos(4);
-
-		int cxPropPane = 0;
-		int xPropPaneSplitter = 0;
-		int yInfoPaneSplitter = 0;
-		int cxVolPane  = 0;
-		int cyInfoPane = 0;
-
-		if( cx > 0 )
-		{
-			// Volume Pane
-			if( m_pVolPane && IsWindowVisibleEx(m_pVolPane->m_hWnd) )
-			{
-#if 1
-				cxVolPane = m_xVolumeSplitter;
-				if( cxVolPane == -1 ) {
-					int cxWidth = _GetTextWidth(m_hWnd,m_pVolPane->GetListFont(),L"{88888888-8888-8888-8888-888888888888}");
-					cxVolPane = cxWidth + _DPI_Adjust_X(24) + GetSystemMetrics(SM_CXVSCROLL);
-				}
-#else	
-				int cxWidth = _GetTextWidth(m_hWnd,m_pVolPane->GetListFont(),L"{88888888-8888-8888-8888-888888888888}");
-				cxVolPane = cxWidth + _DPI_Adjust_X(24) + GetSystemMetrics(SM_CXVSCROLL);
-#endif
-			}
-
-			// Properties Pane
-			if( m_pPropPane && IsWindowVisibleEx(m_pPropPane->m_hWnd) )
-			{
-				if( absSplitPos )
-				{
-					if( m_xPropSplitter == -1 )
-						m_xPropSplitter = cx - m_cxPropPane;
-					cxPropPane = cx - m_xPropSplitter;
-					xPropPaneSplitter = m_xPropSplitter;
-				}
-				else
-				{
-					if( m_xPropSplitter == -1 )
-						m_xPropSplitter = cx - m_cxPropPane;
-					m_xPropSplitter = xPropPaneSplitter = cx - m_cxPropPane; // update splitter pos
-					cxPropPane = cx - m_xPropSplitter;
-				}
-			}
-
-			// Information Pane
-			if( m_pInfoPane && IsWindowVisibleEx(m_pInfoPane->m_hWnd) )
-			{
-				if( absSplitPos )
-				{
-					if( m_cyInfoPane == -1 )
-						m_cyInfoPane = cy / 2;
-					if( m_yInfoSplitter == -1 )
-						m_yInfoSplitter = cy - m_cyInfoPane;
-					cyInfoPane = cy - m_yInfoSplitter;
-					yInfoPaneSplitter = m_yInfoSplitter;
-				}
-				else
-				{
-					if( m_cyInfoPane == -1 )
-						m_cyInfoPane = cy / 2;
-					if( m_yInfoSplitter == -1 )
-						m_yInfoSplitter = cy - m_cyInfoPane;
-					m_yInfoSplitter = yInfoPaneSplitter = cy - m_cyInfoPane; // update splitter pos
-					cyInfoPane = cy - m_yInfoSplitter;
-				}
-			}
-		}
-
-		int cxView = cx - cxPropPane - cxVolPane;
-		int cyView = cy - cyInfoPane;
-
-		if( m_pView && m_pView->GetPageHWND() )
-		{
-			DeferWindowPos(hdwp,m_pView->GetPageHWND(),NULL,cxVolPane,0,cxView,cyView,SWP_NOZORDER|SWP_NOCOPYBITS);
-		}
-
-		if( m_pVolPane && IsWindowVisibleEx(m_pVolPane->m_hWnd) )
-		{
-			DeferWindowPos(hdwp,m_pVolPane->m_hWnd,NULL,0,0,cxVolPane-1,cy,SWP_NOZORDER|SWP_NOCOPYBITS);
-		}
-
-		if( m_pPropPane && IsWindowVisibleEx(m_pPropPane->m_hWnd) )
-		{
-			DeferWindowPos(hdwp,m_pPropPane->m_hWnd,NULL,xPropPaneSplitter+1,0,cxPropPane-1,cy,SWP_NOZORDER|SWP_NOCOPYBITS);
-		}
-
-		if( m_pInfoPane && IsWindowVisibleEx(m_pInfoPane->m_hWnd) )
-		{
-			DeferWindowPos(hdwp,m_pInfoPane->m_hWnd,NULL,cxVolPane,yInfoPaneSplitter+1,cxView,cyInfoPane-1,SWP_NOZORDER|SWP_NOCOPYBITS);
-		}
-
-		EndDeferWindowPos(hdwp);
-#else
 		if( m_pView && m_pView->GetPageHWND() )
 		{
 			SetWindowPos(m_pView->GetPageHWND(),NULL,0,0,cx,cy,SWP_NOZORDER|SWP_NOCOPYBITS);
 		}
-#endif
 	}
 
 	VOID InitData(PCWSTR pszDirectoryPath)
@@ -499,28 +269,6 @@ public:
 
 	VOID OnNotifyForwardToMainFrame(UINT code,PVOID pFile) // SELECT_ITEM* or UIS_ITEM_ACTIVATED *
 	{
-#if _ENABLE_FILELIST_SUB_PANE
-		if( m_pPropPane && UI_NOTIFY_ITEM_SELECTED == code && IsWindowVisibleEx(m_pPropPane->m_hWnd) )
-		{
-			SELECT_ITEM* p = (SELECT_ITEM*)pFile;
-			SendMessage(m_pPropPane->m_hWnd,PPM_SETPATH,(WPARAM)p->ContextPtr,(LPARAM)p->pszPath);
-		}
-		if( m_pVolPane && UI_NOTIFY_VOLUME_SELECTED == code )
-		{
-			SELECT_ITEM* p = (SELECT_ITEM*)pFile;
-			SendMessage(m_pVolPane->m_hWnd,VNM_SELECTVOLUME,0,(LPARAM)p->pszName);
-		}
-		if( m_pVolPane && UI_NOTIFY_UPDATE_SUBPANE == code )
-		{
-			SELECT_ITEM* pSel = (SELECT_ITEM*)pFile;
-			return;
-		}
-		if( m_pInfoPane && UI_NOTIFY_ITEM_SELECTED == code && IsWindowVisibleEx(m_pInfoPane->m_hWnd) )
-		{
-			SELECT_ITEM* p = (SELECT_ITEM*)pFile;
-			SendMessage(m_pInfoPane->m_hWnd,PPM_SETPATH,(WPARAM)p->ContextPtr,(LPARAM)p->pszPath);
-		}
-#endif
 		// Forward to MainFrame
 		HWND hwndMainWnd = GetActiveWindow(); // todo:
 		SendMessage(hwndMainWnd,WM_NOTIFY_MESSAGE,code,(LPARAM)pFile);
@@ -634,12 +382,6 @@ public:
 		//
 		// Clear Properties
 		//
-#if _ENABLE_FILELIST_SUB_PANE
-		if( m_pPropPane && IsWindowVisibleEx(m_pPropPane->m_hWnd) )
-			SendMessage(m_pPropPane->m_hWnd,PPM_SETPATH,(WPARAM)0,(LPARAM)0);
-		if( m_pInfoPane && IsWindowVisibleEx(m_pInfoPane->m_hWnd) )
-			SendMessage(m_pInfoPane->m_hWnd,PPM_SETPATH,(WPARAM)0,(LPARAM)0);
-#endif
 		if( (pSelectItem->mask & SI_MASK_FILEID) && (pSelectItem->Flags & _FLG_NTFS_SPECIALFILE) )
 		{
 			m_pView->SelectView(pSelectItem);
@@ -718,181 +460,6 @@ public:
 		}
 		return 0;
 	}
-
-#if _ENABLE_FILELIST_SUB_PANE
-	void CreatePropPane(BOOL bVisible=TRUE)
-	{
-		m_pPropPane = new CPropPaneWindow();
-
-		DWORD dwStyle = WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS|(bVisible ? WS_VISIBLE : 0);
-		DWORD dwExStyle = WS_EX_CONTROLPARENT;
-		m_pPropPane->Create(m_hWnd,0,L"PropPane",dwStyle,dwExStyle);
-	}
-
-	void CreateVolummePane(BOOL bVisible=TRUE)
-	{
-		m_pVolPane = new CVolumeSelectPane();
-
-		DWORD dwStyle = WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS|(bVisible ? WS_VISIBLE : 0);
-		DWORD dwExStyle = WS_EX_CONTROLPARENT;
-		m_pVolPane->Create(m_hWnd,0,L"VolumePane",dwStyle,dwExStyle);
-	}
-
-	void CreateInfoPane(BOOL bVisible=TRUE)
-	{
-		m_pInfoPane = new CInfoPaneWindow();
-
-		DWORD dwStyle = WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS|(bVisible ? WS_VISIBLE : 0);
-		DWORD dwExStyle = WS_EX_CONTROLPARENT;
-		m_pInfoPane->Create(m_hWnd,0,L"InfoPane",dwStyle,dwExStyle);
-	}
-
-	void OnViewVolumeSelectorPane()
-	{
-		ShowPane(m_pVolPane->m_hWnd);
-	}
-
-	void OnViewPropertyPane()
-	{
-		if( ShowPane(m_pPropPane->m_hWnd) )
-		{
-			SendMessage(m_pView->GetPageHWND(),PM_RESEND_SELECTED_ITEM_DATA,0,0);
-		}
-	}
-
-	void OnViewInformationPane()
-	{
-		if( ShowPane(m_pInfoPane->m_hWnd) )
-		{
-			SendMessage(m_pView->GetPageHWND(),PM_RESEND_SELECTED_ITEM_DATA,0,0);
-		}
-	}
-
-	BOOL ShowPane(HWND hwndPane)
-	{
-		int nCmdShow;
-		BOOL bEnable;
-		if( IsWindowVisibleEx( hwndPane ) )
-		{
-			bEnable = FALSE;
-			nCmdShow = SW_HIDE;
-		}
-		else
-		{
-			bEnable = TRUE;
-			nCmdShow = SW_SHOW;
-		}
-		ShowWindow(hwndPane,nCmdShow);
-		EnableWindow(hwndPane,bEnable);
-		UpdateLayout();
-		return bEnable;
-	}
-
-	virtual BOOL IsOverSplitterV(int x,int y)
-	{
-		int split = checkSplitter(x,y);
-		if( split == 1 || split == 2 )
-			return TRUE;
-		return FALSE;
-	}
-
-	virtual BOOL IsOverSplitterH(int x,int y)
-	{
-		if( checkSplitter(x,y) == 3 )
-			return TRUE;
-		return FALSE;
-	}
-
-	virtual void EnterSplitterDrag()
-	{
-	}
-
-	virtual void LeaveSplitterDrag()
-	{
-		RECT rc;
-		GetClientRect(m_hWnd,&rc);
-		if( CSimpleVSplitWindowEx::GetSplitterValuePtr() == &m_xPropSplitter )
-		{
-			int cx = _RECT_WIDTH(rc);
-			m_cxPropPane = cx - m_xPropSplitter;
-		}
-		if( CSimpleHSplitWindowEx::GetSplitterValuePtr() == &m_yInfoSplitter )
-		{
-			int cy = _RECT_HIGHT(rc);
-			m_cyInfoPane = cy - m_yInfoSplitter;
-		}
-		CSimpleVSplitWindowEx::SetSplitterValue(nullptr);
-	}
-private:	
-	int checkSplitter(int x,int y)
-	{
-		// Volume Pane Splitter		
-		if( m_pVolPane && IsWindowVisibleEx(m_pVolPane->m_hWnd) )
-		{
-			if( ((m_xVolumeSplitter-4) <= x) && (x <= (m_xVolumeSplitter)) )
-			{
-				CSimpleVSplitWindowEx::SetSplitterValue(&m_xVolumeSplitter);
-				return 1;
-			}
-		}
-
-		RECT rc;
-		GetClientRect(m_hWnd,&rc);
-		int cx = _RECT_WIDTH(rc);
-		int cy = _RECT_HIGHT(rc);
-
-		// Property Pane Splitter		
-		if( m_pPropPane && IsWindowVisibleEx(m_pPropPane->m_hWnd) ) 
-		{
-			int xSplitPos = m_xPropSplitter;
-			if( xSplitPos == -1 )
-				xSplitPos = cx - m_cxPropPane;
-			if( xSplitPos > 0 )
-			{
-				if( ((xSplitPos-2) <= x) && (x <= (xSplitPos+2)) )
-				{
-					//m_xPropSplitter = xSplitPos;
-					CSimpleVSplitWindowEx::SetSplitterValue(&m_xPropSplitter);
-					return 2;
-				}
-			}
-		}
-
-		// Information Pane Splitter		
-		if( m_pInfoPane && IsWindowVisibleEx(m_pInfoPane->m_hWnd) )
-		{
-			int ySplitPos = m_yInfoSplitter;
-			if( ySplitPos == -1 )
-				ySplitPos = cy / 2;
-			if( ySplitPos > 0 )
-			{
-				int left = 0;
-				int right = cx;
-	
-				if( m_pVolPane && IsWindowVisibleEx(m_pVolPane->m_hWnd) )
-					left = m_xVolumeSplitter;
-				if( m_pPropPane && IsWindowVisibleEx(m_pPropPane->m_hWnd) )
-					right = m_xPropSplitter;
-				if( left < x && x < right )
-				{
-					if( ((ySplitPos-2) <= y) && (y <= (ySplitPos+2)) )
-					{
-						CSimpleHSplitWindowEx::SetSplitterValue(&m_yInfoSplitter);
-						return 3;
-					}
-				}
-			}
-		}
-		return 0;
-	}
-
-	int m_xVolumeSplitter;
-	int m_cxPropPane;
-	int m_xPropSplitter;
-	int m_yInfoSplitter;
-	int m_cyInfoPane;
-
-#endif
 };
 
 //////////////////////////////////////////////////////////////////////////////

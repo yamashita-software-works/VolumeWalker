@@ -805,6 +805,11 @@ VOID SendUIInitLayout(HWND hwndMDIChild,HWND hWndView)
 	GetClientRect(hwndMDIChild,&rc);
 	SetWindowPos(hWndView,NULL,0,0,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOREDRAW|SWP_NOACTIVATE|SWP_HIDEWINDOW);
 	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_INIT_LAYOUT,(LPARAM)&rc);
+
+	PAGE_CONTEXT *Context = (PAGE_CONTEXT *)_MemAllocZero( sizeof(PAGE_CONTEXT) );
+	Context->MainApp = g_pMainApp;
+	SendMessage(hWndView,WM_CONTROL_MESSAGE,UI_INIT_LAYOUT_EX,(LPARAM)Context);
+	_MemFree(Context);
 }
 
 VOID SendHexDumpInformation(HWND hwndMDIChild,HWND hWndView,OPEN_MDI_CHILDFRAME_PARAM *OpenSelItem)
@@ -1691,7 +1696,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if( (QueryCmdState(wmId,UPDUI_DISABLED,0,0) & UPDUI_DISABLED) != 0 )
 				break;
 
-			CommandHandler::ForwardCommand(g_hCommand,wmId);
+			if( CommandHandler::ForwardCommand(g_hCommand,wmId) )
+				break;
 
 			switch (wmId)
 			{
@@ -1798,9 +1804,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			INT RelativePosition = (INT)LOWORD(lParam);
 			INT WindowMenu = HIWORD(lParam);
 
-			// ignores system menu
-			if( GetMenuPosFromID(hMenu,SC_SIZE) != -1 )
-				break;
+			BOOL Maximized;
+			SendMessage(hWnd,WM_MDIGETACTIVE,0,(LPARAM)&Maximized);
+
+			if( Maximized )
+			{
+				WindowMenu = (RelativePosition == 0);
+			}
 
 			UpdateUI_MenuItem(hMenu,&QueryCmdState,0);
 

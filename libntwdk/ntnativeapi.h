@@ -602,6 +602,66 @@ RtlSystemTimeToLocalTime(
     __out PLARGE_INTEGER LocalTime
    );
 
+#ifndef _NTIFS_
+typedef struct TIME_FIELDS {
+    SHORT Year;
+    SHORT Month;
+    SHORT Day;
+    SHORT Hour;
+    SHORT Minute;
+    SHORT Second;
+    SHORT Milliseconds;
+    SHORT Weekday;
+} TIME_FIELDS,*PTIME_FIELDS;
+
+EXTERN_C
+BOOLEAN 
+NTAPI
+RtlTimeFieldsToTime(
+    IN PTIME_FIELDS  TimeFields,
+    IN PLARGE_INTEGER  Time
+    );
+
+EXTERN_C
+VOID 
+NTAPI
+RtlTimeToTimeFields(
+    IN PLARGE_INTEGER  Time,
+    IN PTIME_FIELDS  TimeFields
+    );
+
+EXTERN_C
+BOOLEAN
+NTAPI
+RtlTimeToSecondsSince1970(
+    IN PLARGE_INTEGER  Time,
+    OUT PULONG  ElapsedSeconds
+    );
+
+EXTERN_C
+VOID
+NTAPI
+RtlSecondsSince1970ToTime(
+    IN ULONG  ElapsedSeconds,
+    OUT PLARGE_INTEGER  Time
+    );
+
+EXTERN_C
+BOOLEAN
+NTAPI
+RtlTimeToSecondsSince1980(
+    IN PLARGE_INTEGER  Time,
+    OUT PULONG  ElapsedSeconds
+    );
+
+EXTERN_C
+VOID
+NTAPI
+RtlSecondsSince1980ToTime(
+    IN ULONG  ElapsedSeconds,
+    OUT PLARGE_INTEGER  Time
+    );
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 

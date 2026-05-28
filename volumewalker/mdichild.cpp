@@ -144,6 +144,24 @@ LRESULT CALLBACK MDIChildWndProc(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			SendMessage(pd->hWndView,WM_NCACTIVATE,wParam,lParam);
 			break;
 		}
+		//
+		// When a system menu event occurs in an MDI child window, it is forwarded to the main frame. 
+		// This happens only when the MDI child window is not maximized. If it is maximized,
+		// it is treated as the index #0 item in the main frame menu.
+		//
+		case WM_INITMENUPOPUP:
+		{
+			return SendMessage(GetActiveWindow(),WM_INITMENUPOPUP,wParam,lParam);
+		}
+		case WM_SYSCOMMAND:
+		{
+			if( (wParam & 0xF000) != 0xF000 )
+			{
+				SendMessage(GetActiveWindow(),WM_COMMAND,wParam,0);
+				return 0;
+			}
+			break;
+		}
 	}
 	return DefMDIChildProc(hWnd,msg,wParam,lParam);
 }
