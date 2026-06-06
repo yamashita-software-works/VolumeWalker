@@ -1,15 +1,13 @@
 ### 0.1.53.0
 
-- Create Image File と Write Back Disk Image Fileを機能を追加。   
-**これらの機能の使用は非推奨です。比較的小容量の外部USBメモリなどの実験用に実装されています。**
-<br><br>
+- Create Image File と Write Back Disk Image File 機能を追加。   <br><br>
+**これらの機能の使用は非推奨です。比較的小容量の外部USBメモリなどの実験用に実装されています。**    <br><br>
 メニューの \[File\]\>\[Tools\]\>\[Deprecated Features\] から選択します。   
 Create Image Fileは、ディスクまたはボリュームのセクタまたはクラスタデータを単純にファイルに書き出します。   
-Write Back Disk Image Fileは、そのファイルをそのまま指定されたディスクまたはボリュームに書き込みます。   
-<br>
+Write Back Disk Image Fileは、そのファイルをそのまま指定されたディスクまたはボリュームに書き込みます。<br>   
 **警告**  
 イメージファイルはメタ情報などが付加されない生のままのセクタ/クラスタのデータです。**それらをディスクまたはボリュームに書き戻す際、一切の検証が行われない事に注意してください。誤って書き込みをするとディスクを破壊してデータが失われたりシステムを起動できなくなります。**
-<br><br>
+
 - ToolsメニューにRun file dialogを追加。   
 メニューの \[File\]\>\[Tools\]\>\[Run file dialog\] を選択します。   
 WindowsのExplorerが使用している（従来の）「ファイル名を指定して実行」と同等のダイアログを表示します。
