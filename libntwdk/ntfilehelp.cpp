@@ -206,7 +206,8 @@ SplitRootPath_W(
     {
         *RootDirectory = AllocStringBuffer(cchRoot+1);
         memcpy(*RootDirectory,pszFullyQualifiedPath,cchRoot*sizeof(WCHAR));
-        (*RootDirectory)[cchRoot] = L'\0';
+		if( *RootDirectory )
+			(*RootDirectory)[cchRoot] = L'\0';
     }
 
     if( RootDirectoryLength )
@@ -266,6 +267,7 @@ OpenFileEx_W(
 
     *phFile = INVALID_HANDLE_VALUE;
 
+#if 0
     if( SplitRootPath_W(PathName,&Root,NULL,&RelativePath,NULL) != S_OK )
     {
         return STATUS_INVALID_PARAMETER;
@@ -281,6 +283,30 @@ OpenFileEx_W(
                     &IoStatus,
                     FILE_SHARE_READ|FILE_SHARE_WRITE,
                     FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT);
+#else
+    if( SplitRootPath_W(PathName,&Root,NULL,&RelativePath,NULL) == S_OK )
+    {
+        RtlInitUnicodeString(&usPath,Root);
+
+        InitializeObjectAttributes(&ObjectAttributes,&usPath,0,NULL,NULL);
+    
+        Status = NtOpenFile(&hRoot,
+                    STANDARD_RIGHTS_READ|FILE_LIST_DIRECTORY|FILE_READ_ATTRIBUTES|FILE_READ_EA|SYNCHRONIZE,
+                    &ObjectAttributes,
+                    &IoStatus,
+                    FILE_SHARE_READ|FILE_SHARE_WRITE,
+                    FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT);
+    }
+    else
+    {
+        hRoot = NULL;
+        RelativePath = DuplicateString(PathName);
+		if( RelativePath != NULL )
+			Status = STATUS_SUCCESS;
+		else
+			Status = STATUS_NO_MEMORY;
+    }
+#endif
 
     if( Status == STATUS_SUCCESS )
     {

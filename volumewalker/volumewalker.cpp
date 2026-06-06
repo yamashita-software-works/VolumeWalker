@@ -47,6 +47,9 @@ static PCWSTR g_pszIniFileName = L"";  // for debug only
 static PCWSTR g_pszIniFileName = L"";
 #endif
 static HANDLE g_hCommand;
+#if _ENABLE_EXTERNAL_PROXY_OPEN
+static BOOL g_bProxyOpen = FALSE;
+#endif
 
 #define _LAYOUT_FILENAME L"layout.ini"
 
@@ -1143,6 +1146,10 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 #if _ENABLE_FILES_USE_SHELL_ICON
 						dwFlags |= CVFLF_USE_SHELL_ICON;
 #endif
+#if _ENABLE_EXTERNAL_PROXY_OPEN
+						if( g_bProxyOpen )
+							dwFlags |= VOLFILES_FLG_USE_PROXY_OPEN;
+#endif
 						pd->hWndView = pfnCreateVolumeFileList(hwndMDIChild,ConsoleTypeId,dwFlags,(LPARAM)&param);
 
 						InitViewType(pd,ConsoleTypeId,pwndGuid);
@@ -1580,6 +1587,9 @@ VOID ExitInstance()
 //----------------------------------------------------------------------------
 INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 {
+	if( (CmdId & 0xF000) == 0xF000 )
+		return UPDUI_ENABLED;
+
 	HWND hwndMDIChild = MDIGetActive(g_hWndMDIClient);
 	if( hwndMDIChild )
 	{

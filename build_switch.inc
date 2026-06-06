@@ -14,7 +14,7 @@
 #endif
 
 #ifndef _ENABLE_OLE
-#define _ENABLE_OLE                         0
+#define _ENABLE_OLE                         1
 #endif
 
 #ifndef _ENABLE_TOOLS
@@ -30,7 +30,7 @@
 #endif
 
 #ifndef _ENABLE_FILELIST_DRAGFILE
-#define _ENABLE_FILELIST_DRAGFILE           0
+#define _ENABLE_FILELIST_DRAGFILE           1
 #endif
 
 #ifndef _ENABLE_INTERNAL_FEATURE
@@ -49,3 +49,10 @@
 #define _ENABLE_FILELIST_SINGLETON          1
 #endif
 
+#ifndef _ENABLE_TOOL_DISKIMAGE
+#define _ENABLE_TOOL_DISKIMAGE              1
+#endif
+
+#ifndef _ENABLE_TOOL_DISKIMAGE_WRITEBACK
+#define _ENABLE_TOOL_DISKIMAGE_WRITEBACK    1
+#endif

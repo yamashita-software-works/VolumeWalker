@@ -514,15 +514,22 @@ VOID WINAPI _GetDateTimeStringEx2(ULONG64 DateTime,LPTSTR pszText,int cchTextMax
                 DateFormat,
                 pszText,cchTextMax);
 
-    pszText[cch-1] = _T(' ');
+    if( cch > 0 )
+    {
+        pszText[cch-1] = _T(' ');
 
-    cch += GetTimeFormat(LOCALE_USER_DEFAULT,
-                dwOldFlags,
-                &st, 
-                TimeFormat,
-                &pszText[cch],cchTextMax-cch);
+        cch += GetTimeFormat(LOCALE_USER_DEFAULT,
+                    dwOldFlags,
+                    &st, 
+                    TimeFormat,
+                    &pszText[cch],cchTextMax-cch);
+    }
+    else
+    {
+        *pszText = L'\0'; // invalid date
+    }
 
-    if( bMilliseconds )
+    if( bMilliseconds && *pszText )
     {
         WCHAR szMilliseconds[16];
         int cchMilliseconds;
@@ -542,10 +549,13 @@ VOID WINAPI _GetDateTimeStringEx2(ULONG64 DateTime,LPTSTR pszText,int cchTextMax
 #else
                 cchMilliseconds = wsprintf(szMilliseconds,TEXT("%07u"),(UINT)liLts.QuadPart); // display 100ns "0000000"
 #endif
-                int i;
-                for(i = 0; i < cch100ns; i++)
+                if( cchMilliseconds > 0 )
                 {
-                    pMilliseconds[i] = szMilliseconds[i];
+                    int i;
+                    for(i = 0; i < cch100ns; i++)
+                    {
+                        pMilliseconds[i] = szMilliseconds[i];
+                    }
                 }
             }
         }

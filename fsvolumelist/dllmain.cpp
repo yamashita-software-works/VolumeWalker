@@ -242,8 +242,6 @@ GetDeviceClassIcon(
 	return hIcon;
 }
 
-//	ListView_SetImageList(m_hWndList,himl,LVSIL_SMALL);
-//	ImageList_AddIcon( himl, GetShellStockIcon(SIID_DRIVEFIXED) );
 EXTERN_C
 HIMAGELIST
 WINAPI
@@ -306,13 +304,3 @@ const int GetColumnNameTableItemCount()
 {
 	return _countof(column_name_map);
 }
-
-/*++ Reserved
-const int GetColumnNameTableInfo(COLUMN_NAME **Names,SIZE_T *BufferSize)
-{
-	*Names = column_name_map;
-	if( BufferSize )
-		*BufferSize = GetColumnNameTableItemCount() * sizeof(COLUMN_NAME);
-	return GetColumnNameTableItemCount();
-}
---*/

@@ -88,3 +88,57 @@ CreateMountPointDialog(
 	);
 
 #define MPDF_APPENDPREFIX_NT (0x1)
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// Create Disk Image File
+//
+
+typedef enum {
+	CDIFCB_Progress=0,
+	CDIFCB_Start,
+	CDIFCB_End,
+	CDIFCB_Confirm=98,
+	CDIFCB_Error=99,
+} CALLBACKREASON;
+
+typedef BOOL (CALLBACK *CREATEDISKIMAGEFILECALLBACK)(
+	CALLBACKREASON CallReason,
+	LARGE_INTEGER ProcessedSize,
+	LARGE_INTEGER DiskSize,
+	DWORD ErrorCode,
+	ULONG_PTR Context
+	);
+
+HRESULT 
+WINAPI
+CreateDiskImageFile(
+	PCWSTR pszPhysicalDrive, // "\\.\PhysicalDrive0"
+	PCWSTR pszImageFilePath, // "C:\foo\bar\disk_image.img"
+	ULONG reserved,
+	PVOID reserved_ptr,
+	CREATEDISKIMAGEFILECALLBACK reserved_callback,
+	ULONG_PTR reserved_context
+	);
+
+EXTERN_C
+HRESULT
+WINAPI
+CreateDiskImageFileDialog(
+	__in HWND hWnd,
+	__in PWSTR Reserved1,
+	__in PWSTR Reserved2,
+	__in PVOID ReservedPtr,
+	__inout_opt HANDLE *phHandle // Reserved
+	);
+
+EXTERN_C
+HRESULT
+WINAPI
+WriteBackDiskImageFileDialog(
+	__in HWND hWnd,
+	__in PWSTR Reserved1,
+	__in PWSTR Reserved2,
+	__in PVOID ReservedPtr,
+	__inout_opt	 HANDLE *phHandle // Reserved
+	);

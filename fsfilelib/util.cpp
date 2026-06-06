@@ -343,7 +343,7 @@ EXTERN_C
 NTSTATUS
 NTAPI
 NtWin32BackupCopy(
-	__in FSOP* pfsop,
+	__in PVOID Handle,
 	__in HANDLE hDstFile,
 	__in PCWSTR pDstFilePath,
 	__in HANDLE hSrcFile,
@@ -356,6 +356,7 @@ NtWin32BackupCopy(
 	LONG Status = 0;
 
 	FSOP fsop = {0};
+	FSOP *pfsop;
 
 	pfsop = &fsop;
 

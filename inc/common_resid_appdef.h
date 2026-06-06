@@ -68,6 +68,7 @@
 #define ID_DLEDIT_ASSIGN_DRIVE                   41077
 #define ID_DLEDIT_MOUNT_FOLDER                   41078
 #define ID_DLEDIT_UNMOUNT_FOLDER                 41079
+#define ID_SHELL_RUNFILE_DIALOG                  41082
 
 #define ID_EDIT_COPY_COUMN_FIRST                 41100
 #define ID_EDIT_COPY_COUMN_LAST                  41149

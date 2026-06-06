@@ -982,6 +982,11 @@ GetNtfsSpecialFiles(
 	NtfsFileList->pItemList = pspfl->GetData();
 	NtfsFileList->Handle = (HANDLE)pspfl;
 
+	if( Status != 0 )
+	{
+		FreeNtfsSpecialFiles(NtfsFileList);
+	}
+
 	return Status;
 }
 

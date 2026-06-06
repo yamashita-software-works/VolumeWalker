@@ -4,10 +4,9 @@ EXPORTS
 	InitializeVolumeConsole
 	CreateVolumeConsoleWindow
 	GetDeviceClassIcon
-;
-; Volume Tools Funcsions
-;
 	VolumeLabelEditDialog
 	VolumeObjectIdEditDialog
 	LookupStreamNameDialog
 	VirtualDiskAttachDialog
+	CreateDiskImageFileDialog
+	WriteBackDiskImageFileDialog

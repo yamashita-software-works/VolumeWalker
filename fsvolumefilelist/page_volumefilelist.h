@@ -1129,13 +1129,13 @@ public:
 		{
 			case 0:
 				if( dt > 0 )
-					_GetDateTimeStringEx2(dt,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,NULL,NULL,FALSE,1);
+					_GetDateTimeStringEx2(dt,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,NULL,NULL,FALSE,TRUE);
 				else
 					pnmlvdi->item.pszText = L"-";
 				break;
 			case 1:
 				if( dt > 0 )
-					_GetDateTimeStringEx2(dt,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,NULL,NULL,TRUE,1);
+					_GetDateTimeStringEx2(dt,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,NULL,NULL,TRUE,TRUE);
 				else
 					pnmlvdi->item.pszText = L"-";
 				break;

@@ -1,8 +1,8 @@
 //***************************************************************************
 //*                                                                         *
-//*  fsfilelib.cpp                                                          *
+//*  filelibnt.cpp                                                          *
 //*                                                                         *
-//*  NT native API functions                                                *
+//*  NT native API based functions                                          *
 //*                                                                         *
 //*  Create: 2023-04-26                                                     *
 //*                                                                         *

@@ -331,7 +331,6 @@ public:
 	
 					FreeMemory(pszPath);
 				}
-
 			}
 			else
 			{

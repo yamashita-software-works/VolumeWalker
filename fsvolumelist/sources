@@ -113,6 +113,8 @@ SOURCES = \
 	dialog_assigndrive.cpp\
 	dialog_removedrive.cpp\
 	dialog_createmountpoint.cpp\
+	diskimage_create.cpp\
+	diskimage_writeback.cpp\
 	fsvolumelist.rc
 
 #----------------------------------------------------------
