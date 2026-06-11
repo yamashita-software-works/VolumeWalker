@@ -84,6 +84,8 @@ INCLUDES=$(INCLUDES);..\libmisc
 INCLUDES=$(INCLUDES);..\libntwdk
 INCLUDES=$(INCLUDES);..\inc
 INCLUDES=$(INCLUDES);..\fsvolumelist
+INCLUDES=$(INCLUDES);..\fsvolumefilelist
+INCLUDES=$(INCLUDES);..\fsvolumehelp
 
 #----------------------------------------------------------
 # Sources Files

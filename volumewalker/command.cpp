@@ -18,7 +18,7 @@
 #include "resource.h"
 #include "inifile.h"
 #include "shellpathhelp.h"
-#include "..\fsvolumelist\fsvolumelist.h"
+#include "fsvolumelist.h"
 
 #if _ENABLE_TOOL_TOOLPAD
 #include "..\fsvolumetools\toolpad.h"

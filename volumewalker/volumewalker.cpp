@@ -25,8 +25,8 @@
 #include "find.h"
 #include "inifile.h"
 #include "command.h"
-#include "..\fsvolumelist\fsvolumelist.h"
-#include "..\fsvolumefilelist\fsvolumefilelist.h"
+#include "fsvolumelist.h"
+#include "fsvolumefilelist.h"
 
 static HINSTANCE g_hInst = NULL;
 static HMODULE g_hInstRes = NULL;

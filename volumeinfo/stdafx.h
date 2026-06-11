@@ -51,8 +51,8 @@
 #include "common_resid.h"
 #include "common_resid_appdef.h"
 #include "ntvolumenames.h"
-#include "..\fsvolumehelp\volumehelp.h"
-#include "..\fsvolumelist\fsvolumelist.h"
+#include "volumehelp.h"
+#include "fsvolumelist.h"
 #undef HMODULE // for switch WDK header to Win32
 
 #include "..\build_switch.inc"
