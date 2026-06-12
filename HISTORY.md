@@ -1,3 +1,14 @@
+### 0.1.54.0
+
+-  **【重要】** 今後の開発の機能区分、構成を考慮して、DLL名を変更しました。
+   - fsvolumelist.dll -> fsvolumedisks.dll
+   - fsvolumefilelist.dll -> fsvolumefiles.dll   
+旧版ビルドを展開したディレクトリに、新しいビルドを上書きコピーする際注意してください。旧DLLは削除する事をお奨めします。
+
+- Releases で提供する書庫ファイル名、書庫内のディレクトリ名を変更しました。
+
+- ソースコードの変更は上記名称変更に関係する箇所のみで、機能追加・不具合修正に関するものはありません。
+
 ### 0.1.53.0
 
 - Create Image File と Write Back Disk Image File 機能を追加。   <br><br>

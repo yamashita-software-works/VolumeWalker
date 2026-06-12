@@ -1,0 +1,12 @@
+LIBRARY "fsvolumedisks"
+
+EXPORTS
+	InitializeVolumeConsole
+	CreateVolumeConsoleWindow
+	GetDeviceClassIcon
+	VolumeLabelEditDialog
+	VolumeObjectIdEditDialog
+	LookupStreamNameDialog
+	VirtualDiskAttachDialog
+	CreateDiskImageFileDialog
+	WriteBackDiskImageFileDialog

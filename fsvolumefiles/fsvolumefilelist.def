@@ -1,0 +1,4 @@
+LIBRARY "fsvolumefiles"
+
+EXPORTS
+	CreateVolumeFileList

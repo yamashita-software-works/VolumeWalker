@@ -4,8 +4,8 @@ DIRS=\
 	libntwdk\
 	fsfilelib\
 	fsvolumehelp\
-	fsvolumelist\
-	fsvolumefilelist\
+	fsvolumedisks\
+	fsvolumefiles\
 	volumeinfo\
 	volumewalker
 	

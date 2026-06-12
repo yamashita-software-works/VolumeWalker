@@ -83,8 +83,8 @@ INCLUDES=$(INCLUDES);..\libcwh
 INCLUDES=$(INCLUDES);..\libmisc
 INCLUDES=$(INCLUDES);..\libntwdk
 INCLUDES=$(INCLUDES);..\inc
-INCLUDES=$(INCLUDES);..\fsvolumelist
-INCLUDES=$(INCLUDES);..\fsvolumefilelist
+INCLUDES=$(INCLUDES);..\fsvolumedisks
+INCLUDES=$(INCLUDES);..\fsvolumefiles
 INCLUDES=$(INCLUDES);..\fsvolumehelp
 
 #----------------------------------------------------------
@@ -128,7 +128,7 @@ LINKLIBS=\
 	$(SDK_LIB_PATH)\uxtheme.lib \
 	$(CRT_LIB_PATH)\delayimp.lib \
 	$(DDK_LIB_PATH)\ntdll.lib \
-	$(_USERLIB)\fsvolumelist.lib \
+	$(_USERLIB)\fsvolumedisks.lib \
 	$(_USERLIB)\libcwh.lib \
 	$(_USERLIB)\libmisc.lib \
 	$(_USERLIB)\libntwdk.lib

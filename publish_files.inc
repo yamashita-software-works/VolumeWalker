@@ -1,8 +1,8 @@
 FILES=\
 	volumewalker.exe\
 	volumeinfo.exe\
-	fsvolumelist.dll\
-	fsvolumefilelist.dll\
+	fsvolumedisks.dll\
+	fsvolumefiles.dll\
 	fsvolumehelp.dll\
 	fsfilelib.dll
 

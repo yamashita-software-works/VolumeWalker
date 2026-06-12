@@ -40,7 +40,7 @@ static HMENU g_hMdiMenu = NULL;
 static LCID g_lcid = LOCALE_USER_DEFAULT;
 static LANGID g_langId = LANG_USER_DEFAULT;
 static BOOL g_bEnableWorkspaceLayout = FALSE;
-static PWSTR g_pszDirViewerName = L"fsvolumefilelist.dll";
+static PWSTR g_pszDirViewerName = L"fsvolumefiles.dll";
 #ifdef _DEBUG
 static PCWSTR g_pszIniFileName = L"";  // for debug only
 #else
