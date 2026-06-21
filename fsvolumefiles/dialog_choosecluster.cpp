@@ -789,7 +789,7 @@ ChooseClusterLocationDialog(
 
 	if(FILE_NAMED_STREAMS & FileSystemFlags)
 	{
-		hr = ChooseStreamDialog(hWnd,pszFilePath,&pszStreamName,&cchStreamName,FSSDF_MAKEFULLPATH);
+		hr = ChooseStreamDialog(hWnd,pszFilePath,&pszStreamName,&cchStreamName,CSDF_MAKEFULLPATH);
 
 		if( hr == S_FALSE )
 		{

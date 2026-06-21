@@ -202,7 +202,7 @@ public:
 		sel.ViewType = m_ConsoleTypeId;
 		sel.pszPath  = (PWSTR)pvccp->pszInitialDeviceName;
 		sel.Context  = pvccp->Context;
-
+		sel.Flags    = pvccp->dwFlags;
 		m_pView->SelectView(&sel);
 	}
 

@@ -24,7 +24,7 @@
 EXTERN_C
 BOOL
 WINAPI
-NtCopyFileEx(
+NtDosCopyFileEx(
     __in     LPCWSTR lpExistingFileName,
     __in     LPCWSTR lpNewFileName,
     __in_opt LPPROGRESS_ROUTINE lpProgressRoutine,
@@ -116,7 +116,7 @@ _cleanup:
 EXTERN_C
 BOOL
 WINAPI
-NtRenameFileW(
+NtDosRenameFile(
     __in LPCWSTR lpExistingFileName,
     __in LPCWSTR lpNewFileName,
 	__in DWORD dwFlags
@@ -203,7 +203,7 @@ _cleanup:
 EXTERN_C
 BOOL
 WINAPI
-NtDeleteFileW(
+NtDosDeleteFile(
     __in LPCWSTR lpFileName
     )
 {
@@ -256,7 +256,7 @@ _cleanup:
 EXTERN_C
 BOOL
 WINAPI
-NtRemoveDirectoryW(
+NtDosRemoveDirectory(
     __in LPCWSTR lpPathName
     )
 {
@@ -309,7 +309,7 @@ _cleanup:
 EXTERN_C
 BOOL
 WINAPI
-NtSetFileAttributesW(
+NtDosSetFileAttributes(
     __in LPCWSTR lpFileName,
 	__in DWORD FileAttributes
     )

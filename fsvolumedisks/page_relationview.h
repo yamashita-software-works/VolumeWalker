@@ -66,6 +66,7 @@ class CVolumeDriveRelationViewPage :
 {
 	HWND m_hWndTree;
 	HFONT m_hFont;
+	DWORD m_dwFlags;
 #if _ENABLE_ITEM_ICON
 	HIMAGELIST m_himl;
 #endif
@@ -77,14 +78,19 @@ public:
 		m_himl = NULL;
 #endif
 		m_bEnableThemeStyle = FALSE;
+		m_dwFlags = 0;
 	}
 
 	virtual ~CVolumeDriveRelationViewPage()
 	{
 	}
 
-	virtual HRESULT OnInitPage(PVOID,DWORD,PVOID)
+	virtual HRESULT OnInitPage(PVOID ptr,DWORD,PVOID)
 	{
+		SELECT_ITEM *SelItem = (SELECT_ITEM *)ptr;
+
+		m_dwFlags = SelItem->Flags;
+
 		{ // Block:
 			HWND hwndTree;
 			hwndTree = CreateWindowEx(0,WC_TREEVIEW, 
@@ -260,7 +266,8 @@ public:
 				UINT uFlags = TPM_LEFTALIGN|TPM_TOPALIGN;
 
 				AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
-				AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"&Open in Volume File Explorer");
+				if( (m_dwFlags & VOLDISKS_FLG_NO_OPEN_VOLUME_FILE_EXPLORER) == 0 )
+					AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"&Open in Volume File Explorer");
 
 				TrackPopupMenuEx(hMenu,uFlags,pt.x,pt.y,GetActiveWindow(),NULL);
 

@@ -383,7 +383,7 @@ NtPathGetLongPathNameFromHandle(
 
 //---------------------------------------------------------------------------
 //
-//  DosPathToNtDevicePath()
+//  NtPathDosPathToNtDevicePath()
 //
 //  PURPOSE:
 //
@@ -391,7 +391,7 @@ NtPathGetLongPathNameFromHandle(
 EXTERN_C
 BOOL
 APIENTRY
-DosPathToNtDevicePath(
+NtPathDosPathToNtDevicePath(
 	PCWSTR pszDosPath,
 	PWSTR pszNtPathBuffer,
 	ULONG cchNtPathBuffer,
@@ -610,6 +610,8 @@ FreeWofInformation(
 
 #define PRIVATE static
 
+#if _USE_CLASSIC_FILE_INFORMATION_API
+
 //---------------------------------------------------------------------------
 //
 //  NTFile_OpenFile()
@@ -653,6 +655,8 @@ NTFile_CloseFile(
 {
 	return HRESULT_FROM_NT( NtClose(hFile) );
 }
+
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -730,94 +734,6 @@ _GetFileSize(
 	return Status;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/*
-//----------------------------------------------------------------------------
-//
-//  GetAlternateStreamNames()
-//
-//  PURPOSE:
-//
-//----------------------------------------------------------------------------
-PRIVATE
-NTSTATUS
-APIENTRY
-GetAlternateStreamNames(
-	HANDLE hFile,
-	INT *pAltStreamCount,
-	FILE_STREAM_INFORMATION **StreamInformation
-	)
-{
-	NTSTATUS Status;
-	IO_STATUS_BLOCK IoStatus;
-	INT cAltStreams = 0;
-	FILE_STREAM_INFORMATION s = {0};
-	FILE_STREAM_INFORMATION *pfsi = &s;
-	ULONG cb = sizeof(FILE_STREAM_INFORMATION);
-
-	if( pAltStreamCount )
-		*pAltStreamCount = 0;
-
-	Status = NtQueryInformationFile(hFile,&IoStatus,pfsi,cb,FileStreamInformation);
-
-	if( Status == STATUS_SUCCESS )
-		return Status;
-
-	// STATUS_BUFFER_OVERFLOW
-	// The output buffer was filled before all of the stream information could be returned. 
-	// Only complete FILE_STREAM_INFORMATION structures are returned.
-	// STATUS_INFO_LENGTH_MISMATCH
-	// The specified information record length does not match the length that is required
-	// for the specified information class.
-
-	if( Status != STATUS_BUFFER_OVERFLOW )
-		return Status;
-
-	for(;;)
-	{
-		cb += 4096;
-
-		pfsi = (FILE_STREAM_INFORMATION *)AllocMemory( cb );
-
-		if( pfsi == NULL )
-		{
-			Status = STATUS_NO_MEMORY;
-			break;
-		}
-
-		Status = NtQueryInformationFile(hFile,&IoStatus,pfsi,cb,FileStreamInformation);
-
-		if( Status == STATUS_SUCCESS )
-		{
-			*StreamInformation = pfsi;
-
-			if( pAltStreamCount )
-			{
-				FILE_STREAM_INFORMATION *psn = pfsi;
-
-				for(;;)
-				{
-					cAltStreams++;
-					if( psn->NextEntryOffset == 0 )
-						break;
-					psn = (FILE_STREAM_INFORMATION *)((ULONG_PTR)psn + psn->NextEntryOffset);
-				}
-				*pAltStreamCount = cAltStreams;
-			}
-			break;
-		}
-
-		FreeMemory(pfsi);
-
-		if( Status != STATUS_BUFFER_OVERFLOW )
-		{
-			break;
-		}
-	}
-
-	return Status;
-}
-*/
 //----------------------------------------------------------------------------
 //
 //  FreeEAInformation()
@@ -1544,6 +1460,8 @@ _retry_alloc:
 
 /////////////////////////////////////////////////////////////////////////////
 
+#if _USE_CLASSIC_FILE_INFORMATION_API
+
 //---------------------------------------------------------------------------
 //
 //  NTFile_GatherFileInformation()
@@ -1767,6 +1685,8 @@ NTFile_FreeFileInformation(
 	return 0;
 }
 
+#endif
+
 //---------------------------------------------------------------------------
 //
 //  NTFile_GetAttributeString()
@@ -1805,6 +1725,7 @@ static struct {
 	{FILE_ATTRIBUTE_STRICTLY_SEQUENTIAL,  L'Q'},
 };
 
+#if _USE_CLASSIC_FILE_INFORMATION_API
 EXTERN_C
 BOOL
 APIENTRY
@@ -1834,24 +1755,62 @@ NTFile_GetAttributeString(
 
 	return TRUE;
 }
+#endif
 
 //---------------------------------------------------------------------------
 //
-//  GetAttributeString()
+//  NtPathGetAttributeStringEx()
 //
 //  PURPOSE:
 //
 //---------------------------------------------------------------------------
 EXTERN_C
-BOOL
+PWSTR
 APIENTRY
-GetAttributeString(
+NtPathGetAttributeStringEx(
 	DWORD Attributes,
 	LPWSTR String,
+	int cchString,
+	DWORD dwFlags
+	)
+{
+#if _USE_CLASSIC_FILE_INFORMATION_API
+	NTFile_GetAttributeString(Attributes,String,cchString);
+	return String;
+#else
+	int i,c;
+
+	c = ARRAYSIZE(attributes_char);
+
+	for(i = 0; i < c; i++)
+	{
+		if( Attributes & attributes_char[i].AttributeFlag )
+		{
+			*String++ = attributes_char[i].AttributeChar;
+		}
+		else
+		{
+			if( dwFlags & GASF_PADDING )
+				*String++ = L'-';
+		}
+	}
+
+	*String = L'\0';
+
+	return String;
+#endif
+}
+
+EXTERN_C
+PWSTR
+APIENTRY
+NtPathGetAttributeString(
+	DWORD Attributes,
+	PWSTR String,
 	int cchString
 	)
 {
-	return NTFile_GetAttributeString(Attributes,String,cchString);
+	return NtPathGetAttributeStringEx(Attributes,String,cchString,0);
 }
 
 //---------------------------------------------------------------------------
@@ -2272,4 +2231,84 @@ FreeAlternateStreamInformation(
 {
 	FreeMemory(StreamInformation);
 	return 0;
+}
+
+//---------------------------------------------------------------------------
+//
+//  NtPathAppendPathElement()
+//
+//  PURPOSE:
+//
+//---------------------------------------------------------------------------
+EXTERN_C
+NTSTATUS
+NTAPI
+RtlAppendPathElement(
+    ULONG flags,
+    PRTL_UNICODE_STRING_BUFFER pStrBuffer,
+    PCUNICODE_STRING pAddend
+	) ;
+
+EXTERN_C
+NTSTATUS
+NTAPI
+RtlpEnsureBufferSize (
+    ULONG flags,
+    PRTL_BUFFER pBuffer,
+    SIZE_T requiredSize
+	);
+
+static
+BOOLEAN
+_SetUnicodeStringBuffer(
+	PRTL_UNICODE_STRING_BUFFER pStrBuffer,
+	PCWSTR string
+	)
+{
+	SIZE_T cch = wcslen(string) + 1;
+	RtlpEnsureBufferSize(0, &pStrBuffer->ByteBuffer,cch * sizeof(WCHAR));
+	memcpy(pStrBuffer->ByteBuffer.Buffer, string, cch * sizeof(WCHAR));
+	RtlInitUnicodeString(&pStrBuffer->String, (PWCHAR)pStrBuffer->ByteBuffer.Buffer);
+	return TRUE;
+}
+
+// Bit flags that determine the type of slash used to separate the path parts
+// if neither the end of pStrBuffer or the start of pAddend have either type 
+// of slash. This can be none, one, or both of these:
+//
+// RTL_APE_IGNORE_FORWARD_SLASHES (0x1)
+// Forces a backslash. This flag also suppresses trailing forward slashes from
+// being added to the end.
+//
+// RTL_APE_USE_FIRST_SLASH (0x2)
+// Checks the firsts three characters of pStrBuffer for a slash. If one is found,
+// that kind is used as the separator. If not, the default (backslash) is used
+//
+// The returned string must be freed using NtPathFreeMemory.
+//
+EXTERN_C
+PWSTR
+APIENTRY
+NtPathAppendPathElement(
+	PCWSTR Path,
+	PCWSTR FileName,
+	ULONG Flags
+	)
+{
+	PWSTR pszRetPath = NULL;
+
+	UNICODE_STRING usAddName;
+	RtlInitUnicodeString(&usAddName, FileName);
+
+	RTL_UNICODE_STRING_BUFFER strBuffer = {0};
+	_SetUnicodeStringBuffer(&strBuffer,Path);
+
+	if( RtlAppendPathElement(Flags, &strBuffer, &usAddName) == STATUS_SUCCESS )
+	{
+		pszRetPath = AllocateSzFromUnicodeString(&strBuffer.String);
+	}
+
+	RtlFreeUnicodeString(&strBuffer.String);
+
+	return pszRetPath;
 }

@@ -2,7 +2,7 @@
 //*                                                                         *
 //*  ntfsrecord.cpp                                                         *
 //*                                                                         *
-//*  NTFS Recore Read Helper                                                *
+//*  NTFS Record Read Helper                                                *
 //*                                                                         *
 //*  Create: 2015-07-17,2024-04-24(Ported)                                  *
 //*                                                                         *
@@ -17,10 +17,15 @@
 
 //
 // NOTE:
-// The FsSimpleArray class is also intended to be build with WDK environment (for user mode).
-// So, do not use Win32 API in class method.
+// This code is historically reused and outdated. It may be deprecated and 
+// replaced in the future.
 //
-#include <limits.h>
+
+//
+// NOTE:
+// The FsSimpleArray class is also intended to be build with WDK environment 
+// for user mode. So, do not use Win32 API in class method.
+//
 
 template <class T>
 class FsSimpleArray
@@ -783,7 +788,7 @@ BOOL ParseRecord( NTFS_FILE_RECORD_OUTPUT_BUFFER *pnfrec, CNtfsSpecialFileItemLi
 //  GetIndexRoot()
 //
 //----------------------------------------------------------------------------
-BOOL GetIndexRoot(HANDLE hVolume, LONGLONG FildId, NTFS_FILE_RECORD_OUTPUT_BUFFER *pnfrec, CNtfsSpecialFileItemList *pFileList)
+BOOL GetIndexRoot(HANDLE hVolume, LONGLONG FileId, NTFS_FILE_RECORD_OUTPUT_BUFFER *pnfrec, CNtfsSpecialFileItemList *pFileList)
 {
 	MULTI_SECTOR_HEADER *psechdr = (MULTI_SECTOR_HEADER *)pnfrec->FileRecordBuffer;
 
@@ -832,7 +837,7 @@ BOOL GetIndexRoot(HANDLE hVolume, LONGLONG FildId, NTFS_FILE_RECORD_OUTPUT_BUFFE
 			}
 			case $INDEX_ALLOCATION:
 			{
-				_GetAttribute_IndexAllocation(hVolume,FildId,pFileList,pAttrRecHdr);
+				_GetAttribute_IndexAllocation(hVolume,FileId,pFileList,pAttrRecHdr);
 				break;
 			}
 		}

@@ -1286,9 +1286,12 @@ public:
 		CDosDriveItem *pItem = GetCurItem();
 		if( pItem )
 		{
-PWSTR NtDosPath = DosPathNameToNtPathName_W(pItem->szDrive);
-			LookupStreamNameDialog(GetActiveWindow(),NtDosPath,0);
-			FreeMemory(NtDosPath);
+			PWSTR NtPath = DosPathNameToNtPathName_W(pItem->szDrive);
+			if( NtPath )
+			{
+				LookupStreamNameDialog(GetActiveWindow(),NtPath,0);
+				FreeMemory(NtPath);
+			}
 		}
 	}
 

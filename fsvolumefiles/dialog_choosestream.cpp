@@ -24,14 +24,14 @@ typedef struct _STREAM_DIALOG_PARAM
 	HWND hWndDialog;
 	HWND hWndList;
 	HWND hWndHost;
-	VFS_FILE_STREAM_INFORMATION *pStreamInformation;
+	NT_FILE_STREAM_INFORMATION_EX *pStreamInformation;
 	ULONG StreamCount;
 } STREAM_DIALOG_PARAM;
 
 typedef struct _STREAM_LIST_ITEM
 {
 	const STREAM_DIALOG_PARAM *pdlgParam;
-	VFS_FILE_STREAM_INFORMATION *pStreamInformation;
+	NT_FILE_STREAM_INFORMATION_EX *pStreamInformation;
 	PWSTR pszDisplayName;
 } STREAM_LIST_ITEM;
 
@@ -41,6 +41,7 @@ typedef struct _STREAM_LIST_ITEM
 struct CStreamNameSelectDialog : public CDialogWindowEx
 {
 	HWND m_hWndList;
+	PCWSTR m_pszPath;
 	PCWSTR m_pszFileName;
 	DWORD m_dwFlags;
 
@@ -56,7 +57,7 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 		INT direction; // must 1 or -1, do not use 0
 	} SORT_PARAM;
 
-	VFS_FILE_STREAM_INFORMATION *m_pVSI;
+	NT_FILE_STREAM_INFORMATION_EX *m_pVSI;
 
 	CStreamNameSelectDialog()
 	{
@@ -76,7 +77,7 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 					ListView_GetSelectedCount(m_hWndList));
 	}
 
-	int InsertItem(HWND hWndList,STREAM_DIALOG_PARAM *pdlgParam,int iItem,int iType,VFS_FILE_STREAM_INFORMATION *pSI,PVOID)
+	int InsertItem(HWND hWndList,STREAM_DIALOG_PARAM *pdlgParam,int iItem,int iType,NT_FILE_STREAM_INFORMATION_EX *pSI,PVOID)
 	{
 		STREAM_LIST_ITEM *pItem = new STREAM_LIST_ITEM;
 		if( pItem == NULL )
@@ -142,9 +143,10 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 		// Initialize Layout
 		//
 		m_Layout.Initialize(hDlg);			
+		m_Layout.AnchorControl(CUILayout::AP_TOPLEFT,CUILayout::AP_TOPRIGHT,IDC_TEXT,TRUE);
 		m_Layout.AnchorControl(CUILayout::AP_TOPLEFT,CUILayout::AP_BOTTOMRIGHT,IDC_LIST,FALSE);
-		m_Layout.AnchorControl(CUILayout::AP_BOTTOMRIGHT,CUILayout::AP_BOTTOMRIGHT,IDOK,FALSE);
-		m_Layout.AnchorControl(CUILayout::AP_BOTTOMRIGHT,CUILayout::AP_BOTTOMRIGHT,IDCLOSE,FALSE);
+		m_Layout.AnchorControl(CUILayout::AP_BOTTOMRIGHT,CUILayout::AP_BOTTOMRIGHT,IDOK,TRUE);
+		m_Layout.AnchorControl(CUILayout::AP_BOTTOMRIGHT,CUILayout::AP_BOTTOMRIGHT,IDCLOSE,TRUE);
 
 		DWORD dw = GetWindowLong(hDlg,GWL_EXSTYLE);
 		dw |= WS_EX_DLGMODALFRAME;
@@ -169,7 +171,15 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 		SetWindowLong(m_hWndList,GWL_STYLE,dw);}
 		/* todo: optional */
 
+#if 0
+		LOGFONT lf;
+		SystemParametersInfo(SPI_GETICONTITLELOGFONT,sizeof(LOGFONT),&lf,0);
+		wcscpy(lf.lfFaceName,L"Yu Gothic UI");
+		HFONT hFont = CreateFontIndirect(&lf);
+		SendMessage(m_hWndList,WM_SETFONT,(WPARAM)hFont,0);
+#else
 		SendMessage(m_hWndList,WM_SETFONT,(WPARAM)GetGlobalFont(hDlg),0);
+#endif
 
 		ListView_SetExtendedListViewStyle(m_hWndList,LVS_EX_FULLROWSELECT|LVS_EX_DOUBLEBUFFER|LVS_EX_INFOTIP|LVS_EX_LABELTIP);
 	
@@ -228,14 +238,8 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 
 		UpdateOKButton();
 
-		SetDlgItemText(hDlg,IDC_TEXT,m_pszFileName);
-
-		//if( m_dwFlags & FSSDF_NOOPENBUTTON )
-		//{
-		//	ShowWindow(GetDlgItem(hDlg,IDOK),SW_HIDE);
-		//	SetDlgItemText(hDlg,IDC_DESCRIPTION,L"Alternate Stream Name and Size.");
-		//	SetWindowText(hDlg,L"Stream Information");
-		//}
+//		PathSetDlgItemPath(hDlg,IDC_TEXT,m_pszPath);
+		SetDlgItemText(hDlg,IDC_TEXT,m_pszPath);
 
 		RECT rcList;
 		GetWindowRect(m_hWndList,&rcList);
@@ -270,6 +274,7 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 		int cx = GET_X_LPARAM(lParam);
 		int cy = GET_Y_LPARAM(lParam);
 		m_Layout.AdjustControls(cx,cy);
+//		PathSetDlgItemPath(hDlg,IDC_TEXT,m_pszPath);
 		return 0;
 	}
 
@@ -324,7 +329,7 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 	{
 		NMLISTVIEW *pnmlv = (NMLISTVIEW *)pnmhdr;
 
-		VFS_FILE_STREAM_INFORMATION *pSI = (VFS_FILE_STREAM_INFORMATION *)pnmlv->lParam;
+		NT_FILE_STREAM_INFORMATION_EX *pSI = (NT_FILE_STREAM_INFORMATION_EX *)pnmlv->lParam;
 
 		DoSort(pnmlv->iSubItem,TRUE);
 
@@ -345,8 +350,8 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 		}
 
 		SORT_PARAM op = {0};
-		op.id              = iSubItem;
-		op.direction       = m_Sort.Direction; // must 1 or -1, do not use 0
+		op.id        = iSubItem;
+		op.direction = m_Sort.Direction; // must 1 or -1, do not use 0
 		ListView_SortItems(m_hWndList,&CStreamNameSelectDialog::CompareProc,&op);
 
 		ListViewEx_SetHeaderArrow(m_hWndList,iSubItem,m_Sort.Direction);
@@ -529,6 +534,30 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 	}
 };
 
+BOOL IsAlternateStreamSupported(PCWSTR pszFilePath)
+{
+	DWORD FileSystemFlags = 0;
+	HANDLE hFile;
+	NTSTATUS Status;
+	UNICODE_STRING RootDir;
+	SplitRootRelativePath(pszFilePath,&RootDir,NULL);
+
+	if( (Status = OpenFile_U(&hFile,NULL,&RootDir,FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE,0)) == 0 )
+	{
+		GetVolumeInformationByHandleW(hFile,nullptr,0,nullptr,nullptr,&FileSystemFlags,nullptr,0);
+
+		CloseHandle(hFile);
+
+		SetLastError(NO_ERROR);
+	}
+	else
+	{
+		SetLastErrorNtStatusToWin32(Status);
+	}
+
+	return ( FILE_NAMED_STREAMS & FileSystemFlags ) ? TRUE : FALSE;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 //----------------------------------------------------------------------------
@@ -536,6 +565,25 @@ struct CStreamNameSelectDialog : public CDialogWindowEx
 //  ChooseStreamDialog()
 //
 //  PURPOSE:
+//      This function selects one alternative stream name from among multiple
+//      streams in a file.
+//
+//  RETURNS:
+//      Return code:
+//
+//        S_OK - Succeeded. A single stream name is returned.
+//        S_FALSE - User cancelled.
+//        S_SSD_NO_STREAM - The file not have stream.
+//        S_SSD_DEFAULT_STREAM_ONLY - The file have default data stream only.
+//
+//      Parameters:
+//
+//        ppwszFileStreamName - Pointer to stream name,
+//        pcchFileStreamName - Pointer to stream name length. optional.
+//
+//  This function uses CoTaskMemAlloc to allocate storage space for the stream
+//  name of the string. The caller must free this memory by calling the CoTaskMemFree
+//  function on the pointer returned by this function.
 //
 //----------------------------------------------------------------------------
 EXTERN_C
@@ -551,13 +599,16 @@ ChooseStreamDialog(
 {
 	HRESULT hr;
 
-	VFS_FILE_STREAM_INFORMATION *pStmNames = NULL;
+	NT_FILE_STREAM_INFORMATION_EX *pStmNames = NULL;
 	int cStmNames = 0;
 
 	if( pszFilePath == NULL )
 		return E_INVALIDARG;
 
-	hr = GetAlternateStream( pszFilePath, &pStmNames, &cStmNames );
+	if( !IsAlternateStreamSupported(pszFilePath) )
+		return S_SSD_NAMED_STREAM_NOT_SUPPORTED;
+
+	hr = NtDosGetAlternateStreams( pszFilePath, &pStmNames, &cStmNames );
 
 	if( ERROR_NO_MORE_ITEMS == HRESULT_CODE(hr) )
 	{
@@ -592,6 +643,7 @@ ChooseStreamDialog(
 	CStreamNameSelectDialog *dlg = new CStreamNameSelectDialog;
 	if( dlg ) 
 	{
+		dlg->m_pszPath = pszFilePath;
 		dlg->m_pszFileName = FindFileName_W( pszFilePath );
 		dlg->m_dwFlags = dwFlags;
 
@@ -602,7 +654,7 @@ ChooseStreamDialog(
 				SIZE_T cch = 0;
 				PWSTR pName = dlg->m_pVSI->StreamName;
 	
-				if( dwFlags & FSSDF_MAKEFULLPATH )
+				if( dwFlags & CSDF_MAKEFULLPATH )
 				{
 					cch = wcslen( pName );
 					cch += wcslen( pszFilePath );
@@ -622,7 +674,7 @@ ChooseStreamDialog(
 						cch = 0;
 					}
 				}
-				else if( dwFlags & FSSDF_FILENAMEWITHSTREAMNAME )
+				else if( dwFlags & CSDF_FILENAMEWITHSTREAMNAME )
 				{
 					PCWSTR pFileName = FindFileName_W( pszFilePath );
 	
@@ -630,7 +682,7 @@ ChooseStreamDialog(
 					cch += wcslen( pszFilePath );
 					cch += 1;
 	
-					*ppwszFileStreamName = (PWSTR)LocalAlloc(LPTR,cch*sizeof(WCHAR));
+					*ppwszFileStreamName = (PWSTR)CoTaskMemAlloc(cch*sizeof(WCHAR));
 	
 					if( *ppwszFileStreamName )
 					{
@@ -646,7 +698,7 @@ ChooseStreamDialog(
 				}
 				else
 				{
-					*ppwszFileStreamName = StrDup(pName);
+					*ppwszFileStreamName = _CoTaskMemStrDup(pName);
 	
 					if( *ppwszFileStreamName )
 					{
@@ -682,7 +734,7 @@ ChooseStreamDialog(
 
 	delete pParam;
 
-	CoTaskMemFree(pStmNames);
+	LocalFree(pStmNames);
 
 	return hr;
 }

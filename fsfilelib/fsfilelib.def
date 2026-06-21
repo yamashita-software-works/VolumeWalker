@@ -12,9 +12,12 @@ EXPORTS
 	NtPathTranslatePath
 	NtPathGetLongPathNameFromHandle
 	NtPathParseDeviceName
-
-	DosPathToNtDevicePath
-	DosDriveFromNtDevicePath
+	NtPathGetAttributeString
+	NtPathAppendPathElement
+	NtPathDosPathToNtDevicePath
+	NtPathDosDriveFromNtDevicePath
+	NtPathMakeFullyQualifiedFileNameWithTypeName
+    NtPathFreeMemory = fsfilelib.NtDosFreeMemory
 
 	ReadFileClusterInformaion_U
 	ReadFileClusterInformaion
@@ -43,12 +46,11 @@ EXPORTS
 	_StringFromGUID
 	_HasPrefix
 
-	NTFile_OpenFile
-	NTFile_CloseFile
-	NTFile_GatherFileInformation
-	NTFile_FreeFileInformation
-	NTFile_GetAttributeString
-	GetAttributeString
+	;NTFile_OpenFile
+	;NTFile_CloseFile
+	;NTFile_GatherFileInformation
+	;NTFile_FreeFileInformation
+	;NTFile_GetAttributeString
 
 	FILCreate
 	FILDestroy
@@ -76,9 +78,12 @@ EXPORTS
 	GetAlternateStreamInformation
 	FreeAlternateStreamInformation
 
-	NtCopyFileEx
-	NtRenameFileW
-	NtDeleteFileW
-	NtRemoveDirectoryW
-	NtSetFileAttributesW
-	NtWin32BackupCopy
+	NtDosCopyFileEx
+	NtDosRenameFile
+	NtDosDeleteFile
+	NtDosRemoveDirectory
+	NtDosSetFileAttributes
+	NtDosBackupCopy
+	NtDosGetAlternateStreams
+	NtDosGetAttributeTypeCodeStreams
+	NtDosFreeMemory

@@ -203,7 +203,8 @@ namespace NavigationPane
 		InsertBlank( TVI_ROOT, TVI_LAST );
 	
 		InsertItem( VOLUME_CONSOLE_VOLUMEMOUNTPOINT,             L"Volume Mount Point" );
-		InsertItem( VOLUME_CONSOLE_ENCRYPTIONVOLUME,             L"Encryption Volumes" );
+		InsertItem( VOLUME_CONSOLE_ENCRYPTIONVOLUME,             L"BitLocker Volumes" );
+		InsertItem( VOLUME_CONSOLE_RELATIONVIEW,                 L"Relation View" );
 		InsertItem( VOLUME_CONSOLE_VDSCONSOLE,                   L"VDS Console");
 
 		InsertBlank( TVI_ROOT, TVI_LAST );
@@ -707,8 +708,18 @@ HWND OpenViewPage(HWND hWnd,UINT ConsoleTypeId,PCWSTR pszOpenTarget = NULL,PVOID
 	else
 		pszInitialPath = NULL;
 
-	VOLUME_CONSOLE_CREATE_PARAM param = {0};
+	VOLUME_CONSOLE_CREATE_PARAM param = {};
 	param.pszInitialDeviceName = (PWSTR)pszInitialPath;
+	param.dwFlags = 0;
+
+	switch( ConsoleTypeId )
+	{
+		case VOLUME_CONSOLE_RELATIONVIEW:
+		{
+			param.dwFlags |= VOLDISKS_FLG_NO_OPEN_VOLUME_FILE_EXPLORER;
+			break;
+		}
+	}
 
 	hWndView = CreateVolumeConsoleWindow(hWnd,ConsoleTypeId,&param);
 
@@ -1117,6 +1128,10 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM)
 		case ID_VOLUMESHADOWCOPY:
 		case ID_MSDOSDRIVES:
 		case ID_FILTERDRIVER:
+		case ID_VOLUMEMOUNTPOINT:
+		case ID_ENCRYPTIONVOLUME:
+		case ID_RELATIONVIEW:
+		case ID_VDSCONSOLE:
 		case ID_ABOUT:
 		case ID_EXIT:
 			return UPDUI_ENABLED;
@@ -1358,6 +1373,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 				case ID_FILTERDRIVER:
 					OpenConsole(hWnd,VOLUME_CONSOLE_FILTERDRIVER);
+					break;
+				case ID_VOLUMEMOUNTPOINT:
+					OpenConsole(hWnd,VOLUME_CONSOLE_VOLUMEMOUNTPOINT);
+					break;
+				case ID_ENCRYPTIONVOLUME:
+					OpenConsole(hWnd,VOLUME_CONSOLE_ENCRYPTIONVOLUME);
+					break;
+				case ID_RELATIONVIEW:
+					OpenConsole(hWnd,VOLUME_CONSOLE_RELATIONVIEW);
+					break;
+				case ID_VDSCONSOLE:
+					OpenConsole(hWnd,VOLUME_CONSOLE_VDSCONSOLE);
 					break;
 				case ID_EDIT_FIND:
 				case ID_EDIT_FIND_NEXT:

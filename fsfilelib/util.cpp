@@ -334,7 +334,7 @@ _InternalBackupCopyFileImpl(
 
 //----------------------------------------------------------------------------
 //
-//  NtWin32BackupCopy()
+//  NtDosBackupCopy()
 //
 //  PURPOSE: Copy file using Win32 Backup API
 //
@@ -342,7 +342,7 @@ _InternalBackupCopyFileImpl(
 EXTERN_C
 NTSTATUS
 NTAPI
-NtWin32BackupCopy(
+NtDosBackupCopy(
 	__in PVOID Handle,
 	__in HANDLE hDstFile,
 	__in PCWSTR pDstFilePath,

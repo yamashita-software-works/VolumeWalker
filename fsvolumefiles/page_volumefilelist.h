@@ -821,7 +821,7 @@ public:
 
 		if( pnmlv->uNewState != pnmlv->uOldState )
 		{
-			if( pnmlv->uNewState & LVIS_FOCUSED ) //|| GetSelectedCount() != m_selectedCount )
+			if( pnmlv->uNewState & LVIS_FOCUSED )
 			{
 				if( ListView_GetItemState(m_hWndList,pnmlv->iItem,LVIS_SELECTED) != 0 )
 				{
@@ -1186,7 +1186,7 @@ public:
 		CFileLvItem *pItem = (CFileLvItem *)pnmlvdi->item.lParam;
 		UINT f = m_columnShowStyleFlags[ id ];
 		if( f == 0 )
-			GetAttributeString(pItem->pFI->FileAttributes,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax);
+			NtPathGetAttributeString(pItem->pFI->FileAttributes,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax);
 		else if( f == 1 )
 			StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%08X",pItem->pFI->FileAttributes);
 		else
@@ -1858,15 +1858,15 @@ public:
 		COLUMN_TABLE *pcoltbl;
 
 		WCHAR bufDefaultTable[] =
-				L"Name=240\0"
-				L"Extension=80\0"
-				L"Attributes=80\0"
-				L"AllocationSize=116\0"
-				L"EndOfFile=116\0"
-				L"LastWriteTime=180\0"
-				L"CreationTime=180\0"
-				L"LastAccessTime=180\0"
-				L"ChangeTime=180\0";
+				L"Name=240;"
+				L"Extension=80;"
+				L"Attributes=80;"
+				L"AllocationSize=116;"
+				L"EndOfFile=116;"
+				L"LastWriteTime=180;"
+				L"CreationTime=180;"
+				L"LastAccessTime=180;"
+				L"ChangeTime=180;";
 
 		int cb = sizeof(bufDefaultTable);
 		PWSTR ptr;
@@ -1874,12 +1874,12 @@ public:
 		if( pszColumnLayout )
 		{
 			ptr = ColumnList_ConvertAllocSzToMszColumnString(pszColumnLayout);
-			cb = ColumnList_GetMszColumnStringSizeCb(ptr);
+			cb  = ColumnList_GetMszColumnStringSizeCb(ptr);
 		}
 		else
 		{
-			ptr = bufDefaultTable;
-			cb = sizeof(bufDefaultTable);
+			ptr = ColumnList_ConvertAllocSzToMszColumnString(bufDefaultTable);
+			cb  = ColumnList_GetMszColumnStringSizeCb(ptr);
 		}
 
 		int iRet = m_columns.LoadUserDefinitionColumnTableFromText(&pcoltbl,ptr,cb);
@@ -3486,8 +3486,8 @@ public:
 		{
 			// attr character
 			WCHAR sz1[32+1],sz2[32+1];
-			GetAttributeString(pItem1->pFI->FileAttributes,sz1,ARRAYSIZE(sz1));
-			GetAttributeString(pItem2->pFI->FileAttributes,sz2,ARRAYSIZE(sz2));
+			NtPathGetAttributeString(pItem1->pFI->FileAttributes,sz1,ARRAYSIZE(sz1));
+			NtPathGetAttributeString(pItem2->pFI->FileAttributes,sz2,ARRAYSIZE(sz2));
 			return wcscmp(sz1,sz2);
 		}
 	}
@@ -3957,8 +3957,6 @@ public:
 			case ID_FILE_SIMPLEDUMP:
 				OnFileSimpleDump();
 				break;
-				break;
-
 			default:
 				if( ID_OPEN_APP_FIRST <= CmdId && CmdId <= ID_OPEN_APP_LAST )
 				{
@@ -4298,7 +4296,41 @@ public:
 
 		if( pszPath != NULL )
 		{
-			QuickBinaryDumpDialog(GetActiveWindow(),pszPath,nullptr,0,0);
+			HRESULT hr;
+			WCHAR *pszStreamName = NULL;
+
+			hr = ChooseStreamDialog(GetActiveWindow(),pszPath,&pszStreamName,0,CSDF_MAKEFULLPATH);
+
+			if( hr == S_FALSE )
+			{
+				; // user canceled
+			}
+			else if( hr == S_SSD_NO_STREAM )
+			{
+				pszStreamName = StrDup(pszPath);
+			}
+			else if( hr == S_SSD_DEFAULT_STREAM_ONLY )
+			{
+				pszStreamName = StrDup(pszPath);
+			}
+			else if( hr == S_SSD_NAMED_STREAM_NOT_SUPPORTED )
+			{
+				pszStreamName = StrDup(pszPath);
+			}
+			else
+			{
+				if( FAILED(hr) )
+				{
+					_ErrorMessageBoxEx(GetActiveWindow(),0,NULL,NULL,hr,MB_OK|MB_ICONSTOP);
+				}
+			}
+
+			if( pszStreamName )
+			{
+				QuickBinaryDumpDialog(GetActiveWindow(),pszStreamName,nullptr,0,0);
+
+				CoTaskMemFree(pszStreamName);
+			}
 	
 			FreeMemory(pszPath);
 		}

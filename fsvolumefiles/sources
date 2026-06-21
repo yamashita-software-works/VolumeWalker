@@ -79,7 +79,7 @@ USE_PDB_TO_COMPILE=1
 USE_NATIVE_EH=1
 
 !if $(FREEBUILD)
-C_DEFINES=$(C_DEFINES)
+C_DEFINES=$(C_DEFINES) -D_WIN7SDKBUILD
 !else
 C_DEFINES=$(C_DEFINES) -D_DEBUG -DDEBUG
 !endif
@@ -103,6 +103,7 @@ SOURCES = \
 	filelistwindow.cpp\
 	dialog_traverse_directory.cpp\
 	dialog_goto_directory.cpp\
+	dialog_choosestream.cpp\
 	dialog_filesearch_param.cpp\
 	dialog_binarydump.cpp\
 	apps.cpp\
@@ -155,6 +156,7 @@ LINKLIBS=\
 	$(CRT_LIB_PATH)\delayimp.lib \
 	$(DDK_LIB_PATH)\ntdll.lib \
 	$(_LIBNTWDK)\fsfilelib.lib \
+	$(_LIBNTWDK)\fsvolumehelp.lib \
 	$(_LIBNTWDK)\libntwdk.lib \
 	$(_LIBNTWDK)\libmisc.lib \
 	$(_LIBNTWDK)\libcwh.lib

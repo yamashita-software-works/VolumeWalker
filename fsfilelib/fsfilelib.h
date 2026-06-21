@@ -5,6 +5,19 @@
 //
 // Helper functions for Win32/NtNative module
 //
+EXTERN_C
+VOID
+WINAPI
+NtDosFreeMemory(
+    PVOID ptr
+    );
+
+EXTERN_C
+VOID
+WINAPI
+NtPathFreeMemory(
+    PVOID ptr
+    );
 
 //
 // NtPath Functions
@@ -41,6 +54,15 @@ NtPathFileExists(
     PCWSTR pszPath
     );
 
+EXTERN_C
+PWSTR
+WINAPI
+NtPathMakeFullyQualifiedFileNameWithTypeName(
+    PCWSTR pszFileName,
+    PCWSTR pszStreamName,
+    PCWSTR pszTypeName
+    );
+
 //
 // Utility
 //
@@ -67,17 +89,18 @@ _HasPrefix(
     PCWSTR pszPrefix,
     PCWSTR pszPath
     );
+
 //
 // Reparse Point Information
 //
 typedef struct _FS_REPARSE_POINT_INFORMATION
 {
-	ULONG ReparseTag;
-	ULONG Flags;
-	PWSTR TargetPath;
-	ULONG TargetPathLength;
-	PWSTR PrintPath;
-	ULONG PrintPathLength;
+    ULONG ReparseTag;
+    ULONG Flags;
+    PWSTR TargetPath;
+    ULONG TargetPathLength;
+    PWSTR PrintPath;
+    ULONG PrintPathLength;
 } FS_REPARSE_POINT_INFORMATION;
 
 typedef struct _FS_REPARSE_POINT_INFORMATION_EX
@@ -123,16 +146,16 @@ typedef struct _FS_REPARSE_POINT_INFORMATION_EX
 // App Exec Link Information
 //
 typedef struct _REPARSE_APPEXECLINK_READ_BUFFER { // For tag IO_REPARSE_TAG_APPEXECLINK
-	ULONG  ReparseTag;
-	USHORT ReparseDataLength;
-	USHORT Reserved;
-	ULONG  Version;	        // Currently version 3
-	WCHAR  StringList[1];	// Multistring (Consecutive strings each ending with a NUL)
+    ULONG  ReparseTag;
+    USHORT ReparseDataLength;
+    USHORT Reserved;
+    ULONG  Version;	        // Currently version 3
+    WCHAR  StringList[1];	// Multistring (Consecutive strings each ending with a NUL)
   /* There are normally 4 strings here. Ex:
-	Package ID:	    L"Microsoft.WindowsTerminal_8wekyb3d8bbwe"
-	Entry Point:	L"Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"
-	Executable:	    L"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.4.3243.0_x64__8wekyb3d8bbwe\wt.exe"
-	Applic. Type:	l"0" Integer as ASCII. "0" = Desktop bridge application; Else sandboxed UWP application
+    Package ID:	    L"Microsoft.WindowsTerminal_8wekyb3d8bbwe"
+    Entry Point:	L"Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"
+    Executable:	    L"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.4.3243.0_x64__8wekyb3d8bbwe\wt.exe"
+    Applic. Type:	l"0" Integer as ASCII. "0" = Desktop bridge application; Else sandboxed UWP application
   */     
 } APPEXECLINK_READ_BUFFER, *PAPPEXECLINK_READ_BUFFER;
 #endif
@@ -141,30 +164,30 @@ EXTERN_C
 BOOL
 NTAPI
 GetReparsePointInformation(
-	HANDLE hRoot,
-	PCWSTR FilePath,
-	ULONG InformationClass,
-	PVOID InformationBuffer,
-	ULONG InformationBufferLength
-	);
+    HANDLE hRoot,
+    PCWSTR FilePath,
+    ULONG InformationClass,
+    PVOID InformationBuffer,
+    ULONG InformationBufferLength
+    );
 
 enum {
-	FsReparsePointTargetPath = 0,
-	FsReparsePointDetail = 1,
-	FsReparsePointPrintPath = 2,
-	ReparsePointTargetPath = FsReparsePointTargetPath,
-	ReparsePointDetail = FsReparsePointDetail,
-	ReparsePointPrintPath = FsReparsePointPrintPath,
+    FsReparsePointTargetPath = 0,
+    FsReparsePointDetail = 1,
+    FsReparsePointPrintPath = 2,
+    ReparsePointTargetPath = FsReparsePointTargetPath,
+    ReparsePointDetail = FsReparsePointDetail,
+    ReparsePointPrintPath = FsReparsePointPrintPath,
 };
 
 EXTERN_C
 ULONG
 WINAPI
 GetReparseTagFriendlyName(
-	ULONG ReparseTag,
-	LPWSTR String,
-	ULONG cchString
-	);
+    ULONG ReparseTag,
+    LPWSTR String,
+    ULONG cchString
+    );
 
 //
 // NT/DOS Path Helper
@@ -228,23 +251,38 @@ NtPathTranslatePath(
 EXTERN_C
 BOOL
 APIENTRY
-DosPathToNtDevicePath(
+NtPathDosPathToNtDevicePath(
     PCWSTR pszDosPath,
     PWSTR pszNtPathBuffer,
     ULONG cchNtPathBuffer,
     ULONG Flags
     );
 
+#define DosPathToNtDevicePath(\
+            pszDosPath,\
+            pszNtPathBuffer,\
+            cchNtPathBuffer,\
+            Flags)\
+        NtPathDosPathToNtDevicePath(pszDosPath,pszNtPathBuffer,cchNtPathBuffer,Flags)
+
 EXTERN_C
 HRESULT
 APIENTRY
-DosDriveFromNtDevicePath(
-	__in PCWSTR NtDevicePath,
-	__inout PWSTR DosDrive,
-	__in ULONG cchDosDrive,
-	__in ULONG Flags,
-	__inout_opt PCWSTR *RootDirectoryPart
-	);
+NtPathDosDriveFromNtDevicePath(
+    __in PCWSTR NtDevicePath,
+    __inout PWSTR DosDrive,
+    __in ULONG cchDosDrive,
+    __in ULONG Flags,
+    __inout_opt PCWSTR *RootDirectoryPart
+    );
+
+#define DosDriveFromNtDevicePath(\
+            NtDevicePath,\
+            DosDrive,\
+            cchDosDrive,\
+            Flags,\
+            RootDirectoryPart)\
+        NtPathDosDriveFromNtDevicePath(NtDevicePath,DosDrive,cchDosDrive,Flags,RootDirectoryPart)
 
 #define DDNTF_RETURN_DRIVE                 (0x0000)
 #define DDNTF_RETURN_DRIVE_ROOT            (0x0001)
@@ -264,20 +302,38 @@ EXTERN_C
 HRESULT
 APIENTRY
 NtPathParseDeviceName(
-	PCWSTR pszPath,
-	PWSTR pszDeviceName,
-	int cchDeviceName,
-	PWSTR pszDosDeviceName,
-	int cchDosDeviceName
-	);
+    PCWSTR pszPath,
+    PWSTR pszDeviceName,
+    int cchDeviceName,
+    PWSTR pszDosDeviceName,
+    int cchDosDeviceName
+    );
 
 EXTERN_C
 ULONG
 APIENTRY
 NtPathLookupDeviceNameFromPath(
-	HANDLE *phspa,
+    HANDLE *phspa,
     PCWSTR Path,
-	ULONG Flags
+    ULONG Flags
+    );
+
+EXTERN_C
+PWSTR
+WINAPI
+NtPathMakeFullyQualifiedFileNameWithTypeName(
+    IN PCWSTR pszFileName,
+    IN PCWSTR pszStreamName OPTIONAL,
+    IN PCWSTR pszTypeName
+    );
+
+EXTERN_C
+PWSTR
+APIENTRY
+NtPathAppendPathElement(
+    IN PCWSTR Path,
+    IN PCWSTR FileName,
+    IN ULONG Flags OPTIONAL
     );
 
 //----------------------------------------------------------------------------
@@ -312,7 +368,7 @@ typedef struct _DIRWATCHNOTIFYEVENT
     ULONG cbNotifyBufferLength;
     FILE_NOTIFY_INFORMATION *pNotifyBuffer;
     PVOID Context;
-	UINT InformationClass;
+    UINT InformationClass;
 } DIRWATCHNOTIFYEVENT;
 
 typedef HRESULT (CALLBACK *PFNDIRWATCHNOTIFYPROC)(DIRWATCHNOTIFYEVENT *Event);
@@ -334,15 +390,15 @@ typedef struct _DIRECTORY_WATCH_STRUCT
     ULONG cbNotifyBufferSize;
     PVOID pNotifyBuffer;
 
-	UINT InformationClass;
+    UINT InformationClass;
 
 } DIRECTORY_WATCH_STRUCT;
 
 enum {
-	DirectoryWatchNotifyInformation = 1,     // DirectoryNotifyInformation,FILE_NOTIFY_INFORMATION
+    DirectoryWatchNotifyInformation = 1,     // DirectoryNotifyInformation,FILE_NOTIFY_INFORMATION
     DirectoryWatchNotifyExtendedInformation, // DirectoryNotifyExtendedInformation,FILE_NOTIFY_EXTENDED_INFORMATION
     DirectoryWatchNotifyFullInformation,     // DirectoryNotifyFullInformation,FILE_NOTIFY_FULL_INFORMATION
-	DirectoryWatchNotifyMaxInformation
+    DirectoryWatchNotifyMaxInformation
 };
 
 EXTERN_C
@@ -350,7 +406,7 @@ HRESULT
 WINAPI
 StartDirectoryWatchEx(
     HANDLE *pHandle,
-	UINT InformationClass,
+    UINT InformationClass,
     PFNDIRWATCHNOTIFYPROC pfnNotifyCallback,
     PVOID Context
     );
@@ -388,13 +444,13 @@ typedef enum _FS_CLUSTER_INFORMATION_CLASS
 {
     ClusterInformationBasic = 0,
     ClusterInformationAll,
-	ClusterInformationBasicWithPhysicalLocation,
+    ClusterInformationBasicWithPhysicalLocation,
 } FS_CLUSTER_INFORMATION_CLASS;
 
 typedef struct _FS_RETRIEVAL_POINTER_BASE
 {
     LARGE_INTEGER FileAreaOffset; // sector offset to the first allocatable unit on the filesystem
-	BOOLEAN ValidFileAreaOffset;
+    BOOLEAN ValidFileAreaOffset;
 } FS_RETRIEVAL_POINTER_BASE;
 
 // Physical offset information
@@ -418,7 +474,7 @@ typedef struct _FS_CLUSTER_INFORMATION_BASIC
     ULONG Split;
     ULONG SectorsPerCluster;
     ULONG BytesPerSector;
-	FS_RETRIEVAL_POINTER_BASE FsSectorBase;
+    FS_RETRIEVAL_POINTER_BASE FsSectorBase;
 } FS_CLUSTER_INFORMATION_BASIC;
 
 typedef struct _FS_CLUSTER_INFORMATION_BASIC_EX
@@ -428,9 +484,9 @@ typedef struct _FS_CLUSTER_INFORMATION_BASIC_EX
     ULONG Split;
     ULONG SectorsPerCluster;
     ULONG BytesPerSector;
-	FS_RETRIEVAL_POINTER_BASE FsSectorBase;
-	ULONG DiskNumber;
-	LARGE_INTEGER PhysicalLocation;
+    FS_RETRIEVAL_POINTER_BASE FsSectorBase;
+    ULONG DiskNumber;
+    LARGE_INTEGER PhysicalLocation;
 } FS_CLUSTER_INFORMATION_BASIC_EX;
 
 // Volume cluster information
@@ -474,7 +530,7 @@ FreeClusterInformation(
 
 //----------------------------------------------------------------------------
 //
-//  NTFS Special Files (provisional)
+//  NTFS Special Files (obsoleted)
 //
 //----------------------------------------------------------------------------
 
@@ -522,6 +578,11 @@ FreeNtfsSpecialFiles(
     FS_NTFS_SPECIAL_FILE_LIST *FileList
     );
 
+//----------------------------------------------------------------------------
+//
+//  Stream Helper
+//
+//----------------------------------------------------------------------------
 #ifndef _NTIFS_
 typedef struct _FILE_STREAM_INFORMATION {
     ULONG NextEntryOffset;
@@ -532,32 +593,71 @@ typedef struct _FILE_STREAM_INFORMATION {
 } FILE_STREAM_INFORMATION, *PFILE_STREAM_INFORMATION;
 #endif
 
+inline INT GetAlternateStreamNameCount(FILE_STREAM_INFORMATION *StreamInformation)
+{
+    INT cNames = 0;
+    FILE_STREAM_INFORMATION *p = StreamInformation;
+    do
+    {
+        cNames++;
+        if( p->NextEntryOffset == 0 )
+            break;
+        p = (FILE_STREAM_INFORMATION *)((ULONG_PTR)p + p->NextEntryOffset);
+    }
+    while( p != NULL );
+    return cNames;
+}
+
+inline ULONG GetAlternateStreamNameTotalLength(FILE_STREAM_INFORMATION *StreamInformation)
+{
+    ULONG cb = 0;
+    FILE_STREAM_INFORMATION *p = StreamInformation;
+    do
+    {
+        cb += p->StreamNameLength;
+        cb += sizeof(WCHAR); // C terminate null
+        if( p->NextEntryOffset == 0 )
+            break;
+        p = (FILE_STREAM_INFORMATION *)((ULONG_PTR)p + p->NextEntryOffset);
+    }
+    while( p != NULL );
+    return cb;
+}
+
 typedef struct _FILE_INFORMATION_ALTSTREAM
 {
-	PWSTR Name;
-	LARGE_INTEGER Size;
-	LARGE_INTEGER AllocSize;
+    PWSTR Name;
+    LARGE_INTEGER Size;
+    LARGE_INTEGER AllocSize;
 } FILE_INFORMATION_ALTSTREAM;
 
+//----------------------------------------------------------------------------
+//
+//  EA (Extended Attributes)
+//
+//----------------------------------------------------------------------------
 typedef struct _FILE_INFORMATON_EA_DATA
 {
     UCHAR  Flags;
     UCHAR  NameLength;
     USHORT ValueLength;
-	CHAR  *Name;
-	UCHAR *Value;
+    CHAR  *Name;
+    UCHAR *Value;
 } FILE_INFORMATON_EA_DATA;
 
 typedef struct _FILE_INFORMATON_EA_BUFFER
 {
-	ULONG EaCount;
-	FILE_INFORMATON_EA_DATA Ea[1];
+    ULONG EaCount;
+    FILE_INFORMATON_EA_DATA Ea[1];
 } FILE_INFORMATON_EA_BUFFER;
 
+//////////////////////////////////////////////////////////////////////////////
+
+#if _USE_CLASSIC_FILE_INFORMATION_API
 typedef struct _FILE_INFORMATION_STRUCT
 {
-	PWSTR Name;
-	PWSTR ShortName;
+    PWSTR Name;
+    PWSTR ShortName;
     LARGE_INTEGER FileReferenceNumber;
 
     LARGE_INTEGER CreationTime;
@@ -571,54 +671,54 @@ typedef struct _FILE_INFORMATION_STRUCT
     BOOLEAN DeletePending;
     BOOLEAN Directory;
 
-	struct {
-	    LARGE_INTEGER CreationTime;
-		LARGE_INTEGER LastAccessTime;
-	    LARGE_INTEGER LastWriteTime;
-		LARGE_INTEGER ChangeTime;
-	} DirectoryEnrty;
+    struct {
+        LARGE_INTEGER CreationTime;
+        LARGE_INTEGER LastAccessTime;
+        LARGE_INTEGER LastWriteTime;
+        LARGE_INTEGER ChangeTime;
+    } DirectoryEnrty;
 
-	struct {
-		INT cAltStreamName;
-		FILE_INFORMATION_ALTSTREAM *AltStreamName;
-	} AltStream;
+    struct {
+        INT cAltStreamName;
+        FILE_INFORMATION_ALTSTREAM *AltStreamName;
+    } AltStream;
 
-	ULONG EaSize;
-	FILE_INFORMATON_EA_BUFFER *EaBuffer;
+    ULONG EaSize;
+    FILE_INFORMATON_EA_BUFFER *EaBuffer;
 
-	struct {
-		UCHAR ObjectId[16];
-	    union {
-		    struct {
-			    UCHAR BirthVolumeId[16];
-				UCHAR BirthObjectId[16];
-	            UCHAR DomainId[16];
-		    };
-			UCHAR ExtendedInfo[48];
-		};
-	} ObjectId;
+    struct {
+        UCHAR ObjectId[16];
+        union {
+            struct {
+                UCHAR BirthVolumeId[16];
+                UCHAR BirthObjectId[16];
+                UCHAR DomainId[16];
+            };
+            UCHAR ExtendedInfo[48];
+        };
+    } ObjectId;
 
-	WCHAR FileSystemName[16];
-	ULONG FileSystemAttributes;
-	ULONG MaximumComponentNameLength;
+    WCHAR FileSystemName[16];
+    ULONG FileSystemAttributes;
+    ULONG MaximumComponentNameLength;
 
-	FS_REPARSE_POINT_INFORMATION_EX ReparsePointInfo;
+    FS_REPARSE_POINT_INFORMATION_EX ReparsePointInfo;
 
-	struct {
-		WOF_EXTERNAL_INFO *ExternalInfo;
-		union {
-			PVOID GenericPtr;
-			FILE_PROVIDER_EXTERNAL_INFO_V1 *FileInfo;
-			WIM_PROVIDER_EXTERNAL_INFO *WimInfo;
-		};
-	} Wof;
+    struct {
+        WOF_EXTERNAL_INFO *ExternalInfo;
+        union {
+            PVOID GenericPtr;
+            FILE_PROVIDER_EXTERNAL_INFO_V1 *FileInfo;
+            WIM_PROVIDER_EXTERNAL_INFO *WimInfo;
+        };
+    } Wof;
 
-	struct
-	{
-		ULONG ObjectId : 1;
-		ULONG ReparsePoint : 1;
-		ULONG Wof : 1;
-	} State;
+    struct
+    {
+        ULONG ObjectId : 1;
+        ULONG ReparsePoint : 1;
+        ULONG Wof : 1;
+    } State;
 
 } FILE_INFORMATION_STRUCT;
 
@@ -626,57 +726,72 @@ EXTERN_C
 HRESULT
 APIENTRY
 NTFile_GatherFileInformation(
-	HANDLE hFile,
-	FILE_INFORMATION_STRUCT **pfi
-	);
+    HANDLE hFile,
+    FILE_INFORMATION_STRUCT **pfi
+    );
 
 EXTERN_C
 HRESULT
 APIENTRY
 NTFile_FreeFileInformation(
-	FILE_INFORMATION_STRUCT *pfi
-	);
+    FILE_INFORMATION_STRUCT *pfi
+    );
 
 EXTERN_C
 HRESULT
 APIENTRY
 NTFile_OpenFile(
-	HANDLE *phFile,
-	PCWSTR FilePath,
-	ULONG DesiredAccess,
-	ULONG ShareAccess,
-	ULONG OpenOptions
-	);
+    HANDLE *phFile,
+    PCWSTR FilePath,
+    ULONG DesiredAccess,
+    ULONG ShareAccess,
+    ULONG OpenOptions
+    );
 
 EXTERN_C
 HRESULT
 APIENTRY
 NTFile_CloseFile(
-	HANDLE hFile
-	);
+    HANDLE hFile
+    );
 
 EXTERN_C
 BOOL
 APIENTRY
 NTFile_GetAttributeString(
-	DWORD Attributes,
-	LPWSTR String,
-	int cchString
-	);
+    DWORD Attributes,
+    LPWSTR String,
+    int cchString
+    );
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
 
 EXTERN_C
-BOOL
+PWSTR
 APIENTRY
-GetAttributeString(
+NtPathGetAttributeString(
+    DWORD Attributes,
+    LPWSTR String,
+    int cchString
+    );
+
+EXTERN_C
+PWSTR
+APIENTRY
+NtPathGetAttributeStringEx(
 	DWORD Attributes,
 	LPWSTR String,
-	int cchString
+	int cchString,
+	DWORD dwFlags
 	);
-	
+
+#define GASF_PADDING  0x1
+
 typedef enum {
-	DirCbNone=0,
-	DirCbObjectId,
-	DirCbReparsePoint,
+    DirCbNone=0,
+    DirCbObjectId,
+    DirCbReparsePoint,
 } DIRCALLBACKCLASS;
 
 typedef struct _DIR_OBJECTID
@@ -701,9 +816,9 @@ typedef struct _DIR_REPARSE_POINT
 
 typedef struct _DIR_RET_BUFFER
 {
-	ULONG ItemCount;
-	PVOID Buffer;
-	SIZE_T cbBuffer;
+    ULONG ItemCount;
+    PVOID Buffer;
+    SIZE_T cbBuffer;
 } DIR_RET_BUFFER;
 
 typedef HRESULT (CALLBACK *PFNENNUMDIRCALLBACK)(DIRCALLBACKCLASS,PVOID,PVOID Context1,PVOID Context2);
@@ -712,43 +827,148 @@ EXTERN_C
 HRESULT
 APIENTRY
 EnumDirectoryObjectIds(
-	PCWSTR pszVolumeName,
-	PFNENNUMDIRCALLBACK pfnCallback,
-	PVOID DirectoryEntryInformation,
-	PVOID Context1,
-	PVOID Coneext2
-	);
+    PCWSTR pszVolumeName,
+    PFNENNUMDIRCALLBACK pfnCallback,
+    PVOID DirectoryEntryInformation,
+    PVOID Context1,
+    PVOID Coneext2
+    );
 
 EXTERN_C
 HRESULT
 APIENTRY
 EnumDirectoryReparseTags(
-	PCWSTR pszVolumeName,
-	PFNENNUMDIRCALLBACK pfnCallback,
-	PVOID DirectoryEntryInformation,
-	PVOID Context1,
-	PVOID Coneext2
-	);
+    PCWSTR pszVolumeName,
+    PFNENNUMDIRCALLBACK pfnCallback,
+    PVOID DirectoryEntryInformation,
+    PVOID Context1,
+    PVOID Coneext2
+    );
 
 EXTERN_C
 HRESULT
 WINAPI
 FreeDirectoryReturnBuffer(
-	PVOID DirectoryEntryInformation
-	);
+    PVOID DirectoryEntryInformation
+    );
 
 EXTERN_C
 HRESULT
 APIENTRY
 GetAlternateStreamInformation(
-	HANDLE hFile,
-	INT *pAltStreamCount,
-	FILE_STREAM_INFORMATION **StreamInformation
-	);
+    HANDLE hFile,
+    INT *pAltStreamCount,
+    FILE_STREAM_INFORMATION **StreamInformation
+    );
 
 EXTERN_C
 NTSTATUS
 APIENTRY
 FreeAlternateStreamInformation(
-	FILE_STREAM_INFORMATION *StreamInformation
-	);
+    FILE_STREAM_INFORMATION *StreamInformation
+    );
+
+//
+// 2024-06-14
+//
+
+// Win32 CopyFileEx combatible
+typedef
+DWORD
+(WINAPI *LPPROGRESS_ROUTINE)(
+    __in     LARGE_INTEGER TotalFileSize,
+    __in     LARGE_INTEGER TotalBytesTransferred,
+    __in     LARGE_INTEGER StreamSize,
+    __in     LARGE_INTEGER StreamBytesTransferred,
+    __in     DWORD dwStreamNumber,
+    __in     DWORD dwCallbackReason,
+    __in     HANDLE hSourceFile,
+    __in     HANDLE hDestinationFile,
+    __in_opt LPVOID lpData
+    );
+
+EXTERN_C
+BOOL
+WINAPI
+NtDosCopyFileEx(
+    __in     LPCWSTR lpExistingFileName,
+    __in     LPCWSTR lpNewFileName,
+    __in_opt LPPROGRESS_ROUTINE lpProgressRoutine,
+    __in_opt LPVOID lpData,
+    __in_opt LPBOOL pbCancel,
+    __in     DWORD dwCopyFlags
+    );
+
+EXTERN_C
+BOOL
+WINAPI
+NtDosRenameFile(
+    __in LPCWSTR lpExistingFileName,
+    __in LPCWSTR lpNewFileName,
+    __in DWORD dwFlags
+    );
+
+EXTERN_C
+BOOL
+WINAPI
+NtDosDeleteFile(
+    __in LPCWSTR lpFileName
+    );
+
+EXTERN_C
+BOOL
+WINAPI
+NtDosRemoveDirectory(
+    __in LPCWSTR lpPathName
+    );
+
+EXTERN_C
+BOOL
+WINAPI
+NtDosSetFileAttributes(
+    __in LPCWSTR lpFileName,
+    __in DWORD FileAttributes
+    );
+
+
+EXTERN_C
+NTSTATUS
+WINAPI
+NtDosBackupCopy(
+    __in VOID* pfsop,
+    __in HANDLE hDstFile,
+    __in PCWSTR pDstFilePath,
+    __in HANDLE hSrcFile,
+    __in PCWSTR pSrcFilePath,
+    __in BOOLEAN bDirectory,
+    __in LPPROGRESS_ROUTINE lpProgressRoutine,
+    __in LPVOID lpData
+    );
+
+typedef struct _NT_FILE_STREAM_INFORMATION_EX
+{
+    LARGE_INTEGER StreamSize;
+    LARGE_INTEGER StreamAllocationSize;
+    WCHAR *StreamName;
+    INT Order;
+    ULONG Status;
+} NT_FILE_STREAM_INFORMATION_EX;
+
+EXTERN_C
+HRESULT
+WINAPI
+NtDosGetAlternateStreams(
+    PCWSTR pszFilePath,
+    NT_FILE_STREAM_INFORMATION_EX **pAltStmNames,
+    INT *pAltStmNameCount
+    );
+
+EXTERN_C
+HRESULT
+WINAPI
+NtDosGetAttributeTypeCodeStreams(
+    PCWSTR pszFilePath,
+    BOOL bDirectory,
+    NT_FILE_STREAM_INFORMATION_EX **pStmNames,
+    INT *pStmNameCount
+    );

@@ -20,3 +20,13 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 	}
 	return TRUE;
 }
+
+EXTERN_C
+VOID
+WINAPI
+NtDosFreeMemory(
+	PVOID ptr
+	)
+{
+	FreeMemory(ptr);
+}

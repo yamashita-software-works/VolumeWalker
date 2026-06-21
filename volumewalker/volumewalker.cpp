@@ -1144,7 +1144,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 					{
 						DWORD dwFlags = 0;
 #if _ENABLE_FILES_USE_SHELL_ICON
-						dwFlags |= CVFLF_USE_SHELL_ICON;
+						dwFlags |= VOLFILES_FLG_USE_SHELL_ICON;
 #endif
 #if _ENABLE_EXTERNAL_PROXY_OPEN
 						if( g_bProxyOpen )
@@ -1264,6 +1264,7 @@ typedef struct _ARGPARAM {
 	INT WithoutOpen;
 	INT EnableWorkspaceLayout;
 	INT Help;
+	INT UseProxy;
 	WCHAR szLangIdOrName[LOCALE_NAME_MAX_LENGTH];
 
 	_ARGPARAM()
@@ -1272,6 +1273,7 @@ typedef struct _ARGPARAM {
 		WithoutOpen = FALSE;
 		EnableWorkspaceLayout = FALSE;
 		Help = FALSE;
+		UseProxy = FALSE;
 		ConsoleBit = 0;
 		ZeroMemory(szLangIdOrName,sizeof(szLangIdOrName));
 	}
@@ -1305,6 +1307,20 @@ BOOL ParseCommandLine(ARGPARAM &args)
 		for(int i = 1; i < __argc; i++)
 		{
 			PWSTR pArg = __wargv[i];
+
+			if( *pArg == L'-' && *(pArg + 1) == L'-' )
+			{
+				pArg+=2;
+				if( _wcsicmp(pArg,L"enableproxy") == 0 )
+				{
+					args.UseProxy = TRUE;
+				}
+				else
+				{
+					return FALSE;
+				}
+				continue;
+			}
 
 			if( *pArg == L'-' || *pArg == L'/' )
 			{
@@ -1341,15 +1357,27 @@ BOOL ParseCommandLine(ARGPARAM &args)
 				}
 				else if( _wcsicmp(pArg,L"we") == 0 )
 				{
+					if( args.WithoutOpen )
+						return FALSE;
 					args.EnableWorkspaceLayout = TRUE;
 				}
 				else if( _wcsicmp(pArg,L"n") == 0 )
 				{
 					args.WithoutOpen = TRUE; // no mdi child open
+					args.EnableWorkspaceLayout = FALSE; // negate using workspace, therefore, the workspace will not be changed.
+				}
+				else if( _wcsicmp(pArg,L"nx") == 0 )
+				{
+					args.WithoutOpen = TRUE; // no mdi child open
+					args.EnableWorkspaceLayout = TRUE; // reset workspace, because save the new layout when closing.
 				}
 				else if( _wcsicmp(pArg,L"f") == 0 )
 				{
 					args.Maximize = TRUE;    // Open with maximize MDI child frame
+				}
+				else if( _wcsicmp(pArg,L"proxy") == 0 )
+				{
+					args.UseProxy = TRUE;
 				}
 				else if( _wcsicmp(pArg,L"langid") == 0 )
 				{
@@ -1437,6 +1465,10 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 		return 0;
 	}
 
+	g_bEnableWorkspaceLayout = args.EnableWorkspaceLayout;
+#if _ENABLE_EXTERNAL_PROXY_OPEN
+	g_bProxyOpen = args.UseProxy;
+#endif
 	if( _GetOSVersion() >= 0xA00 )
 	{
 		SetProcessPlaceholderCompatibilityMode(PHCM_EXPOSE_PLACEHOLDERS);
@@ -1544,8 +1576,6 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 			}
 		}
 	}
-
-	g_bEnableWorkspaceLayout = args.EnableWorkspaceLayout; // todo:
 
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);

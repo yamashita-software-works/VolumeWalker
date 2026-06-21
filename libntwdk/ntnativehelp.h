@@ -44,6 +44,14 @@ VOID NTAPI FreeMemory(PVOID ptr);
 WCHAR* NTAPI AllocStringBuffer(SIZE_T cch);
 WCHAR* NTAPI AllocStringBufferCb(SIZE_T cb);
 PWSTR NTAPI DuplicateString(PCWSTR psz);
+#else
+#define AllocMemory(cb)         _MemAllocZeroDebug(cb,(LPSTR)__FILE__,__LINE__)
+#define FreeMemory(p)           if(p) { _MemFree(p); }
+#define ReallocMemory(pv,cb)    _MemReAllocDebug(pv,cb,(LPSTR)__FILE__,__LINE__)
+#define ReAllocateHeap(pv,cb)   _MemReAllocDebug(pv,cb,(LPSTR)__FILE__,__LINE__)
+#define AllocStringBufferCb(cb) ((PWSTR)_MemAllocZeroDebug(cb,(LPSTR)__FILE__,__LINE__))
+#define AllocStringBuffer(cch)  ((PWSTR)_MemAllocZeroDebug((cch)*sizeof(wchar_t),(LPSTR)__FILE__,__LINE__))
+#define DuplicateString(p)      _MemAllocStringDebug(p,(LPSTR)__FILE__,__LINE__)
 #endif
 PWSTR NTAPI AllocateSzFromUnicodeString(__in UNICODE_STRING *pus);
 PWSTR NTAPI AllocStringLengthCb(PCWSTR psz,SIZE_T cb);

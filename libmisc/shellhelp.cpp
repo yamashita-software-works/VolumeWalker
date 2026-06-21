@@ -538,7 +538,8 @@ HIMAGELIST WINAPI GetGlobalShareImageList(	int ImageList )
 		ImageList_GetIconSize(m_himl,&cx,&cy);
 
 		HICON hIcon = (HICON)LoadImage(GetModuleHandle(L"shell32"), MAKEINTRESOURCE(46), IMAGE_ICON, cx, cy, 0);
-		m_iImageUpDir = ImageList_AddIcon(m_himl,hIcon);
+		if( m_iImageUpDir == I_IMAGENONE )
+			m_iImageUpDir = ImageList_AddIcon(m_himl,hIcon);
 		DestroyIcon(hIcon);
 	}
 	return m_himl;
