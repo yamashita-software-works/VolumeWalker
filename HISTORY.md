@@ -1,3 +1,7 @@
+### 0.1.55.1
+
+- \[Create Disk Image File\],\[Write Back Disk Image File\]が開けない不具合を修正。
+
 ### 0.1.55.0
 
 - Volume File ExplorerのSimple Binary Dumpの更新。

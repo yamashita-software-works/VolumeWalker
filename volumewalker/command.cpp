@@ -25,7 +25,7 @@
 #define _DLL_VOLUMETOOLS  L"fsvolumetools.dll"
 #endif
 
-#define _DLL_VOLUMEDISKS  L"fsvolumelist.dll"
+#define _DLL_VOLUMEDISKS  L"fsvolumedisks.dll"
 
 using namespace CommandHandler;
 
