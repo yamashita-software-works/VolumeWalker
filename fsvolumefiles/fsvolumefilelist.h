@@ -46,3 +46,15 @@ QuickBinaryDumpDialog(
 	__in_opt ULONG cb,
 	__in_opt DWORD dwFlags
 	);
+
+EXTERN_C
+HRESULT
+WINAPI
+RecycleBinFilesDialog(
+	HWND hWnd,
+	PCWSTR pszDriveName,
+	PCWSTR pszVolumeName,
+	PCWSTR pszDeviceName,
+	DWORD dwFlags
+	);
+

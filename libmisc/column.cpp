@@ -76,7 +76,7 @@ const COLUMN *CColumnList::GetDefaultColumnItem(int index)
 	return NULL;
 }
 
-BOOL CColumnList::PaeseLine(PWSTR pszLine,COLUMN *pcol)
+BOOL CColumnList::ParseLine(PWSTR pszLine,COLUMN *pcol)
 {
 	wchar_t *delim = L",";
 	wchar_t *context;
@@ -175,7 +175,7 @@ DSArray<COLUMN> *CColumnList::GetColumnLayout(PCWSTR pszSectionName,PCWSTR pszSe
 
 	while( *p )
 	{
-		if( PaeseLine(p,&col) )
+		if( ParseLine(p,&col) )
 		{
 			COLUMN d;
 			int i,cItems = pdsa->GetCount();

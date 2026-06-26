@@ -219,6 +219,36 @@ public:
 		return 0;
 	}
 
+	inline void insertMenuOpenInShell(HMENU hMenu)
+	{
+		HMENU hSubMenu = CreatePopupMenu();
+		{
+			AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"&Explorer");
+			AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_TERMINAL,   L"&Terminal");
+			AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_POWERSHELL, L"&PowerShell");
+			AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"&Command Prompt");
+			AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"&Bash");
+		}
+		AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Open in She&ll");
+	}
+
+	inline void insertMenuAction(HMENU hMenu)
+	{
+		HMENU hSubMenu = CreatePopupMenu();
+		{
+			AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_LABEL,         L"Edit &Volume Label...");
+			AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_OBJECT_ID,     L"Edit Volume &Object Id...");
+			AppendMenu(hSubMenu,MF_STRING,0,NULL);
+			AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_ASSIGN_DRIVE,      L"Assign Drive...");
+			AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_REMOVE_DRIVE,      L"Remove Drive");
+			AppendMenu(hSubMenu,MF_STRING,0,NULL);
+			AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_MOUNT_FOLDER,      L"Mount to Folder...");
+			AppendMenu(hSubMenu,MF_STRING,0,NULL);
+			AppendMenu(hSubMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream Name by LCN...");
+		}
+		AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Action");
+	}
+
 	LRESULT OnContextMenu(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		int iItem = ListViewEx_GetCurSel(m_hWndList);
@@ -231,8 +261,6 @@ public:
 
 		if( SendMessage(GetActiveWindow(),PM_MAKECONTEXTMENU,MAKEWPARAM(VOLUME_CONSOLE_VOLUMELIST,0),(LPARAM)hMenu) == 0 )
 		{
-			HMENU hSubMenu;
-
 			AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Volume &Information");
 			AppendMenu(hMenu,MF_STRING,ID_FILESYSTEMSTATISTICS,L"File System &Statistics");
 			AppendMenu(hMenu,MF_STRING,0,0);
@@ -241,29 +269,22 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEFILELIST,L"Volume &File Explorer");
 			AppendMenu(hMenu,MF_STRING,0,0);
 
-			hSubMenu = CreatePopupMenu();
-			{
-				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"&Explorer");
-				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_TERMINAL,   L"&Terminal");
-				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_POWERSHELL, L"&PowerShell");
-				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"&Command Prompt");
-				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"&Bash");
-			}
-			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Open in She&ll");
+			insertMenuOpenInShell(hMenu);
 
-			hSubMenu = CreatePopupMenu();
-			{
-				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_LABEL,         L"Edit &Volume Label...");
-				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_OBJECT_ID,     L"Edit Volume &Object Id...");
-				AppendMenu(hSubMenu,MF_STRING,0,NULL);
-				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_ASSIGN_DRIVE,      L"Assign Drive...");
-				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_REMOVE_DRIVE,      L"Remove Drive");
-				AppendMenu(hSubMenu,MF_STRING,0,NULL);
-				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_MOUNT_FOLDER,      L"Mount to Folder...");
-				AppendMenu(hSubMenu,MF_STRING,0,NULL);
-				AppendMenu(hSubMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream Name by LCN...");
-			}
-			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Action");
+			insertMenuAction(hMenu);
+
+			AppendMenu(hMenu,MF_STRING,0,0);
+			AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
+			SetMenuDefaultItem(hMenu,ID_VOLUMEINFORMATION,FALSE);
+		}
+		else
+		{
+			AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Volume &Information");
+			AppendMenu(hMenu,MF_STRING,0,0);
+
+			insertMenuOpenInShell(hMenu);
+
+			insertMenuAction(hMenu);
 
 			AppendMenu(hMenu,MF_STRING,0,0);
 			AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");

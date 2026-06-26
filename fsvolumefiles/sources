@@ -101,15 +101,17 @@ INCLUDES=$(INCLUDES);..\inc
 SOURCES = \
 	dllmain.cpp\
 	filelistwindow.cpp\
+	filelist_filesearch.cpp\
+	filelist_directorytraverse.cpp\
 	dialog_traverse_directory.cpp\
 	dialog_goto_directory.cpp\
 	dialog_choosestream.cpp\
 	dialog_filesearch_param.cpp\
 	dialog_binarydump.cpp\
+	dialog_recyclebin_files.cpp\
 	apps.cpp\
 	meterbox.cpp\
-	filelist_directorytraverse.cpp\
-	filelist_filesearch.cpp\
+	shellwindow.cpp\
 	fsvolumefilelist.rc
 
 #----------------------------------------------------------

@@ -2312,3 +2312,42 @@ NtPathAppendPathElement(
 
 	return pszRetPath;
 }
+
+EXTERN_C
+ULONG
+APIENTRY
+NtDosGetVolumeSizeInformation(
+	HANDLE hVolume,
+	NT_VOLUME_SIZE_INFORMATION *pSizeInfo,
+	INT cbInfo
+	)
+{
+	NTSTATUS Status;
+	ULONG Win32Error;
+	FILE_FS_SIZE_INFORMATION Size;
+	IO_STATUS_BLOCK IoStatus;
+
+	Status = NtQueryVolumeInformationFile(hVolume,&IoStatus,&Size,sizeof(Size),FileFsSizeInformation);
+
+	if( Status == STATUS_SUCCESS )
+	{
+		pSizeInfo->TotalAllocationUnits     = Size.TotalAllocationUnits;
+		pSizeInfo->AvailableAllocationUnits = Size.AvailableAllocationUnits;
+		pSizeInfo->SectorsPerAllocationUnit = Size.SectorsPerAllocationUnit;
+		pSizeInfo->BytesPerSector           = Size.BytesPerSector;
+		pSizeInfo->ClusterSize              = Size.BytesPerSector * Size.SectorsPerAllocationUnit;
+		pSizeInfo->TotalAllocationSize      = Size.TotalAllocationUnits.QuadPart * pSizeInfo->ClusterSize;
+		pSizeInfo->AvailableAllocationSize  = Size.AvailableAllocationUnits.QuadPart * pSizeInfo->ClusterSize;
+
+		Win32Error = NO_ERROR;
+	}
+	else
+	{
+		Win32Error = RtlNtStatusToDosError(Status);
+	}
+
+	RtlSetLastWin32Error(Win32Error);
+
+	return Win32Error;
+}
+	

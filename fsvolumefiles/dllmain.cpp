@@ -51,8 +51,10 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #if _ENABLE_FILE_MANAGER || _ENABLE_FILELIST_DRAGFILE || _ENABLE_FILELIST_DROPFILE
 			InitializeLongPathClipboard();
 #endif
+			SetMessageBoxCaption( L"VolumeWalker" );
 			break;
 		case DLL_PROCESS_DETACH:
+			SetMessageBoxCaption( NULL );
 			_MemEnd();
 			break;
 		case DLL_THREAD_ATTACH:
@@ -112,4 +114,28 @@ HFONT GetIconFont()
 	SystemParametersInfo(SPI_GETICONTITLELOGFONT,sizeof(LOGFONT),&lf,0);
 	hFontIcon = CreateFontIndirect(&lf);
 	return hFontIcon;
+}
+
+HWND _CreateVolumeFileListWindow(HWND hWndParent,UINT ConsoleType,DWORD dwOptionFlags,LPARAM lParam);
+HWND _CreateShellConsoleWindow(HWND hWndParent,UINT ConsoleType,DWORD dwOptionFlags,LPARAM lParam);
+
+EXTERN_C
+HWND
+WINAPI
+CreateVolumeFileList(
+	HWND hwnd,
+	UINT ConsoleId,
+	DWORD dwOptionFlags,
+	LPARAM lParam
+	)
+{
+	switch( ConsoleId )
+	{
+		case VOLUME_CONSOLE_SHELL_RECYCLEBIN:
+		case VOLUME_CONSOLE_SHELL_RECYCLEBIN_FILES:
+			return _CreateShellConsoleWindow(hwnd,ConsoleId,dwOptionFlags,lParam);
+		default:
+			return _CreateVolumeFileListWindow(hwnd,ConsoleId,dwOptionFlags,lParam);
+	}
+	return NULL;
 }

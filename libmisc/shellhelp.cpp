@@ -12,6 +12,7 @@
 //***************************************************************************
 #include "stdafx.h"
 #include "libmisc.h"
+#include "shellhelp.h"
 
 #define FORCE_DEFINE_KNOWN_FOLDER(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
         EXTERN_C const GUID DECLSPEC_SELECTANY name \
@@ -635,4 +636,169 @@ GetShellFileIconImageListIndexEx(
 int WINAPI GetShellFileImageListIndex(PCWSTR pszPath,PCWSTR pszFileName,DWORD dwFileAttributes)
 {
 	return GetShellFileIconImageListIndexEx(pszPath,pszFileName,dwFileAttributes,0,NULL);
+}
+
+HRESULT _GetRecycleBinFolder( IShellFolder **RecycleBinFolder )
+{
+	HRESULT hr;
+
+	IShellFolder *pDesktopFolder;
+	hr = SHGetDesktopFolder(&pDesktopFolder);
+	if( hr != S_OK )
+		return hr;
+
+	PIDLIST_ABSOLUTE pidlBitBucket = NULL;
+	hr = SHGetSpecialFolderLocation(NULL,CSIDL_BITBUCKET,&pidlBitBucket);
+
+	if( pidlBitBucket )
+	{
+		hr = pDesktopFolder->BindToObject(pidlBitBucket,NULL,IID_IShellFolder,(LPVOID *)RecycleBinFolder);
+
+		CoTaskMemFree(pidlBitBucket);
+	}
+
+	pDesktopFolder->Release();
+
+	return hr;
+}
+
+HRESULT _ExecRecycleBinItemCommand(HWND hWnd,LPITEMIDLIST pidl,PCSTR pcaszCommand)
+{
+	HRESULT hr;
+
+	IShellFolder *pDesktopFolder;
+	hr = SHGetDesktopFolder(&pDesktopFolder);
+	if( hr != S_OK )
+		return hr;
+
+	IShellFolder *pBitBucketFolder = NULL;
+	hr = _GetRecycleBinFolder( &pBitBucketFolder );
+
+	if( pBitBucketFolder )
+	{
+		hr = _ExecShellFolderMenuCommand(hWnd,pBitBucketFolder,pidl,pcaszCommand);
+		pBitBucketFolder->Release();
+	}
+
+	pDesktopFolder->Release();
+
+	return hr;
+}
+
+HRESULT _ExecShellFolderMenuCommand(HWND hWnd,IShellFolder *pFolder,LPITEMIDLIST pidl,LPCSTR pszRequestCommand)
+{
+	HRESULT hr;
+
+	IShellFolder2 *pFolder2 = NULL;
+	pFolder->QueryInterface(IID_IShellFolder2, (void**)&pFolder2);
+
+	IContextMenu *pCtxMenu = NULL;
+	pFolder2->GetUIObjectOf(NULL, 1, (LPCITEMIDLIST *)&pidl, IID_IContextMenu, NULL, (LPVOID *)&pCtxMenu);
+
+	if( pFolder2 && pCtxMenu )
+	{
+		UINT uiID = UINT (-1);
+		UINT uiCommand = 0;
+		UINT uiMenuFirst = 1;
+		UINT uiMenuLast = 0x00007FFF;
+		HMENU hmenuCtx;
+		int iMenuPos = 0;
+		int cMenuItems = 0;
+	
+		hmenuCtx = CreatePopupMenu();
+		pCtxMenu->QueryContextMenu(hmenuCtx, 0, uiMenuFirst, uiMenuLast, CMF_NORMAL);
+	
+		CHAR verb[256];
+		cMenuItems = GetMenuItemCount(hmenuCtx);
+			
+		for(iMenuPos = 0; iMenuPos < cMenuItems; iMenuPos++)
+		{
+			uiID = GetMenuItemID(hmenuCtx,iMenuPos);
+				
+			if( uiID != -1 && uiID != 0 )
+			{
+				hr = pCtxMenu->GetCommandString(uiID-1, GCS_VERBA, NULL, verb, sizeof(verb));
+				if( SUCCEEDED(hr) )
+				{
+					if( stricmp(verb, pszRequestCommand) == 0 )
+					{
+						uiCommand = uiID - 1;
+						break;
+					}
+				}
+			}
+		}
+	
+		if( uiCommand != 0 )
+		{
+			CMINVOKECOMMANDINFO cmi;
+			
+			ZeroMemory(&cmi, sizeof(CMINVOKECOMMANDINFO));
+			cmi.cbSize		 = sizeof(CMINVOKECOMMANDINFO);
+			cmi.fMask		 = CMIC_MASK_FLAG_NO_UI;
+			cmi.hwnd		 = hWnd;
+			cmi.lpParameters = NULL;
+			cmi.lpDirectory	 = NULL;
+			cmi.lpVerb		 = MAKEINTRESOURCEA(uiCommand);
+			cmi.nShow		 = SW_SHOWNORMAL;
+			cmi.dwHotKey	 = NULL;
+			cmi.hIcon		 = NULL;
+			hr = pCtxMenu->InvokeCommand(&cmi);
+		}
+	}
+
+	if( pCtxMenu )
+		pCtxMenu->Release();
+
+	if( pFolder2 )
+		pFolder2->Release();
+
+	return hr;
+}
+
+BOOL _GetShellItemNameW(LPSHELLFOLDER lpsf, LPITEMIDLIST lpi, DWORD dwFlags, LPTSTR lpFriendlyName,DWORD cch)
+{
+	BOOL bSuccess = TRUE;
+	STRRET str = { STRRET_CSTR };
+
+	if (lpsf->GetDisplayNameOf(lpi, dwFlags, &str) == NOERROR)
+	{
+		switch (str.uType)
+		{
+			case STRRET_WSTR:
+				StringCchCopy(lpFriendlyName,cch,str.pOleStr);
+				CoTaskMemFree(str.pOleStr);
+				break;
+			case STRRET_OFFSET:
+				StringCchCopy(lpFriendlyName,cch,(LPTSTR)lpi + str.uOffset);
+				break;
+			case STRRET_CSTR:
+				MultiByteToWideChar(CP_ACP,0,str.cStr,-1,lpFriendlyName,cch);
+				break;
+			default:
+				bSuccess = FALSE;
+				break;
+		}
+	}
+	else
+	{
+		bSuccess = FALSE;
+	}
+
+	return bSuccess;
+}
+
+LONGLONG _ConvertVariantDateTime(VARIANT& vt)
+{
+	SYSTEMTIME st;
+	VariantTimeToSystemTime(vt.date,&st);
+
+	FILETIME ft;
+	SystemTimeToFileTime(&st,&ft);
+
+	LARGE_INTEGER li;
+	li.HighPart = ft.dwHighDateTime;
+	li.LowPart = ft.dwLowDateTime;
+
+	return li.QuadPart;
 }

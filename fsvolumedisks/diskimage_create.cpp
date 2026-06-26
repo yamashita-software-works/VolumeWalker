@@ -254,6 +254,7 @@ CreateDiskImageFile(
 			VOLUME_FS_SIZE_INFORMATION *Size;
 			GetVolumeFsInformation(hDisk,VOLFS_SIZE_INFORMATION,(PVOID*)&Size);
 			diskSize.Length.QuadPart = Size->TotalAllocationUnits.QuadPart * Size->SectorsPerAllocationUnit * Size->BytesPerSector;
+			FreeMemory(Size);
 		}
 
 		hFile = CreateFile(

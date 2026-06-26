@@ -14,7 +14,7 @@
 #define _CX_TB_MARGIN 16
 #define _CX_PROPLV_MARGIN 8
 
-#define CLR_PANE_ACTIVE_BACKGROUND   RGB(240,243,249)
+#define CLR_PANE_ACTIVE_BACKGROUND   RGB(240,244,249)
 #define CLR_PANE_INACTIVE_BACKGROUND RGB(243,243,243)
 
 #define EDITBOX_MAX_CHARS 22
@@ -540,7 +540,6 @@ public:
 				m_hWndEdit = CreateEditBox(hWnd);
 				m_hbrBackground = CreateSolidBrush( CLR_PANE_ACTIVE_BACKGROUND );
 				m_hbrInactiveBack = CreateSolidBrush( CLR_PANE_INACTIVE_BACKGROUND );
-
 				m_hWndProp = GetDlgItem(hWnd,IDC_LIST);
 				InitPropList();
 

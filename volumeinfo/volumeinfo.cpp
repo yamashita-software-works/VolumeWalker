@@ -1149,6 +1149,8 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM)
 //----------------------------------------------------------------------------
 VOID OnCreate(HWND hWnd,WPARAM wParam, LPARAM lParam)
 {
+	INITVOLUMECONSOLE init_param = { L"VolumeInfo" };
+
 #if _ENABLE_DARK_MODE_TEST
 	if( _IsDarkModeEnabled() )
 	{
@@ -1164,7 +1166,7 @@ VOID OnCreate(HWND hWnd,WPARAM wParam, LPARAM lParam)
 
 		SetWindowTheme(g_MenuBar.m_hWnd,L"DarkMode",NULL);
 
-		InitializeVolumeConsole(VOLUME_DLL_FLAG_ENABLE_DARK_MODE);
+		InitializeVolumeConsole(VOLUME_DLL_FLAG_ENABLE_DARK_MODE,&init_param);
 	}
 	else
 	{
@@ -1179,6 +1181,7 @@ VOID OnCreate(HWND hWnd,WPARAM wParam, LPARAM lParam)
 		g_hMainMenu = LoadMenu(_GetResourceInstance(),MAKEINTRESOURCE(IDR_MAINFRAME));
 		SetMenu(hWnd,g_hMainMenu);
 #endif
+		InitializeVolumeConsole(VOLUME_DLL_FLAG_ENABLE_DARK_MODE,&init_param);
 	}
 #else
 	g_hMainMenu = LoadMenu(_GetResourceInstance(),MAKEINTRESOURCE(IDR_MAINFRAME));
@@ -1451,29 +1454,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		case PM_MAKECONTEXTMENU:
 		{
-			if( wParam != NULL )
-			{
-				HMENU hMenu = (HMENU)lParam;
-				UINT ConsoleId = (UINT)wParam;
-				switch( ConsoleId )
-				{
-					case VOLUME_CONSOLE_VOLUMELIST:
-					{
-						AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Volume Information"); 
-						AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
-						SetMenuDefaultItem(hMenu,ID_VOLUMEINFORMATION,FALSE);
-						return (LRESULT)TRUE;
-					}
-					case VOLUME_CONSOLE_PHYSICALDRIVELIST:
-					{
-						AppendMenu(hMenu,MF_STRING,ID_PHYSICALDRIVEINFORMATION,L"Drive Information");
-						AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
-						SetMenuDefaultItem(hMenu,ID_PHYSICALDRIVEINFORMATION,FALSE);
-						return (LRESULT)TRUE;
-					}
-				}
-			}
-			return (LRESULT)FALSE;
+			return (LRESULT)TRUE;
 		}
 		default:
 		{

@@ -48,6 +48,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 			InitializeLibMisc(hInstance,GetUserDefaultUILanguage());
 			break;
 		case DLL_PROCESS_DETACH:
+			SetMessageBoxCaption( NULL );
 			_MemEnd();
 			break;
 		case DLL_THREAD_ATTACH:
@@ -61,9 +62,15 @@ EXTERN_C
 HRESULT
 WINAPI
 InitializeVolumeConsole(
-	DWORD dwFlags
+	DWORD dwFlags,
+	PINITVOLUMECONSOLE pParam
 	)
 {
+	if( pParam )
+	{
+		SetMessageBoxCaption( pParam->pszTitle );
+	}
+
 	if( GetModuleHandle(L"fltlib.dll") == NULL )	
 	{
 		LoadFltLibDll(NULL);

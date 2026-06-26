@@ -53,13 +53,13 @@ typedef struct _FS_SELECTED_FILELIST
 //
 #define PM_GETWORKINGDIRECTORY (PM_BASE+3)
 
-//
-// PM_GETCURDIR
-//   wParam  -
-//   lParam  -
-//   lResult -
-//
-#define PM_GETCURDIR (PM_BASE+4)
+////
+//// PM_GETCURDIR
+////   wParam  -
+////   lParam  -
+////   lResult -
+////
+//#define PM_GETCURDIR (PM_BASE+4)
 
 //
 // PM_GETSELECTEDFILEATTRIBUTE

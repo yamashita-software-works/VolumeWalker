@@ -1,3 +1,12 @@
+### 0.1.56.0
+
+- Recycle Bin Usageウィンドウを追加。
+  - 各ドライブでのごみ箱の内容を表示します。
+
+- volumeinfo.exe のコンテキストメニュー処理方法を変更。
+
+- その他メモリリーク、不具合等の修正。
+
 ### 0.1.55.1
 
 - \[Create Disk Image File\],\[Write Back Disk Image File\]が開けない不具合を修正。

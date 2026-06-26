@@ -17,7 +17,8 @@ EXPORTS
 	NtPathDosPathToNtDevicePath
 	NtPathDosDriveFromNtDevicePath
 	NtPathMakeFullyQualifiedFileNameWithTypeName
-    NtPathFreeMemory = fsfilelib.NtDosFreeMemory
+	NtPathFreeMemory = fsfilelib.NtDosFreeMemory
+	NtPathFreeString = fsfilelib.NtDosFreeMemory
 
 	ReadFileClusterInformaion_U
 	ReadFileClusterInformaion
@@ -87,3 +88,4 @@ EXPORTS
 	NtDosGetAlternateStreams
 	NtDosGetAttributeTypeCodeStreams
 	NtDosFreeMemory
+	NtDosGetVolumeSizeInformation

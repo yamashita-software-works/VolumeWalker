@@ -24,7 +24,7 @@
 #define ID_FILE_CHANGEJOURNAL                    41021
 #define ID_FILE_ROOTDIRECTORIES                  41022
 //                                               41023
-//                                               41024
+#define ID_RECYCLEBIN                            41024
 //                                               41025
 //                                               41026
 #define ID_FILE_CHANGEJOURNAL_VOLUMES            41027
@@ -68,6 +68,7 @@
 #define ID_DLEDIT_ASSIGN_DRIVE                   41077
 #define ID_DLEDIT_MOUNT_FOLDER                   41078
 #define ID_DLEDIT_UNMOUNT_FOLDER                 41079
+#define ID_DISK_FORMAT                           41080
 #define ID_SHELL_RUNFILE_DIALOG                  41082
 
 #define ID_EDIT_COPY_COUMN_FIRST                 41100
@@ -121,5 +122,10 @@
 
 #define ID_OPEN_APP_FIRST                        40200
 #define ID_OPEN_APP_LAST                         40299
+
+#define ID_EMPTY                                 40330
+#define ID_RESTORE                               40331
+#define ID_DELETE                                40332
+#define ID_RECYCLEBIN_FILES                      40333
 
 #endif

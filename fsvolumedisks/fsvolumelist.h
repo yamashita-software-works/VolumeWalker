@@ -2,11 +2,17 @@
 
 #include "volumeconsoleid.h"
 
+typedef struct _INITVOLUMECONSOLE
+{
+	LPWSTR pszTitle;
+} INITVOLUMECONSOLE,*PINITVOLUMECONSOLE;
+
 EXTERN_C
 HRESULT
 WINAPI
 InitializeVolumeConsole(
-	DWORD dwFlags
+	__in DWORD dwFlags,
+	__in_opt PINITVOLUMECONSOLE pParam
 	);
 
 #define VOLUME_DLL_FLAG_ENABLE_DARK_MODE 0x1

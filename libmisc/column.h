@@ -112,7 +112,7 @@ public:
 	}
 private:
 	int findColumnItem(UINT id);
-	BOOL PaeseLine(PWSTR pszLine,COLUMN *pcol);
+	BOOL ParseLine(PWSTR pszLine,COLUMN *pcol);
 	DSArray<COLUMN> *GetColumnLayout(PCWSTR pszSectionName,PCWSTR pszSectionText=NULL,int cbSectionText=0);
 	LARGE_INTEGER GetSortInfo(PWSTR sz);
 };

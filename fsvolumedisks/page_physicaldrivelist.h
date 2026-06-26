@@ -203,6 +203,12 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
 			SetMenuDefaultItem(hMenu,ID_PHYSICALDRIVEINFORMATION,FALSE);
 		}
+		else
+		{
+			AppendMenu(hMenu,MF_STRING,ID_PHYSICALDRIVEINFORMATION,L"Disk Drive &Information");
+			AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
+			SetMenuDefaultItem(hMenu,ID_PHYSICALDRIVEINFORMATION,FALSE);
+		}
 
 		POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 		ListViewEx_SimpleContextMenuHandler(NULL,m_hWndList,(HWND)wParam,hMenu,pt,0);

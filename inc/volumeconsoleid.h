@@ -27,7 +27,12 @@ enum {
     VOLUME_CONSOLE_VOLUMEFILES,                /* 21 */
     VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT,     /* 22 */
     VOLUME_CONSOLE_SCRATCHPAD,                 /* 23 */
-    VOLUME_CONSOLE_MAX_ID,
+                                               /* 24 */
+                                               /* 25 */
+                                               /* 26 */
+    VOLUME_CONSOLE_SHELL_RECYCLEBIN=27,        /* 27 */	
+    VOLUME_CONSOLE_SHELL_RECYCLEBIN_FILES,     /* 28 */	
+    VOLUME_CONSOLE_MAX_ID,                     /* 29 */
     VOLUME_CONSOLE_COUNT = VOLUME_CONSOLE_MAX_ID,
 };
 

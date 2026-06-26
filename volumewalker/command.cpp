@@ -25,6 +25,11 @@
 #define _DLL_VOLUMETOOLS  L"fsvolumetools.dll"
 #endif
 
+#if _ENABLE_TOOL_LAUNCHPAD
+#include "..\fsvolumefiles\launchpad.h"
+#define _DLL_VOLUMEFILES  L"fsvolumefiles.dll"
+#endif
+
 #define _DLL_VOLUMEDISKS  L"fsvolumedisks.dll"
 
 using namespace CommandHandler;
@@ -153,7 +158,7 @@ namespace CommandHandler
 				(FARPROC&)pfnToolPadDialog = GetProcAddress(hModule,"ToolPadDialog");
 				if( pfnToolPadDialog )
 				{
-					pfnToolPadDialog(hWnd,TPD_PAGE_APPLAUNCH,TPAD_TYPE_LAUNCHPAD,nullptr);
+					pfnToolPadDialog(hWnd,TPD_PAGE_UNIT,TPAD_TYPE_ALL,nullptr);
 				}
 				FreeLibrary(hModule);
 			}
@@ -171,6 +176,22 @@ namespace CommandHandler
 				else
 					ShowWindow(hWndToolPad,SW_SHOW);
 			}
+		}
+	}
+
+	VOID OpenLaunchPadWindow(HWND hWnd,UINT /*uMode*/)
+	{
+		HRESULT (WINAPI *pfnLaunchPadDialog)(HWND hWnd,UINT,UINT,PVOID) = NULL;
+		HMODULE hModule;
+		hModule = LoadLibrary( _DLL_VOLUMEFILES );
+		if( hModule )
+		{
+			(FARPROC&)pfnLaunchPadDialog = GetProcAddress(hModule,"LaunchPadDialog");
+			if( pfnLaunchPadDialog )
+			{
+				pfnLaunchPadDialog(hWnd,LPD_PAGE_APPLAUNCH,LPAD_TYPE_ALL,nullptr);
+			}
+			FreeLibrary(hModule);
 		}
 	}
 #endif
@@ -259,7 +280,7 @@ namespace CommandHandler
 	//------------------------------------------------------------------------
 	VOID OnLaunchPadWindow(HWND hWnd)
 	{
-		OpenToolPadWindow(hWnd,1);
+		OpenLaunchPadWindow(hWnd,0);
 	}
 #endif
 	//------------------------------------------------------------------------

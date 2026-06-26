@@ -972,3 +972,25 @@ NtDosGetAttributeTypeCodeStreams(
     NT_FILE_STREAM_INFORMATION_EX **pStmNames,
     INT *pStmNameCount
     );
+
+#pragma pack(4)
+typedef struct _NT_VOLUME_SIZE_INFORMATION
+{
+    LARGE_INTEGER TotalAllocationUnits;
+    LARGE_INTEGER AvailableAllocationUnits;
+    ULONG SectorsPerAllocationUnit;
+    ULONG BytesPerSector;
+    LONGLONG TotalAllocationSize;
+    LONGLONG AvailableAllocationSize;
+	ULONG ClusterSize;
+} NT_VOLUME_SIZE_INFORMATION, *PNT_VOLUME_SIZE_INFORMATION;
+#pragma pack()
+
+EXTERN_C
+ULONG
+APIENTRY
+NtDosGetVolumeSizeInformation(
+	HANDLE hVolume,
+	NT_VOLUME_SIZE_INFORMATION *pInfo,
+	INT cbInfo
+	);

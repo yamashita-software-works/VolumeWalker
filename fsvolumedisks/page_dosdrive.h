@@ -199,9 +199,43 @@ public:
 				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_LABEL,         L"Edit &Volume Label...");
 				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_OBJECT_ID,     L"Edit Volume &Object Id...");
 				AppendMenu(hSubMenu,MF_STRING,0,NULL);
-				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_MOUNT_FOLDER,      L"Mount to Folder...");
+				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_MOUNT_FOLDER,      L"&Mount to Folder...");
 				AppendMenu(hSubMenu,MF_STRING,0,NULL);
-				AppendMenu(hSubMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream Name by LCN...");
+				AppendMenu(hSubMenu,MF_STRING,ID_DISK_FORMAT,              L"&Format Drive...");
+				AppendMenu(hSubMenu,MF_STRING,0,NULL);
+				AppendMenu(hSubMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"&Lookup Stream Name by LCN...");
+			}
+			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Action");
+
+			AppendMenu(hMenu,MF_STRING,0,0);
+			AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
+			SetMenuDefaultItem(hMenu,ID_VOLUMEINFORMATION,FALSE);
+		}
+		else
+		{
+			HMENU hSubMenu;
+			AppendMenu(hMenu,MF_STRING,ID_VOLUMEINFORMATION,L"Volume &Information");
+			AppendMenu(hMenu,MF_STRING,0,0);
+			hSubMenu = CreatePopupMenu();
+			{
+				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_EXPLORER,   L"&Explorer");
+				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_TERMINAL,   L"&Terminal");
+				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_POWERSHELL, L"&PowerShell");
+				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_CMDPROMPT,  L"&Command Prompt");
+				AppendMenu(hSubMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"&Bash");
+			}
+			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"Open in She&ll");
+
+			hSubMenu = CreatePopupMenu();
+			{
+				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_LABEL,         L"Edit &Volume Label...");
+				AppendMenu(hSubMenu,MF_STRING,ID_SET_VOLUME_OBJECT_ID,     L"Edit Volume &Object Id...");
+				AppendMenu(hSubMenu,MF_STRING,0,NULL);
+				AppendMenu(hSubMenu,MF_STRING,ID_DLEDIT_MOUNT_FOLDER,      L"&Mount to Folder...");
+				AppendMenu(hSubMenu,MF_STRING,0,NULL);
+				AppendMenu(hSubMenu,MF_STRING,ID_DISK_FORMAT,              L"&Format Drive...");
+				AppendMenu(hSubMenu,MF_STRING,0,NULL);
+				AppendMenu(hSubMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"&Lookup Stream Name by LCN...");
 			}
 			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Action");
 
@@ -1150,6 +1184,7 @@ public:
 			case ID_SET_VOLUME_OBJECT_ID:
 			case ID_DLEDIT_MOUNT_FOLDER:
 			case ID_LOOKUP_STREAM_BY_LCN:
+			case ID_DISK_FORMAT:
 				*State = (ListView_GetSelectedCount(m_hWndList) == 1) ? UPDUI_ENABLED : UPDUI_DISABLED;
 				return S_OK;
 		}
@@ -1207,6 +1242,9 @@ public:
 				break;
 			case ID_LOOKUP_STREAM_BY_LCN:
 				OnCmdLookupStreamByLCN();
+				break;
+			case ID_DISK_FORMAT:
+				OnCmdDiskFormat();
 				break;
 		}
 		return S_OK;
@@ -1291,6 +1329,38 @@ public:
 			{
 				LookupStreamNameDialog(GetActiveWindow(),NtPath,0);
 				FreeMemory(NtPath);
+			}
+		}
+	}
+
+	void OnCmdDiskFormat()
+	{
+		CDosDriveItem *pItem = GetCurItem();
+		if( pItem )
+		{
+			WCHAR szMsg[MAX_PATH];
+
+			if( pItem->pDriveInfo->DriveType != DRIVE_REMOVABLE )
+			{
+				StringCchPrintf(szMsg,MAX_PATH,
+					L"Do you want to open format dialog window for %s drive?\n\n"
+					L"%s drive is not a removable disk, but do you still continue?",
+					pItem->szDrive,pItem->szDrive);
+			}
+			else
+			{
+				StringCchPrintf(szMsg,MAX_PATH,
+					L"Do you want to open format dialog window for %s Drive?",
+					pItem->szDrive);
+			}
+
+			WCHAR wchDrive = 0;
+			wchDrive = pItem->szDrive[0];
+			wchDrive = (WCHAR)CharUpper((LPWSTR)wchDrive);
+			int iDriveNumber = wchDrive - L'A';
+			if( MsgBox(GetActiveWindow(),szMsg,NULL,MB_OKCANCEL|MB_ICONEXCLAMATION) == IDOK )
+			{
+				SHFormatDrive(GetActiveWindow(),iDriveNumber,SHFMT_ID_DEFAULT,0);
 			}
 		}
 	}

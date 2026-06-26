@@ -1,12 +1,12 @@
 //****************************************************************************
 //
-//  fileswindow.cpp
+//  shellwindow.cpp
 //
-//  Implements the directory files view host window.
+//  Implements the shell console host window.
 //
-//  Author: YAMASHITA Katsuhiro
+//  Author:  YAMASHITA Katsuhiro
 //
-//  Create: 2023.06.29
+//  History: 2026-06-15 Created.
 //
 //****************************************************************************
 //
@@ -17,52 +17,64 @@
 #include "resource.h"
 #include "basewindow.h"
 #include "volumeconsoledef.h"
-#include "filelistview.h"
-#include "page_volumefilelist.h"
-#include "page_volumefilelist_search_result.h"
+#include "page_shell_recyclebin_volumes.h"
+#include "page_shell_recyclebin_files.h"
 
-inline int _GetTextWidth(HWND hWnd,HFONT hFont,PCWSTR psz)
-{
-	SIZE size;
-	HDC hdc = GetDC(hWnd);
-	HGDIOBJ hfontOld = SelectObject(hdc,hFont);
-	GetTextExtentPoint32(hdc,psz,lstrlen(psz),&size);
-	SelectObject(hdc,hfontOld);
-	ReleaseDC(hWnd,hdc);
-	return size.cx;
-}
+typedef enum {
+	PAGE_SH_UNKNOWN = 0,
+	PAGE_SH_RECYCLEBIN = 1,
+	PAGE_SH_RECYCLEBIN_FILES,
+	MAX_SH_PAGE,
+} PAGE_SH_TYPE;
 
-class CVolumeFilesWindow : public CBaseWindow
+class CShellConsoleWindow : public CBaseWindow
 {
 	HWND m_hWndCtrlFocus;
 	UINT m_ConsoleTypeId;
 
-	CFilesPageHost m_PageHost;
-	CFilesPageHost *m_pView;
+	CPageWndBase *m_pPage;
+
+	CPageWndBase *m_pPageTable[ MAX_SH_PAGE ];
 
 public:
 	DWORD m_dwViewStyle;
 
-public:
-	CVolumeFilesWindow(UINT ConsoleTypeId)
+	template <class T,PAGE_SH_TYPE N>
+	CPageWndBase *__GetOrCreateWndObjct(HWND hWnd,BOOL *pbCreate=nullptr)
 	{
-		m_pView = NULL;
+		CPageWndBase *pobj = m_pPageTable[(int)N];
+		if( pobj == NULL )
+		{
+			pobj = (CPageWndBase*)new T ;
+			pobj->Create(hWnd,(int)N,0,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,WS_EX_CONTROLPARENT);
+			m_pPageTable[(int)N] = pobj;
+			if( pbCreate )
+				*pbCreate = TRUE;
+		}
+		else
+		{
+			if( pbCreate )
+				*pbCreate = FALSE;
+		}
+		return pobj;
+	}
+
+public:
+	CShellConsoleWindow(UINT ConsoleTypeId)
+	{
+		m_pPage = NULL;
 		m_hWndCtrlFocus = NULL;
 		m_ConsoleTypeId = ConsoleTypeId;
 		m_dwViewStyle = 0;
+		ZeroMemory(m_pPageTable,sizeof(m_pPageTable));
 	}
 
-	~CVolumeFilesWindow()
+	~CShellConsoleWindow()
 	{
 	}
 
 	LRESULT OnCreate(HWND hWnd,UINT,WPARAM,LPARAM)
 	{
-		m_pView = &m_PageHost;
-
-		m_pView->m_hWndHost = m_hWnd;
-		m_pView->m_dwFlags = m_dwViewStyle;
-
 		return 0;
 	}
 
@@ -88,7 +100,7 @@ public:
 	LRESULT OnSetFocus(HWND,UINT,WPARAM,LPARAM lParam)
 	{
 		if( m_hWndCtrlFocus == NULL )
-			m_hWndCtrlFocus = m_pView->GetPageHWND();
+			m_hWndCtrlFocus = m_pPage->m_hWnd;
 
 		SetFocus(m_hWndCtrlFocus);
 
@@ -121,11 +133,10 @@ public:
 	LRESULT OnCommand(HWND,UINT,WPARAM wParam,LPARAM)
 	{
 		UINT uCmdId = (UINT)LOWORD(wParam);
-
-		if( m_hWndCtrlFocus == m_pView->GetPageHWND() )
+		if( m_hWndCtrlFocus == m_pPage->m_hWnd )
 		{
-			if( m_pView )
-				m_pView->InvokeCommand(uCmdId);
+			if( m_pPage )
+				m_pPage->InvokeCommand(uCmdId);
 		}
 		return 0;
 	}
@@ -135,16 +146,17 @@ public:
 		UINT *puState = (UINT *)lParam;
 		UINT uCmdId = (UINT)LOWORD(wParam);
 
-		if( m_hWndCtrlFocus == m_pView->GetPageHWND() )
+		if( m_hWndCtrlFocus == m_pPage->m_hWnd )
 		{
 			ASSERT( lParam != NULL );
 			if( lParam )
 			{
-				if( m_pView->QueryCmdState((UINT)LOWORD(wParam),(UINT*)lParam) == S_OK )
+				if( m_pPage->QueryCmdState((UINT)LOWORD(wParam),(UINT*)lParam) == S_OK )
 					return TRUE;
 			}
 		}
-		return 0;
+
+		return FALSE;
 	}
 
 	LRESULT OnNotifyMessage(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -169,7 +181,7 @@ public:
 			case 0:
 				break; // todo: avoid C4065
 			default:
-				return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam);
+				return SendMessage(m_pPage->m_hWnd,uMsg,wParam,lParam);
 		}
 		return 0;
 	}
@@ -189,9 +201,20 @@ public:
 				DestroyIcon((HICON)SendMessage(GetParent(m_hWnd),WM_GETICON,ICON_SMALL,0));
 				SendMessage(GetParent(hWnd),WM_SETICON,(WPARAM)ICON_SMALL,lParam);
 				break;
-			case UI_INIT_LAYOUT:
-				InitLayout(NULL);
+			case UI_INIT_LAYOUT_EX:
+				InitLayoutEx((PAGE_CONTEXT *)lParam);
 				break;
+		}
+		return 0;
+	}
+
+	LRESULT OnSaveConfig(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		ISaveViewConfig *psvc = (ISaveViewConfig *)lParam;
+		if( psvc != NULL )
+		{
+			// todo:
+			return SendMessage(m_pPage->m_hWnd,uMsg,wParam,lParam); // forward to current page
 		}
 		return 0;
 	}
@@ -214,9 +237,6 @@ public:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
 		    case WM_CREATE:
 				return OnCreate(hWnd,uMsg,wParam,lParam);
-			case WM_NCACTIVATE:
-				SendMessage(m_pView->GetPageHWND(),WM_NCACTIVATE,wParam,lParam);
-				return 0;
 			case WM_QUERY_CMDSTATE:
 				return OnQueryCmdState(hWnd,uMsg,wParam,lParam);
 			case WM_CONTROL_MESSAGE:
@@ -225,13 +245,12 @@ public:
 				return OnNotifyMessage(hWnd,uMsg,wParam,lParam);
 			case WM_QUERY_MESSAGE:
 				return OnQueryMessage(hWnd,uMsg,wParam,lParam);
-			case PM_FINDITEM:
-			case PM_GETSELECTEDFILE:
-			case PM_GETWORKINGDIRECTORY:
 			case PM_SAVECONFIG:
+				return OnSaveConfig(hWnd,uMsg,wParam,lParam);
+			case PM_FINDITEM:
 			case WM_PRETRANSLATEMESSAGE:
-				if( m_pView )
-					return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam); // forward to current page
+				if( m_pPage )
+					return SendMessage(m_pPage->m_hWnd,uMsg,wParam,lParam); // forward to current page
 				return 0;
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
@@ -247,24 +266,20 @@ public:
 			cy = _RECT_HIGHT(rc);
 		}
 
-		if( m_pView && m_pView->GetPageHWND() )
+		if( m_pPage && m_pPage->m_hWnd )
 		{
-			SetWindowPos(m_pView->GetPageHWND(),NULL,0,0,cx,cy,SWP_NOZORDER|SWP_NOCOPYBITS);
+			SetWindowPos(m_pPage->m_hWnd,NULL,0,0,cx,cy,SWP_NOZORDER|SWP_NOCOPYBITS);
 		}
 	}
 
-	VOID InitData(PCWSTR pszDirectoryPath)
+	VOID InitLayoutEx(PAGE_CONTEXT *pParam)
 	{
-		SELECT_ITEM sel = {0};
-		sel.ViewType  = m_ConsoleTypeId;
-		sel.pszCurDir = (PWSTR)pszDirectoryPath;
-		sel.pszPath   = (PWSTR)pszDirectoryPath;
-		sel.pszName   = (PWSTR)NULL;
-		m_pView->SelectView(&sel);
-	}
-
-	VOID InitLayout(const RECT *prcDesktopWorkArea)
-	{
+		ASSERT(pParam);
+		ASSERT(pParam->MainApp);
+		if( pParam == NULL )
+			return ;
+		if( m_pPage )
+			m_pPage->OnInitLayout(NULL);
 	}
 
 	VOID OnNotifyForwardToMainFrame(UINT code,PVOID pFile) // SELECT_ITEM* or UIS_ITEM_ACTIVATED *
@@ -274,100 +289,53 @@ public:
 		SendMessage(hwndMainWnd,WM_NOTIFY_MESSAGE,code,(LPARAM)pFile);
 	}
 
-	LRESULT OnSelectPage(HWND /*hWnd*/,UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam)
+	LRESULT OnSelectPage(HWND hWnd,UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam)
 	{
+		CPageWndBase *pPage;
+
 		UIS_PAGE *ppg = (UIS_PAGE *)lParam;
 
 		if( ppg == NULL )
 			return 0;
+
+		BOOL bCreate = FALSE;
 
 		SELECT_ITEM sel = {0};
 		sel.ViewType = ppg->ConsoleTypeId;
 		sel.Guid     = ppg->ConsoleGuid;
 		sel.Flags    = ppg->dwFlags;
 
-		if( ppg->ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT )
+		if( ppg->ConsoleTypeId == VOLUME_CONSOLE_SHELL_RECYCLEBIN )
 		{
-			sel.ViewType  = ppg->ConsoleTypeId;
-			sel.pszPath   = ppg->pszPath; // Handle of FIL
-			sel.pszName   = NULL;
-			sel.pszCurDir = NULL;
-			sel.Flags     = 0;
-			m_pView->SelectView(&sel);
-
-			m_ConsoleTypeId = ppg->ConsoleTypeId;
-		}
-		else if( ppg->ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILES )
-		{
-			PWSTR pszPath;
-
-			ASSERT(( ppg->pszPath != NULL && *ppg->pszPath != L'\0' ));		
-
-			if( FindRootDirectory_W(ppg->pszPath,NULL) != STATUS_SUCCESS )
-			{
-				//
-				// NT volume/drive name without root directory.
-				//
-				// convert volume name to root directory
-				// "\Device\HarddiskVolume1" -> "\Device\HarddiskVolume1\"
-				//
-				if( !IsLastCharacterBackslash(ppg->pszPath) )
-					pszPath = CombinePath(ppg->pszPath,L"\\");
-				else
-					pszPath = DuplicateString(ppg->pszPath);
-
-				if( pszPath )
-				{
-					sel.ViewType  = ppg->ConsoleTypeId;
-					sel.pszPath   = pszPath;
-					sel.pszName   = NULL;
-					sel.pszCurDir = NULL;
-					sel.Flags     = ppg->dwFlags;
-					sel.Context   = ppg->Context;
-
-					m_pView->SelectView(&sel);
-
-					m_ConsoleTypeId = ppg->ConsoleTypeId;
-	
-					FreeMemory(pszPath);
-				}
-			}
-			else
-			{
-				//
-				// NT volume/drive name with directory path.
-				//
-				pszPath = DuplicateString(ppg->pszPath);
-
-				if( pszPath )
-				{
-					sel.ViewType  = ppg->ConsoleTypeId;
-					sel.pszCurDir = NULL;
-					sel.pszPath   = pszPath;
-					sel.pszName   = ppg->pszFileName;
-					sel.Flags     = ppg->dwFlags;
-					sel.Context   = ppg->Context;
-
-					m_pView->SelectView(&sel);
-
-					m_ConsoleTypeId = ppg->ConsoleTypeId;
-	
-					FreeMemory(pszPath);
-				}
-			}
-		}
-		else
-		{
-			//
-			// Other Console
-			//
+			pPage = __GetOrCreateWndObjct<CRecycleBinVolumesPage,PAGE_SH_RECYCLEBIN>(hWnd,&bCreate);
+			if( bCreate ) {
 			sel.ViewType  = ppg->ConsoleTypeId;
 			sel.pszCurDir = NULL;
 			sel.pszPath   = NULL;
 			sel.pszName   = ppg->pszFileName;
 			sel.Flags     = ppg->dwFlags;
-			m_pView->SelectView(&sel);
+			sel.Context   = ppg->Context;
+			pPage->OnInitPage(&sel,0,nullptr);
+			}
 		}
+		else if( ppg->ConsoleTypeId == VOLUME_CONSOLE_SHELL_RECYCLEBIN_FILES )
+		{
+			pPage = __GetOrCreateWndObjct<CRecycleBinFilesPage,PAGE_SH_RECYCLEBIN_FILES>(hWnd,&bCreate);
+			if( bCreate ) {
+			sel.ViewType  = ppg->ConsoleTypeId;
+			sel.pszPath   = ppg->pszPath;
+			sel.pszName   = NULL;
+			sel.pszCurDir = NULL;
+			sel.Flags     = 0;
+			pPage->OnInitPage(&sel,0,nullptr);
+			}
+		}
+		else
+		{
+			ASSERT(FALSE);
+		}
+
+		m_pPage = pPage;
 
 		CONSOLE_VIEW_ID *pcv = _GET_CONSOLE_VIEW_ID(m_hWnd);
 		if( pcv )
@@ -381,11 +349,11 @@ public:
 		//
 		// Clear Properties
 		//
-		if( (pSelectItem->mask & SI_MASK_FILEID) && (pSelectItem->Flags & _FLG_NTFS_SPECIALFILE) )
-		{
-			m_pView->SelectView(pSelectItem);
-			return 0;
-		}
+//		if( (pSelectItem->mask & SI_MASK_FILEID) && (pSelectItem->Flags & _FLG_NTFS_SPECIALFILE) )
+//		{
+//			m_pPage->SelectView(pSelectItem);
+//			return 0;
+//		}
 
 		if( pSelectItem->pszName && wcscmp(pSelectItem->pszName,L"..") == 0 )
 		{
@@ -427,7 +395,7 @@ public:
 			sel.ViewType  = m_ConsoleTypeId;
 			sel.pszPath   = pszNewCurDir; // change to  directory
 			sel.pszName   = pszFileName;
-			m_pView->SelectView(&sel);
+//			m_pPage->SelectView(&sel);
 
 			_SafeMemFree(pszNewCurDir);
 			_SafeMemFree(pszFileName);
@@ -453,7 +421,7 @@ public:
 				sel.pszPath = pszPath;
 			}
 
-			m_pView->SelectView( &sel );
+//			m_pPage->SelectView( &sel );
 
 			FreeMemory(pszPath);
 		}
@@ -465,20 +433,20 @@ public:
 
 //----------------------------------------------------------------------------
 //
-//  _CreateVolumeFileListWindow()
+//  _CreateShellConsoleWindow()
 //
 //  PURPOSE:
 //
 //----------------------------------------------------------------------------
-HWND _CreateVolumeFileListWindow(HWND hWndParent,UINT ConsoleType,DWORD dwOptionFlags,LPARAM lParam)
+HWND _CreateShellConsoleWindow(HWND hWndParent,UINT ConsoleType,DWORD dwOptionFlags,LPARAM lParam)
 {
-	CVolumeFilesWindow::RegisterClass(GETINSTANCE(hWndParent));
+	CShellConsoleWindow::RegisterClass(GETINSTANCE(hWndParent));
 
-	CVolumeFilesWindow *pWnd = new CVolumeFilesWindow(ConsoleType);
+	CShellConsoleWindow *pWnd = new CShellConsoleWindow(ConsoleType);
 
 	pWnd->m_dwViewStyle = dwOptionFlags;
 
-	HWND hwndView = pWnd->Create(hWndParent,0,L"SimpleVolumeFileList",
+	HWND hwndView = pWnd->Create(hWndParent,0,L"Shell_ConsoleWindow",
 							WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,WS_EX_CONTROLPARENT);
 
 	return hwndView;

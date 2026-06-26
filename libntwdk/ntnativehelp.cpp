@@ -1146,8 +1146,11 @@ BOOLEAN SplitVolumeRelativePath_U(UNICODE_STRING *FullPath,UNICODE_STRING *Volum
 
     if( cb == usVolumeName.Length )
     {
-        VolumeRelativePath->Length = VolumeRelativePath->MaximumLength = 0;
-        VolumeRelativePath->Buffer = NULL;
+		if( VolumeRelativePath )
+		{
+	        VolumeRelativePath->Length = VolumeRelativePath->MaximumLength = 0;
+		    VolumeRelativePath->Buffer = NULL;
+		}
         return TRUE;
     }
 
@@ -1311,7 +1314,7 @@ PWSTR CombinePath(PCWSTR pszPath,PCWSTR pszFileName)
         StringCchCopy(psz,cch,pszPath);
         if( *pszFileName != L'\\' && *pszFileName != L'\0' )
         {
-            if( pszPath[cchPath-1] != L'\\' )
+            if( cchPath > 0 && pszPath[cchPath-1] != L'\\' )
                 StringCchCat(psz,cch,L"\\");
         }
         StringCchCat(psz,cch,pszFileName);

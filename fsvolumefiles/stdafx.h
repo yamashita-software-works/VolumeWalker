@@ -107,7 +107,16 @@ enum {
 	COLUMN_Drive,               /* 37 */
 	COLUMN_RelativePath,        /* 39 */
 	COLUMN_VolumeRelativePath,  /* 40 */
-    COLUMN_MaxItem,             /* 41 */
+	COLUMN_Guid,                /* 41 */
+	COLUMN_TotalCount,          /* 42 */
+	COLUMN_TotalSize,           /* 43 */
+	COLUMN_Size,                /* 44 */
+    COLUMN_RecycleBin_OriginalLocation, /* 45 */
+    COLUMN_RecycleBin_DateDeleted,      /* 46 */
+    COLUMN_RecycleBin_DateModified,     /* 47 */
+    COLUMN_RecycleBin_ManagementFile,   /* 48 */
+    COLUMN_RecycleBin_UsagePer_Volume,  /* 49 */
+    COLUMN_MaxItem,             /* 50 */
     COLUMN_MaxCount=COLUMN_MaxItem,
 };
 
@@ -151,3 +160,19 @@ enum {
 #define FOF_SELECTEDFILELIST   0x1
 
 #endif
+
+// Pane Private Message definitions
+#define PPM_SELECTVOLUME     (WM_APP+124)  // todo:
+#define PPM_SETPATH          (WM_APP+125)  // todo:
+#define PPM_CHDIR            (WM_APP+126)  // todo:
+#define PPM_SELECTSTREAM     (WM_APP+127)  // todo:
+#define PPM_NOTIFY           (WM_APP+606)  // todo:
+inline int _ImageList_LoadIcon(HIMAGELIST himl,UINT idIconRes,int cxIcon,int cyIcon) {
+	HICON hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(idIconRes),IMAGE_ICON,cxIcon,cyIcon,LR_DEFAULTCOLOR);
+	int index = -1;
+	if( hIcon ) {
+		index = ImageList_AddIcon(himl,hIcon);
+		DestroyIcon(hIcon);
+	}
+	return index;
+}

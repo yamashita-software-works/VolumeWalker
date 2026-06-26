@@ -33,7 +33,12 @@ public:
 		Free();
 	}
 
-	int GetCount()
+	T* GetBuffer() const
+	{
+		return m_element;
+	}
+
+	int GetCount() const
 	{
 		return m_nCount;
 	}

@@ -187,6 +187,8 @@ public:
 
 	DWORD GetMaxPageCount() const
 	{
+		if( m_rd.ClusterSize == 0 )
+			return 0;
 		DWORD dwPage = (DWORD)(m_rd.Size.QuadPart / m_rd.ClusterSize);
 		if( m_rd.Size.QuadPart % m_rd.ClusterSize )
 			dwPage++;
@@ -195,6 +197,8 @@ public:
 
 	DWORD GetCurrentPage() const
 	{
+		if( m_rd.ClusterSize == 0 )
+			return 0;
 		DWORD dwPage = (DWORD)(m_rd.ReadOffset.QuadPart / m_rd.ClusterSize);
 		return dwPage+1;
 	}
@@ -494,29 +498,36 @@ private:
 
 	BOOL InitFileBuffer(LARGE_INTEGER& li)
 	{
-		m_rd.ClusterSize = 4096;
-		m_rd.BufferLength = 4096;
+		HANDLE hFile;
+		m_rd.Status = OpenFileEx_W(&hFile,m_pszFilePath,GENERIC_READ|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_NON_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT);
+
+		if( m_rd.Status != STATUS_SUCCESS )
+		{
+			m_rd.Status = NtStatusToDosError(m_rd.Status);
+			return FALSE;
+		}
+
+		m_rd.Handle = hFile;
+
+		DWORD dwClusterSize;
+		NT_VOLUME_SIZE_INFORMATION Size;
+		if( NtDosGetVolumeSizeInformation(hFile,&Size,sizeof(Size)) == STATUS_SUCCESS )
+			dwClusterSize = Size.ClusterSize;
+		else
+			dwClusterSize = 4096;
+
+		m_rd.ClusterSize  = dwClusterSize;
+		m_rd.BufferLength = dwClusterSize;
+		m_rd.ReadOffset.QuadPart = 0;
 
 		m_rd.Buffer = (LPBYTE)_MemAlloc( m_rd.BufferLength );
 		if( m_rd.Buffer == NULL )
 		{
 			m_rd.Status = ERROR_NOT_ENOUGH_MEMORY;
+			CloseHandle(m_rd.Handle);
+			m_rd.Handle = NULL;
 			return FALSE;
 		}
-
-		HANDLE hFile;
-		m_rd.Status = OpenFileEx_W(&hFile,m_pszFilePath,GENERIC_READ|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_NON_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT);
-
-		m_rd.Status = NtStatusToDosError(m_rd.Status);
-
-		if( m_rd.Status != ERROR_SUCCESS )
-		{
-			_SafeMemFree(m_rd.Buffer);
-			return FALSE;
-		}
-
-		m_rd.Handle = hFile;
-		m_rd.ReadOffset.QuadPart = 0;
 
 		if( !GetFileSizeEx(hFile,&m_rd.Size) )
 		{
@@ -661,8 +672,8 @@ private:
 		nmbd.TargetOffset = m_rd.TargetOffset;
 		nmbd.CursorPos    = m_rd.CursorPos;
 		nmbd.Size         = m_rd.Size;
-		nmbd.CurPage      = GetCurrentPage();
-		nmbd.MaxPage      = GetMaxPageCount();
+		nmbd.CurPage      = 0;
+		nmbd.MaxPage      = 0;
 
 		SendMessage(GetParent(m_hWnd),WM_NOTIFY,0,(LPARAM)&nmbd);
 	}

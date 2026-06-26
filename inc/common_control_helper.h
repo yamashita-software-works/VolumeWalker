@@ -1,5 +1,12 @@
 #pragma once
 
+inline LRESULT ForwardNotificationToParent(HWND hWnd,NMHDR *pnmhdr)
+{
+	pnmhdr->hwndFrom = hWnd;
+	pnmhdr->idFrom   = GetWindowLong(hWnd,GWL_ID);
+	return SendMessage(GetParent(hWnd),WM_NOTIFY,pnmhdr->idFrom,(LPARAM)pnmhdr);
+}
+
 inline void Edit_AddText(HWND hwndEdit,PCWSTR psz)
 {
 	SendMessage(hwndEdit,EM_SETSEL,(WPARAM)-1,(LPARAM)-1);
