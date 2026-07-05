@@ -21,6 +21,14 @@ ClusterInformationDialog(
 EXTERN_C
 HRESULT
 WINAPI
+StreamInformationDialog(
+	__in HWND hWnd,
+	__in PCWSTR pszFilePath
+	);
+
+EXTERN_C
+HRESULT
+WINAPI
 ChooseStreamDialog(
 	__in HWND hWnd,
 	__in PCWSTR pszFilePath,

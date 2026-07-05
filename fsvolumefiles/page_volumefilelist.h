@@ -37,6 +37,10 @@
 #define _ENABLE_NAME_ROW_FONT_SETTING  0
 #endif
 
+#ifndef _ENABLE_INFORMATION_DIALOG
+#define _ENABLE_INFORMATION_DIALOG 1
+#endif
+
 #define PM_UPDATE_FILELIST           (PM_PRIVATEBASE + 1)
 #define PM_RESEND_SELECTED_ITEM_DATA (PM_PRIVATEBASE + 2)
 
@@ -51,13 +55,6 @@
 #define _MAX_LEADING_READ 128
 
 #define PVFM_ASYNC_ITEMSELECTED      (WM_APP+606)
-
-inline int _LoadIconImage(HIMAGELIST himl,UINT idIconRes,int cxIcon,int cyIcon) {
-	HICON hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(idIconRes),IMAGE_ICON,cxIcon,cyIcon,LR_DEFAULTCOLOR);
-	int index = ImageList_AddIcon(himl,hIcon);
-	DestroyIcon(hIcon);
-	return index;
-}
 
 enum {
 	ID_GROUP_DIRECTORY=1,
@@ -145,6 +142,7 @@ protected:
 	int m_imgUpOneDir;
 	int m_imgDir;
 	int m_imgFile;
+	int m_imgExecFile;
 
 	DWORD m_FileSystemFlags;
 	WCHAR m_FileSystemName[32];
@@ -206,6 +204,7 @@ public:
 		m_imgUpOneDir = I_IMAGENONE;
 		m_imgDir = I_IMAGENONE;
 		m_imgFile = I_IMAGENONE;
+		m_imgExecFile = I_IMAGENONE;
 		ZeroMemory(m_columnShowStyleFlags,sizeof(m_columnShowStyleFlags));
 		m_FileSystemFlags = 0;
 		ZeroMemory(m_FileSystemName,sizeof(m_FileSystemName));
@@ -591,8 +590,7 @@ public:
 						pnmlvcd->clrText = RGB(210,0,0);
 					break;
 				default:
-					pnmlvcd->clrText = ListView_GetTextColor(m_hWndList);
-					pnmlvcd->clrText = GetLineColor(pnmlvcd->clrText,pItem);
+					pnmlvcd->clrText = GetLineColor((COLORREF)ListView_GetTextColor(m_hWndList),pItem);
 					break;
 			}
 			return CDRF_NOTIFYPOSTPAINT;
@@ -615,7 +613,7 @@ public:
 		return 0;
 	}
 
-	COLORREF GetLineColor(COLORREF& crOrgTextColor,CFileLvItem *pItem)
+	COLORREF GetLineColor(COLORREF crOrgTextColor,CFileLvItem *pItem)
 	{
 		COLORREF clrText = crOrgTextColor;
 
@@ -1299,6 +1297,10 @@ public:
 			}
 			else
 			{
+
+			if( PathIsExe(pItem->pFI->hdr.FileName) )
+				pdi->item.iImage = m_imgExecFile;
+			else
 				pdi->item.iImage = m_imgFile;
 			}
 		}
@@ -1751,9 +1753,10 @@ public:
 				cxIcon = GetSystemMetrics(SM_CXSMICON);
 				cyIcon = GetSystemMetrics(SM_CYSMICON);
 				himl = ImageList_Create(cxIcon,cyIcon,ILC_COLOR32|ILC_MASK,8, 0);
-				m_imgDir = _LoadIconImage(himl,IDI_LIST_FOLDER,cxIcon,cyIcon);
-				m_imgUpOneDir = _LoadIconImage(himl,IDI_LIST_FOLDER_UP_ONE,cxIcon,cyIcon);
-				m_imgFile = _LoadIconImage(himl,IDI_LIST_FILE,cxIcon,cyIcon);
+				m_imgDir = _ImageList_LoadIcon(himl,IDI_LIST_FOLDER,cxIcon,cyIcon);
+				m_imgUpOneDir = _ImageList_LoadIcon(himl,IDI_LIST_FOLDER_UP_ONE,cxIcon,cyIcon);
+				m_imgFile = _ImageList_LoadIcon(himl,IDI_LIST_FILE,cxIcon,cyIcon);
+				m_imgExecFile = _ImageList_LoadIcon(himl,IDI_LIST_EXEC,cxIcon,cyIcon);
 			}
 			ListView_SetImageList(m_hWndList,himl,LVSIL_SMALL);
 		}
@@ -2122,7 +2125,7 @@ public:
 		if( m_bFillCostlyData )
 		{
 			FS_CLUSTER_INFORMATION_BASIC_EX clusterex = {0};
-			if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
+			if( ReadFileClusterInformation(NULL,hFile,RootDirectory,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
 			{
 				pFI->FirstLCN            = clusterex.FirstLcn;
 				pFI->PhysicalDriveOffset = clusterex.PhysicalLocation;
@@ -2315,7 +2318,7 @@ public:
 			}
 
 			FS_CLUSTER_INFORMATION_BASIC_EX clusterex = {0};
-			if( ReadFileClusterInformaion(NULL,hRootDirectory,RootDir,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
+			if( ReadFileClusterInformation(NULL,hRootDirectory,RootDir,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
 			{
 				pFI->FirstLCN            = clusterex.FirstLcn;
 				pFI->PhysicalDriveOffset = clusterex.PhysicalLocation;
@@ -3180,8 +3183,16 @@ public:
 			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hAppMenu,L"Open with &Application");
 		}
 
-		AppendMenu(hMenu,MF_STRING,0,NULL);
-		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEDUMP,L"Simple Binary &Dump");
+		HMENU hSubMenu;
+		hSubMenu = CreatePopupMenu();
+		{
+			AppendMenu(hSubMenu,MF_STRING,ID_FILE_SIMPLEDUMP,L"Simple Binary &Dump");
+			AppendMenu(hSubMenu,MF_STRING,0,0);
+			AppendMenu(hSubMenu,MF_STRING,ID_FILE_CLUSTER_INFORMATION,L"&Cluster Information");
+			AppendMenu(hSubMenu,MF_STRING,ID_FILE_STREAM_INFORMATION,L"&Stream Information");
+		}
+		AppendMenu(hMenu,MF_STRING,0,0);
+		AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Inspects File");
 
 		return S_OK;
 	}
@@ -3691,9 +3702,18 @@ public:
 			case ID_EDIT_COPY:
 			case ID_OPEN:
 			case ID_FILE_SIMPLECHECK:
-			case ID_FILE_SIMPLEDUMP:
 				*puState = ListView_GetSelectedCount(m_hWndList) ?  UPDUI_ENABLED : UPDUI_DISABLED;
 				break;
+			case ID_FILE_SIMPLEDUMP:
+#if _ENABLE_INFORMATION_DIALOG
+			case ID_FILE_CLUSTER_INFORMATION:
+				*puState = (ListView_GetSelectedCount(m_hWndList) == 1) ?  UPDUI_ENABLED : UPDUI_DISABLED;
+				break;
+			case ID_FILE_STREAM_INFORMATION:
+				*puState = ((ListView_GetSelectedCount(m_hWndList) == 1) && (m_FileSystemFlags & FILE_NAMED_STREAMS))
+							 ?  UPDUI_ENABLED : UPDUI_DISABLED;
+				break;
+#endif
 			case ID_SEARCH:
 			{
 				*puState = UPDUI_DISABLED;
@@ -3957,6 +3977,14 @@ public:
 			case ID_FILE_SIMPLEDUMP:
 				OnFileSimpleDump();
 				break;
+#if _ENABLE_INFORMATION_DIALOG
+			case ID_FILE_CLUSTER_INFORMATION:
+				OnFileClusterInformation();
+				break;
+			case ID_FILE_STREAM_INFORMATION:
+				OnFileStreamInformation();
+				break;
+#endif
 			default:
 				if( ID_OPEN_APP_FIRST <= CmdId && CmdId <= ID_OPEN_APP_LAST )
 				{
@@ -4335,6 +4363,95 @@ public:
 			FreeMemory(pszPath);
 		}
 	}
+
+#if _ENABLE_INFORMATION_DIALOG
+	//
+	// Stream/Cluster Information
+	//
+	void OnFileClusterInformation()
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( iItem == -1 )
+			return ;
+
+		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+		CFileItemEx *pFI = pItem->pFI;
+
+		PWSTR pszPath = NULL;
+		if( m_pszCurDir == NULL || *m_pszCurDir == L'\0' )
+			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILES )
+				pszPath = CombinePath(pFI->hdr.Path,L"\\");
+			else
+				pszPath = CombinePath(pFI->hdr.Path,pFI->hdr.FileName);
+		else if( pFI->hdr.Path == NULL )
+			pszPath = CombinePath(m_pszCurDir,pFI->hdr.FileName);
+		else
+			;
+
+		if( pszPath != NULL )
+		{
+			if( ClusterInformationDialog(GetActiveWindow(),pszPath) == S_OK )
+			{
+				;
+			}
+		
+			FreeMemory(pszPath);
+		}
+	}
+
+	void OnFileStreamInformation()
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( iItem == -1 )
+			return ;
+
+		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+		CFileItemEx *pFI = pItem->pFI;
+
+		PWSTR pszPath = NULL;
+		if( m_pszCurDir == NULL || *m_pszCurDir == L'\0' )
+			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILES )
+				pszPath = CombinePath(pFI->hdr.Path,L"\\");
+			else
+				pszPath = CombinePath(pFI->hdr.Path,pFI->hdr.FileName);
+		else if( pFI->hdr.Path == NULL )
+			pszPath = CombinePath(m_pszCurDir,pFI->hdr.FileName);
+		else
+			;
+
+		if( pszPath != NULL )
+		{
+			HRESULT hr;
+			WCHAR *pszStreamName = NULL;
+
+			hr = StreamInformationDialog(GetActiveWindow(),pszPath);//,&pszStreamName,0,CSDF_MAKEFULLPATH);
+
+			FreeMemory(pszPath);
+
+			PCWSTR pszTitle = L"Stream Information";
+
+			if( hr == S_SSD_NO_STREAM )
+			{
+				MsgBox(GetActiveWindow(),L"No data stream.",pszTitle,MB_OK|MB_ICONINFORMATION);
+			}
+			else if( hr == S_SSD_DEFAULT_STREAM_ONLY )
+			{
+				MsgBox(GetActiveWindow(),L"This file has a default stream only.",pszTitle,MB_OK|MB_ICONINFORMATION);
+			}
+			else
+			{
+				if( FAILED(hr) )
+				{
+					_ErrorMessageBoxEx(GetActiveWindow(),0,pszTitle,NULL,hr,MB_OK|MB_ICONSTOP);
+				}
+			}
+
+			CoTaskMemFree(pszStreamName);
+		}
+	}
+#endif
 
 	void OnOpenItem()
 	{

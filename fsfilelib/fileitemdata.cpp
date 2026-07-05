@@ -84,7 +84,7 @@ GetFileAllocationAndLocationInformation(
 		if( Flags & CLUSTER_QUICK )
 		{
 			FS_CLUSTER_INFORMATION_BASIC_EX clusterex = {0};
-			if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
+			if( ReadFileClusterInformation(NULL,hFile,RootDirectory,ClusterInformationBasicWithPhysicalLocation,&clusterex,sizeof(clusterex)) == 0 )
 			{
 				pFI->FirstLCN = clusterex.FirstLcn;
 				pFI->PhysicalDriveOffset = clusterex.PhysicalLocation;
@@ -94,7 +94,7 @@ GetFileAllocationAndLocationInformation(
 		else if( Flags & CLUSTER_FULL )
 		{
 			FS_CLUSTER_INFORMATION *pci;
-			if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationAll,&pci,sizeof(pci)) == 0 )
+			if( ReadFileClusterInformation(NULL,hFile,RootDirectory,ClusterInformationAll,&pci,sizeof(pci)) == 0 )
 			{
 				pFI->FirstLCN = pci->Extents[0].Lcn;
 				pFI->PhysicalDriveOffset.QuadPart = pci->Extents[0].PhysicalOffsets[0].PhysicalOffset->Offset;
@@ -105,7 +105,7 @@ GetFileAllocationAndLocationInformation(
 		else if( Flags & CLUSTER_BASIC )
 		{
 			FS_CLUSTER_INFORMATION_BASIC cluster = {0};
-			if( ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationBasic,&cluster,sizeof(cluster)) == 0 )
+			if( ReadFileClusterInformation(NULL,hFile,RootDirectory,ClusterInformationBasic,&cluster,sizeof(cluster)) == 0 )
 			{
 				pFI->FirstLCN = cluster.FirstLcn;
 			}

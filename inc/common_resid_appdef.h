@@ -116,8 +116,8 @@
 #define ID_FILE_SETDATETIME                      40107
 #define ID_FILE_SIMPLECHECK                      40112
 #define ID_GOTO_DIRECTORY                        ID_GOTO
-#define ID_FILE_CLUSTERLOCATION                  40113
-#define ID_FILE_STREAMINFORMATION                40114
+#define ID_FILE_CLUSTER_INFORMATION              40113
+#define ID_FILE_STREAM_INFORMATION               40114
 #define ID_FILE_SIMPLEDUMP                       40115
 
 #define ID_OPEN_APP_FIRST                        40200

@@ -343,7 +343,15 @@ public:
 		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLECHECK,L"Count Selected Files");
 
 		AppendMenu(hMenu,MF_STRING,0,NULL);
-		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLEDUMP,L"Simple Binary &Dump");
+		HMENU hSubMenu;
+		hSubMenu = CreatePopupMenu();
+		{
+			AppendMenu(hSubMenu,MF_STRING,ID_FILE_SIMPLEDUMP,L"Simple Binary &Dump");
+			AppendMenu(hSubMenu,MF_STRING,0,0);
+			AppendMenu(hSubMenu,MF_STRING,ID_FILE_CLUSTER_INFORMATION,L"&Cluster Information");
+			AppendMenu(hSubMenu,MF_STRING,ID_FILE_STREAM_INFORMATION,L"&Stream Information");
+		}
+		AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Inspects File");
 
 		if( m_pOpenApplications == NULL )
 			CreateApplicationList(&m_pOpenApplications);
@@ -384,7 +392,18 @@ public:
 			case ID_HISTORY_BACKWARD:
 			case ID_HISTORY_FORWARD:
 				*puState = UPDUI_DISABLED;
-				break;
+				return S_OK;
+			case ID_FILE_STREAM_INFORMATION:
+				*puState = UPDUI_DISABLED;
+				if( ListView_GetSelectedCount(m_hWndList) == 1 )
+				{
+					CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetCurItemData(m_hWndList);
+					if( pItem->pFI->hdr.Path && (pItem->pFI->FileSystemFlags & FILE_NAMED_STREAMS) )
+					{
+						*puState = UPDUI_ENABLED;
+					}
+				}
+				return S_OK;
 		}
 		return T::QueryCmdState(uCmdId,puState);
 	}

@@ -20,8 +20,9 @@ EXPORTS
 	NtPathFreeMemory = fsfilelib.NtDosFreeMemory
 	NtPathFreeString = fsfilelib.NtDosFreeMemory
 
-	ReadFileClusterInformaion_U
-	ReadFileClusterInformaion
+	ReadFileClusterInformation_U
+	ReadFileClusterInformation
+	CreateClusterInformationBuffer
 	FreeClusterInformation
 
 	GetNtfsSpecialFiles
@@ -89,3 +90,5 @@ EXPORTS
 	NtDosGetAttributeTypeCodeStreams
 	NtDosFreeMemory
 	NtDosGetVolumeSizeInformation
+	NtDosGetVolumeInformationFlags
+

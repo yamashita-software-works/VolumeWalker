@@ -441,7 +441,7 @@ public:
 			{
 				ULONG PathType = GetPathType(pSelectItem->pszPath);
 
-				if( PATHTYPE_NT_DEVICE != PathType )
+				if( PATHTYPE_NT_DEVICE != PathType && !(pSelectItem->pszPath[0] == L'\\' && pSelectItem->pszPath[1] == L'\0') )
 				{
 					pszPath = DosPathNameToNtPathName_W(pSelectItem->pszPath);
 				}

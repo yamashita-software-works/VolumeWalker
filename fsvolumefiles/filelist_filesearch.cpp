@@ -281,7 +281,10 @@ static HRESULT CALLBACK SearchFileCallbackProc(ULONG CallbackReason,PVOID Callba
 								? CompareLargeIntegerRange(pcfi->Information->CreationTime,&pscp->SearchParam->DateTime.Creation,SEARCH_FLAG_DATETIME_CREATION) : 0);
 
 					dwMatched |= ((pscp->SearchParam->CompareFlag & SEARCH_FLAG_DATETIME_LASTACCESS) 
-								? CompareLargeIntegerRange(pcfi->Information->ChangeTime,&pscp->SearchParam->DateTime.LastAccess,SEARCH_FLAG_DATETIME_LASTACCESS) : 0);
+								? CompareLargeIntegerRange(pcfi->Information->LastAccessTime,&pscp->SearchParam->DateTime.LastAccess,SEARCH_FLAG_DATETIME_LASTACCESS) : 0);
+
+					dwMatched |= ((pscp->SearchParam->CompareFlag & SEARCH_FLAG_DATETIME_CHANGE) 
+								? CompareLargeIntegerRange(pcfi->Information->ChangeTime,&pscp->SearchParam->DateTime.Change,SEARCH_FLAG_DATETIME_CHANGE) : 0);
 
 					//
 					// Comparing file size, if flag on.
@@ -307,18 +310,19 @@ static HRESULT CALLBACK SearchFileCallbackProc(ULONG CallbackReason,PVOID Callba
 					{
 						FILEITEMEX *pItemEx = AllocateFileItemEx(NULL,0);
 
-						pItemEx->hdr.FileName   = (PWSTR)StrDup(pcfi->FileName);
-						pItemEx->hdr.Path       = (PWSTR)StrDup(pcfi->Path);
-						pItemEx->FileAttributes = pcfi->Information->FileAttributes;
-						pItemEx->LastWriteTime  = pcfi->Information->LastWriteTime;
-						pItemEx->CreationTime   = pcfi->Information->CreationTime;
-						pItemEx->LastAccessTime = pcfi->Information->LastAccessTime;
-						pItemEx->ChangeTime     = pcfi->Information->ChangeTime;
-						pItemEx->EndOfFile      = pcfi->Information->EndOfFile;
-						pItemEx->AllocationSize = pcfi->Information->AllocationSize;
-						pItemEx->EaSize         = pcfi->Information->EaSize;
-						pItemEx->FileId         = pcfi->Information->FileId;
-						pItemEx->FileIndex      = pcfi->Information->FileIndex;
+						pItemEx->hdr.FileName    = (PWSTR)StrDup(pcfi->FileName);
+						pItemEx->hdr.Path        = (PWSTR)StrDup(pcfi->Path);
+						pItemEx->FileAttributes  = pcfi->Information->FileAttributes;
+						pItemEx->LastWriteTime   = pcfi->Information->LastWriteTime;
+						pItemEx->CreationTime    = pcfi->Information->CreationTime;
+						pItemEx->LastAccessTime  = pcfi->Information->LastAccessTime;
+						pItemEx->ChangeTime      = pcfi->Information->ChangeTime;
+						pItemEx->EndOfFile       = pcfi->Information->EndOfFile;
+						pItemEx->AllocationSize  = pcfi->Information->AllocationSize;
+						pItemEx->EaSize          = pcfi->Information->EaSize;
+						pItemEx->FileId          = pcfi->Information->FileId;
+						pItemEx->FileIndex       = pcfi->Information->FileIndex;
+						pItemEx->FileSystemFlags = pscp->FileSystemFlags;
 						if( pcfi->Information->ShortNameLength != 0 )
 						{
 							memcpy(pItemEx->ShortName,pcfi->Information->ShortName,pcfi->Information->ShortNameLength);
@@ -395,7 +399,6 @@ DWORD WINAPI Search_ThreadProc(LPVOID lpParameter)
 		//
 		// Get volume information
 		//
-		DWORD FileSystemFlags = 0;
 		HANDLE hDir;
 		NTSTATUS Status;
 		if( (Status = OpenFileEx_W(&hDir,TargetFullQualifyPath,FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE|FILE_OPEN_FOR_BACKUP_INTENT)) == 0 )

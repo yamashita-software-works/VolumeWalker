@@ -108,6 +108,8 @@ SOURCES = \
 	dialog_choosestream.cpp\
 	dialog_filesearch_param.cpp\
 	dialog_binarydump.cpp\
+	dialog_information_cluster.cpp\
+	dialog_information_stream.cpp\
 	dialog_recyclebin_files.cpp\
 	apps.cpp\
 	meterbox.cpp\

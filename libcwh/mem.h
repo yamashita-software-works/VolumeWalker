@@ -40,16 +40,6 @@ PTSTR   _MemAllocStringCatDebug(PCTSTR psz1,PCTSTR psz2,LPSTR File,int Line);
 #define _MemAllocStringBuffer(cch) _MemAllocStringBufferDebug(cch,(LPSTR)__FILE__,__LINE__)
 #define _MemAllocStringCat(psz1,psz2)   _MemAllocStringCatDebug(psz1,psz2,(LPSTR)__FILE__,__LINE__)
 
-//#if _USE_INTERNAL_MEMORY_DEBUG
-//#define AllocMemory(cb)         _MemAllocZeroDebug(cb,(LPSTR)__FILE__,__LINE__)
-//#define FreeMemory(p)           if(p) { _MemFree(p); }
-//#define ReallocMemory(pv,cb)    _MemReAllocDebug(pv,cb,(LPSTR)__FILE__,__LINE__)
-//#define ReAllocateHeap(pv,cb)   _MemReAllocDebug(pv,cb,(LPSTR)__FILE__,__LINE__)
-//#define AllocStringBufferCb(cb) ((PWSTR)_MemAllocZeroDebug(cb,(LPSTR)__FILE__,__LINE__))
-//#define AllocStringBuffer(cch)  ((PWSTR)_MemAllocZeroDebug((cch)*sizeof(wchar_t),(LPSTR)__FILE__,__LINE__))
-//#define DuplicateString(p)      _MemAllocStringDebug(p,(LPSTR)__FILE__,__LINE__)
-//#endif
-
 void* __cdecl operator new(size_t nSize, LPCSTR lpszFileName, int nLine);
 void operator delete(void *pMem, LPCSTR lpszFileName, int nLine);
 
@@ -77,8 +67,13 @@ PTSTR   _MemAllocStringCat(PCTSTR psz1,PCTSTR psz2);
 #define _MemSafeFree(p) if(p) { _MemFree(p); p = NULL; }
 
 #define _SafeMemFree(p)   if( p != NULL ) { _MemFree( (PVOID)p ); p = NULL; }
-#define _SafeDelete(p) if( p != NULL ) { delete( p ); p = NULL; }
-#define _SafeDeleteArray(p) if( p != NULL ) { delete( p ); p = NULL; }
+#define _SafeDelete(p) if( p != NULL ) { delete(p); p = NULL; }
+#define _SafeDeleteArray(p) if( p != NULL ) { delete[] (p); p = NULL; }
+
+#define _safe_delete(p) _SafeDelete(p)
+#define safe_delete(p) _SafeDelete(p)
+#define _safe_array_delete(p) _SafeDeleteArray(p)
+#define safe_array_delete(p) _SafeDeleteArray(p)
 
 #define SAFE_DELETE(p)        if( p != NULL ) {delete p; p=NULL;}
 #define SAFE_DELETE_ARRAY(p)  if( p != NULL ) {delete[] p; p=NULL;}

@@ -105,7 +105,7 @@ namespace CommandHandler
 		// hCommand : currently unused.
 
 		HMENU hToolMenu = CreatePopupMenu();
-		AppendMenu(hToolMenu, MF_STRING, ID_SHELL_RUNFILE_DIALOG,     L"Run file dialog");
+		AppendMenu(hToolMenu, MF_STRING, ID_SHELL_RUNFILE_DIALOG,     L"&Run File Dialog");
 		AppendMenu(hToolMenu, MF_STRING, 0, NULL);
 		AppendMenu(hToolMenu, MF_STRING, ID_ATTACH_VIRTUALDISK_IMAGE, L"Attach &Virtual Disk Image...");
 
@@ -114,7 +114,7 @@ namespace CommandHandler
 		AppendMenu(hSubMenu, MF_STRING, ID_CREATE_DISK_IMAGEFILE,     L"Create Disk &Image File...");
 		AppendMenu(hSubMenu, MF_STRING, ID_RESTORE_DISK_IMAGEFILE,    L"&Write Back Disk Image File...");
 		AppendMenu(hToolMenu, MF_STRING, 0, NULL);
-		AppendMenu(hToolMenu, MF_POPUP, (UINT_PTR)hSubMenu,           L"Deprecated Features");
+		AppendMenu(hToolMenu, MF_POPUP, (UINT_PTR)hSubMenu,           L"&Deprecated Features");
 #endif
 
 #if (_ENABLE_TOOL_TOOLPAD || _ENABLE_TOOL_LAUNCHPAD)

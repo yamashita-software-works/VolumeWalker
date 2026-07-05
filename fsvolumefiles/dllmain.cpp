@@ -116,8 +116,17 @@ HFONT GetIconFont()
 	return hFontIcon;
 }
 
-HWND _CreateVolumeFileListWindow(HWND hWndParent,UINT ConsoleType,DWORD dwOptionFlags,LPARAM lParam);
-HWND _CreateShellConsoleWindow(HWND hWndParent,UINT ConsoleType,DWORD dwOptionFlags,LPARAM lParam);
+VOID _SetWindowTitleFileName( HWND hWnd, PCWSTR pszFileName )
+{
+	WCHAR szTitle[32];
+	WCHAR sz[MAX_PATH+32];
+	GetWindowText(hWnd,szTitle,ARRAYSIZE(szTitle));
+	StringCchPrintf(sz,ARRAYSIZE(sz),L"%s - %s",szTitle,pszFileName);
+	SetWindowText(hWnd,sz);
+}
+
+extern HWND _CreateVolumeFileListWindow(HWND hWndParent,UINT ConsoleType,DWORD dwOptionFlags,LPARAM lParam);
+extern HWND _CreateShellConsoleWindow(HWND hWndParent,UINT ConsoleType,DWORD dwOptionFlags,LPARAM lParam);
 
 EXTERN_C
 HWND

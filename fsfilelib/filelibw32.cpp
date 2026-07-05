@@ -491,3 +491,70 @@ NtDosGetAttributeTypeCodeStreams(
 
     return S_OK;
 }
+
+EXTERN_C
+HRESULT
+WINAPI
+NtDosGetVolumeInformationFlags(
+	HANDLE Handle,
+	LPDWORD pdwFileSystemFlags,
+	LPDWORD pdwFileSystemType
+	)
+{
+	DWORD dwFileSystemType = 0;
+	WCHAR szFileSystemName[MAX_PATH];
+	if( GetVolumeInformationByHandleW(Handle,nullptr,0,nullptr,nullptr,pdwFileSystemFlags,szFileSystemName,ARRAYSIZE(szFileSystemName)) )
+	{
+		if( pdwFileSystemType )
+		{
+			if( wcsicmp(szFileSystemName,L"NTFS") == 0 )
+			{
+				dwFileSystemType = 0x00000001;
+			}
+			else if( wcsicmp(szFileSystemName,L"ReFS") == 0 )
+			{
+				dwFileSystemType = 0x00008000;
+			}
+			else if( wcsicmp(szFileSystemName,L"FAT") == 0 )
+			{
+				dwFileSystemType = 0x00000002;
+			}
+			else if( wcsicmp(szFileSystemName,L"FAT32") == 0 )
+			{
+				dwFileSystemType = 0x00000002|0x00000004;
+			}
+			else if( wcsicmp(szFileSystemName,L"FAT16") == 0 )
+			{
+				dwFileSystemType = 0x00000002|0x00000008;
+			}
+			else if( wcsicmp(szFileSystemName,L"FAT12") == 0 )
+			{
+				dwFileSystemType = 0x00000002|0x00000010;
+			}
+			else if( wcsicmp(szFileSystemName,L"exFAT") == 0 )
+			{
+				dwFileSystemType = 0x00000100;
+			}
+			else if( wcsicmp(szFileSystemName,L"UDF") == 0 )
+			{
+				dwFileSystemType = 0x00000200;
+			}
+			else if( wcsicmp(szFileSystemName,L"CDFS") == 0 )
+			{
+				dwFileSystemType = 0x00000400;
+			}
+			else if( wcsicmp(szFileSystemName,L"RAW") == 0 )
+			{
+				dwFileSystemType = 0x40000000;
+			}
+			else
+			{
+				dwFileSystemType = 0x80000000;
+			}
+
+			*pdwFileSystemType = dwFileSystemType;
+		}
+		return TRUE;
+	}
+	return FALSE;
+}

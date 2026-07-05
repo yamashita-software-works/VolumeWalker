@@ -147,9 +147,12 @@ public:
 
 	HISTORY_ITEM *BackwardPtr(HISTORY_ITEM *ptr)
 	{
-		ptr--;
-		if( ptr < m_pLowerBound )
-			ptr = m_pUpperBound;
+		if( ptr >= m_pLowerBound )
+		{
+			ptr--;
+			if( ptr < m_pLowerBound )
+				ptr = m_pUpperBound;
+		}
 		return ptr;
 	}
 
@@ -211,6 +214,10 @@ public:
 	BOOL Back(HISTORY_ITEM *pItem)
 	{
 		DWORD dwResult = ERROR_SUCCESS;
+
+		if( m_pCurrent == NULL )
+			return FALSE;
+
 		if( m_pCurrent == m_pTop )
 		{
 			dwResult = ERROR_NO_MORE_ITEMS;;

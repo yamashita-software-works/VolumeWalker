@@ -510,7 +510,7 @@ typedef struct _FS_CLUSTER_INFORMATION
 EXTERN_C
 LONG
 WINAPI
-ReadFileClusterInformaion( 
+ReadFileClusterInformation( 
     HANDLE hVolume,
     HANDLE hFile, 
     PCWSTR pszVolumeRootDirectoryName,
@@ -525,6 +525,13 @@ WINAPI
 FreeClusterInformation( 
     PVOID Buffer
     );
+
+EXTERN_C
+FS_CLUSTER_INFORMATION *
+WINAPI
+CreateClusterInformationBuffer(
+	PCWSTR pszFilePath
+	);
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -990,7 +997,16 @@ EXTERN_C
 ULONG
 APIENTRY
 NtDosGetVolumeSizeInformation(
-	HANDLE hVolume,
-	NT_VOLUME_SIZE_INFORMATION *pInfo,
-	INT cbInfo
+	__in HANDLE hVolume,
+	__inout NT_VOLUME_SIZE_INFORMATION *pInfo,
+	__in INT cbInfo
+	);
+
+EXTERN_C
+HRESULT
+WINAPI
+NtDosGetVolumeInformationFlags(
+	__in HANDLE Handle,
+	__inout LPDWORD pdwFileSystemFlags,
+	__inout LPDWORD pdwFileSystemType
 	);

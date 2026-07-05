@@ -1,3 +1,23 @@
+### 0.1.57.0
+
+- Cluster InformationとSteram Informationダイアログを追加。   
+  Volume File Explorerウィンドウで項目を選択してコンテキストメニューを開き、以下の場所から開きます。
+  [Inspects File] \>   
+  &nbsp;&nbsp;&nbsp;&nbsp;[Cluster Information]   
+  &nbsp;&nbsp;&nbsp;&nbsp;[Steram Information]
+
+- Volume File Explorerウィンドウ、コンテキストメニューの[Binary Dump]の位置を変更。   
+  [Inspects File] \> [Binary Dump]に移動。
+
+- Volume File Explorerウィンドウ、リスト上のファイルが実行可能な場合のアイコンを変更した。
+
+- Volume File Explorerでファイル検索時、Change（属性変更日時）で比較処理が抜けていた不具合を修正。
+
+- Volume File Explorerでファイル検索時、Last Access（最終アクセス日時）の比較時に、誤ってChange日時と比較していた不具合を修正。
+
+- fsfilelib.dll エクスポーズ関数のスペルミス修正。   
+  "ReadFileClusterInformaion" ⇒ "ReadFileClusterInformation"
+
 ### 0.1.56.0
 
 - Recycle Bin Usageウィンドウを追加。

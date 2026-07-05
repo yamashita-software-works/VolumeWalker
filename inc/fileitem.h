@@ -42,7 +42,7 @@ typedef struct _FILEITEMEX
 	//extended part
 	ULONG FlagsEx;
 	ULONG ItemTypeFlag;                // user context flag
-	LARGE_INTEGER ParentFileId;        // todo: 128bit id not support
+	LARGE_INTEGER ParentFileId;        // 128bitID is not supported.
 	LARGE_INTEGER FirstLCN;
 	LARGE_INTEGER FileAreaOffset;
 	BOOLEAN ValidFileAreaOffset;
@@ -61,7 +61,8 @@ typedef struct _FILEITEMEX
 			GUID DomainId;
 		};
 	};
-	ULONG Reserved[16];
+	ULONG FileSystemFlags;
+	ULONG Reserved[12];
 } FILEITEMEX,*PFILEITEMEX;
 
 #define FIF_UNUSEFLAGS         (0x00000000)
@@ -88,6 +89,7 @@ typedef struct _FILEITEMEX
 #define FIF_EX_PHYSICALDRIVEOFFSET     (0x00000040)
 #define FIF_EX_PHYSICALDRIVENUMBER     (0x00000080)
 #define FIF_EX_WOF                     (0x00000100)
+#define FIF_EX_FILESYSTEMFLAGS         (0x00000200)
 #define FIF_EX_ROOTDIRECTORY           (0x40000000) 
 #define FIF_EX_INVALIDITEM             (0x80000000) 
 
@@ -186,6 +188,48 @@ struct CFileItemEx : public FILEITEMEX
 	CFileItemEx()
 	{
 		memset(this,0,sizeof(CFileItemEx));
+	}
+
+	CFileItemEx( CFileItemEx& fi )
+	{
+		PWSTR pszDirPath = NULL;
+		PWSTR pszFile = NULL;
+#ifdef _CFILELITEM_MEMORY_DEBUG
+		if( fi.hdr.Path )
+			pszDirPath = _MemAllocString(fi.hdr.Path);
+		if( fi.hdr.FileName 
+			pszFile = _MemAllocString(fi.hdr.FileName);
+#else
+		if( fi.hdr.Path )
+			pszDirPath = StrDupW(fi.hdr.Path);
+		if( fi.hdr.FileName )
+			pszFile = StrDupW(fi.hdr.FileName);
+#endif
+		*this = fi;
+
+		this->hdr.Path = pszDirPath;
+		this->hdr.FileName = pszFile;
+	}
+
+	CFileItemEx( FILEITEMEX& fi )
+	{
+		PWSTR pszDirPath = NULL;
+		PWSTR pszFile = NULL;
+#ifdef _CFILELITEM_MEMORY_DEBUG
+		if( fi.hdr.Path )
+			pszDirPath = _MemAllocString(fi.hdr.Path);
+		if( fi.hdr.FileName 
+			pszFile = _MemAllocString(fi.hdr.FileName);
+#else
+		if( fi.hdr.Path )
+			pszDirPath = StrDupW(fi.hdr.Path);
+		if( fi.hdr.FileName )
+			pszFile = StrDupW(fi.hdr.FileName);
+#endif
+		memcpy(this,&fi,sizeof(CFileItemEx));
+
+		this->hdr.Path = pszDirPath;
+		this->hdr.FileName = pszFile;
 	}
 
 	CFileItemEx(PCWSTR pszDirPath,PCWSTR pszFile)

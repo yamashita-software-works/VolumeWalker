@@ -162,11 +162,24 @@ enum {
 #endif
 
 // Pane Private Message definitions
-#define PPM_SELECTVOLUME     (WM_APP+124)  // todo:
-#define PPM_SETPATH          (WM_APP+125)  // todo:
-#define PPM_CHDIR            (WM_APP+126)  // todo:
-#define PPM_SELECTSTREAM     (WM_APP+127)  // todo:
-#define PPM_NOTIFY           (WM_APP+606)  // todo:
+#define PPM_SELECTVOLUME     (WM_APP+1200)  // todo:
+#define PPM_SETPATH          (WM_APP+1201)  // todo:
+#define PPM_CHDIR            (WM_APP+1202)  // todo:
+#define PPM_SELECTSTREAM     (WM_APP+1203)  // todo:
+#define PPM_NOTIFY           (WM_APP+1204)  // todo:
+#define PPM_INITLAYOUT       (WM_APP+1205)  // todo:
+
+typedef struct _STREAM_BUFFER
+{
+	int cStreams;
+	NT_FILE_STREAM_INFORMATION_EX *StreamInformation;
+} STREAM_BUFFER;
+VOID
+_SetWindowTitleFileName(
+	HWND hWnd,
+	PCWSTR pszFileName
+	);
+
 inline int _ImageList_LoadIcon(HIMAGELIST himl,UINT idIconRes,int cxIcon,int cyIcon) {
 	HICON hIcon = (HICON)LoadImage(_GetResourceInstance(),MAKEINTRESOURCE(idIconRes),IMAGE_ICON,cxIcon,cyIcon,LR_DEFAULTCOLOR);
 	int index = -1;

@@ -233,7 +233,7 @@ _GetClustersInformation(
 EXTERN_C
 LONG
 WINAPI
-ReadFileClusterInformaion_U( 
+ReadFileClusterInformation_U( 
 	HANDLE /*hVolume*/,  // unuse reserved
 	HANDLE hFile, 
 	UNICODE_STRING *VolumeRootDirectoryName,
@@ -421,7 +421,7 @@ ReadFileClusterInformaion_U(
 EXTERN_C
 LONG
 WINAPI
-ReadFileClusterInformaion( 
+ReadFileClusterInformation( 
 	HANDLE hVolume, // unuse reserved
 	HANDLE hFile, 
 	PCWSTR pszVolumeRootDirectoryName,
@@ -433,7 +433,7 @@ ReadFileClusterInformaion(
 	UNICODE_STRING usVolumeRootDirectoryName;
 	RtlInitUnicodeString(&usVolumeRootDirectoryName,pszVolumeRootDirectoryName);
 
-	return ReadFileClusterInformaion_U(hVolume,hFile,&usVolumeRootDirectoryName,
+	return ReadFileClusterInformation_U(hVolume,hFile,&usVolumeRootDirectoryName,
 			Class,Data,cbData);
 }
 
@@ -462,4 +462,95 @@ FreeClusterInformation(
 	_MemFree( pClusters );
 
 	return 0;
+}
+
+EXTERN_C
+FS_CLUSTER_INFORMATION *
+WINAPI
+CreateClusterInformationBuffer(
+	PCWSTR pszFilePath
+	)
+{
+	NTSTATUS Status;
+	UNICODE_STRING usFileName;
+	DWORD dwError;
+
+	if( IsRootDirectory_W(pszFilePath) )
+	{
+		usFileName.Buffer =  L"";
+	}
+	else
+	{
+		SplitPathFileName_W(pszFilePath,NULL,&usFileName);
+	}
+
+	PWSTR Path;
+	Path = DuplicateString(pszFilePath);
+	if( Path == NULL )
+	{
+		SetLastError(ERROR_OUTOFMEMORY);
+		return NULL;
+	}
+
+	FS_CLUSTER_INFORMATION *pci = NULL;
+	PWSTR RootDirectory=NULL,RootRelativePath=NULL;
+	ULONG cchRootDirectory=0,cchRootRelativePath=0;
+	PWSTR FileName = NULL;
+	RemoveFileSpec(Path);
+	SplitRootPath_W(Path,&RootDirectory,&cchRootDirectory,&RootRelativePath,&cchRootRelativePath);
+	FreeMemory(Path);
+
+	if( RootDirectory && RootRelativePath )
+	{
+		HANDLE hRootDirectory = NULL;
+		if( OpenRootDirectory(RootDirectory,0,&hRootDirectory) != STATUS_SUCCESS )
+		{
+			//
+			// The Root directory open failed. If so try open directory using
+			// full path string without splitting the volume and root relative path.
+			//
+			FreeMemory(RootRelativePath);
+			RootRelativePath = NULL;
+			hRootDirectory = NULL;
+		}
+	
+		HANDLE hCurDir;
+		if( (Status = OpenFile_W(&hCurDir,hRootDirectory,RootRelativePath,FILE_READ_ATTRIBUTES|SYNCHRONIZE,
+							FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_DIRECTORY_FILE)) == STATUS_SUCCESS )
+		{
+			HANDLE hFile;
+			ULONG DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
+			ULONG Option = FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT|FILE_SYNCHRONOUS_IO_NONALERT;
+			if( (Status = OpenFile_W(&hFile,hCurDir,usFileName.Buffer,DesiredAccess,FILE_SHARE_READ|FILE_SHARE_WRITE,Option)) == STATUS_SUCCESS )
+			{
+				dwError = ReadFileClusterInformation(NULL,hFile,RootDirectory,ClusterInformationAll,&pci,sizeof(pci));
+	
+				CloseHandle(hFile);
+			}
+			else
+			{
+				dwError = NtStatusToDosError(Status);
+			}
+	
+			CloseHandle(hCurDir);
+		}
+		else
+		{
+			dwError = NtStatusToDosError(Status);
+		}
+
+		if( hRootDirectory )
+			CloseHandle(hRootDirectory);
+	}
+	else
+	{
+		dwError = ERROR_OUTOFMEMORY;
+	}
+
+	FreeMemory(RootRelativePath);
+	FreeMemory(RootDirectory);
+
+	SetLastError(dwError);
+
+	return pci;
 }

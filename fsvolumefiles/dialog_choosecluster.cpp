@@ -714,7 +714,7 @@ static FS_CLUSTER_INFORMATION *_CreateClusterInformationBuffer(PCWSTR pszFilePat
 			ULONG Option = FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT|FILE_SYNCHRONOUS_IO_NONALERT;
 			if( (Status = OpenFile_W(&hFile,hCurDir,usFileName.Buffer,DesiredAccess,FILE_SHARE_READ|FILE_SHARE_WRITE,Option)) == STATUS_SUCCESS )
 			{
-				dwError = ReadFileClusterInformaion(NULL,hFile,RootDirectory,ClusterInformationAll,&pci,sizeof(pci));
+				dwError = ReadFileClusterInformation(NULL,hFile,RootDirectory,ClusterInformationAll,&pci,sizeof(pci));
 	
 				CloseHandle(hFile);
 			}
