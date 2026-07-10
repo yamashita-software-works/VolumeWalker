@@ -19,6 +19,13 @@ NtPathFreeMemory(
     PVOID ptr
     );
 
+EXTERN_C
+VOID
+WINAPI
+NtPathFreeString(
+    PWSTR pszString
+    );
+
 //
 // NtPath Functions
 //

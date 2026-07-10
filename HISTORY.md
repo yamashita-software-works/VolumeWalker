@@ -1,3 +1,14 @@
+### 0.1.58.0
+
+- Volume File Exploerを開いた状態でVolumeWalker終了した時、次回起動時に参照する為に現在のパスを保存するオプションが有効な場合、32767文字までのパスの保存に対応。   
+  これはVolumeWalkerを -weオプション付きで起動した場合に有効になります。   
+
+- Volume File Exploerのツールバーメニューから\[Lookup Stream By LCN\]機能を実行できない不具合を修正。
+
+- Volume File ExploerのGoToダイアログで、ユーザーが ".."を入力てOKボタンを押した場合に、メモリを二重解放していた不具合を修正。加えてダイアログ終了時の処理を整理。
+
+- Volume File ExploerのGoToダイアログでファイルを指定した時、選択されたファイル以外の選択状態が解除されない不具合を修正。
+
 ### 0.1.57.0
 
 - Cluster InformationとSteram Informationダイアログを追加。   

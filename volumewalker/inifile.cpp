@@ -220,9 +220,24 @@ static BOOL GetSectionInfo(PWSTR pszSection,MDICHILDFRAMEINIT_VOLUMEWALKER *pmdi
 
 	if( psz != NULL )
 	{
-		if( GetPrivateProfileString(pszSection,C_KEY_VOLUME,NULL,psz,cch,g_pszIniFile) > 0 )
+		if( GetPrivateProfileString(pszSection,C_KEY_RELATIVEPATH,NULL,psz,cch,g_pszIniFile) > 0 )
 		{
-			pmdidoc->Path = _MemAllocString( psz );
+			WCHAR szVolume[MAX_PATH];
+			ZeroMemory(szVolume,sizeof(szVolume));
+
+			if( GetPrivateProfileString(pszSection,C_KEY_VOLUME,NULL,szVolume,MAX_PATH,g_pszIniFile) > 0 )
+			{
+				RemoveBackslash(szVolume);
+			}
+
+			pmdidoc->Path = _MemAllocStringCat(szVolume,psz);
+		}
+		else
+		{
+			if( GetPrivateProfileString(pszSection,C_KEY_VOLUME,NULL,psz,cch,g_pszIniFile) > 0 )
+			{
+				pmdidoc->Path = _MemAllocString( psz );
+			}
 		}
 
 		if( GetPrivateProfileString(pszSection,C_KEY_COLUMNLAYOUTSTRING,NULL,psz,cch,g_pszIniFile) > 0 )
@@ -269,18 +284,18 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 				wqp.dwLength = cch;
 				wqp.VolumePath = sz;
 				SendMessage(hwndView,WM_QUERY_MESSAGE,QMT_VOLUMEPATH,(LPARAM)&wqp);
-				WriteSectionString(pszSection,L"Volume",sz);
+				WriteSectionString(pszSection,C_KEY_VOLUME,sz);
 				break;
 			}
 			case VOLUME_CONSOLE_VOLUMEFILES:
 			{
-				SendMessage(hwndView,PM_SAVECONFIG,0,(LPARAM)&svc);
+				SendMessage(hwndView,PM_SAVECONFIG,wndGuid.Data2,(LPARAM)&svc);
 				break;
 			}
 			default:
 			{
 				GetWindowText(hwndMDIChildFrame,sz,cch);
-				WriteSectionString(pszSection,L"Volume",sz);
+				WriteSectionString(pszSection,C_KEY_VOLUME,sz);
 			}
 		}
 	}

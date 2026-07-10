@@ -260,5 +260,7 @@ typedef struct _QM_PARAM
 #define C_KEY_VOLUME                  L"Volume"
 #define C_KEY_COLUMNLAYOUTSTRING      L"Columns"
 #define C_KEY_CURRENTSORTCOLUMN       L"CurrentSortColumn"
+#define C_KEY_PATH                    L"Path"
+#define C_KEY_RELATIVEPATH            L"RelativePath"
 
 #endif

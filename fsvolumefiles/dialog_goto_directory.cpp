@@ -61,7 +61,7 @@ static INT_PTR CALLBACK GotoDirectoryDlgProc(HWND hDlg, UINT message, WPARAM wPa
 
 				if( wcscmp(szPath,L"..") == 0 )
 				{
-					PWSTR pszTempBuffer = pgp->pszCurrentDirectory;
+					PWSTR pszTempBuffer = _MemAllocString(pgp->pszCurrentDirectory);
 					if( pszTempBuffer )
 					{
 						if( !NtPathIsRootDirectory(pszTempBuffer) )
@@ -205,23 +205,10 @@ GotoDirectoryDialog(
 	if( DialogBoxParamW(_GetResourceInstance(), MAKEINTRESOURCE(IDD_GOTODIRECTORY),
 			hWnd, &GotoDirectoryDlgProc,(LPARAM)&gp) == IDOK )
 	{
-		if( wcscmp(pszBuffer,L".") == 0 )
 		{
-			; // not support
-		}
-		else if( wcscmp(pszBuffer,L"..") == 0 )
-		{
-			StringCchCopy(pszBuffer,_NT_PATH_FULL_LENGTH,pszCurDir);
-			RemoveBackslash(pszBuffer);
-			RemoveFileSpec(pszBuffer);
-		}
-		else
-		{
-#if 0 // alphabet drive letter only
-			if( iswalpha(pszBuffer[0]) && pszBuffer[1] == L':' )
-#else // accept non-alphabetic drive letter
+			// transform dos-drive to nt-device path.
+			// accept the non-alphabetic drive letter (NT's specification).
 			if( pszBuffer[1] == L':' )
-#endif
 			{
 				PWSTR NtPath;
 				GetNtPath(pszBuffer,&NtPath,0);

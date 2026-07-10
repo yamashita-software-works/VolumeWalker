@@ -1465,7 +1465,32 @@ public:
 					// ToDo:
 					// Currently, not yet supported ultra deep path
 					// (over MAX_PATH like as 32767 characters path).
+#if 0
 					psvc->WriteValue( GetParent(m_hWnd), C_KEY_VOLUME, m_pszCurDir );
+#else
+#ifdef _DEBUG
+					size_t c0 = wcslen(m_pszCurDir);
+#endif
+					UNICODE_STRING usVolume;
+					UNICODE_STRING usRelativePath;
+					SplitVolumeRelativePath(m_pszCurDir,&usVolume,&usRelativePath);
+
+					PWSTR pszVolumeName         = AllocateSzFromUnicodeString(&usVolume);
+					PWSTR pszVolumeRelativePath = AllocateSzFromUnicodeString(&usRelativePath);
+
+					if( pszVolumeName && pszVolumeRelativePath )
+					{
+#ifdef _DEBUG
+						size_t c1 = wcslen(pszVolumeName);
+						size_t c2 = wcslen(pszVolumeRelativePath);
+#endif
+						psvc->WriteValue( GetParent(m_hWnd), C_KEY_VOLUME, pszVolumeName );
+						psvc->WriteValue( GetParent(m_hWnd), C_KEY_RELATIVEPATH, pszVolumeRelativePath );
+					}
+
+					FreeMemory(pszVolumeName);
+					FreeMemory(pszVolumeRelativePath);
+#endif
 				}
 				else
 				{
@@ -3323,6 +3348,8 @@ public:
 
 	int SelectFileName(PCWSTR pszName,BOOL bEnsureVisible=TRUE)
 	{
+		ListViewEx_ClearSelectAll(m_hWndList);
+
 		int iItem = FindFileName(pszName);
 		if( iItem != -1 )
 		{
@@ -4294,7 +4321,7 @@ public:
 	{
 		HRESULT (WINAPI *pfnLookupStreamNameDialog)(HWND hWnd,PWSTR pszVolumeName,DWORD dwFlags) = NULL;
 
-		(FARPROC&)pfnLookupStreamNameDialog = GetProcAddress( GetModuleHandle(L"fsvolumelist.dll"), "LookupStreamNameDialog" );
+		(FARPROC&)pfnLookupStreamNameDialog = GetProcAddress( GetModuleHandle(L"fsvolumedisks.dll"), "LookupStreamNameDialog" );
 		if( pfnLookupStreamNameDialog )
 		{
 			pfnLookupStreamNameDialog(GetActiveWindow(),this->m_pszVolumeDevice,0);

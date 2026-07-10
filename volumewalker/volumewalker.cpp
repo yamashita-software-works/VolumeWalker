@@ -904,7 +904,7 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 	{
 		cchPathLength = wcslen(pOpenParam->Path);
 
-		if( cchPathLength < MAX_PATH && FindRootDirectory_W(pOpenParam->Path,NULL) == 0 )
+		if( FindRootDirectory_W(pOpenParam->Path,NULL) == 0 )
 		{
 			pszPath = _MemAllocString(pOpenParam->Path);
 		}

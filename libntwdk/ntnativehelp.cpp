@@ -1173,9 +1173,68 @@ BOOLEAN SplitVolumeRelativePath_U(UNICODE_STRING *FullPath,UNICODE_STRING *Volum
 
 BOOLEAN SplitVolumeRelativePath(PCWSTR pszFullPath,UNICODE_STRING *VolumeName,UNICODE_STRING *VolumeRelativePath)
 {
-    UNICODE_STRING usFullPath;
-    RtlInitUnicodeString(&usFullPath,pszFullPath);
-    return SplitVolumeRelativePath_U(&usFullPath,VolumeName,VolumeRelativePath);
+	SIZE_T cbFullPath = wcslen(pszFullPath);
+
+	cbFullPath *= sizeof(WCHAR);
+
+	if( cbFullPath < 65536 )
+	{
+	    UNICODE_STRING usFullPath;
+		RtlInitUnicodeString(&usFullPath,pszFullPath);
+		return SplitVolumeRelativePath_U(&usFullPath,VolumeName,VolumeRelativePath);
+	}
+
+    UNICODE_STRING usVolumeName;
+
+	// The overflow length truncated, and the byte count is stored.
+	// Because, at this stage, it is sufficient to simply determine 
+	// the byte count of the volume name.
+	RtlInitUnicodeString(&usVolumeName,pszFullPath); 
+
+    if( !GetVolumeName_U(&usVolumeName) )
+    {
+        return FALSE;
+    }
+
+	// Adjust the MaximumLength, truncate on unnecessary length.
+	usVolumeName.MaximumLength = usVolumeName.Length;
+
+    if( VolumeName )
+        *VolumeName = usVolumeName;
+
+    int cb = (int)cbFullPath;
+
+    if( cb == usVolumeName.Length )
+    {
+		if( VolumeRelativePath )
+		{
+	        VolumeRelativePath->Length = VolumeRelativePath->MaximumLength = 0;
+		    VolumeRelativePath->Buffer = NULL;
+		}
+        return TRUE;
+    }
+
+    if( VolumeRelativePath )
+    {
+		if( ((cb - usVolumeName.Length) >= 65535) || ((cb - usVolumeName.MaximumLength) >= 65535) )
+		{
+			return FALSE;
+		}
+        VolumeRelativePath->Length        = (USHORT)(cb - usVolumeName.Length);
+        VolumeRelativePath->MaximumLength = (USHORT)(cb - usVolumeName.MaximumLength);
+        VolumeRelativePath->Buffer        = (PWCH)&pszFullPath[ WCHAR_LENGTH(usVolumeName.Length) ];
+    }
+#ifdef _DEBUG
+    UNICODE_STRING us1={},us2={};
+	NTSTATUS sts1,sts2;
+    sts1 = RtlDuplicateUnicodeString(0x3,VolumeName,&us1);
+    sts2 = RtlDuplicateUnicodeString(0x3,VolumeRelativePath,&us2);
+	if( sts1 == STATUS_SUCCESS )
+		RtlFreeUnicodeString(&us1);
+	if( sts2 == STATUS_SUCCESS )
+		RtlFreeUnicodeString(&us2);
+#endif
+	return TRUE;
 }
 
 BOOLEAN IsLastCharacterBackslash_U(UNICODE_STRING *pusPath)
