@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Applications Reader
 
-typedef struct _FS_APPLICATION_ITEM
+typedef struct _APPLICATION_ITEM
 {
 	ULONG Type;
 	GUID Guid; /* unused */
@@ -33,12 +33,12 @@ typedef struct _FS_APPLICATION_ITEM
 	PCWSTR Parameters;
 	PCWSTR AppendPath;
 	PCWSTR GroupName;
-} FS_APPLICATION_ITEM;
+} APPLICATION_ITEM;
 
-class CFSApplicationItem : public FS_APPLICATION_ITEM
+class CApplicationItem : public APPLICATION_ITEM
 {
 public:
-	CFSApplicationItem()
+	CApplicationItem()
 	{
 		Type = 0;
 		ZeroMemory(&Guid,sizeof(Guid));
@@ -53,7 +53,7 @@ public:
 		GroupName = NULL;
 	}
 
-	~CFSApplicationItem()
+	~CApplicationItem()
 	{
 		_SafeMemFree(FriendlyName);
 		_SafeMemFree(CommandLine);
@@ -80,10 +80,7 @@ public:
 		_SafeMemFree(ExecPath);
 		if( psz != NULL )
 		{
-			CommandLine = _MemAllocString(psz);
-
-			CStringBuffer buf(MAX_PATH);
-			if( buf.BufferPointer() != NULL  )
+			WCHAR buf[MAX_PATH];
 			{
 				ExpandEnvironmentStrings(psz,buf,MAX_PATH);
 
@@ -91,6 +88,7 @@ public:
 				PathUnquoteSpaces(buf);
 
 				ExecPath = _MemAllocString(buf);
+				CommandLine = _MemAllocString(buf);
 			}
 		}
 #else
@@ -240,14 +238,14 @@ public:
 	PCWSTR PtrGroupName() const { return GroupName; }
 };
 
-class CApplocationPointerArray : protected CValArray<CFSApplicationItem *>
+class CApplicationPointerArray : protected CValArray<CApplicationItem *>
 {
 public:
-	CApplocationPointerArray()
+	CApplicationPointerArray()
 	{
 	}
 
-	~CApplocationPointerArray()
+	~CApplicationPointerArray()
 	{
 		clear();
 		RemoveAll();
@@ -259,12 +257,12 @@ public:
 	}
 
 
-	CFSApplicationItem *operator[](int iIndex) const
+	CApplicationItem *operator[](int iIndex) const
 	{
 		return (GetBuffer())[iIndex];
 	}
 
-	int add(CFSApplicationItem *pItem)
+	int add(CApplicationItem *pItem)
 	{
 		return Add(pItem);
 	}
@@ -282,7 +280,7 @@ public:
 
 class CXMLApplicationsReader : public IApplicationsReader
 {
-	CApplocationPointerArray m_apps;
+	CApplicationPointerArray m_apps;
 
 	XML_ERROR_INFO m_xmlerr;
 
@@ -577,7 +575,7 @@ protected:
 		}
 #endif
 
-		CFSApplicationItem *pItem = new CFSApplicationItem;
+		CApplicationItem *pItem = new CApplicationItem;
 		if( pItem == NULL )
 		{
 			return E_OUTOFMEMORY;
@@ -660,7 +658,7 @@ protected:
 
 	HRESULT InsertSeparator()
 	{
-		CFSApplicationItem *pItem = new CFSApplicationItem;
+		CApplicationItem *pItem = new CApplicationItem;
 		if( pItem == NULL )
 		{
 			return E_OUTOFMEMORY;
@@ -675,7 +673,7 @@ protected:
 };
 
 //
-// External Toolsmenu implement
+// External Tools menu implementation
 //
 class CExternalToolsMenu : public IExternalTools
 {
@@ -769,6 +767,11 @@ public:
 			return FALSE;
 
 		//
+		// Clear the existing image list.
+		//
+		clearImageList();
+
+		//
 		// Create imagelist for external tools
 		//
 		if( m_himlSmall == NULL )
@@ -795,10 +798,12 @@ protected:
 		if( m_himlSmall )
 		{
 			ImageList_RemoveAll(m_himlSmall);
+			m_himlSmall = NULL;
 		}
 		if( m_himlNormal )
 		{
 			ImageList_RemoveAll(m_himlNormal);
+			m_himlNormal = NULL;
 		}
 	}
 
@@ -819,8 +824,7 @@ protected:
 
 	VOID createToolList()
 	{
-		clearImageList();
-
+		//
 		// Load items
 		//
 		IApplicationsReader *pApps;
@@ -975,21 +979,6 @@ protected:
 		}
 
 		return iImage;
-	}
-
-	BOOL CheckPath(PCWSTR pszIn,PWSTR pszOut)
-	{
-		WCHAR szTemp[MAX_PATH];
-
-		StringCchCopy(szTemp,MAX_PATH,pszIn);
-
-		PathRemoveArgs(szTemp);
-		PathRemoveBlanks(szTemp);
-		PathUnquoteSpaces(szTemp);
-		PathIsFileSpec(szTemp);
-		PathIsExe(szTemp);
-
-		return TRUE;
 	}
 
 public:

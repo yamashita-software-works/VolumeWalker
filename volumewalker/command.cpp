@@ -120,9 +120,11 @@ namespace CommandHandler
 #if (_ENABLE_TOOL_TOOLPAD || _ENABLE_TOOL_LAUNCHPAD)
 		AppendMenu(hToolMenu, MF_STRING, 0, NULL);
 #if _ENABLE_TOOL_LAUNCHPAD
-		AppendMenu(hToolMenu, MF_STRING, ID_LAUNCHPAD_WINDOW,         L"&Launch External Tools");
+		AppendMenu(hToolMenu, MF_STRING, ID_LAUNCHPAD_WINDOW,         L"Launch &External Tools");
 #endif
-	    AppendMenu(hToolMenu, MF_STRING, ID_TOOLPAD_WINDOW,           L"&Tool Pad");
+#if _ENABLE_TOOL_TOOLPAD
+	    AppendMenu(hToolMenu, MF_STRING, ID_TOOLPAD_WINDOW,           L"&ToolPad");
+#endif
 #endif
 		return hToolMenu;
 	}
@@ -178,7 +180,8 @@ namespace CommandHandler
 			}
 		}
 	}
-
+#endif
+#if _ENABLE_TOOL_LAUNCHPAD
 	VOID OpenLaunchPadWindow(HWND hWnd,UINT /*uMode*/)
 	{
 		HRESULT (WINAPI *pfnLaunchPadDialog)(HWND hWnd,UINT,UINT,PVOID) = NULL;

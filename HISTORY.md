@@ -1,3 +1,11 @@
+### 0.1.59.0
+
+- LaunchPadを追加。   
+メニューの File \> Tools \> Launch External Tools   
+外部のWindows標準アプリケーションを開きます。
+
+- その他、ミススペリング修正などの調整。
+
 ### 0.1.58.0
 
 - Volume File Exploerを開いた状態でVolumeWalker終了した時、次回起動時に参照する為に現在のパスを保存するオプションが有効な場合、32767文字までのパスの保存に対応。   

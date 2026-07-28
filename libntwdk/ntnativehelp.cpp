@@ -67,6 +67,28 @@ SetLastErrorNtStatusToWin32(
 }
 
 EXTERN_C
+NTSTATUS
+NTAPI
+ReturnNtStatusAndSetLastDosError( 
+    NTSTATUS ntStatus
+    )
+{
+    RtlSetLastWin32Error( RtlNtStatusToDosError(ntStatus) );
+    return ntStatus;
+}
+
+EXTERN_C
+ULONG
+NTAPI
+ReturnDosErrorAndSetLastNtStatus( 
+    NTSTATUS ntStatus
+    )
+{
+    RtlSetLastWin32Error( ntStatus );
+    return RtlNtStatusToDosError(ntStatus);
+}
+
+EXTERN_C
 ULONG
 NTAPI
 NtStatusToDosError(
@@ -166,8 +188,8 @@ EXTERN_C NTSTATUS NTAPI FreeUnicodeString(UNICODE_STRING *pus)
 
 EXTERN_C NTSTATUS NTAPI FreeUnicodeStringBuffer(PWSTR psz)
 {
-	UNICODE_STRING us;
-	RtlInitUnicodeString(&us,psz);
+    UNICODE_STRING us;
+    RtlInitUnicodeString(&us,psz);
     return FreeUnicodeString(&us);
 }
 
@@ -644,13 +666,9 @@ NTSTATUS FindRootDirectory_U(UNICODE_STRING *pusFullyQualifiedPath,PWSTR *pRootD
 
     UNICODE_STRING usPrefix;
 
-    RtlInitUnicodeString(&usPrefix,L"\\??\\");
-
-    if( RtlPrefixUnicodeString(&usPrefix,pusFullyQualifiedPath,TRUE) )
+    if( HasPrefix_U(L"\\??\\",pusFullyQualifiedPath) )
     {
-        RtlInitUnicodeString(&usPrefix,L"\\??\\UNC\\");
-
-        if( RtlPrefixUnicodeString(&usPrefix,pusFullyQualifiedPath,TRUE) )
+        if( HasPrefix_U(L"\\??\\UNC\\",pusFullyQualifiedPath) )
         {
             //
             // Find root directory from UNC path
@@ -680,6 +698,21 @@ NTSTATUS FindRootDirectory_U(UNICODE_STRING *pusFullyQualifiedPath,PWSTR *pRootD
             // "\??\C:\", "\??\HarddiskVolume1\", "\??\Volume{xxx...xxx}\"
             //
             ParseStartPos = 4;
+        }
+    }
+    else if( HasPrefix_U(L"\\\\?\\",pusFullyQualifiedPath) )
+    {
+        if( pusFullyQualifiedPath->Length >= 4 )
+        {
+            PWSTR p = &pusFullyQualifiedPath->Buffer[4];
+            for(int i = 0; i < int(WCHAR_LENGTH(pusFullyQualifiedPath->Length)); i++)
+            {
+                if( p[i] == L'\\' )
+                {
+                    ParseStartPos = 4 + i;
+                    break;
+                }
+            }
         }
     }
     else
@@ -720,6 +753,10 @@ NTSTATUS FindRootDirectory_U(UNICODE_STRING *pusFullyQualifiedPath,PWSTR *pRootD
             {
                 ParseStartPos = 2;
             }
+
+            //  not supported:
+            //  "\\Computer\ShareName\Foo\Bar" - Win32 Lanman UNC
+            // 
         }
     }
 
@@ -958,44 +995,11 @@ PWSTR DosPathNameToNtPathName_W(PCWSTR pszDosPath)
 
 NTSTATUS GetFileNamePart_U(__in UNICODE_STRING *FilePath,__out UNICODE_STRING *FileName)
 {
-    NTSTATUS Status;
-    ULONG cch = 0;
-
-    if( FilePath == NULL || FilePath->Length == 0 )
-    {
-        return STATUS_INVALID_PARAMETER;
-    }
-
-    if( IsRelativePath_U(FilePath) )
-    {
-        int i,len = WCHAR_LENGTH(FilePath->Length);
-
-        for(i = (len - 1) ; i >= 0; i--) 
-        {
-            if( FilePath->Buffer[i] == L'\\' )
-            {
-                break;
-            }
-        }
-
-        FileName->Buffer = &FilePath->Buffer[i + 1];
-        FileName->Length = (USHORT)(len - i -1);
-
-        Status = STATUS_SUCCESS;
-    }
-    else
-    {
-        // "C:\foo\bar.txt", get length of "C:\foo\"
-        Status = RtlGetLengthWithoutLastFullDosOrNtPathElement(0,FilePath,&cch);
-
-        if( Status == STATUS_SUCCESS )
-        {
-            FileName->Length = FileName->MaximumLength = FilePath->Length - (USHORT)(cch * sizeof(WCHAR));
-            FileName->Buffer = &FilePath->Buffer[cch];
-        }
-    }
-
-    return Status;
+	UNICODE_STRING Path;
+	if( FilePath == NULL || FileName == NULL )
+		return STATUS_INVALID_PARAMETER;
+	Path = *FilePath;
+	return SplitPathFileName_U(&Path,FileName);
 }
 
 NTSTATUS SplitPathFileName_W(PCWSTR pszPath,UNICODE_STRING *Path,UNICODE_STRING *FileName)
@@ -1004,17 +1008,53 @@ NTSTATUS SplitPathFileName_W(PCWSTR pszPath,UNICODE_STRING *Path,UNICODE_STRING 
     UNICODE_STRING usPath = {0};
     UNICODE_STRING usFileName = {0};
 
-    // todo:
-    // We have limited up to 32767 characters.
-    RtlInitUnicodeString(&usPath,pszPath);
+    SIZE_T cch = wcslen(pszPath);
 
-    Status = SplitPathFileName_U(&usPath,&usFileName);
+    if( cch < 32768 )
+    {
+        // todo:
+        // We have limited up to 32767 characters.
+        RtlInitUnicodeString(&usPath,pszPath);
 
-    if( Path )
-        *Path = usPath;
-    if( FileName )
-        *FileName = usFileName;
+        Status = SplitPathFileName_U(&usPath,&usFileName);
 
+        if( Path )
+            *Path = usPath;
+        if( FileName )
+            *FileName = usFileName;
+    }
+    else
+    {
+        UNICODE_STRING VolumeName = {};
+        UNICODE_STRING VolumeRelativePath = {};
+        if( !SplitVolumeRelativePath(pszPath,&VolumeName,&VolumeRelativePath) )
+            return STATUS_NAME_TOO_LONG;
+
+        Status = SplitPathFileName_U(&VolumeRelativePath,&usFileName);
+
+        if( Status == STATUS_SUCCESS )
+        {
+            int cbLength = VolumeName.Length + VolumeRelativePath.Length;
+            int cbMaximumLength = VolumeName.MaximumLength + VolumeRelativePath.MaximumLength;
+            if( cbLength < 65535 && cbMaximumLength < 65535 )
+            {
+                if( Path )
+                {
+                    *Path = VolumeName;
+                    Path->Length = (USHORT)cbLength;
+                    Path->MaximumLength = (USHORT)cbMaximumLength;
+                }
+                if( FileName )
+                {
+                    *FileName = usFileName;
+                }
+            }
+            else
+            {
+                Status = STATUS_NAME_TOO_LONG;
+            }
+        }
+    }
     return Status;
 }
 
@@ -1108,6 +1148,7 @@ BOOLEAN SplitRootRelativePath_U(UNICODE_STRING *pusFullPath,UNICODE_STRING *Root
         RootRelativePath->MaximumLength = (USHORT)(cbFullPath - usRootDirectory.MaximumLength);
         RootRelativePath->Buffer        = (PWCH)&pusFullPath->Buffer[ WCHAR_LENGTH(usRootDirectory.Length) ];
     }
+
 #ifdef _DEBUG
     UNICODE_STRING us1,us2;
     if( RootDirectory ) {
@@ -1125,9 +1166,70 @@ BOOLEAN SplitRootRelativePath_U(UNICODE_STRING *pusFullPath,UNICODE_STRING *Root
 
 BOOLEAN SplitRootRelativePath(PCWSTR pszFullPath,UNICODE_STRING *RootDirectory,UNICODE_STRING *RootRelativePath)
 {
-    UNICODE_STRING usFullPath;
-    RtlInitUnicodeString(&usFullPath,pszFullPath);
-    return SplitRootRelativePath_U(&usFullPath,RootDirectory,RootRelativePath);
+    SIZE_T cbFullPath = wcslen(pszFullPath);
+
+    cbFullPath *= sizeof(WCHAR);
+
+    if( cbFullPath < 65536 )
+    {
+        UNICODE_STRING usFullPath;
+        RtlInitUnicodeString(&usFullPath,pszFullPath);
+        return SplitRootRelativePath_U(&usFullPath,RootDirectory,RootRelativePath);
+    }
+
+    UNICODE_STRING usRootDirectory;
+
+    // The overflow length truncated, and the byte count is stored.
+    // Because, at this stage, it is sufficient to simply determine 
+    // the byte count of the root directory name.
+    RtlInitUnicodeString(&usRootDirectory,pszFullPath); 
+
+    if( !GetRootDirectory_U(&usRootDirectory) )
+    {
+        return FALSE;
+    }
+
+    if( RootDirectory )
+    {
+        *RootDirectory = usRootDirectory;
+    }
+
+    int cb = (int)cbFullPath;
+
+    if( cb == usRootDirectory.Length )
+    {
+        if( RootRelativePath )
+        {
+            RootRelativePath->Length = RootRelativePath->MaximumLength = 0;
+            RootRelativePath->Buffer = NULL;
+        }
+        return TRUE;
+    }
+
+    if( RootRelativePath )
+    {
+        if( ((cb - usRootDirectory.Length) >= 65535) || ((cb - usRootDirectory.MaximumLength) >= 65535) )
+        {
+            return FALSE;
+        }
+        RootRelativePath->Length        = (USHORT)(cb - usRootDirectory.Length);
+        RootRelativePath->MaximumLength = (USHORT)(cb - usRootDirectory.MaximumLength);
+        RootRelativePath->Buffer        = (PWCH)&pszFullPath[ WCHAR_LENGTH(usRootDirectory.Length) ];
+    }
+
+#ifdef _DEBUG
+    UNICODE_STRING us1,us2;
+    if( RootDirectory ) {
+        if( RtlDuplicateUnicodeString(0x3,RootDirectory,&us1) == STATUS_SUCCESS )
+            RtlFreeUnicodeString(&us1);
+    }
+    if( RootRelativePath ) {
+        if( RtlDuplicateUnicodeString(0x3,RootRelativePath,&us2) == STATUS_SUCCESS )
+            RtlFreeUnicodeString(&us2);
+    }
+#endif
+
+    return TRUE;
 }
 
 BOOLEAN SplitVolumeRelativePath_U(UNICODE_STRING *FullPath,UNICODE_STRING *VolumeName,UNICODE_STRING *VolumeRelativePath)
@@ -1146,11 +1248,11 @@ BOOLEAN SplitVolumeRelativePath_U(UNICODE_STRING *FullPath,UNICODE_STRING *Volum
 
     if( cb == usVolumeName.Length )
     {
-		if( VolumeRelativePath )
-		{
-	        VolumeRelativePath->Length = VolumeRelativePath->MaximumLength = 0;
-		    VolumeRelativePath->Buffer = NULL;
-		}
+        if( VolumeRelativePath )
+        {
+            VolumeRelativePath->Length = VolumeRelativePath->MaximumLength = 0;
+            VolumeRelativePath->Buffer = NULL;
+        }
         return TRUE;
     }
 
@@ -1160,6 +1262,7 @@ BOOLEAN SplitVolumeRelativePath_U(UNICODE_STRING *FullPath,UNICODE_STRING *Volum
         VolumeRelativePath->MaximumLength = (USHORT)(cb - usVolumeName.MaximumLength);
         VolumeRelativePath->Buffer        = (PWCH)&FullPath->Buffer[ WCHAR_LENGTH(usVolumeName.Length) ];
     }
+
 #ifdef _DEBUG
     UNICODE_STRING us1,us2;
     RtlDuplicateUnicodeString(0x3,VolumeName,&us1);
@@ -1173,31 +1276,32 @@ BOOLEAN SplitVolumeRelativePath_U(UNICODE_STRING *FullPath,UNICODE_STRING *Volum
 
 BOOLEAN SplitVolumeRelativePath(PCWSTR pszFullPath,UNICODE_STRING *VolumeName,UNICODE_STRING *VolumeRelativePath)
 {
-	SIZE_T cbFullPath = wcslen(pszFullPath);
+    SIZE_T cbFullPath;
+    SIZE_T cchFullPath = wcslen(pszFullPath);
 
-	cbFullPath *= sizeof(WCHAR);
+    cbFullPath = cchFullPath * sizeof(WCHAR);
 
-	if( cbFullPath < 65536 )
-	{
-	    UNICODE_STRING usFullPath;
-		RtlInitUnicodeString(&usFullPath,pszFullPath);
-		return SplitVolumeRelativePath_U(&usFullPath,VolumeName,VolumeRelativePath);
-	}
+    if( cbFullPath < 65536 )
+    {
+        UNICODE_STRING usFullPath;
+        RtlInitUnicodeString(&usFullPath,pszFullPath);
+        return SplitVolumeRelativePath_U(&usFullPath,VolumeName,VolumeRelativePath);
+    }
 
     UNICODE_STRING usVolumeName;
 
-	// The overflow length truncated, and the byte count is stored.
-	// Because, at this stage, it is sufficient to simply determine 
-	// the byte count of the volume name.
-	RtlInitUnicodeString(&usVolumeName,pszFullPath); 
+    // The overflow length truncated, and the byte count is stored.
+    // Because, at this stage, it is sufficient to simply determine 
+    // the byte count of the volume name.
+    RtlInitUnicodeString(&usVolumeName,pszFullPath); 
 
     if( !GetVolumeName_U(&usVolumeName) )
     {
         return FALSE;
     }
 
-	// Adjust the MaximumLength, truncate on unnecessary length.
-	usVolumeName.MaximumLength = usVolumeName.Length;
+    // Adjust the MaximumLength, truncate on unnecessary length.
+    usVolumeName.MaximumLength = usVolumeName.Length;
 
     if( VolumeName )
         *VolumeName = usVolumeName;
@@ -1206,35 +1310,37 @@ BOOLEAN SplitVolumeRelativePath(PCWSTR pszFullPath,UNICODE_STRING *VolumeName,UN
 
     if( cb == usVolumeName.Length )
     {
-		if( VolumeRelativePath )
-		{
-	        VolumeRelativePath->Length = VolumeRelativePath->MaximumLength = 0;
-		    VolumeRelativePath->Buffer = NULL;
-		}
+        if( VolumeRelativePath )
+        {
+            VolumeRelativePath->Length = VolumeRelativePath->MaximumLength = 0;
+            VolumeRelativePath->Buffer = NULL;
+        }
         return TRUE;
     }
 
     if( VolumeRelativePath )
     {
-		if( ((cb - usVolumeName.Length) >= 65535) || ((cb - usVolumeName.MaximumLength) >= 65535) )
-		{
-			return FALSE;
-		}
+        if( ((cb - usVolumeName.Length) >= 65535) || ((cb - usVolumeName.MaximumLength) >= 65535) )
+        {
+            return FALSE;
+        }
         VolumeRelativePath->Length        = (USHORT)(cb - usVolumeName.Length);
         VolumeRelativePath->MaximumLength = (USHORT)(cb - usVolumeName.MaximumLength);
         VolumeRelativePath->Buffer        = (PWCH)&pszFullPath[ WCHAR_LENGTH(usVolumeName.Length) ];
     }
+
 #ifdef _DEBUG
     UNICODE_STRING us1={},us2={};
-	NTSTATUS sts1,sts2;
+    NTSTATUS sts1,sts2;
     sts1 = RtlDuplicateUnicodeString(0x3,VolumeName,&us1);
     sts2 = RtlDuplicateUnicodeString(0x3,VolumeRelativePath,&us2);
-	if( sts1 == STATUS_SUCCESS )
-		RtlFreeUnicodeString(&us1);
-	if( sts2 == STATUS_SUCCESS )
-		RtlFreeUnicodeString(&us2);
+    if( sts1 == STATUS_SUCCESS )
+        RtlFreeUnicodeString(&us1);
+    if( sts2 == STATUS_SUCCESS )
+        RtlFreeUnicodeString(&us2);
 #endif
-	return TRUE;
+
+    return TRUE;
 }
 
 BOOLEAN IsLastCharacterBackslash_U(UNICODE_STRING *pusPath)
@@ -1418,31 +1524,31 @@ PWSTR CombinePath_U(PCWSTR pszPath,UNICODE_STRING *pusFileName)
 
 PWSTR CombineVolumePath(PCWSTR pcwszVolume,PCWSTR pcwszVolumeRelativePath,PCWSTR pcwszFileName)
 {
-	//
-	// Parameters:
-	//
-	// pcwszVolume - "\Device\HarddiskVolumeX", "\??\C:", "\??\HarddiskVolume"
-	//
-	// pcwszVolumeRelativePath - "\", "\foo", "\foo\bar"
-	//
-	// pcwszFileName - "Filename.txt"
-	//
-	// Does not check for file existence and validation of path format.
-	//
+    //
+    // Parameters:
+    //
+    // pcwszVolume - "\Device\HarddiskVolumeX", "\??\C:", "\??\HarddiskVolume"
+    //
+    // pcwszVolumeRelativePath - "\", "\foo", "\foo\bar"
+    //
+    // pcwszFileName - "Filename.txt"
+    //
+    // Does not check for file existence and validation of path format.
+    //
     WCHAR *psz;
     SIZE_T cch;
-	SIZE_T cchVolume;
-	SIZE_T cchPath;
-	SIZE_T cchFileName;
+    SIZE_T cchVolume;
+    SIZE_T cchPath;
+    SIZE_T cchFileName;
 
     cch = 0;
-	psz = NULL;
+    psz = NULL;
 
-	cchVolume = wcslen(pcwszVolume);
-	cchPath = wcslen(pcwszVolumeRelativePath);
-	if( !IsLastCharacterBackslash(pcwszVolumeRelativePath) )
-		cchPath++;
-	cchFileName = wcslen(pcwszFileName);
+    cchVolume = wcslen(pcwszVolume);
+    cchPath = wcslen(pcwszVolumeRelativePath);
+    if( !IsLastCharacterBackslash(pcwszVolumeRelativePath) )
+        cchPath++;
+    cchFileName = wcslen(pcwszFileName);
 
     cch = cchVolume + cchPath + cchFileName + 1;
     psz = AllocStringBuffer((ULONG)cch);
@@ -1451,8 +1557,8 @@ PWSTR CombineVolumePath(PCWSTR pcwszVolume,PCWSTR pcwszVolumeRelativePath,PCWSTR
     {
         StringCchCopy(psz,cch,pcwszVolume);
         StringCchCat(psz,cch,pcwszVolumeRelativePath);
-		if( !IsLastCharacterBackslash(pcwszVolumeRelativePath) )
-	        StringCchCat(psz,cch,L"\\");
+        if( !IsLastCharacterBackslash(pcwszVolumeRelativePath) )
+            StringCchCat(psz,cch,L"\\");
         StringCchCat(psz,cch,pcwszFileName);
     }
 

@@ -25,68 +25,6 @@
 #include "..\libntwdk\ntpathcomponent.h"
 #include "ntobjecthelp.h"
 
-//----------------------------------------------------------------------------
-//
-//  NtMoveDirectoryEntry()
-//
-//  PURPOSE:
-//
-//----------------------------------------------------------------------------
-EXTERN_C
-LONG
-NTAPI
-NtMoveDirectoryEntry(
-	HANDLE hExistingDirectory,
-	PCWSTR pszExistingFileName,
-	HANDLE hDestinationDirectory,
-	PCWSTR pszNewFileName,
-	BOOLEAN ReplaceIfExists
-	)
-{
-	NTSTATUS Status;
-	HANDLE hSrcFile;
-	UNICODE_STRING us;
-
-	if( hExistingDirectory == NULL || pszExistingFileName == NULL || 
-		hDestinationDirectory == NULL || pszNewFileName == NULL )
-	{
-		_SetLastStatusDos( STATUS_INVALID_PARAMETER );
-		return STATUS_INVALID_PARAMETER;
-	}
-
-	ULONG cbMoveBufferLength = sizeof(FILE_RENAME_INFORMATION) + WIN32_MAX_PATH_BYTES;
-	FILE_RENAME_INFORMATION *pMoveBuffer = (FILE_RENAME_INFORMATION *)AllocMemory( cbMoveBufferLength );
-
-	RtlInitUnicodeString(&us,pszExistingFileName);
-
-	//
-	// Target source file handle is must be source directory relative open.
-	//
-	Status = OpenFile_U(&hSrcFile,hExistingDirectory,
-					&us,
-					FILE_GENERIC_READ|FILE_GENERIC_WRITE|DELETE,
-					FILE_SHARE_READ|FILE_SHARE_WRITE,
-					FILE_OPEN_FOR_BACKUP_INTENT);
-
-	if( Status == STATUS_SUCCESS )
-	{
-		IO_STATUS_BLOCK IoStatus;
-
-		pMoveBuffer->ReplaceIfExists = ReplaceIfExists;
-		pMoveBuffer->RootDirectory   = hDestinationDirectory;
-		pMoveBuffer->FileNameLength  = us.Length;
-		RtlCopyMemory(pMoveBuffer->FileName,us.Buffer,us.Length);
-
-		Status = NtSetInformationFile(hSrcFile,&IoStatus,pMoveBuffer,cbMoveBufferLength,FileRenameInformation);
-
-		NtClose(hSrcFile);
-	}
-
-	_SetLastStatusDos( Status );
-
-	return Status;
-}
-
 //---------------------------------------------------------------------------
 //
 //  NtPathLookupDeviceNameFromPath()

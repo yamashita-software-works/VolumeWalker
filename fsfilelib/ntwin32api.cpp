@@ -19,8 +19,6 @@
 #include "..\libntwdk\ntnativeapi.h"
 #include "..\libntwdk\ntobjecthelp.h"
 
-#include "..\libntwdk\ntnativeapi.h"
-
 EXTERN_C
 BOOL
 WINAPI
@@ -45,7 +43,7 @@ NtDosCopyFileEx(
         ExistingFileName = AllocStringBuffer( cch );
         if( ExistingFileName )
         {
-			// Skip prefix "\Device\" and replace to "\??\".
+            // Skip prefix "\Device\" and replace to "\??\".
             if( !(StringCchCopy(ExistingFileName,cch,L"\\??\\") == S_OK &&
                   StringCchCat(ExistingFileName,cch,&lpExistingFileName[8]) == S_OK) )
             {
@@ -72,7 +70,7 @@ NtDosCopyFileEx(
         NewFileName = AllocStringBuffer( cch );
         if( NewFileName )
         {
-			// Skip prefix "\Device\" and replace to "\??\".
+            // Skip prefix "\Device\" and replace to "\??\".
             if( !(StringCchCopy(NewFileName,cch,L"\\??\\") == S_OK &&
                   StringCchCat(NewFileName,cch,&lpNewFileName[8]) == S_OK) )
             {
@@ -119,7 +117,7 @@ WINAPI
 NtDosRenameFile(
     __in LPCWSTR lpExistingFileName,
     __in LPCWSTR lpNewFileName,
-	__in DWORD dwFlags
+    __in DWORD dwFlags
     )
 {
     BOOL bSuccess = FALSE;
@@ -134,7 +132,7 @@ NtDosRenameFile(
         ExistingFileName = AllocStringBuffer( cch );
         if( ExistingFileName )
         {
-			// Skip prefix "\Device\" and replace to "\??\".
+            // Skip prefix "\Device\" and replace to "\??\".
             if( !(StringCchCopy(ExistingFileName,cch,L"\\??\\") == S_OK &&
                   StringCchCat(ExistingFileName,cch,&lpExistingFileName[8]) == S_OK) )
             {
@@ -161,7 +159,7 @@ NtDosRenameFile(
         NewFileName = AllocStringBuffer( cch );
         if( NewFileName )
         {
-			// Skip prefix "\Device\" and replace to "\??\".
+            // Skip prefix "\Device\" and replace to "\??\".
             if( !(StringCchCopy(NewFileName,cch,L"\\??\\") == S_OK &&
                   StringCchCat(NewFileName,cch,&lpNewFileName[8]) == S_OK) )
             {
@@ -187,8 +185,8 @@ NtDosRenameFile(
                     dwFlags
                     );
 
-	if( !bSuccess )
-		dwWin32Error = GetLastError();
+    if( !bSuccess )
+        dwWin32Error = GetLastError();
 
 _cleanup:
 
@@ -219,7 +217,7 @@ NtDosDeleteFile(
         ExistingFileName = AllocStringBuffer( cch );
         if( ExistingFileName )
         {
-			// Skip prefix "\Device\" and replace to "\??\".
+            // Skip prefix "\Device\" and replace to "\??\".
             if( !(StringCchCopy(ExistingFileName,cch,L"\\??\\") == S_OK &&
                   StringCchCat(ExistingFileName,cch,&lpFileName[8]) == S_OK) )
             {
@@ -239,10 +237,10 @@ NtDosDeleteFile(
         goto _cleanup;
     }
 
-	bSuccess = DeleteFile( ExistingFileName );
+    bSuccess = DeleteFile( ExistingFileName );
 
-	if( !bSuccess )
-		dwWin32Error = GetLastError();
+    if( !bSuccess )
+        dwWin32Error = GetLastError();
 
 _cleanup:
 
@@ -250,7 +248,7 @@ _cleanup:
 
     SetLastError( dwWin32Error );
 
-	return bSuccess;
+    return bSuccess;
 }
 
 EXTERN_C
@@ -272,7 +270,7 @@ NtDosRemoveDirectory(
         ExistingFileName = AllocStringBuffer( cch );
         if( ExistingFileName )
         {
-			// Skip prefix "\Device\" and replace to "\??\".
+            // Skip prefix "\Device\" and replace to "\??\".
             if( !(StringCchCopy(ExistingFileName,cch,L"\\??\\") == S_OK &&
                   StringCchCat(ExistingFileName,cch,&lpPathName[8]) == S_OK) )
             {
@@ -292,10 +290,10 @@ NtDosRemoveDirectory(
         goto _cleanup;
     }
 
-	bSuccess = RemoveDirectory( ExistingFileName );
+    bSuccess = RemoveDirectory( ExistingFileName );
 
-	if( !bSuccess )
-		dwWin32Error = GetLastError();
+    if( !bSuccess )
+        dwWin32Error = GetLastError();
 
 _cleanup:
 
@@ -303,7 +301,7 @@ _cleanup:
 
     SetLastError( dwWin32Error );
 
-	return bSuccess;
+    return bSuccess;
 }
 
 EXTERN_C
@@ -311,7 +309,7 @@ BOOL
 WINAPI
 NtDosSetFileAttributes(
     __in LPCWSTR lpFileName,
-	__in DWORD FileAttributes
+    __in DWORD FileAttributes
     )
 {
     BOOL bSuccess = FALSE;
@@ -326,7 +324,7 @@ NtDosSetFileAttributes(
         ExistingFileName = AllocStringBuffer( cch );
         if( ExistingFileName )
         {
-			// Skip prefix "\Device\" and replace to "\??\".
+            // Skip prefix "\Device\" and replace to "\??\".
             if( !(StringCchCopy(ExistingFileName,cch,L"\\??\\") == S_OK &&
                   StringCchCat(ExistingFileName,cch,&lpFileName[8]) == S_OK) )
             {
@@ -346,10 +344,10 @@ NtDosSetFileAttributes(
         goto _cleanup;
     }
 
-	bSuccess = SetFileAttributesW( ExistingFileName, FileAttributes );
+    bSuccess = SetFileAttributesW( ExistingFileName, FileAttributes );
 
-	if( !bSuccess )
-		dwWin32Error = GetLastError();
+    if( !bSuccess )
+        dwWin32Error = GetLastError();
 
 _cleanup:
 
@@ -357,5 +355,5 @@ _cleanup:
 
     SetLastError( dwWin32Error );
 
-	return bSuccess;
+    return bSuccess;
 }

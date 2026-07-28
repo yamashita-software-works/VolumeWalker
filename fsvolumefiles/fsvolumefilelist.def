@@ -2,3 +2,4 @@ LIBRARY "fsvolumefiles"
 
 EXPORTS
 	CreateVolumeFileList
+	LaunchPadDialog

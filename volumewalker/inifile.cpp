@@ -299,6 +299,10 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 			}
 		}
 	}
+	else
+	{
+		SendMessage(hwndView,PM_SAVECONFIG,0,(LPARAM)&svc);
+	}
 
 	if( wndGuid.Data1 == VOLUME_CONSOLE_SIMPLEHEXDUMP )
 	{

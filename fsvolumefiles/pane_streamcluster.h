@@ -214,6 +214,10 @@ protected:
 		HANDLE hFile;
 		NTSTATUS Status;
 		UNICODE_STRING RootDir;
+
+		if( pszFilePath == NULL )
+			return;
+
 		SplitRootRelativePath(pszFilePath,&RootDir,NULL);
 
 		if( (Status = OpenFile_U(&hFile,NULL,&RootDir,FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE,0)) == 0 )

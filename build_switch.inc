@@ -56,3 +56,7 @@
 #ifndef _ENABLE_TOOL_DISKIMAGE_WRITEBACK
 #define _ENABLE_TOOL_DISKIMAGE_WRITEBACK    1
 #endif
+
+#ifndef _ENABLE_TOOL_LAUNCHPAD
+#define _ENABLE_TOOL_LAUNCHPAD              1
+#endif

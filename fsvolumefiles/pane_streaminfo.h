@@ -27,9 +27,6 @@ typedef struct _STREAM_LIST_ITEM
 	int iGroup;
 	int iItem;
 	UINT Type;
-#if 0
-	FS_CLUSTER_INFORMATION *pClusterInfo;
-#endif
 } STREAM_LIST_ITEM;
 
 class CStreamInformationWindow : public CBaseWindow
@@ -79,7 +76,7 @@ public:
 	{
 	}
 
-	void FreeStreaBuffer()
+	void FreeStreamBuffer()
 	{
 		LocalFree(m_stmAttributesStream.StreamInformation);
 		m_stmAttributesStream.StreamInformation = NULL;
@@ -117,7 +114,7 @@ protected:
 			DeleteObject(m_hFont);
 		if( m_hFontHeader )
 			DeleteObject(m_hFont);
-		FreeStreaBuffer();
+		FreeStreamBuffer();
 		_SafeMemFree(m_pszErrorMessage);
 		_SafeMemFree( m_pszFilePath );
 		return 0;
@@ -268,18 +265,6 @@ protected:
 				case 2:
 					_CommaFormatString(pItem->pStreamInformation->StreamAllocationSize.QuadPart,pnmlvdi->item.pszText);
 					break;
-#if 0
-				case 3:
-					if( pItem->pClusterInfo && (pItem->pClusterInfo->ExtentCount > 0) )
-					{
-						StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%I64X",pItem->pClusterInfo->Extents[0].Lcn.QuadPart);
-					}
-					else
-					{
-						StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"-");
-					}
-					break;
-#endif
 			}
 		}
 		return 0;
@@ -292,10 +277,7 @@ protected:
 		STREAM_LIST_ITEM *pItem = (STREAM_LIST_ITEM*)pnmlv->lParam;
 
 		_SafeMemFree(pItem->pszDisplayName);
-#if 0
-		if( pItem->pClusterInfo )
-			FreeClusterInformation( pItem->pClusterInfo );
-#endif
+
 		delete pItem;
 
 		return 0;
@@ -376,22 +358,6 @@ protected:
 			case 2:
 				iRet = _COMP(pItem1->pStreamInformation->StreamAllocationSize.QuadPart,pItem2->pStreamInformation->StreamAllocationSize.QuadPart);
 				break;
-#if 0
-			case 3:
-			{
-				#define	_VALID_ITEM(pItem)	(pItem->pClusterInfo && (pItem->pClusterInfo->ExtentCount > 0))
-				if( !_VALID_ITEM(pItem1) && _VALID_ITEM(pItem2) )
-					return 1;
-				else if( _VALID_ITEM(pItem1) && !_VALID_ITEM(pItem2) )
-					return -1;
-				else if( !_VALID_ITEM(pItem1) && !_VALID_ITEM(pItem2) )
-					return 0;
-				else
-				{
-					iRet = _COMP(pItem1->pClusterInfo->Extents[0].Lcn.QuadPart,pItem2->pClusterInfo->Extents[0].Lcn.QuadPart);
-				}
-			}
-#endif
 		}
 
 		iRet *= psp->direction; 
@@ -529,10 +495,6 @@ protected:
 		WCHAR szName[MAX_PATH];
 		StringCchCopy(szName,MAX_PATH,pSI->StreamName);
 
-		//if( wcscmp(szName,L"::$DATA") == 0 )
-		//{
-		//	pItem->pszDisplayName = _MemAllocString( L"$DATA" );
-		//}
 		if( szName[0] == L':' && szName[1] == L':' )
 		{
 			// default (no name) stream
@@ -554,19 +516,6 @@ protected:
 			}
 		}
 
-#if 0
-		PWSTR pszFullyQualifiedStreamName = _MemAllocStringCat(m_pszFilePath,pSI->StreamName);
-		if( pszFullyQualifiedStreamName )
-		{
-			FS_CLUSTER_INFORMATION *pFCI = CreateClusterInformationBuffer(pszFullyQualifiedStreamName);
-			if( pFCI )
-			{
-				pItem->pClusterInfo = pFCI;
-			}
-			_SafeMemFree(pszFullyQualifiedStreamName);
-		}
-#endif
-
 		LVITEM lvi = {0};
 		lvi.mask    = LVIF_PARAM|LVIF_TEXT|LVIF_IMAGE;
 		lvi.pszText = (PWSTR)LPSTR_TEXTCALLBACK;
@@ -577,17 +526,6 @@ protected:
 	
 		return iItem;
 	}
-
-	//VOID FillListItems()
-	//{
-	//	ULONG index;
-	//	for(index = 0; index < m_StreamCount; index++)
-	//	{
-	//		InsertItem(m_hWndList,index,0,&m_pStreamInformation[index],0);
-	//	}
-	//
-	//	DoSort(m_Sort.CurrentSubItem,FALSE);
-	//}
 
 	void makeErrorMessage( PCWSTR psz )
 	{
@@ -635,7 +573,6 @@ protected:
 			return 0;
 		}
 
-		// 
 		{
 			HANDLE hFile;
 			NTSTATUS Status;
@@ -663,7 +600,7 @@ protected:
 			return 0;
 		}
 
-		FreeStreaBuffer();
+		FreeStreamBuffer();
 
 		HRESULT hr;
 		NT_FILE_STREAM_INFORMATION_EX *pStmNames = NULL;

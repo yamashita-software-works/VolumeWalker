@@ -111,9 +111,11 @@ SOURCES = \
 	dialog_information_cluster.cpp\
 	dialog_information_stream.cpp\
 	dialog_recyclebin_files.cpp\
+	dialog_launchpad.cpp\
 	apps.cpp\
 	meterbox.cpp\
 	shellwindow.cpp\
+	externaltools.cpp\
 	fsvolumefilelist.rc
 
 #----------------------------------------------------------

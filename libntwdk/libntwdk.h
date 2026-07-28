@@ -195,6 +195,26 @@ GetFileId(
     LARGE_INTEGER *pFildId
     );
 
+EXTERN_C
+NTSTATUS
+NTAPI
+GetFileNameInformation(
+    HANDLE FileHandle,
+    PWSTR FileName,
+    ULONG FileNameLength,
+    PULONG ReturnLength
+    );
+
+EXTERN_C
+NTSTATUS
+NTAPI
+GetShortFileNameInformation(
+    HANDLE FileHandle,
+    PWSTR FileName,
+    ULONG FileNameLength
+    );
+
+
 #ifndef _WINDOWS_
 // win32 compatible SYSTEMTIME structure
 typedef struct _SYSTEMTIME {

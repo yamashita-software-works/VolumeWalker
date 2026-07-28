@@ -206,8 +206,8 @@ SplitRootPath_W(
     {
         *RootDirectory = AllocStringBuffer(cchRoot+1);
         memcpy(*RootDirectory,pszFullyQualifiedPath,cchRoot*sizeof(WCHAR));
-		if( *RootDirectory )
-			(*RootDirectory)[cchRoot] = L'\0';
+        if( *RootDirectory )
+            (*RootDirectory)[cchRoot] = L'\0';
     }
 
     if( RootDirectoryLength )
@@ -301,10 +301,10 @@ OpenFileEx_W(
     {
         hRoot = NULL;
         RelativePath = DuplicateString(PathName);
-		if( RelativePath != NULL )
-			Status = STATUS_SUCCESS;
-		else
-			Status = STATUS_NO_MEMORY;
+        if( RelativePath != NULL )
+            Status = STATUS_SUCCESS;
+        else
+            Status = STATUS_NO_MEMORY;
     }
 #endif
 
@@ -648,10 +648,10 @@ NTSTATUS GetFileAttributes_W( HANDLE RootHandle, PCWSTR FilePath,  ULONG *pulFil
                         FILE_SHARE_READ|FILE_SHARE_WRITE,
                         FILE_OPEN_REPARSE_POINT|FILE_SYNCHRONOUS_IO_NONALERT);
     }
-	else
-	{
+    else
+    {
         return STATUS_INVALID_PARAMETER;
-	}
+    }
 
     if( Status == STATUS_SUCCESS )
     {
@@ -699,10 +699,10 @@ NTSTATUS SetFileAttributes_W(HANDLE RootHandle, PCWSTR FilePath,  ULONG ulFileAt
                         FILE_SHARE_READ|FILE_SHARE_WRITE,
                         FILE_OPEN_REPARSE_POINT|FILE_SYNCHRONOUS_IO_NONALERT);
     }
-	else
-	{
+    else
+    {
         return STATUS_INVALID_PARAMETER;
-	}
+    }
 
     if( Status == STATUS_SUCCESS )
     {
@@ -1322,6 +1322,64 @@ MoveDirectoryEntry(
 
 //----------------------------------------------------------------------------
 //
+//  MoveDirectoryEntryEx_W()
+//
+//----------------------------------------------------------------------------
+EXTERN_C
+NTSTATUS
+NTAPI
+MoveDirectoryEntryEx_W(
+    HANDLE hExistingDirectory,
+    PCWSTR pszExistingFileName,
+    HANDLE hDestinationDirectory,
+    PCWSTR pszNewFileName,
+    BOOLEAN ReplaceIfExists
+    )
+{
+    NTSTATUS Status;
+    HANDLE hSrcFile;
+
+    ULONG cbMoveBufferLength = sizeof(FILE_RENAME_INFORMATION) + WIN32_MAX_PATH_BYTES;
+    FILE_RENAME_INFORMATION *pMoveBuffer = (FILE_RENAME_INFORMATION *)AllocMemory( cbMoveBufferLength );
+
+	if( hExistingDirectory != NULL )
+	{
+		Status = OpenFile_W(&hSrcFile,hExistingDirectory,
+			            pszExistingFileName,
+				        FILE_GENERIC_READ|FILE_GENERIC_WRITE|DELETE,
+					    FILE_SHARE_READ|FILE_SHARE_WRITE,
+						FILE_OPEN_FOR_BACKUP_INTENT);
+	}
+	else
+	{
+		Status = OpenFileEx_W(&hSrcFile,
+	                    pszExistingFileName,
+		                FILE_GENERIC_READ|FILE_GENERIC_WRITE|DELETE,
+			            FILE_SHARE_READ|FILE_SHARE_WRITE,
+				        FILE_OPEN_FOR_BACKUP_INTENT);
+	}
+
+    if( Status == STATUS_SUCCESS )
+    {
+        IO_STATUS_BLOCK IoStatus;
+
+        pMoveBuffer->ReplaceIfExists = ReplaceIfExists;
+        pMoveBuffer->RootDirectory   = hDestinationDirectory;
+        pMoveBuffer->FileNameLength  = WCHAR_BYTES((ULONG)wcslen(pszNewFileName));
+        RtlCopyMemory(pMoveBuffer->FileName,pszNewFileName,pMoveBuffer->FileNameLength);
+
+        Status = NtSetInformationFile(hSrcFile,&IoStatus,pMoveBuffer,cbMoveBufferLength,FileRenameInformation);
+
+        NtClose(hSrcFile);
+    }
+
+    _SetLastStatusDos( Status );
+
+    return Status;
+}
+
+//----------------------------------------------------------------------------
+//
 //  GetShortPath_W()
 //
 //----------------------------------------------------------------------------
@@ -1856,6 +1914,233 @@ GetAlternateStreamNames(
     }
 
     return Status;
+}
+
+//-----------------------------------------------------------------------------
+//
+//  GetFileNameInformation()
+//
+//  PURPOSE:
+//
+//-----------------------------------------------------------------------------
+EXTERN_C
+NTSTATUS
+NTAPI
+GetFileNameInformation(
+    HANDLE FileHandle,
+    PWSTR FileName,
+    ULONG FileNameLength,
+    PULONG ReturnLength
+    )
+{
+    FILE_NAME_INFORMATION *pfn;
+    IO_STATUS_BLOCK IoStatus = {0};
+    NTSTATUS Status;
+    ULONG cb = _NT_PATH_FULL_LENGTH_BYTES;
+    WCHAR *Buffer = (WCHAR *)AllocMemory( cb );
+    if( Buffer == NULL )
+    {
+        return ReturnNtStatusAndSetLastDosError(STATUS_NO_MEMORY);
+    }
+
+    pfn = (FILE_NAME_INFORMATION *)Buffer;
+
+    Status = NtQueryInformationFile(FileHandle,&IoStatus,pfn,cb,FileNameInformation);
+
+    if( Status == STATUS_SUCCESS )
+    {
+        FileNameLength *= sizeof(WCHAR);
+
+        SIZE_T cb = min(FileNameLength,pfn->FileNameLength);
+        memcpy(FileName,pfn->FileName,cb);
+
+        FileName[ cb/sizeof(WCHAR) ] = L'\0';
+
+        if( ReturnLength )
+            *ReturnLength =(ULONG)WCHAR_LENGTH(cb);
+    }
+
+    FreeMemory(Buffer);
+
+    return ReturnNtStatusAndSetLastDosError(Status);
+}
+
+//-----------------------------------------------------------------------------
+//
+//  GetShortFileNameInformation()
+//
+//  PURPOSE:
+//
+//-----------------------------------------------------------------------------
+EXTERN_C
+NTSTATUS
+NTAPI
+GetShortFileNameInformation(
+    HANDLE FileHandle,
+    PWSTR FileName,
+    ULONG FileNameLength
+    )
+{
+    FILE_NAME_INFORMATION *pfn;
+    IO_STATUS_BLOCK IoStatus = {0};
+    NTSTATUS Status;
+    ULONG cb = _NT_MAX_PATH_LENGTH + _NT_MAX_VOLUME_LENGTH;
+    WCHAR *Buffer = (WCHAR *)AllocMemory( cb );
+    if( Buffer == NULL )
+    {
+        return ReturnNtStatusAndSetLastDosError(STATUS_NO_MEMORY);
+    }
+
+    pfn = (FILE_NAME_INFORMATION *)Buffer;
+
+    Status = NtQueryInformationFile(FileHandle,&IoStatus,pfn,cb,FileAlternateNameInformation);
+
+    if( Status == STATUS_SUCCESS )
+    {
+        FileNameLength *= sizeof(WCHAR);
+
+        SIZE_T cb = min(FileNameLength,pfn->FileNameLength);
+        memcpy(FileName,pfn->FileName,cb);
+
+        FileName[ cb/sizeof(WCHAR) ] = L'\0';
+    }
+
+    FreeMemory(Buffer);
+
+    return ReturnNtStatusAndSetLastDosError(Status);
+}
+
+//----------------------------------------------------------------------------
+//
+//  RenameFile_W()
+//
+//  PURPOSE:
+//
+//----------------------------------------------------------------------------
+EXTERN_C
+NTSTATUS
+NTAPI
+RenameFile_W(
+    HANDLE hRoot,
+    PCWSTR pszExistingFileName,
+    PCWSTR pszNewFileName
+    )
+{
+    NTSTATUS Status;
+    HANDLE hFile;
+    IO_STATUS_BLOCK IoStatus;
+
+    if( hRoot != NULL )
+    {
+        //
+        // Arguments specified are the hRoot handle with relative path.
+        //
+        UNICODE_STRING usExistingFileName;
+        RtlInitUnicodeString(&usExistingFileName,pszExistingFileName);
+
+        Status = OpenFile_U(&hFile,hRoot,
+                    &usExistingFileName,
+                    DELETE|FILE_READ_ATTRIBUTES,
+                    FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+                    FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT
+                    );
+    }
+    else
+    {
+        //
+        // Arguments is a fully-qualified path specified.
+        //
+        int cch = (int)wcslen(pszExistingFileName);
+
+        if( cch > _NT_PATH_FULL_LENGTH )
+        {
+            return ReturnNtStatusAndSetLastDosError( STATUS_NAME_TOO_LONG );
+        }
+
+        Status = OpenFileEx_W(&hFile,
+                        pszExistingFileName,
+                        SYNCHRONIZE|DELETE|FILE_READ_ATTRIBUTES,
+                        FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+                        FILE_OPEN_REPARSE_POINT|FILE_OPEN_FOR_BACKUP_INTENT|FILE_SYNCHRONOUS_IO_NONALERT);
+    }
+
+    if( Status == STATUS_SUCCESS )
+    {
+        // Prepare buffer for rename.
+        int cchNewName = (int)wcslen(pszNewFileName);
+        int cchRenamedNameLength = 0;
+
+        if( hRoot != NULL )
+        {
+            PCWSTR pFileName;
+            ULONG cchFileName;
+            pFileName = FindFileName_W(pszExistingFileName);
+            cchFileName = (ULONG)wcslen(pFileName);
+
+            int cchFullPath = (int)wcslen(pszExistingFileName);
+
+            //
+            // Makes new path length for after the rename.
+            //
+            cchRenamedNameLength = cchFullPath - cchFileName;
+            cchRenamedNameLength += cchNewName;
+        }
+        else
+        {
+            //
+            // Path is a fully-qualified.
+            //
+            cchRenamedNameLength = cchNewName;
+        }
+
+        //
+        // Checks new path length.
+        //
+        // NOTE: WARNING:
+        // If full-path with volume root path, might be over 32767.
+        // In this case, you specify to split volume and root relative path.
+        //
+        // BUGBUG!!:Windows7
+        // Avoid the BlueScreen!
+        // If renamed path is over than 32766 characters will occur crash and show blue screen.
+        //
+        if( cchRenamedNameLength > 32766 )
+        {
+            Status = STATUS_NAME_TOO_LONG;
+            goto _exit_rename;
+        } 
+
+        FILE_RENAME_INFORMATION *Rename;
+        ULONG BufferLength;
+
+        BufferLength = sizeof(FILE_RENAME_INFORMATION) + (cchNewName * sizeof(WCHAR));
+
+        Rename = (FILE_RENAME_INFORMATION *)AllocMemory(BufferLength);
+
+        if( Rename != NULL )
+        {
+            Rename->ReplaceIfExists = FALSE;
+            Rename->RootDirectory   = NULL;
+            Rename->FileNameLength  = cchNewName * sizeof(WCHAR);
+            memcpy(Rename->FileName,pszNewFileName,cchNewName * sizeof(WCHAR));
+
+            // Call file setting function with a rename.
+            Status = NtSetInformationFile(hFile,&IoStatus,Rename,BufferLength,FileRenameInformation);
+
+            FreeMemory(Rename);
+        }
+        else
+        {
+            Status =  STATUS_NO_MEMORY;
+        }
+_exit_rename:
+        NtClose(hFile);
+    }
+
+//  if( pNtFullPathBuffer != NULL )
+//      FreeMemory(pNtFullPathBuffer);
+
+    return ReturnNtStatusAndSetLastDosError( Status );
 }
 
 //----------------------------------------------------------------------------

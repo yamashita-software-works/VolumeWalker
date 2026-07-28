@@ -17,14 +17,13 @@
 #include "resource.h"
 #include "uilayout.h"
 #include "fsvolumefilelist.h"
-#include "pane_clusterinfo.h"
 #include "pane_streaminfo.h"
 
 #define ID_PANE  1
 
 static PCWSTR g_pszTitle =  L"Stream Information";
 
-typedef struct _CI_DIALOG_PARAM
+typedef struct _STMI_DIALOG_PARAM
 {
 	HWND hWndDialog;
 	HWND hWndHost;

@@ -130,6 +130,8 @@ VOID NTAPI _SetLastWin32Error(ULONG Win32ErrorCode);
 VOID NTAPI _SetLastNtStatus(NTSTATUS ntStatus);
 
 ULONG NTAPI SetLastErrorNtStatusToWin32(NTSTATUS ntStatus);
+NTSTATUS NTAPI ReturnNtStatusAndSetLastDosError(NTSTATUS ntStatus);
+ULONG NTAPI ReturnDosErrorAndSetLastNtStatus(NTSTATUS ntStatus);
 ULONG NTAPI NtStatusToDosError(NTSTATUS ntStatus);
 
 BOOLEAN _UStrMatchI(const WCHAR *ptn,const WCHAR *str,const WCHAR *end);
@@ -618,3 +620,12 @@ SetFileDateTime_W(
 #ifdef __cplusplus
 }
 #endif
+
+EXTERN_C
+NTSTATUS
+NTAPI
+RenameFile_W(
+	HANDLE hRoot,
+	PCWSTR pszExistingFileName,
+	PCWSTR pszNewFileName
+	);

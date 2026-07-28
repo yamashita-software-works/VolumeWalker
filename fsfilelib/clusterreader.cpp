@@ -481,7 +481,10 @@ CreateClusterInformationBuffer(
 	}
 	else
 	{
-		SplitPathFileName_W(pszFilePath,NULL,&usFileName);
+		if( SplitPathFileName_W(pszFilePath,NULL,&usFileName) != STATUS_SUCCESS )
+		{
+			return NULL;
+		}
 	}
 
 	PWSTR Path;
