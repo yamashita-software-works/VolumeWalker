@@ -278,7 +278,7 @@ static NTSTATUS callbackFile(UNICODE_STRING& usFileName,INT InfoType,PVOID pInfo
             return Status;
         }
 
-	    return pTDP->pfnCallback(FFCBR_FINDFILE,pTDP->GetFullPath(),pTDP->RefRelativeRootPtr(),&usFileName,0,InfoType,pInfoBuffer,pTDP->CallbackContext);
+        return pTDP->pfnCallback(FFCBR_FINDFILE,pTDP->GetFullPath(),pTDP->RefRelativeRootPtr(),&usFileName,0,InfoType,pInfoBuffer,pTDP->CallbackContext);
     }
 
     return STATUS_SUCCESS;
@@ -355,8 +355,8 @@ _TraverseDirectoryImpl(
                     NtPath->Buffer,
                     FILE_LIST_DIRECTORY|FILE_TRAVERSE|SYNCHRONIZE,
                     FILE_SHARE_READ|FILE_SHARE_WRITE,
-                    FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT
-                    // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 
+                    FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT|
+                    ((pTDP->Flags & DTF_NO_PROCESS_REPARSEPOINTS) ? FILE_OPEN_REPARSE_POINT : 0) // bypass reparse point processing for the file. 
                     );
     }
     else
@@ -368,8 +368,8 @@ _TraverseDirectoryImpl(
                     &ObjectAttributes,
                     &IoStatus,
                     FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
-                    FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT
-                    // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 
+                    FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT|
+                    ((pTDP->Flags & DTF_NO_PROCESS_REPARSEPOINTS) ? FILE_OPEN_REPARSE_POINT : 0) // bypass reparse point processing for the file. 
                     );
     }
 
@@ -412,17 +412,17 @@ _TraverseDirectoryImpl(
                         //
                         Status = callbackFile(FileName,pTDP->InfoType,ptr,pTDP);
 
-						if( Status == STATUS_SUCCESS )
-						{
-							if( pTDP->bRecursive && (FileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
-							{
-								pTDP->PushDirectory(FileName.Buffer,FileName.Length);
+                        if( Status == STATUS_SUCCESS )
+                        {
+                            if( pTDP->bRecursive && (FileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
+                            {
+                                pTDP->PushDirectory(FileName.Buffer,FileName.Length);
 
-								Status = _TraverseDirectoryImpl(hDirectory,&FileName,pTDP);
+                                Status = _TraverseDirectoryImpl(hDirectory,&FileName,pTDP);
 
-								pTDP->PopDirectory(FileName.Length);
-							}
-						}
+                                pTDP->PopDirectory(FileName.Length);
+                            }
+                        }
                     }
 
                     if( *((ULONG *)ptr) == 0 ) // (p->NextEntryOffset == 0 )
@@ -468,7 +468,8 @@ QueryDirectoryEntryInformation(
     UNICODE_STRING* pusPath,
     FILE_INFORMATION_CLASS InfoClass,
     ULONG cbInfoClassSize,
-    PVOID *DirectoryEntry
+    PVOID *DirectoryEntry,
+    BOOLEAN OpenReparsePoint // bypass reparse point processing for the file. 
     )
 {
     HANDLE hDirectory;
@@ -479,26 +480,26 @@ QueryDirectoryEntryInformation(
                 pusPath->Buffer,
                 FILE_LIST_DIRECTORY|FILE_TRAVERSE|SYNCHRONIZE,
                 FILE_SHARE_READ|FILE_SHARE_WRITE,
-                FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT
-                // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 
+                FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT|
+                (OpenReparsePoint ? FILE_OPEN_REPARSE_POINT  : 0)
                 );
 
-	if( Status == STATUS_OBJECT_NAME_INVALID )
-	{
-		//
-		// note: hack:
-		// Might be called only for path is network device.
-		// This is because the root directory of network drive volume 
-		// cannot be parsed correctly in OpenFileEx_W.
-		//
-	    Status = OpenFile_W(&hDirectory,NULL,
+    if( Status == STATUS_OBJECT_NAME_INVALID )
+    {
+        //
+        // note: hack:
+        // Might be called only for path is network device.
+        // This is because the root directory of network drive volume 
+        // cannot be parsed correctly in OpenFileEx_W.
+        //
+        Status = OpenFile_W(&hDirectory,NULL,
                 pusPath->Buffer,
                 FILE_LIST_DIRECTORY|FILE_TRAVERSE|SYNCHRONIZE,
                 FILE_SHARE_READ|FILE_SHARE_WRITE,
-                FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT
-                // FILE_OPEN_REPARSE_POINT bypass reparse point processing for the file. 
+                FILE_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT|
+                (OpenReparsePoint ? FILE_OPEN_REPARSE_POINT  : 0)
                 );
-	}
+    }
 
     if( Status == STATUS_SUCCESS )
     {
@@ -578,7 +579,11 @@ TraverseDirectory(
     {
         FILE_ID_BOTH_DIR_INFORMATION *pd;
 
-        if( NT_SUCCESS((Status = QueryDirectoryEntryInformation(NULL,&DirectoryFullPath,pTDP->FileInformationClass,pTDP->FileInformationSize,(PVOID*)&pd))) )
+        //
+        // NOTE:
+        // No reparse point check is performed on the starting directory.
+        //
+        if( NT_SUCCESS((Status = QueryDirectoryEntryInformation(NULL,&DirectoryFullPath,pTDP->FileInformationClass,pTDP->FileInformationSize,(PVOID*)&pd,FALSE))) )
         {
             Status = _TraverseDirectoryImpl(NULL,&DirectoryFullPath,pTDP);
 

@@ -40,6 +40,7 @@ SOURCES=\
 	imagehelp.cpp \
 	themehelp.cpp \
 	openvolumelocation.cpp\
+	subclassproc.cpp\
 	clipboardfilecopy.cpp\
 	dropsource.cpp\
 	droptarget.cpp\

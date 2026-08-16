@@ -796,6 +796,9 @@ HMENU _LoadMenu(UINT idMenu)
 		return NULL;
 
 	HMENU hSubMenu = GetSubMenu(hMenu,0);
+
+	CommandHandler::UpdateVolumeCommandMenu(hSubMenu);
+
 	int iPos = -1;
 	if( idMenu == IDR_MDICHILDFRAME )
 		iPos = GetMenuItemCount(hSubMenu) - 3;

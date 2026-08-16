@@ -163,7 +163,7 @@ RecursiveEnumDirectoryFiles(
 	PCWSTR FullPath,
 	PVOID p1, // reserved:
 	PVOID p2, // reserved:
-	ULONG f1, // reserved:
+	ULONG TraverseFlags,
 	DIRECTORYSCANCALLBACK pfnCallback,
 	PVOID CallbackContext
 	)
@@ -180,14 +180,14 @@ RecursiveEnumDirectoryFiles(
 	RtlInitUnicodeStringEx(&FileName,L"*");
 
 #ifdef _DEBUG
-	PWSTR pszPath = AllocateSzFromUnicodeString(&Path);
+	PWSTR pszPath     = AllocateSzFromUnicodeString(&Path);
 	PWSTR pszFileName = AllocateSzFromUnicodeString(&FileName);
 #endif
 
 	FILE_OPERATION_CALLBACK_CONTEXT context = {0};
 	context.pfnCallback = pfnCallback;
-	context.Context = CallbackContext;
-	Status = TraverseDirectory(Path,FileName,TRUE,DTF_NO_PROCESS_WILDCARD,&CallbackEnumDirectoryFiles,(ULONG_PTR)&context);
+	context.Context     = CallbackContext;
+	Status = TraverseDirectory(Path,FileName,TRUE,TraverseFlags,&CallbackEnumDirectoryFiles,(ULONG_PTR)&context);
 
 #ifdef _DEBUG
 	FreeMemory(pszPath);

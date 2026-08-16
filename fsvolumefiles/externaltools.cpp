@@ -35,7 +35,7 @@ static void _GetDefinitionsFilePath(PWSTR pszExtTools,int cchExtTools)
 	PCWSTR pszDbgExtTools = L"";
 	if( PathFileExists(pszDbgExtTools) )
 	{
-		StringCchCopy(szExtTools,cchExtTools,pszDbgExtTools);
+		StringCchCopy(pszExtTools,cchExtTools,pszDbgExtTools);
 	}
 #endif
 }

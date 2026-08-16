@@ -125,6 +125,38 @@ VOID _SetWindowTitleFileName( HWND hWnd, PCWSTR pszFileName )
 	SetWindowText(hWnd,sz);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+
+typedef HWND (WINAPI *PFNCREATEPICTUREVIEWWINDOW)(
+					HWND hWnd,
+					DWORD dwStyle,
+					DWORD dwExStyle,
+					UINT uId);
+
+#define _DLL_PICTUREVIEW L"fspictureview.dll"
+
+HWND _CreatePictureViewWindow(HWND hWnd)
+{
+	static HMODULE hPicLib = NULL;
+	static PFNCREATEPICTUREVIEWWINDOW pfnCreatePictureViewWindow = NULL;
+
+	if( hPicLib == NULL )
+	{
+		hPicLib = LoadLibrary( _DLL_PICTUREVIEW );
+		if( hPicLib != NULL )
+			(FARPROC&)pfnCreatePictureViewWindow = GetProcAddress(hPicLib,"CreatePictureViewWindow");
+	}
+
+	if( hPicLib && pfnCreatePictureViewWindow )
+	{
+		return pfnCreatePictureViewWindow(hWnd,WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,WS_EX_CONTROLPARENT,1);
+	}
+
+	return NULL;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
 extern HWND _CreateVolumeFileListWindow(HWND hWndParent,UINT ConsoleType,DWORD dwOptionFlags,LPARAM lParam);
 extern HWND _CreateShellConsoleWindow(HWND hWndParent,UINT ConsoleType,DWORD dwOptionFlags,LPARAM lParam);
 

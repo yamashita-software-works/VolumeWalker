@@ -105,6 +105,7 @@ SOURCES = \
 	filelist_directorytraverse.cpp\
 	dialog_traverse_directory.cpp\
 	dialog_goto_directory.cpp\
+	dialog_goto_directory_ex.cpp\
 	dialog_choosestream.cpp\
 	dialog_filesearch_param.cpp\
 	dialog_binarydump.cpp\

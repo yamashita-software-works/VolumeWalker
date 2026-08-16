@@ -54,23 +54,27 @@ namespace SearchParameterDialog
 	HWND hwndAllocationSizeFrom;
 	HWND hwndAllocationSizeTo;
 	HWND hwndMaxItemCound;
+	HWND hwndCBLastWriteDayOfWeek;
+	HWND hwndCBCreationDayOfWeek;
+	HWND hwndCBLastAccessDayOfWeek;
+	HWND hwndCBChangeDayOfWeek;
 
 	SEARCH_PARAMETER *SearchParam;
 
 	typedef struct _DEF_CTRLMAP {
 		UINT mask;
 		UINT checkBox;
-		UINT CtrlId[2];
+		UINT CtrlId[3];
 	} DEF_CTRLMAP;
 
 	BOOL EnableCheckBoxWithCtrl(UINT checkBoxId)
 	{
 		DEF_CTRLMAP idmap[] = {
 			{0, IDC_CHECK1,{IDC_LIST,IDC_CHECK8}},
-			{0, IDC_CHECK2,{IDC_DATETIMEPICKER1,IDC_DATETIMEPICKER2}},
-			{0, IDC_CHECK3,{IDC_DATETIMEPICKER3,IDC_DATETIMEPICKER4}},
-			{0, IDC_CHECK4,{IDC_DATETIMEPICKER5,IDC_DATETIMEPICKER6}},
-			{0, IDC_CHECK5,{IDC_DATETIMEPICKER7,IDC_DATETIMEPICKER8}},
+			{0, IDC_CHECK2,{IDC_DATETIMEPICKER1,IDC_DATETIMEPICKER2,IDC_COMBO1}},
+			{0, IDC_CHECK3,{IDC_DATETIMEPICKER3,IDC_DATETIMEPICKER4,IDC_COMBO2}},
+			{0, IDC_CHECK4,{IDC_DATETIMEPICKER5,IDC_DATETIMEPICKER6,IDC_COMBO3}},
+			{0, IDC_CHECK5,{IDC_DATETIMEPICKER7,IDC_DATETIMEPICKER8,IDC_COMBO4}},
 			{0, IDC_CHECK6,{IDC_EDIT2,IDC_EDIT3}},
 			{0, IDC_CHECK7,{IDC_EDIT4,IDC_EDIT5}},
 		};
@@ -85,6 +89,9 @@ namespace SearchParameterDialog
 
 				if( idmap[i].CtrlId[1] )
 					EnableWindow( GetDlgItem(hwndDialog,idmap[i].CtrlId[1]), bEnable );
+
+				if( idmap[i].CtrlId[2] )
+					EnableWindow( GetDlgItem(hwndDialog,idmap[i].CtrlId[2]), bEnable );
 
 				return TRUE;
 			}
@@ -305,6 +312,35 @@ namespace SearchParameterDialog
 		SetWindowText(hwndMaxItemCound,sz);
 	}
 
+	VOID InitDayOfWeekCoboBox(HWND hwndCB)
+	{
+		PCWSTR psz[] = {
+			L"None",
+			L"Sun",
+			L"Mon",
+			L"Tue",
+			L"Wed",
+			L"Thu",
+			L"Fri",
+			L"Sat",
+		};
+
+		for(int i = 0; i < ARRAYSIZE(psz); i++)
+		{
+			ComboBox_AddString(hwndCB,psz[i]);
+		}
+
+		ComboBox_SetCurSel(hwndCB,0);
+	}
+
+	VOID InitComboBoxes(SEARCH_PARAMETER *SearchParam)
+	{
+		InitDayOfWeekCoboBox(hwndCBLastWriteDayOfWeek);
+		InitDayOfWeekCoboBox(hwndCBCreationDayOfWeek);
+		InitDayOfWeekCoboBox(hwndCBLastAccessDayOfWeek);
+		InitDayOfWeekCoboBox(hwndCBChangeDayOfWeek);
+	}
+
 	struct {
 		UINT id;
 		SEARCH_FLAGS Flags;
@@ -319,6 +355,7 @@ namespace SearchParameterDialog
 		{IDC_CHECK7,SEARCH_FLAG_ALLOCATIONSIZE},
 		{IDC_CHECK8,SEARCH_FLAG_ATTR_MATCH_WHOLE_BITS},
 		{IDC_CHECK9,SEARCH_FLAG_ALT_STREAM},
+		{IDC_CHECK10,SEARCH_FLAG_NO_REPARSE_POINT},
 	};
 
 	VOID SetCompareFlag(SEARCH_FLAGS CompareFlags)
@@ -358,22 +395,26 @@ namespace SearchParameterDialog
 
 		SetWindowLongPtr(hDlg,DWLP_USER,(LONG_PTR)SearchParam);
 
-		hwndEditPath           = GetDlgItem(hDlg,IDC_EDIT6); // reserved
-		hwndEditName           = GetDlgItem(hDlg,IDC_EDIT1);
-		hwndAttrList           = GetDlgItem(hDlg,IDC_LIST);
-		hwndDtpLastWriteFrom   = GetDlgItem(hDlg,IDC_DATETIMEPICKER1);
-		hwndDtpLastWriteTo     = GetDlgItem(hDlg,IDC_DATETIMEPICKER2);
-		hwndDtpCreationFrom    = GetDlgItem(hDlg,IDC_DATETIMEPICKER3);
-		hwndDtpCreationTo      = GetDlgItem(hDlg,IDC_DATETIMEPICKER4);
-		hwndDtpLastAccessFrom  = GetDlgItem(hDlg,IDC_DATETIMEPICKER5);
-		hwndDtpLastAccessTo    = GetDlgItem(hDlg,IDC_DATETIMEPICKER6);
-		hwndDtpChangeFrom      = GetDlgItem(hDlg,IDC_DATETIMEPICKER7);
-		hwndDtpChangeTo        = GetDlgItem(hDlg,IDC_DATETIMEPICKER8);
-		hwndEndOfFileFrom      = GetDlgItem(hDlg,IDC_EDIT2);
-		hwndEndOfFileTo        = GetDlgItem(hDlg,IDC_EDIT3);
-		hwndAllocationSizeFrom = GetDlgItem(hDlg,IDC_EDIT4);
-		hwndAllocationSizeTo   = GetDlgItem(hDlg,IDC_EDIT5);
-		hwndMaxItemCound       = GetDlgItem(hDlg,IDC_EDIT7);
+		hwndEditPath              = GetDlgItem(hDlg,IDC_EDIT6); // reserved
+		hwndEditName              = GetDlgItem(hDlg,IDC_EDIT1);
+		hwndAttrList              = GetDlgItem(hDlg,IDC_LIST);
+		hwndDtpLastWriteFrom      = GetDlgItem(hDlg,IDC_DATETIMEPICKER1);
+		hwndDtpLastWriteTo        = GetDlgItem(hDlg,IDC_DATETIMEPICKER2);
+		hwndDtpCreationFrom       = GetDlgItem(hDlg,IDC_DATETIMEPICKER3);
+		hwndDtpCreationTo         = GetDlgItem(hDlg,IDC_DATETIMEPICKER4);
+		hwndDtpLastAccessFrom     = GetDlgItem(hDlg,IDC_DATETIMEPICKER5);
+		hwndDtpLastAccessTo       = GetDlgItem(hDlg,IDC_DATETIMEPICKER6);
+		hwndDtpChangeFrom         = GetDlgItem(hDlg,IDC_DATETIMEPICKER7);
+		hwndDtpChangeTo           = GetDlgItem(hDlg,IDC_DATETIMEPICKER8);
+		hwndEndOfFileFrom         = GetDlgItem(hDlg,IDC_EDIT2);
+		hwndEndOfFileTo           = GetDlgItem(hDlg,IDC_EDIT3);
+		hwndAllocationSizeFrom    = GetDlgItem(hDlg,IDC_EDIT4);
+		hwndAllocationSizeTo      = GetDlgItem(hDlg,IDC_EDIT5);
+		hwndMaxItemCound          = GetDlgItem(hDlg,IDC_EDIT7);
+		hwndCBLastWriteDayOfWeek  = GetDlgItem(hDlg,IDC_COMBO1);
+		hwndCBCreationDayOfWeek   = GetDlgItem(hDlg,IDC_COMBO2);
+		hwndCBLastAccessDayOfWeek = GetDlgItem(hDlg,IDC_COMBO3);
+		hwndCBChangeDayOfWeek     = GetDlgItem(hDlg,IDC_COMBO4);
 
 		InitAttributeList(hDlg);
 		SetFileAttributesList(SearchParam);
@@ -383,6 +424,8 @@ namespace SearchParameterDialog
 		InitFileSize(SearchParam);
 
 		InitMaxFoundItemCount(SearchParam);
+
+		InitComboBoxes(SearchParam);
 
 		SetCompareFlag(SearchParam->CompareFlag);
 
@@ -396,7 +439,11 @@ namespace SearchParameterDialog
 			SetWindowText(hwndEditName,SearchParam->Name);
 
 		// Search target path
-		SetWindowText(hwndEditPath,pFileList->FileListBuffer->File[0].Name);
+		PWSTR TargetFullQualifyPath;
+		FS_FLITEM& fi = pFileList->FileListBuffer->File[0];
+		TargetFullQualifyPath = FLB_GetFileNamePtr(pFileList->FileListBuffer,&fi);
+
+		SetWindowText(hwndEditPath,TargetFullQualifyPath);
 
 		EnableOKbutton(hDlg);
 
@@ -476,6 +523,11 @@ namespace SearchParameterDialog
 		return FALSE;
 	}
 
+	CHAR GetDayOfWeek(HWND hwndCB)
+	{
+		return (CHAR)ComboBox_GetCurSel(hwndCB);
+	}
+
 	VOID OnOK(HWND hwndDlg)
 	{
 		SEARCH_PARAMETER *psp = (SEARCH_PARAMETER *)GetWindowLongPtr(hwndDlg,DWLP_USER);
@@ -491,6 +543,11 @@ namespace SearchParameterDialog
 		GetDateTime(hwndDtpCreationFrom,hwndDtpCreationTo,&psp->DateTime.Creation);
 		GetDateTime(hwndDtpLastAccessFrom,hwndDtpLastAccessTo,&psp->DateTime.LastAccess);
 		GetDateTime(hwndDtpChangeFrom,hwndDtpChangeTo,&psp->DateTime.Change);
+
+		psp->DateTime.LastWriteDayOfWeek  = GetDayOfWeek(hwndCBLastWriteDayOfWeek);
+		psp->DateTime.CreationDayOfWeek   = GetDayOfWeek(hwndCBCreationDayOfWeek);
+		psp->DateTime.LastAccessDayOfWeek = GetDayOfWeek(hwndCBLastAccessDayOfWeek);
+		psp->DateTime.ChangeDayOfWeek     = GetDayOfWeek(hwndCBChangeDayOfWeek);
 
 		psp->CompareFlag = GetCompareFlag();
 

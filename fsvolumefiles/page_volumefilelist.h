@@ -1123,17 +1123,20 @@ public:
 
 		UINT fmt = m_columnShowStyleFlags[ id ];
 
+		PWSTR pszDateFormat = NULL;
+		PWSTR pszTimeFormat = NULL;
+
 		switch( fmt )
 		{
 			case 0:
 				if( dt > 0 )
-					_GetDateTimeStringEx2(dt,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,NULL,NULL,FALSE,TRUE);
+					_GetDateTimeStringEx2(dt,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,pszDateFormat,NULL,FALSE,TRUE);
 				else
 					pnmlvdi->item.pszText = L"-";
 				break;
 			case 1:
 				if( dt > 0 )
-					_GetDateTimeStringEx2(dt,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,NULL,NULL,TRUE,TRUE);
+					_GetDateTimeStringEx2(dt,pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,pszDateFormat,NULL,TRUE,TRUE);
 				else
 					pnmlvdi->item.pszText = L"-";
 				break;
@@ -3744,6 +3747,7 @@ public:
 			case ID_SEARCH:
 			{
 				*puState = UPDUI_DISABLED;
+#if 0
 				int iItem =	ListViewEx_GetCurSel(m_hWndList);
 				if( iItem != -1 )
 				{
@@ -3751,6 +3755,12 @@ public:
 					if( (pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (wcscmp(pItem->pFI->hdr.FileName,L"..") != 0) )
 						*puState = UPDUI_ENABLED;
 				}
+#else
+				if( ((UINT)ListView_GetSelectedCount(m_hWndList)) <= 1  )
+				{
+					*puState = UPDUI_ENABLED;
+				}
+#endif
 				break;
 			}
 			case ID_UP_DIR:
@@ -4046,7 +4056,11 @@ public:
 		HRESULT hr;
 		PWSTR pszNewPath;
 
+#if 1
+		hr = GotoDirectoryDialogEx(m_hWnd,m_pszCurDir,&pszNewPath,0);
+#else
 		hr = GotoDirectoryDialog(m_hWnd,m_pszCurDir,&pszNewPath,0);
+#endif
 
 		if( hr == S_OK )
 		{
@@ -4174,7 +4188,7 @@ public:
 
 			if( fi.Flags & FLI_FLG_NAME_OFFSET )
 			{
-				pszFullQualifyPath = GetFileNamePtr(Files.FileListBuffer,&fi);
+				pszFullQualifyPath = FLB_GetFileNamePtr(Files.FileListBuffer,&fi);
 			}
 			else
 			{

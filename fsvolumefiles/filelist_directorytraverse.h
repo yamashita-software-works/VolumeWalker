@@ -24,7 +24,7 @@ RecursiveEnumDirectoryFiles(
 	PCWSTR FullPath,
 	PVOID p1, // reserved:
 	PVOID p2, // reserved:
-	ULONG f1, // reserved:
+	ULONG TraverseFlags,
 	DIRECTORYSCANCALLBACK pfnCallback,
 	PVOID CallbackContext
 	);

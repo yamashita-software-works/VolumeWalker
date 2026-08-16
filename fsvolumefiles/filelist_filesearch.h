@@ -21,12 +21,17 @@ typedef struct _SEARCH_PARAMETER
 		SEARCH_RANGE_VALUE Creation;
 		SEARCH_RANGE_VALUE LastAccess;
 		SEARCH_RANGE_VALUE Change;
+		CHAR LastWriteDayOfWeek;  // 0:none,1:Sunday...7:Saturday
+		CHAR CreationDayOfWeek;   // 0:none,1:Sunday...7:Saturday
+		CHAR LastAccessDayOfWeek; // 0:none,1:Sunday...7:Saturday
+		CHAR ChangeDayOfWeek;     // 0:none,1:Sunday...7:Saturday
 	} DateTime;
 	ULONG MaxFoundItemCount;
 	ULONG MaxDirectoryLevel;
 	WCHAR Name[MAX_PATH];
 } SEARCH_PARAMETER;
 
+#define SEARCH_FLAG_FILENAME               0x00000001
 #define SEARCH_FLAG_ATTRIBUTE              0x00000010
 #define SEARCH_FLAG_DATETIME_LASTWRITE     0x00000020
 #define SEARCH_FLAG_DATETIME_CREATION      0x00000040
@@ -36,8 +41,10 @@ typedef struct _SEARCH_PARAMETER
 #define SEARCH_FLAG_ALLOCATIONSIZE         0x00000400
 #define SEARCH_FLAG_ALT_STREAM             0x00001000
 #define SEARCH_FLAG_EA                     0x00002000
+#define SEARCH_FLAG_FILEID                 0x00004000
+#define SEARCH_FLAG_COMPARE_MASK           0x00FFFFFF
+#define SEARCH_FLAG_NO_REPARSE_POINT       0x20000000
 #define SEARCH_FLAG_ATTR_MATCH_WHOLE_BITS  0x40000000
-#define SEARCH_FLAG_OR_COMPARE             0x80000000
 
 HRESULT
 Search(

@@ -111,7 +111,12 @@ static INT DirectoryTooDeepMessage(HWND hwndOwner)
 //////////////////////////////////////////////////////////////////////////////
 // Search Callback
 
-inline DWORD CompareFileAttributes(CALLBACK_FILE_INFORMATION *pcfi,SEARCH_PARAMETER *SearchParam)
+inline DWORD CompareLargeIntegerRange(LARGE_INTEGER& li,SEARCH_RANGE_VALUE *Range,int ValueType)
+{
+	return( ((Range->From.QuadPart <= li.QuadPart) && (li.QuadPart <= Range->To.QuadPart)) ? ValueType : 0 );
+}
+
+static DWORD CompareFileAttributes(CALLBACK_FILE_INFORMATION *pcfi,SEARCH_PARAMETER *SearchParam)
 {
 	BOOL bMatched;
 	if( SearchParam->CompareFlag & SEARCH_FLAG_ATTR_MATCH_WHOLE_BITS )
@@ -122,9 +127,25 @@ inline DWORD CompareFileAttributes(CALLBACK_FILE_INFORMATION *pcfi,SEARCH_PARAME
 	return bMatched ? SEARCH_FLAG_ATTRIBUTE : 0;
 }
 
-inline DWORD CompareLargeIntegerRange(LARGE_INTEGER li,SEARCH_RANGE_VALUE *Range,int ValueType)
+static BOOL CompareDayOfWeek(LARGE_INTEGER& li,CHAR DayOfWeek)
 {
-	return( ((Range->From.QuadPart <= li.QuadPart) && (li.QuadPart <= Range->To.QuadPart)) ? ValueType : 0 );
+	// DayOfWeek -1:none,0:Sunday...6:Saturday (on the local time)
+	SYSTEMTIME st;
+	FILETIME ft;
+	FileTimeToLocalFileTime((FILETIME *)&li,&ft);
+	FileTimeToSystemTime(&ft,&st);
+	return ( st.wDayOfWeek == DayOfWeek );
+}
+
+static DWORD CompareDateRange(LARGE_INTEGER& li,SEARCH_RANGE_VALUE *Range,CHAR DayOfWeek,int ValueType)
+{
+	if( (Range->From.QuadPart <= li.QuadPart) && (li.QuadPart <= Range->To.QuadPart) )
+	{
+		if( DayOfWeek > 0 )
+			return CompareDayOfWeek(li,--DayOfWeek) ? ValueType : 0;
+		return ValueType;
+	}
+	return 0;
 }
 
 static 
@@ -259,11 +280,24 @@ static HRESULT CALLBACK SearchFileCallbackProc(ULONG CallbackReason,PVOID Callba
 
 				if( PathMatchSpecEx(pcfi->FileName,pscp->SearchParam->Name,PMSF_MULTIPLE|PMSF_DONT_STRIP_SPACES) == S_OK )
 				{
+//++todo
+					//
+					// Comparing file id, if flag on. compares before other conditions.
+					//
+					if( pscp->SearchParam->CompareFlag & SEARCH_FLAG_FILEID )
+					{
+						// todo: currently, will be find to the no assigned id file only.
+						if( pcfi->Information->FileId.QuadPart == -1 ) 
+						{
+							dwMatched |= SEARCH_FLAG_FILEID; // file name is matched
+						}
+					}
+//--todo
 					//
 					// If CompareFlag is zero,
 					//
-					if( pscp->SearchParam->CompareFlag == 0 )
-						dwMatched |= 0x1; // file name is matched
+					if( (pscp->SearchParam->CompareFlag & SEARCH_FLAG_COMPARE_MASK) == 0 )
+						dwMatched |= SEARCH_FLAG_FILENAME; // file name is matched
 
 					//
 					// Comparing file attributes, if flag on.
@@ -275,16 +309,16 @@ static HRESULT CALLBACK SearchFileCallbackProc(ULONG CallbackReason,PVOID Callba
 					// Comparing file date time, if flag on.
 					//
 					dwMatched |= ((pscp->SearchParam->CompareFlag & SEARCH_FLAG_DATETIME_LASTWRITE) 
-								? CompareLargeIntegerRange(pcfi->Information->LastWriteTime,&pscp->SearchParam->DateTime.LastWrite,SEARCH_FLAG_DATETIME_LASTWRITE) : 0);
+								? CompareDateRange(pcfi->Information->LastWriteTime,&pscp->SearchParam->DateTime.LastWrite,pscp->SearchParam->DateTime.LastWriteDayOfWeek,SEARCH_FLAG_DATETIME_LASTWRITE) : 0);
 
 					dwMatched |= ((pscp->SearchParam->CompareFlag & SEARCH_FLAG_DATETIME_CREATION) 
-								? CompareLargeIntegerRange(pcfi->Information->CreationTime,&pscp->SearchParam->DateTime.Creation,SEARCH_FLAG_DATETIME_CREATION) : 0);
+								? CompareDateRange(pcfi->Information->CreationTime,&pscp->SearchParam->DateTime.Creation,pscp->SearchParam->DateTime.CreationDayOfWeek,SEARCH_FLAG_DATETIME_CREATION) : 0);
 
 					dwMatched |= ((pscp->SearchParam->CompareFlag & SEARCH_FLAG_DATETIME_LASTACCESS) 
-								? CompareLargeIntegerRange(pcfi->Information->LastAccessTime,&pscp->SearchParam->DateTime.LastAccess,SEARCH_FLAG_DATETIME_LASTACCESS) : 0);
+								? CompareDateRange(pcfi->Information->LastAccessTime,&pscp->SearchParam->DateTime.LastAccess,pscp->SearchParam->DateTime.LastAccessDayOfWeek,SEARCH_FLAG_DATETIME_LASTACCESS) : 0);
 
 					dwMatched |= ((pscp->SearchParam->CompareFlag & SEARCH_FLAG_DATETIME_CHANGE) 
-								? CompareLargeIntegerRange(pcfi->Information->ChangeTime,&pscp->SearchParam->DateTime.Change,SEARCH_FLAG_DATETIME_CHANGE) : 0);
+								? CompareDateRange(pcfi->Information->ChangeTime,&pscp->SearchParam->DateTime.Change,pscp->SearchParam->DateTime.ChangeDayOfWeek,SEARCH_FLAG_DATETIME_CHANGE) : 0);
 
 					//
 					// Comparing file size, if flag on.
@@ -389,7 +423,7 @@ DWORD WINAPI Search_ThreadProc(LPVOID lpParameter)
 
 		if( fi.Flags & FLI_FLG_NAME_OFFSET )
 		{
-			TargetFullQualifyPath = GetFileNamePtr(pFiles->FileListBuffer,&fi);
+			TargetFullQualifyPath = FLB_GetFileNamePtr(pFiles->FileListBuffer,&fi);
 		}
 		else
 		{
@@ -423,7 +457,10 @@ DWORD WINAPI Search_ThreadProc(LPVOID lpParameter)
 			//
 			// Directory with Recursive Enumeration
 			//
-			hr = RecursiveEnumDirectoryFiles(TargetFullQualifyPath,NULL,NULL,0,&SearchFileCallbackProc,&pThreadContext->Search);
+			hr = RecursiveEnumDirectoryFiles(TargetFullQualifyPath,NULL,NULL,
+						DTF_NO_PROCESS_WILDCARD|
+						((SearchParam->CompareFlag & SEARCH_FLAG_NO_REPARSE_POINT) ? DTF_NO_PROCESS_REPARSEPOINTS : 0),
+						&SearchFileCallbackProc,&pThreadContext->Search);
 			if( hr != S_OK )
 			{
 				NTSTATUS Status = hr & ~FACILITY_NT_BIT;
@@ -638,7 +675,7 @@ static VOID InitSearchParameter(SEARCH_PARAMETER *psp)
 //
 //----------------------------------------------------------------------------
 
-SEARCH_PARAMETER g_sp = {0}; // todo:
+SEARCH_PARAMETER g_sp = {}; // todo:
 
 HRESULT
 Search(

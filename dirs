@@ -4,6 +4,7 @@ DIRS=\
 	libntwdk\
 	fsfilelib\
 	fsvolumehelp\
+	fsvolumetools\
 	fsvolumedisks\
 	fsvolumefiles\
 	volumeinfo\

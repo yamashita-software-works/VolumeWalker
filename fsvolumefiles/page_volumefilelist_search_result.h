@@ -391,6 +391,7 @@ public:
 			case ID_UP_DIR:
 			case ID_HISTORY_BACKWARD:
 			case ID_HISTORY_FORWARD:
+ 			case ID_GOTO:
 				*puState = UPDUI_DISABLED;
 				return S_OK;
 			case ID_FILE_STREAM_INFORMATION:

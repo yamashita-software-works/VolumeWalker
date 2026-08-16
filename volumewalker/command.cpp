@@ -99,7 +99,58 @@ namespace CommandHandler
 		}
 #endif
 	}
-	
+
+	BOOL
+	WINAPI
+	_IsMenuIncludedCmdId(
+		HMENU hMenu,
+		UINT cmdId
+		)
+	{
+		int i,c = GetMenuItemCount(hMenu);
+		for(i = 0; i < c; i++)
+		{
+			if( GetMenuItemID(hMenu,i) == cmdId )
+				return TRUE;
+		}
+		return FALSE;
+	}
+
+	HMENU
+	WINAPI
+	_FindPopupMenu(
+		HMENU hMenu,
+		UINT cmdIncludedId,
+		INT *piPos
+		)
+	{
+		int i,c = GetMenuItemCount(hMenu);
+		for(i = 0; i < c; i++)
+		{
+			HMENU hSubMenu = GetSubMenu(hMenu,i);
+			if( hSubMenu && _IsMenuIncludedCmdId(hSubMenu,cmdIncludedId) )
+			{
+				if( piPos )
+					*piPos = i;
+				return hSubMenu;
+			}
+		}
+		return NULL;
+	}
+
+	HMENU UpdateVolumeCommandMenu(HMENU hMenu)
+	{
+#if _ENABLE_TOOL_TOOLPAD
+		INT iPos;
+		HMENU hMiscMenu = _FindPopupMenu(hMenu,ID_SCRATCHPAD,&iPos);
+		if( hMiscMenu )
+		{
+			InsertMenu(hMiscMenu,iPos+1,MF_STRING,ID_TOOLPAD_WINDOW,L"&Tool Pad");
+		}
+#endif
+		return hMenu;
+	}
+
 	HMENU MakeVolumeCommandMenu(HANDLE /*hCommand*/)
 	{
 		// hCommand : currently unused.
@@ -117,14 +168,9 @@ namespace CommandHandler
 		AppendMenu(hToolMenu, MF_POPUP, (UINT_PTR)hSubMenu,           L"&Deprecated Features");
 #endif
 
-#if (_ENABLE_TOOL_TOOLPAD || _ENABLE_TOOL_LAUNCHPAD)
-		AppendMenu(hToolMenu, MF_STRING, 0, NULL);
 #if _ENABLE_TOOL_LAUNCHPAD
+		AppendMenu(hToolMenu, MF_STRING, 0, NULL);
 		AppendMenu(hToolMenu, MF_STRING, ID_LAUNCHPAD_WINDOW,         L"Launch &External Tools");
-#endif
-#if _ENABLE_TOOL_TOOLPAD
-	    AppendMenu(hToolMenu, MF_STRING, ID_TOOLPAD_WINDOW,           L"&ToolPad");
-#endif
 #endif
 		return hToolMenu;
 	}

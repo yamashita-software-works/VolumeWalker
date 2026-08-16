@@ -30,16 +30,21 @@ typedef struct _FS_FILELISTBUFFER
 
 #ifdef __cplusplus
 
-inline PWSTR GetStrPtr( FS_FILELISTBUFFER *ptr, ULONG_PTR offset )
+inline PWSTR FLB_GetStrPtr( FS_FILELISTBUFFER *ptr, ULONG_PTR offset )
 {
 	return (PWSTR)(((ULONG_PTR)ptr)+offset);
 }
 
-inline PWSTR GetFileNamePtr( FS_FILELISTBUFFER *ptr, FS_FLITEM *item )
+inline PWSTR FLB_GetFileNamePtr( FS_FILELISTBUFFER *ptr, FS_FLITEM *item )
 {
 	if( item->Flags & FLI_FLG_NAME_OFFSET )
-		return GetStrPtr(ptr,item->NameOffset);
+		return FLB_GetStrPtr(ptr,item->NameOffset);
 	return item->Name;
+}
+
+inline PWSTR FLB_GetFileName( FS_FILELISTBUFFER *ptr, int iIndex )
+{
+	return FLB_GetFileNamePtr( ptr, &ptr->File[iIndex] );
 }
 
 #endif

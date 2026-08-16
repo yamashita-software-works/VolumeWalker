@@ -11,4 +11,5 @@ namespace CommandHandler
 	BOOL NotifyClose(HWND);
 	BOOL ForwardCommand(HANDLE hCommand,UINT idCmd);
 	HMENU MakeVolumeCommandMenu(HANDLE /*hCommand*/);
+	HMENU UpdateVolumeCommandMenu(HMENU hMenu);
 };

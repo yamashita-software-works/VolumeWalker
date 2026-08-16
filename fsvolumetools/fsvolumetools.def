@@ -1,0 +1,5 @@
+LIBRARY "fsvolumetools"
+
+EXPORTS
+	ToolPadDialog
+	CreateToolPadWindow

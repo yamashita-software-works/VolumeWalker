@@ -1,5 +1,18 @@
 ### 0.1.59.0
 
+- Volume File Exploer,Gotoダイアログを更新。
+  - 入力パスに環境変数が含まれる場合、変数の値を展開する様にした。
+  - 移動先をFileID(FRN)で指定できる様にした。"::0xXXXX" の形式で記述。
+  - 入力パスをNT Object Namespace形式と解釈するチェックボックスを追加。
+
+- Volume File Exploer,Searchのパラメータに以下のオプションを追加。
+  - タイムスタンプの検索条件に曜日を追加。
+  - リパースポイントを処理しないオプションを追加。
+
+- Tool Padウィンドウを追加。
+
+### 0.1.59.0
+
 - LaunchPadを追加。   
 メニューの File \> Tools \> Launch External Tools   
 外部のWindows標準アプリケーションを開きます。
