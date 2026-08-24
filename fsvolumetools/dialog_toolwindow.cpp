@@ -28,7 +28,6 @@ _PAGE_UNIT,
 _PAGE_CHARACTER_TO_CODE,
 _PAGE_CODE_TO_CHARACTER,
 _PAGE_DATETIME,
-_PAGE_APPLAUNCH,
 _PAGE_BLANK_ITEM,
 };
 
@@ -56,7 +55,6 @@ struct CControlPane : public CDialogWindow
 #include "page_chartocode.h"
 #include "page_codetochar.h"
 #include "page_datetime.h"
-#include "page_applaunch.h"
 
 struct CToolWindow : public CDialogWindow
 {
@@ -131,9 +129,6 @@ struct CToolWindow : public CDialogWindow
 					break;
 				case _PAGE_DATETIME:
 					tvi.itemex.pszText = L"Date Time";
-					break;
-				case _PAGE_APPLAUNCH:
-					tvi.itemex.pszText = L"External Tools";
 					break;
 				case _PAGE_BLANK_ITEM:
 					InsertBlank(TVI_ROOT,tvi.hInsertAfter);
@@ -210,9 +205,6 @@ struct CToolWindow : public CDialogWindow
 					break;
 				case _PAGE_DATETIME:
 					pNewPane = static_cast<CControlPane*>(new CDateTimeToolPage);
-					break;
-				case _PAGE_APPLAUNCH:
-					pNewPane = static_cast<CControlPane*>(new CAppLaunchPage);
 					break;
 			}
 	
@@ -598,7 +590,6 @@ int InitialPageLayout(int ToolPadType,int pages[])
 			pages[ page_count++ ] = _PAGE_CODE_TO_CHARACTER;
 			pages[ page_count++ ] = _PAGE_DATETIME;
 			pages[ page_count++ ] = _PAGE_BLANK_ITEM;
-			pages[ page_count++ ] = _PAGE_APPLAUNCH;
 			break;
 		}
 	}
@@ -686,7 +677,6 @@ ToolPadDialog(
 			pParam->pages[ pParam->page_count++ ] = _PAGE_CODE_TO_CHARACTER;
 			pParam->pages[ pParam->page_count++ ] = _PAGE_DATETIME;
 			pParam->pages[ pParam->page_count++ ] = _PAGE_BLANK_ITEM;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_APPLAUNCH;
 			break;
 		}
 		default:

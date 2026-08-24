@@ -104,7 +104,6 @@ INCLUDES=$(INCLUDES);..\fsvolumehelp
 SOURCES = \
 	dllmain.cpp \
 	dialog_toolwindow.cpp \
-	externaltools.cpp \
 	fsvolumetools.rc
 
 #----------------------------------------------------------
