@@ -109,6 +109,7 @@ SOURCES = \
 	changejournalhelp.cpp \
 	watchdirectory.cpp \
 	ntfsrecord.cpp \
+	ntfsfilerecord.cpp \
 	fileitemlist.cpp \
 	fileitemdata.cpp \
 	reparsepointinfo.cpp \

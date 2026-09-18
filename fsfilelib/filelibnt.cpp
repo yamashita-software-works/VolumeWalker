@@ -669,7 +669,7 @@ NTFile_CloseFile(
 //----------------------------------------------------------------------------
 PRIVATE
 BOOLEAN
-NTAPI
+WINAPI
 _DeviceIoControl(
 	HANDLE FileHandle,
 	ULONG FsControlCode,
@@ -709,7 +709,7 @@ _DeviceIoControl(
 //----------------------------------------------------------------------------
 PRIVATE
 NTSTATUS
-NTAPI
+WINAPI
 _GetFileSize(
 	HANDLE hFile,
 	LARGE_INTEGER *pSize,
@@ -2350,4 +2350,125 @@ NtDosGetVolumeSizeInformation(
 
 	return Win32Error;
 }
-	
+
+
+//-----------------------------------------------------------------------------
+//
+//  NtDosOpenFileId()
+//
+//  PURPOSE:
+//
+//-----------------------------------------------------------------------------
+EXTERN_C
+ULONG
+WINAPI
+NtDosOpenFileId(
+	HANDLE *phFile,
+	HANDLE Reserved,
+	PCWSTR pszVolumeNameOrFilePath,
+	LONGLONG FileId,
+    ULONG DesiredAccess,
+    ULONG ShareAccess,
+    ULONG OpenOptions
+	)
+{
+	HANDLE hVolume;
+	IO_STATUS_BLOCK IoStatusBlock = {0};
+	UNICODE_STRING usVolume;
+	UNICODE_STRING usPath;
+	NTSTATUS Status;
+
+	SplitVolumeRelativePath(pszVolumeNameOrFilePath,&usVolume,&usPath);
+
+	Status = OpenFile_U(&hVolume,NULL,&usVolume,
+					FILE_READ_ATTRIBUTES|SYNCHRONIZE,
+					FILE_SHARE_READ|FILE_SHARE_WRITE,
+					FILE_NON_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT);
+
+	if( Status == STATUS_SUCCESS )
+	{
+	    FS_FILE_ID_DESCRIPTOR FileIdDesc;
+		FileIdDesc.dwSize          = sizeof(FileIdDesc);
+		FileIdDesc.Type            = FsFileIdType;
+		FileIdDesc.FileId.QuadPart = FileId;
+		Status = OpenFile_ID(phFile,hVolume,&FileIdDesc,DesiredAccess,ShareAccess,OpenOptions);
+
+		NtClose(hVolume);
+	}
+
+	return NtStatusToDosError(Status);
+}
+
+//-----------------------------------------------------------------------------
+//
+//  NtDosOpenVolume()
+//
+//  PURPOSE:
+//
+//-----------------------------------------------------------------------------
+EXTERN_C
+ULONG
+WINAPI
+NtDosOpenVolume(
+	HANDLE *phVolume,
+	PCWSTR pszVolumeNameOrFilePath,
+    ULONG DesiredAccess,
+    ULONG ShareAccess,
+    ULONG OpenOptions
+	)
+{
+	IO_STATUS_BLOCK IoStatusBlock = {0};
+	UNICODE_STRING usVolume;
+	UNICODE_STRING usPath;
+	NTSTATUS Status;
+
+	SplitVolumeRelativePath(pszVolumeNameOrFilePath,&usVolume,&usPath);
+
+	if( DesiredAccess == NO_FLAGS_SPECIFIED )
+		DesiredAccess = FILE_READ_ATTRIBUTES|SYNCHRONIZE;
+	if( ShareAccess == NO_FLAGS_SPECIFIED )
+		ShareAccess = FILE_SHARE_READ|FILE_SHARE_WRITE;
+    if( OpenOptions == NO_FLAGS_SPECIFIED )
+		OpenOptions = FILE_NON_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT;
+
+	Status = OpenFile_U(phVolume,NULL,&usVolume,
+					DesiredAccess,
+					ShareAccess,
+					OpenOptions
+					);
+
+	if( Status == STATUS_SUCCESS )
+	{
+		;
+	}
+
+	return NtStatusToDosError(Status);
+}
+
+//-----------------------------------------------------------------------------
+//
+//  NtDosReadFile()
+//
+//  PURPOSE:
+//
+//-----------------------------------------------------------------------------
+EXTERN_C
+ULONG
+WINAPI
+NtDosReadFile(
+	HANDLE FileHandle,
+	PVOID Buffer,
+	ULONG Length,
+	PULONG NumberOfBytesRead,
+	LARGE_INTEGER *ByteOffset,
+    PULONG Key,
+	PVOID Reserved // Reserved pointer to structure
+	)
+{
+	NTSTATUS Status;
+	IO_STATUS_BLOCK IoStatus = {0};
+	Status = NtReadFile(FileHandle,NULL,NULL,NULL,&IoStatus,Buffer,Length,ByteOffset,Key);
+	if( NumberOfBytesRead )
+		*NumberOfBytesRead = (ULONG)IoStatus.Information;
+	return NtStatusToDosError(Status);
+}

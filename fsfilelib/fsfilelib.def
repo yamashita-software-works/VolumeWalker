@@ -28,6 +28,16 @@ EXPORTS
 	GetNtfsSpecialFiles
 	FreeNtfsSpecialFiles
 
+	GetNtfsFileRecordInformation
+	GetNtfsRecordAttributeList
+	GetNtfsRecordNameString
+	GetNtfsRecordType
+	GetNtfsRecordLength
+	GetNtfsClusterMappingPair
+	FreeNtfsMemory
+	FindNtfsRacordAttribue
+	FindNtfsRecordAttribueFromBuffer
+
 	CreateJournalBuffer
 	DestroyJournalBuffer
 	GetJournalReasonAbbreviationsText
@@ -47,12 +57,6 @@ EXPORTS
 
 	_StringFromGUID
 	_HasPrefix
-
-	;NTFile_OpenFile
-	;NTFile_CloseFile
-	;NTFile_GatherFileInformation
-	;NTFile_FreeFileInformation
-	;NTFile_GetAttributeString
 
 	FILCreate
 	FILDestroy
@@ -91,4 +95,8 @@ EXPORTS
 	NtDosFreeMemory
 	NtDosGetVolumeSizeInformation
 	NtDosGetVolumeInformationFlags
-
+	NtDosGetNtfsFileRecordInformation
+	NtDosOpenFileId
+	NtDosOpenVolume
+	NtDosReadCluster
+	NtDosReadFile

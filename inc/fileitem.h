@@ -62,7 +62,8 @@ typedef struct _FILEITEMEX
 		};
 	};
 	ULONG FileSystemFlags;
-	ULONG Reserved[12];
+	WCHAR FileSystemName[8]; 
+	ULONG Reserved[8];
 } FILEITEMEX,*PFILEITEMEX;
 
 #define FIF_UNUSEFLAGS         (0x00000000)

@@ -28,43 +28,6 @@ typedef  struct _DISK_VOLUME_SECTOR_CLUSTER_LOCATION_DIALOG_PARAM
 
 #define MAX_ADDRESS_LENGTH 64
 
-LRESULT
-CALLBACK
-EditSubclassWindow(
-	HWND hWnd,
-	UINT uMsg,
-	WPARAM wParam,
-	LPARAM lParam,
-	UINT_PTR uIdSubclass,
-	DWORD_PTR dwRefData
-	)
-{
-	switch( uMsg )
-	{
-		case WM_CHAR:
-		{
-			INT ch = (INT)wParam;
-
-			WCHAR sz[64];
-			GetWindowText(hWnd,sz,ARRAYSIZE(sz));
-			int cch = (int)wcslen(sz);
-
-			if( cch == 1 && (ch == 'x' || ch == 'X') )
-				break;
-
-			if( isxdigit(ch) )
-				break;
-
-			if( ch == VK_BACK )
-				break;
-
-			return 0;
-		}
-	}
-
-	return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-}
-
 static INT_PTR CALLBACK GotoLocationDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
@@ -85,6 +48,8 @@ static INT_PTR CALLBACK GotoLocationDlgProc(HWND hDlg, UINT message, WPARAM wPar
 
 			SendDlgItemMessage(hDlg,IDC_EDIT,EM_SETLIMITTEXT,MAX_ADDRESS_LENGTH,0);
 
+			EnableWindow(GetDlgItem(hDlg,IDOK),FALSE);
+
 			WCHAR sz[MAX_ADDRESS_LENGTH];
 			if( p->Flags & DVL_HEX )
 				StringCchPrintf(sz,ARRAYSIZE(sz),L"0x%I64x",p->Location.QuadPart);
@@ -93,17 +58,21 @@ static INT_PTR CALLBACK GotoLocationDlgProc(HWND hDlg, UINT message, WPARAM wPar
 			
 			SetDlgItemText(hDlg,IDC_EDIT,sz);
 
-			SetWindowSubclass(GetDlgItem(hDlg,IDC_EDIT),&EditSubclassWindow,0x1,0);
-
 			return (INT_PTR)TRUE;
 		}
 		case WM_DESTROY:
 		{
-			RemoveWindowSubclass(GetDlgItem(hDlg,IDC_EDIT),&EditSubclassWindow,0x1);
 			break;
 		}
 		case WM_COMMAND:
 		{
+			if( HIWORD(wParam) == EN_UPDATE )
+			{
+				int cch = GetWindowTextLength(GetDlgItem(hDlg,IDC_EDIT));
+				EnableWindow(GetDlgItem(hDlg,IDOK),cch != 0);
+				break;
+			}
+
 			if( LOWORD(wParam) == IDOK )
 			{
 				DISK_VOLUME_SECTOR_CLUSTER_LOCATION_DIALOG_PARAM *param = (DISK_VOLUME_SECTOR_CLUSTER_LOCATION_DIALOG_PARAM *)GetWindowLongPtr(hDlg,DWLP_USER);
@@ -117,12 +86,19 @@ static INT_PTR CALLBACK GotoLocationDlgProc(HWND hDlg, UINT message, WPARAM wPar
 				WCHAR szBuffer[MAX_ADDRESS_LENGTH];
 				GetDlgItemText(hDlg,IDC_EDIT,szBuffer,cchBuffer);
 
+				StrTrim(szBuffer,L" \t");
+
 				LONGLONG val;
-				StrToInt64ExW(szBuffer,STIF_SUPPORT_HEX,&val);
+				if( StrToInt64ExW(szBuffer,STIF_SUPPORT_HEX,&val) )
+				{
+					p->Location.QuadPart = val;
 
-				p->Location.QuadPart = val;
-
-				EndDialog(hDlg, LOWORD(wParam));
+					EndDialog(hDlg, LOWORD(wParam));
+				}
+				else
+				{
+					MessageBeep(-1);
+				}
 				return (INT_PTR)TRUE;
 			}
 			if( LOWORD(wParam) == IDCANCEL || LOWORD(wParam) == IDCLOSE  )

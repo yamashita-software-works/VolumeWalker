@@ -1,3 +1,17 @@
+### 0.1.61.0
+
+- Volume File Explorerウィンドウに、NTFSボリューム上のファイルのレコード名を表示する "NTFS Record Information"ダイアログを追加。   
+  - Volume File Explorer上でファイルまたはディレクトリを選択し、コンテキストメニューを開いて [Inspact File]>[NTFS Record Information]を選びます。
+  - レコードをダブルクリックするとレコードのダンプウィンドウが開きます。
+  - 基本的には管理者モードで使用できます。
+
+- Sector/Cluster Dumpウィンドウ、Gotoダイアログの16進数文字入力フィルタを廃止。
+  16進数用"0x"が自由に入力できない、Ctrl+Vでクリップボードからテキストをペーストができないといった不都合回避の為。
+
+- Volume File Explorerウィンドウ、Root Directories表示中にGotoダイアログを開くとアプリケーションが終了する不具合を修正。
+
+- Tools Padウィンドウの Date Timeページ、[NOW]ボタン押下時の処理を実装。
+
 ### 0.1.60.0
 
 - Volume File Exploer,Gotoダイアログを更新。

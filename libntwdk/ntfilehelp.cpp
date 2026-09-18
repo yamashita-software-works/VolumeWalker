@@ -459,7 +459,6 @@ OpenFile_ID(
             break;
         default:
             Status = STATUS_INVALID_PARAMETER;
-            RtlSetLastWin32Error( RtlNtStatusToDosError(Status) );
             return Status;
     }
 
@@ -475,8 +474,6 @@ OpenFile_ID(
                     OpenOptions);
 
     *phFile = hFile;
-
-    RtlSetLastWin32Error( RtlNtStatusToDosError(Status) );
 
     return Status;
 }

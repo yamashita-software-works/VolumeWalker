@@ -358,9 +358,10 @@ GotoDirectoryDialogEx(
 		pszCurDir = szCurDir;
 	}
 
-	UNICODE_STRING usVolume;
-	UNICODE_STRING usRelativePath;
-	SplitVolumeRelativePath(pszCurDir,&usVolume,&usRelativePath);
+	UNICODE_STRING usVolume = {0};
+	UNICODE_STRING usRelativePath = {0};
+	if( *pszCurDir != L'\0' )
+		SplitVolumeRelativePath(pszCurDir,&usVolume,&usRelativePath);
 
 	//
 	// Initialize Dialog Parameter

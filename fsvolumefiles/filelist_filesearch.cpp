@@ -357,6 +357,9 @@ static HRESULT CALLBACK SearchFileCallbackProc(ULONG CallbackReason,PVOID Callba
 						pItemEx->FileId          = pcfi->Information->FileId;
 						pItemEx->FileIndex       = pcfi->Information->FileIndex;
 						pItemEx->FileSystemFlags = pscp->FileSystemFlags;
+
+						StringCchCopy(pItemEx->FileSystemName,ARRAYSIZE(pItemEx->FileSystemName),pscp->FileSystemName);
+
 						if( pcfi->Information->ShortNameLength != 0 )
 						{
 							memcpy(pItemEx->ShortName,pcfi->Information->ShortName,pcfi->Information->ShortNameLength);

@@ -285,7 +285,6 @@ public:
 		m_liCurrentDateTime.QuadPart = _SetAbsTimeLessThen1msPart64(m_liCurrentDateTime.QuadPart,val);
 
 		UpdateTimeBinBoxes(NULL);
-
 	}
 
 	void OnOK()
@@ -501,6 +500,23 @@ public:
 						DateTime_GetSystemtime(m_hwndDTC, &st);
 						SystemTimeToFileTime(&st,&ft);
 						SetDosDateTime(ft);
+						break;
+					}
+					case IDC_BUTTON1:
+					{
+						FILETIME ft,ftLocal;
+						SYSTEMTIME st;
+						GetSystemTimeAsFileTime(&ft);
+						FileTimeToLocalFileTime(&ft,&ftLocal);
+						FileTimeToSystemTime(&ftLocal,&st);
+						_SetFileTimeToCurrentAbsTime(ftLocal);
+						UpdateTimeBinBoxes(NULL);
+
+						MonthCal_SetCurSel(m_hwndMCC, &st);
+						DateTime_SetSystemtime(m_hwndDTC,GDT_VALID,&st);
+						UpdateTimeBinBoxes(&st);
+						SetTextMilliseconds(&st);
+						SetText100ns(m_liCurrentDateTime);
 						break;
 					}
 				}

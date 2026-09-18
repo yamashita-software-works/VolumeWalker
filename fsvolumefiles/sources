@@ -113,6 +113,8 @@ SOURCES = \
 	dialog_information_stream.cpp\
 	dialog_recyclebin_files.cpp\
 	dialog_launchpad.cpp\
+	dialog_information_ntfs_record.cpp\
+	dialog_debug_dump.cpp\
 	apps.cpp\
 	meterbox.cpp\
 	shellwindow.cpp\
@@ -160,6 +162,7 @@ LINKLIBS=\
 	$(SDK_LIB_PATH)\oldnames.lib \
 	$(SDK_LIB_PATH)\strsafe.lib \
 	$(SDK_LIB_PATH)\uxtheme.lib \
+	$(SDK_LIB_PATH)\crypt32.lib \
 	$(CRT_LIB_PATH)\delayimp.lib \
 	$(DDK_LIB_PATH)\ntdll.lib \
 	$(_LIBNTWDK)\fsfilelib.lib \

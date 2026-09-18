@@ -557,3 +557,68 @@ CreateClusterInformationBuffer(
 
 	return pci;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+
+//-----------------------------------------------------------------------------
+//
+//  NtDosReadCluster()
+//
+//  PURPOSE:
+//
+//-----------------------------------------------------------------------------
+EXTERN_C
+HRESULT
+WINAPI
+NtDosReadCluster(
+	HANDLE hVolume,
+	PCWSTR pszVolumeName,
+	LONGLONG Lcn,
+	PVOID Buffer,
+	DWORD BufferSize,
+	LPDWORD NumberOfBytesRead
+	)
+{
+	if( pszVolumeName != NULL ) // todo: reserved
+		return E_INVALIDARG;    // todo: reserved
+
+	DWORD dwBytesPerCluster;
+	DWORD dwBytesPerSector;
+	NTSTATUS Status;
+	VOLUME_FS_SIZE_INFORMATION *SizeInfo;
+	if( (Status = GetVolumeFsInformation(hVolume,VOLFS_SIZE_INFORMATION,(void **)&SizeInfo)) == STATUS_SUCCESS )
+	{
+		dwBytesPerCluster = SizeInfo->SectorsPerAllocationUnit * SizeInfo->BytesPerSector;
+		dwBytesPerSector  = SizeInfo->BytesPerSector;
+		FreeMemory(SizeInfo);
+	}
+	else
+	{
+		return HRESULT_FROM_WIN32( NtStatusToDosError(Status) );
+	}
+
+	LARGE_INTEGER LcnOffset = {0};
+	LcnOffset.QuadPart = Lcn * dwBytesPerCluster;
+
+	DWORD dwBytesReturned;
+	RETRIEVAL_POINTER_BASE rpb = {0};
+	if( DeviceIoControl(hVolume,
+						FSCTL_GET_RETRIEVAL_POINTER_BASE,
+						NULL,0,
+						&rpb,sizeof(rpb),
+						&dwBytesReturned,
+						NULL) )
+	{
+		LcnOffset.QuadPart += rpb.FileAreaOffset.QuadPart * dwBytesPerCluster;
+	}
+
+#if 0
+	SetFilePointerEx(hVolume,LcnOffset,NULL,FILE_BEGIN);
+	ReadFile(hVolume,Buffer,BufferSize,NumberOfBytesRead,NULL);
+#else
+	ULONG ulError;
+	ULONG cbRead;
+	ulError = NtDosReadFile(hVolume,Buffer,BufferSize,&cbRead,&LcnOffset,NULL,NULL);
+#endif
+	return HRESULT_FROM_WIN32( ulError );
+}

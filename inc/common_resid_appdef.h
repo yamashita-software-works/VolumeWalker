@@ -119,6 +119,7 @@
 #define ID_FILE_CLUSTER_INFORMATION              40113
 #define ID_FILE_STREAM_INFORMATION               40114
 #define ID_FILE_SIMPLEDUMP                       40115
+#define ID_FILE_NTFS_RECORD_INFORMATION          40116
 
 #define ID_OPEN_APP_FIRST                        40200
 #define ID_OPEN_APP_LAST                         40299

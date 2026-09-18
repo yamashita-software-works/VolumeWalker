@@ -134,7 +134,7 @@ typedef struct _FS_REPARSE_POINT_INFORMATION_EX
         } SymLink;
 
         struct {
-            ULONG Version;	  // Currently version 3
+            ULONG Version;    // Currently version 3
             PWSTR PackageID;  // L"Microsoft.WindowsTerminal_8wekyb3d8bbwe"
             PWSTR EntryPoint; // L"Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"
             PWSTR Executable; // L"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.4.3243.0_x64__8wekyb3d8bbwe\wt.exe"
@@ -156,20 +156,20 @@ typedef struct _REPARSE_APPEXECLINK_READ_BUFFER { // For tag IO_REPARSE_TAG_APPE
     ULONG  ReparseTag;
     USHORT ReparseDataLength;
     USHORT Reserved;
-    ULONG  Version;	        // Currently version 3
-    WCHAR  StringList[1];	// Multistring (Consecutive strings each ending with a NUL)
+    ULONG  Version;         // Currently version 3
+    WCHAR  StringList[1];   // Multistring (Consecutive strings each ending with a NUL)
   /* There are normally 4 strings here. Ex:
-    Package ID:	    L"Microsoft.WindowsTerminal_8wekyb3d8bbwe"
-    Entry Point:	L"Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"
-    Executable:	    L"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.4.3243.0_x64__8wekyb3d8bbwe\wt.exe"
-    Applic. Type:	l"0" Integer as ASCII. "0" = Desktop bridge application; Else sandboxed UWP application
+    Package ID:     L"Microsoft.WindowsTerminal_8wekyb3d8bbwe"
+    Entry Point:    L"Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"
+    Executable:     L"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.4.3243.0_x64__8wekyb3d8bbwe\wt.exe"
+    Applic. Type:   l"0" Integer as ASCII. "0" = Desktop bridge application; Else sandboxed UWP application
   */     
 } APPEXECLINK_READ_BUFFER, *PAPPEXECLINK_READ_BUFFER;
 #endif
 
 EXTERN_C
 BOOL
-NTAPI
+WINAPI
 GetReparsePointInformation(
     HANDLE hRoot,
     PCWSTR FilePath,
@@ -537,8 +537,8 @@ EXTERN_C
 FS_CLUSTER_INFORMATION *
 WINAPI
 CreateClusterInformationBuffer(
-	PCWSTR pszFilePath
-	);
+    PCWSTR pszFilePath
+    );
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -590,6 +590,145 @@ ULONG
 WINAPI
 FreeNtfsSpecialFiles(
     FS_NTFS_SPECIAL_FILE_LIST *FileList
+    );
+
+//----------------------------------------------------------------------------
+//
+//  NTFS Record Helper
+//
+//----------------------------------------------------------------------------
+#include "ntfsfilerecord.h"
+
+#define _NTFS_RECORD_API_USE_LOCALALLOC  1
+
+typedef struct _NT_NTFS_SPECIAL_FILE_ITEM
+{
+    ULONG Length;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastModificationTime;
+    LARGE_INTEGER LastChangeTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER AllocatedLength;
+    LARGE_INTEGER FileSize;
+    ULONG FileAttributes;
+    ULONG PackedEaSize;
+    USN Usn;
+    LARGE_INTEGER ParentDirectory;
+    LARGE_INTEGER FileId;
+    USHORT ShortNameLength;
+    USHORT NameLength;
+    WCHAR ShortName[12];
+    WCHAR Name[MAX_PATH];
+} NT_NTFS_SPECIAL_FILE_ITEM;
+
+typedef struct _NT_NTFS_SPECIAL_FILE_LIST
+{
+    HANDLE Handle;
+    ULONG cItemListCount;
+    NT_NTFS_SPECIAL_FILE_ITEM **pItemList;
+} NT_NTFS_SPECIAL_FILE_LIST;
+
+EXTERN_C
+ULONG
+WINAPI
+NtDosGetNtfsFileRecordInformation(
+    IN PCWSTR pszVolumeName OPTIONAL,
+    IN HANDLE VolumeHandle OPTIONAL,
+    IN LONGLONG FileId,
+    IN PVOID Buffer,
+    IN ULONG BufferLength,
+    IN OUT PULONG ReturnDataLength OPTIONAL
+    );
+
+EXTERN_C
+ULONG
+WINAPI
+GetNtfsFileRecordInformation(
+    __in_opt PCWSTR pszVolumeName,
+    __in_opt HANDLE VolumeHandle, 
+    __in LONGLONG FileId,
+    __out PVOID *Buffer,
+    __out_opt LPDWORD pcbBuffer
+    );
+
+EXTERN_C
+ULONG
+WINAPI
+GetNtfsRecordNameString(
+    UINT id,
+    PWSTR szBuf,
+    int cchBuf,
+    ULONG dwFlags
+    );
+
+EXTERN_C
+ULONG
+WINAPI
+GetNtfsRecordType(
+    PVOID Header
+    );
+
+EXTERN_C
+ULONG
+WINAPI
+GetNtfsRecordLength(
+    PVOID Header
+    );
+
+EXTERN_C
+ULONG
+WINAPI
+GetNtfsRecordAttributeList(
+    PVOID Header,
+    PVOID *pa,
+    ULONG *pcb
+    );
+
+typedef struct _CLUSTER_MAPPING_PAIR
+{
+    LONGLONG CurrentVcn;
+    LONGLONG NextVcn;
+    LONGLONG CurrentLcn;
+    LONGLONG LcnCount;
+} CLUSTER_MAPPING_PAIR;
+
+EXTERN_C
+HRESULT
+WINAPI
+GetNtfsClusterMappingPair(
+    ATTRIBUTE_RECORD_HEADER *pAttrRecHdr,
+    CLUSTER_MAPPING_PAIR **pClusters,
+    LONGLONG *pn
+    );
+
+EXTERN_C
+HRESULT
+WINAPI
+FindNtfsRacordAttribue(
+    HANDLE hVolume,
+    LONGLONG FileId,
+    ULONG TypeCode,
+    ULONG Index,
+    PVOID pBuffer,
+    ULONG cbBuffer
+    );
+
+EXTERN_C
+HRESULT
+WINAPI
+FindNtfsRecordAttribueFromBuffer(
+    NTFS_FILE_RECORD_OUTPUT_BUFFER *pBuf,
+    ULONG TypeCode,
+    ULONG Index,
+    PVOID pBuffer,
+    ULONG cbBuffer
+    );
+
+EXTERN_C
+VOID
+WINAPI
+FreeNtfsMemory(
+    PVOID pv
     );
 
 //----------------------------------------------------------------------------
@@ -794,11 +933,11 @@ EXTERN_C
 PWSTR
 APIENTRY
 NtPathGetAttributeStringEx(
-	DWORD Attributes,
-	LPWSTR String,
-	int cchString,
-	DWORD dwFlags
-	);
+    DWORD Attributes,
+    LPWSTR String,
+    int cchString,
+    DWORD dwFlags
+    );
 
 #define GASF_PADDING  0x1
 
@@ -996,7 +1135,7 @@ typedef struct _NT_VOLUME_SIZE_INFORMATION
     ULONG BytesPerSector;
     LONGLONG TotalAllocationSize;
     LONGLONG AvailableAllocationSize;
-	ULONG ClusterSize;
+    ULONG ClusterSize;
 } NT_VOLUME_SIZE_INFORMATION, *PNT_VOLUME_SIZE_INFORMATION;
 #pragma pack()
 
@@ -1004,16 +1143,67 @@ EXTERN_C
 ULONG
 APIENTRY
 NtDosGetVolumeSizeInformation(
-	__in HANDLE hVolume,
-	__inout NT_VOLUME_SIZE_INFORMATION *pInfo,
-	__in INT cbInfo
-	);
+    __in HANDLE hVolume,
+    __inout NT_VOLUME_SIZE_INFORMATION *pInfo,
+    __in INT cbInfo
+    );
 
 EXTERN_C
 HRESULT
 WINAPI
 NtDosGetVolumeInformationFlags(
-	__in HANDLE Handle,
-	__inout LPDWORD pdwFileSystemFlags,
-	__inout LPDWORD pdwFileSystemType
-	);
+    __in HANDLE Handle,
+    __out LPDWORD pdwFileSystemFlags,
+    __out LPDWORD pdwFileSystemType
+    );
+
+EXTERN_C
+ULONG
+WINAPI
+NtDosOpenFileId(
+    __out HANDLE *phFile,
+    __in_opt HANDLE Reserved,
+    __in_opt PCWSTR pszVolumeNameOrFilePath,
+    __in LONGLONG FileId,
+    __in ULONG DesiredAccess,
+    __in ULONG ShareAccess,
+    __in ULONG OpenOptions
+    );
+
+EXTERN_C
+ULONG
+WINAPI
+NtDosOpenVolume(
+    __out HANDLE *phVolume,
+    __in PCWSTR pszVolumeNameOrFilePath,
+    __in ULONG DesiredAccess,
+    __in ULONG ShareAccess,
+    __in ULONG OpenOptions
+    );
+
+#define NO_FLAGS_SPECIFIED ((ULONG)-1)
+
+EXTERN_C
+HRESULT
+WINAPI
+NtDosReadCluster(
+    __in HANDLE hVolume,
+    __in PCWSTR pszVolumeName,
+    __in LONGLONG Lcn,
+    __out PVOID Buffer,
+    __in DWORD BufferSize,
+    __out_opt LPDWORD NumberOfBytesRead
+    );
+
+EXTERN_C
+ULONG
+WINAPI
+NtDosReadFile(
+    __in HANDLE FileHandle,
+    __out PVOID Buffer,
+    __in ULONG Length,
+    __out_opt PULONG NumberOfBytesRead,
+    __in_opt LARGE_INTEGER *ByteOffset,
+    __in_opt PULONG Key,
+    __in_opt PVOID Reserved // Reserved pointer to structure
+    );

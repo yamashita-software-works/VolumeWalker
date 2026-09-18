@@ -1368,7 +1368,7 @@ public:
 	{
 		if( lParam == 0 )
 			return 0;
-		return MakeSelectedFileList((FS_SELECTED_FILELIST *)lParam) == S_OK ? TRUE : FALSE;
+		return MakeSelectedItemsFileList((FS_SELECTED_FILELIST *)lParam) == S_OK ? TRUE : FALSE;
 	}
 
 	LRESULT OnGetSelectedFileAttribute(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -1438,6 +1438,16 @@ public:
 			AppendMenu(hMenu,MF_STRING,ID_OPEN_LOCATION_BASH,       L"Open in Bash");
 			AppendMenu(hMenu,MF_STRING,0,NULL);
 			AppendMenu(hMenu,MF_STRING,ID_LOOKUP_STREAM_BY_LCN,     L"Lookup Stream By LCN...");
+#if _ENABLE_FILELIST_SUBPANE
+			AppendMenu(hMenu,MF_STRING,0,NULL);
+			AppendMenu(hMenu,MF_STRING,ID_VIEW_SELECTVOLUMEPANE,    L"Volumes Pane");
+			AppendMenu(hMenu,MF_STRING,ID_VIEW_PROPERTYPANE,        L"Properties Pane");
+			AppendMenu(hMenu,MF_STRING,ID_VIEW_INFORMATIONPANE,     L"Information Pane");
+#endif
+#if _ENABLE_PAGE_CHANGER
+			AppendMenu(hMenu,MF_STRING,0,NULL);
+			AppendMenu(hMenu,MF_STRING,ID_CHOOSE_VOLUME,            L"Select Volume");
+#endif
 		}
 		return 0;
 	}
@@ -2362,19 +2372,28 @@ public:
 				pFI->FileAreaOffset.QuadPart      = -1;
 				pFI->ValidFileAreaOffset          = FALSE;
 			}
-
-			if( !pFI->ValidFileAreaOffset && 
-				(wcsicmp(this->m_FileSystemName,L"NTFS") == 0 || wcsicmp(this->m_FileSystemName,L"ReFS") == 0) )
-			{
-				pFI->AllocationSize.QuadPart = pFI->EndOfFile.QuadPart = clusterex.SectorsPerCluster * clusterex.FirstCount;
-			}
-
+//
+//			if( !pFI->ValidFileAreaOffset && 
+//				(wcsicmp(m_FileSystemName,L"NTFS") == 0 || wcsicmp(m_FileSystemName,L"ReFS") == 0) )
+//			{
+//				pFI->AllocationSize.QuadPart = pFI->EndOfFile.QuadPart = clusterex.SectorsPerCluster * clusterex.FirstCount;
+//			}
+//
 			DWORD dwFileSystemFlags;
 			WCHAR szFileSystemName[32];
 			if( GetVolumeInformationByHandleW(hRootDirectory,nullptr,0,nullptr,nullptr,&dwFileSystemFlags,szFileSystemName,ARRAYSIZE(szFileSystemName)) )
 			{
+				// Update to the pFI->ValidFileAreaOffset flag if under no admin mode.
 				if( !pFI->ValidFileAreaOffset && (wcsicmp(szFileSystemName,L"NTFS") == 0 || wcsicmp(szFileSystemName,L"ReFS") == 0))
 					pFI->ValidFileAreaOffset = true;
+
+				pFI->FileSystemFlags = dwFileSystemFlags;
+			}
+
+			if( pFI->ValidFileAreaOffset && 
+				(wcsicmp(this->m_FileSystemName,L"NTFS") == 0 || wcsicmp(this->m_FileSystemName,L"ReFS") == 0) )
+			{
+				pFI->AllocationSize.QuadPart = pFI->EndOfFile.QuadPart = clusterex.SectorsPerCluster * clusterex.FirstCount;
 			}
 
 			CloseHandle(hRootDirectory);
@@ -2922,7 +2941,15 @@ public:
 
 			SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_VOLUME_SELECTED,(LPARAM)&sel);
 		}
-
+#if _ENABLE_FILELIST_SUBPANE
+		SELECT_ITEM sel = {0};
+		sel.ViewType  = GetConsoleId();
+		sel.pszPath   = this->m_pszCurDir;
+		sel.pszCurDir = NULL;
+		sel.pszName   = this->m_pszVolumeName;
+		sel.pszVolume = this->m_pszVolumeDevice;
+		SendMessage(GetParent(m_hWnd),WM_NOTIFY_MESSAGE,UI_NOTIFY_UPDATE_SUBPANE,(LPARAM)&sel);
+#endif
 		_SafeMemFree(pszPreviousVolumeDevice);
 
 		return hr;
@@ -3218,9 +3245,10 @@ public:
 			AppendMenu(hSubMenu,MF_STRING,0,0);
 			AppendMenu(hSubMenu,MF_STRING,ID_FILE_CLUSTER_INFORMATION,L"&Cluster Information");
 			AppendMenu(hSubMenu,MF_STRING,ID_FILE_STREAM_INFORMATION,L"&Stream Information");
+			AppendMenu(hSubMenu,MF_STRING,ID_FILE_NTFS_RECORD_INFORMATION,L"&NTFS Record Information");
 		}
 		AppendMenu(hMenu,MF_STRING,0,0);
-		AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Inspects File");
+		AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Inspect File");
 
 		return S_OK;
 	}
@@ -3252,7 +3280,32 @@ public:
 	// Miscellaneous Functions
 	//
 
-	HRESULT MakeSelectedFileList(FS_SELECTED_FILELIST *pFileList)
+	HRESULT MakeSingleItemFileList(FS_SELECTED_FILELIST *pFileList,PCWSTR pszFilePath,DWORD dwFileAttributes)
+	{
+		CFileOperationList *pFiles = new CFileOperationList(32,16);
+		if( pFiles == NULL )
+			return E_OUTOFMEMORY;
+
+		PWSTR pNtPath;
+
+		{
+			pNtPath = (PWSTR)pszFilePath;
+
+			pFiles->Add( pNtPath, dwFileAttributes );
+
+			FS_FILELISTBUFFER *FileListBuffer = NULL;
+			if( pFiles->CreateBuffer(&FileListBuffer,FOPFL_SET_NAME_FIELD_OFFSET) == S_OK )
+			{
+				pFileList->FileListBuffer = FileListBuffer;
+			}
+		}
+
+		delete pFiles;
+
+		return S_OK;
+	}
+
+	HRESULT MakeSelectedItemsFileList(FS_SELECTED_FILELIST *pFileList)
 	{
 		int cSelItems = ListView_GetSelectedCount(m_hWndList);
 
@@ -3720,6 +3773,18 @@ public:
 	// Commnad Handler
 	//
 
+	BOOL CheckFileSystemFlag(DWORD dwCheckFlag)
+	{
+		int iItem =	ListViewEx_GetCurSel(m_hWndList);
+		if( iItem != -1 )
+		{
+			CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+			if( pItem->pFI->FileSystemFlags & dwCheckFlag )
+				return TRUE;
+		}
+		return FALSE;
+	}
+
 	virtual HRESULT QueryCmdState(UINT uCmdId,UINT *puState)
 	{
 		switch( uCmdId )
@@ -3740,9 +3805,20 @@ public:
 				*puState = (ListView_GetSelectedCount(m_hWndList) == 1) ?  UPDUI_ENABLED : UPDUI_DISABLED;
 				break;
 			case ID_FILE_STREAM_INFORMATION:
-				*puState = ((ListView_GetSelectedCount(m_hWndList) == 1) && (m_FileSystemFlags & FILE_NAMED_STREAMS))
-							 ?  UPDUI_ENABLED : UPDUI_DISABLED;
+				if( m_bRootDirectoryList )
+					*puState = CheckFileSystemFlag(FILE_NAMED_STREAMS) ? UPDUI_ENABLED : UPDUI_DISABLED;
+				else
+					*puState = ((ListView_GetSelectedCount(m_hWndList) == 1) && (m_FileSystemFlags & FILE_NAMED_STREAMS))
+								 ?  UPDUI_ENABLED : UPDUI_DISABLED;
 				break;
+			case ID_FILE_NTFS_RECORD_INFORMATION:
+				if( m_bRootDirectoryList )
+					*puState = CheckFileSystemFlag(FILE_NAMED_STREAMS) ? UPDUI_ENABLED : UPDUI_DISABLED;
+				else
+					*puState = ((ListView_GetSelectedCount(m_hWndList) == 1) && (wcscmp(this->m_FileSystemName,L"NTFS") == 0))
+								 ?  UPDUI_ENABLED : UPDUI_DISABLED;
+				break;
+
 #endif
 			case ID_SEARCH:
 			{
@@ -4014,12 +4090,20 @@ public:
 			case ID_FILE_SIMPLEDUMP:
 				OnFileSimpleDump();
 				break;
+#if _ENABLE_PAGE_CHANGER
+			case ID_CHOOSE_VOLUME:
+				OnChooseVolume();
+				break;
+#endif
 #if _ENABLE_INFORMATION_DIALOG
 			case ID_FILE_CLUSTER_INFORMATION:
 				OnFileClusterInformation();
 				break;
 			case ID_FILE_STREAM_INFORMATION:
 				OnFileStreamInformation();
+				break;
+			case ID_FILE_NTFS_RECORD_INFORMATION:
+				OnFileNtfsRecordInformation();
 				break;
 #endif
 			default:
@@ -4129,9 +4213,41 @@ public:
 	{
 		HWND hwndMainWnd = GetActiveWindow();
 
+		BOOL bCurDir = FALSE;
+
+		int cSelected = ListView_GetSelectedCount(m_hWndList);
+		if( cSelected == 0 )
+		{
+			bCurDir = TRUE;
+		}
+		else  if( cSelected == 1 )
+		{
+			int iItem =	ListViewEx_GetCurSel(m_hWndList);
+			CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+			if( wcscmp(pItem->pFI->hdr.FileName,L"..") == 0 )
+				return;
+
+			if( !(pItem->pFI->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
+			{
+				bCurDir = TRUE;
+			}
+		}
+		else
+		{
+			;
+		}
+
 		FS_SELECTED_FILELIST Files = {0};
-		if( MakeSelectedFileList(&Files) != S_OK )
-			return;
+
+		if( bCurDir )
+		{
+			MakeSingleItemFileList(&Files,this->m_pszCurDir,FILE_ATTRIBUTE_DIRECTORY);
+		}
+		else
+		{
+			if( MakeSelectedItemsFileList(&Files) != S_OK )
+				return;
+		}
 
 		HANDLE hMatchedFiles;
 		FO_PARAM fop = {0};
@@ -4170,7 +4286,7 @@ public:
 #endif
 
 		FS_SELECTED_FILELIST Files = {0};
-		if( pThis->MakeSelectedFileList(&Files) != S_OK )
+		if( MakeSelectedItemsFileList(&Files) != S_OK )
 			return;
 
 		LARGE_INTEGER AllocationSize = {0};
@@ -4491,6 +4607,46 @@ public:
 
 			CoTaskMemFree(pszStreamName);
 		}
+	}
+
+	void OnFileNtfsRecordInformation()
+	{
+		int iItem = ListViewEx_GetCurSel(m_hWndList);
+		if( iItem == -1 )
+			return ;
+
+		CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetItemData(m_hWndList,iItem);
+
+		CFileItemEx *pFI = pItem->pFI;
+
+		PWSTR pszPath = NULL;
+		if( m_pszCurDir == NULL || *m_pszCurDir == L'\0' )
+			if( GetConsoleId() == VOLUME_CONSOLE_VOLUMEFILES )
+				pszPath = CombinePath(pFI->hdr.Path,L"\\");
+			else
+				pszPath = CombinePath(pFI->hdr.Path,pFI->hdr.FileName);
+		else if( pFI->hdr.Path == NULL )
+			pszPath = CombinePath(m_pszCurDir,pFI->hdr.FileName);
+		else
+			pszPath = DuplicateString(pFI->hdr.Path);
+
+		if( pszPath )
+		{
+			NTFSRecordInformationDialog( m_hWnd, pszPath );
+
+			FreeMemory(pszPath);
+		}
+	}
+#endif
+
+#if _ENABLE_PAGE_CHANGER
+	void OnChooseVolume()
+	{
+		UIS_PAGE pg = {0};
+		pg.ConsoleTypeId = VOLUME_CONSOLE_CHOOSE_VOLUME;
+		pg.pszPath       = NULL;
+		pg.pszFileName   = NULL;
+		SendMessage(GetParent(m_hWnd),WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
 	}
 #endif
 

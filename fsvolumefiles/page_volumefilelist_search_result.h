@@ -350,8 +350,9 @@ public:
 			AppendMenu(hSubMenu,MF_STRING,0,0);
 			AppendMenu(hSubMenu,MF_STRING,ID_FILE_CLUSTER_INFORMATION,L"&Cluster Information");
 			AppendMenu(hSubMenu,MF_STRING,ID_FILE_STREAM_INFORMATION,L"&Stream Information");
+			AppendMenu(hSubMenu,MF_STRING,ID_FILE_NTFS_RECORD_INFORMATION,L"&NTFS Record Information");
 		}
-		AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Inspects File");
+		AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Inspect File");
 
 		if( m_pOpenApplications == NULL )
 			CreateApplicationList(&m_pOpenApplications);
@@ -405,6 +406,16 @@ public:
 					}
 				}
 				return S_OK;
+			case ID_FILE_NTFS_RECORD_INFORMATION:
+			{
+				CFileLvItem *pItem = (CFileLvItem *)ListViewEx_GetCurItemData(m_hWndList);
+				if( pItem->pFI->hdr.Path && (pItem->pFI->FileSystemFlags & FILE_NAMED_STREAMS) )
+				{
+					*puState = ((ListView_GetSelectedCount(m_hWndList) == 1) && (TRUE /*todo:*/ ))
+								 ?  UPDUI_ENABLED : UPDUI_DISABLED;
+				}
+				return S_OK;
+			}
 		}
 		return T::QueryCmdState(uCmdId,puState);
 	}

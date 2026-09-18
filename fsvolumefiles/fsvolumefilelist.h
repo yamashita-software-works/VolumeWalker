@@ -66,3 +66,10 @@ RecycleBinFilesDialog(
 	DWORD dwFlags
 	);
 
+EXTERN_C
+HRESULT
+WINAPI
+NTFSRecordInformationDialog(
+	HWND hWnd,
+	PCWSTR pszFilePath
+	);

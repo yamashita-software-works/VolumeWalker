@@ -261,7 +261,7 @@ public:
 		return S_OK;
 	}
 
-	HRESULT OnInitPage(PVOID,DWORD,PVOID)
+	virtual HRESULT OnInitPage(PVOID,DWORD,PVOID)
 	{
 		m_hWndList = CreateWindow(WC_LISTVIEW, 
                               L"", 
@@ -291,14 +291,14 @@ public:
 		return S_OK;
 	}
 
-	HRESULT Clear()
+	virtual HRESULT Clear()
 	{
 		ListView_DeleteAllItems(m_hWndList);
 		Close();
 		return S_OK;
 	}
 
-	HRESULT Open(PCWSTR pszFileOrStreamName,DWORD dwFlags=0)
+	virtual HRESULT Open(PCWSTR pszFileOrStreamName,DWORD dwFlags=0)
 	{
 		_SafeMemFree(m_pszFilePath);
 		m_pszFilePath = _MemAllocString( pszFileOrStreamName ); 
@@ -317,7 +317,7 @@ public:
 		return FillItems();
 	}
 
-	HRESULT Close()
+	virtual HRESULT Close()
 	{
 		_SafeMemFree(m_pszFilePath);
 		_SafeMemFree(m_rd.Buffer);
@@ -337,7 +337,7 @@ public:
 		return S_OK;
 	}
 
-	HRESULT Reload()
+	virtual HRESULT Reload()
 	{
 		ASSERT(m_rd.Buffer != NULL);
 		ASSERT(m_rd.BufferLength != 0);
@@ -496,7 +496,7 @@ private:
 		return S_OK;
 	}
 
-	BOOL InitFileBuffer(LARGE_INTEGER& li)
+	virtual BOOL InitFileBuffer(LARGE_INTEGER& li)
 	{
 		HANDLE hFile;
 		m_rd.Status = OpenFileEx_W(&hFile,m_pszFilePath,GENERIC_READ|SYNCHRONIZE,FILE_SHARE_READ|FILE_SHARE_WRITE,FILE_NON_DIRECTORY_FILE|FILE_SYNCHRONOUS_IO_NONALERT);
@@ -540,7 +540,7 @@ private:
 		return TRUE;
 	}
 
-	BOOL ReadFileBlock()
+	virtual BOOL ReadFileBlock()
 	{
 		SetFilePointerEx(m_rd.Handle,m_rd.ReadOffset,NULL,FILE_BEGIN);
 
