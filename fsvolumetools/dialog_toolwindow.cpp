@@ -28,6 +28,7 @@ _PAGE_UNIT,
 _PAGE_CHARACTER_TO_CODE,
 _PAGE_CODE_TO_CHARACTER,
 _PAGE_DATETIME,
+_PAGE_INDIRECT_STRING,
 _PAGE_BLANK_ITEM,
 };
 
@@ -55,6 +56,7 @@ struct CControlPane : public CDialogWindow
 #include "page_chartocode.h"
 #include "page_codetochar.h"
 #include "page_datetime.h"
+#include "page_indirectstring.h"
 
 struct CToolWindow : public CDialogWindow
 {
@@ -129,6 +131,9 @@ struct CToolWindow : public CDialogWindow
 					break;
 				case _PAGE_DATETIME:
 					tvi.itemex.pszText = L"Date Time";
+					break;
+				case _PAGE_INDIRECT_STRING:
+					tvi.itemex.pszText = L"Indirect String";
 					break;
 				case _PAGE_BLANK_ITEM:
 					InsertBlank(TVI_ROOT,tvi.hInsertAfter);
@@ -205,6 +210,9 @@ struct CToolWindow : public CDialogWindow
 					break;
 				case _PAGE_DATETIME:
 					pNewPane = static_cast<CControlPane*>(new CDateTimeToolPage);
+					break;
+				case _PAGE_INDIRECT_STRING:
+					pNewPane = static_cast<CControlPane*>(new CIndirectStringPage);
 					break;
 			}
 	
@@ -572,6 +580,7 @@ int InitialPageLayout(int ToolPadType,int pages[])
 	switch( ToolPadType )
 	{
 		case TPAD_TYPE_MINITOOLS:
+		default:
 		{
 			page_count = 0;
 			pages[ page_count++ ] = _PAGE_RADIX;
@@ -579,17 +588,7 @@ int InitialPageLayout(int ToolPadType,int pages[])
 			pages[ page_count++ ] = _PAGE_CHARACTER_TO_CODE;
 			pages[ page_count++ ] = _PAGE_CODE_TO_CHARACTER;
 			pages[ page_count++ ] = _PAGE_DATETIME;
-			break;
-		}
-		case TPAD_TYPE_ALL:
-		{
-			page_count = 0;
-			pages[ page_count++ ] = _PAGE_RADIX;
-			pages[ page_count++ ] = _PAGE_UNIT;
-			pages[ page_count++ ] = _PAGE_CHARACTER_TO_CODE;
-			pages[ page_count++ ] = _PAGE_CODE_TO_CHARACTER;
-			pages[ page_count++ ] = _PAGE_DATETIME;
-			pages[ page_count++ ] = _PAGE_BLANK_ITEM;
+			pages[ page_count++ ] = _PAGE_INDIRECT_STRING;
 			break;
 		}
 	}
@@ -655,39 +654,7 @@ ToolPadDialog(
 
 	ZeroMemory(pParam,sizeof(VOLUME_TOOL_WINDOW_PARAM));
 
-#if 0
-	switch( ToolPadType )
-	{
-		case TPAD_TYPE_MINITOOLS:
-		{
-			pParam->page_count = 0;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_RADIX;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_UNIT;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_CHARACTER_TO_CODE;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_CODE_TO_CHARACTER;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_DATETIME;
-			break;
-		}
-		case TPAD_TYPE_ALL:
-		{
-			pParam->page_count = 0;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_RADIX;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_UNIT;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_CHARACTER_TO_CODE;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_CODE_TO_CHARACTER;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_DATETIME;
-			pParam->pages[ pParam->page_count++ ] = _PAGE_BLANK_ITEM;
-			break;
-		}
-		default:
-		{
-			delete pParam;
-			return E_INVALIDARG;
-		}
-	}
-#else
 	InitialPageLayout(ToolPadType,pParam->pages);
-#endif
 
 	pParam->hWndOwner = hWnd;
 	pParam->start_page = InitialPage;

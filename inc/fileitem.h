@@ -60,10 +60,13 @@ typedef struct _FILEITEMEX
 			GUID BirthObjectId;
 			GUID DomainId;
 		};
+		struct {
+			ULONG_PTR Reserved;
+		};
 	};
 	ULONG FileSystemFlags;
 	WCHAR FileSystemName[8]; 
-	ULONG Reserved[8];
+	LPARAM lParam;
 } FILEITEMEX,*PFILEITEMEX;
 
 #define FIF_UNUSEFLAGS         (0x00000000)

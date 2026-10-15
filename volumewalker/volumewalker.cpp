@@ -361,6 +361,7 @@ HRESULT	LoadResourceModule()
       - VOLUME_CONSOLE_VIRTUALDISK
       - VOLUME_CONSOLE_VDSCONSOLE
       - VOLUME_CONSOLE_SCRATCHPAD
+      - VOLUME_CONSOLE_VOLUMEFILES_DATETIME
 
     These consoles are allow create instances per volume:
 
@@ -581,6 +582,7 @@ BOOL IsValidConsoleId( UINT ConsoleTypeId )
 		case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 		case VOLUME_CONSOLE_SCRATCHPAD:
 		case VOLUME_CONSOLE_SHELL_RECYCLEBIN:
+		case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
 			return TRUE;
 	}
 	return FALSE;
@@ -607,6 +609,7 @@ VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *O
 		case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 		case VOLUME_CONSOLE_SCRATCHPAD:
 		case VOLUME_CONSOLE_SHELL_RECYCLEBIN:
+		case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
 			Guid.Data1 = (ULONG)ConsoleId;
 			break;
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
@@ -695,7 +698,7 @@ HICON GetConsoleIcon(UINT ConsoleTypeId,PCWSTR pszInitialPath)
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
 		FreeLibrary(hmod);
 	}
-	else if( ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILES || ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT )
+	else if( ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILES || ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT || ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILES_DATETIME )
 	{
 		HMODULE hmod = LoadLibrary(L"shell32.dll");
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(16776),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
@@ -952,6 +955,71 @@ VOID SendFileSearchResult(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *
 	SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
 }
 
+VOID SendFileListBrowser(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam)
+{
+//	ASSERT( pOpenParam != NULL );
+
+	BOOLEAN	fCreate = true;
+	PWSTR pszPath = NULL;
+	SIZE_T cchPathLength = 0;
+
+	if( pOpenParam == NULL )
+	{
+		fCreate = true;
+// OPEN_MDI_CHILDFRAME_PARAM
+		pszPath = _MemAllocString( L"\\??\\C:\\" );
+	}
+	else
+	{
+		fCreate = true;
+	if( pOpenParam->Path == NULL )
+	{
+		WCHAR sz[MAX_PATH];
+		ZeroMemory(sz,sizeof(sz));
+		pszPath = pOpenParam->Path = _MemAllocString(sz);
+	}
+	else if( FindRootDirectory_W(pOpenParam->Path,NULL) != STATUS_SUCCESS )
+	{
+		// Name is volume device not volume Root.
+		pszPath = _MemAllocString(pOpenParam->Path);
+	}
+	else
+	{
+		cchPathLength = wcslen(pOpenParam->Path);
+
+		if( FindRootDirectory_W(pOpenParam->Path,NULL) == 0 )
+		{
+			pszPath = _MemAllocString(pOpenParam->Path);
+		}
+		else
+		{
+			pszPath = _MemAllocStringCat(pOpenParam->Path,L"\\");
+		}
+	}
+	}
+
+	UIS_PAGE pg = {0};
+	pg.ConsoleTypeId = ConsoleTypeId;
+	pg.ConsoleGuid   = pd->wndGuid;
+	pg.pszPath       = pszPath;
+	pg.pszFileName   = NULL;
+	if( fCreate )
+	{
+		pg.Context = (PAGE_CONTEXT *)_MemAllocZero( sizeof(PAGE_CONTEXT) );
+		pg.Context->MainApp = g_pMainApp;
+		pg.dwFlags |= SI_FLAG_CREATE_PAGE;
+	}
+
+	// root directories
+	if( *pg.pszPath == L'\0' )
+		pg.dwFlags |= SI_FLAG_ROOT_DIRECTORY;
+
+	SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
+
+	_SafeMemFree(pg.Context);
+	_SafeMemFree(pszPath);
+}
+
 //----------------------------------------------------------------------------
 //
 //  OpenMDIChild()
@@ -1022,6 +1090,11 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 		{
 			hwndChildFrame = FindSameWindowType(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
+			break;
+		}
+		case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
+		{
+ 			hwndChildFrame = FindSameWindowType(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
 			break;
 		}
 		default:
@@ -1134,6 +1207,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 				}
 				case VOLUME_CONSOLE_VOLUMEFILES:
 				case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
+				case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
 				{
 					static HWND (WINAPI *pfnCreateVolumeFileList)(
 							HWND hwnd,
@@ -1169,10 +1243,18 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 
 						InitViewType(pd,ConsoleTypeId,pwndGuid);
 
-						if( VOLUME_CONSOLE_VOLUMEFILES == ConsoleTypeId )
-							SendFileListPath(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
-						else
-							SendFileSearchResult(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
+						switch( ConsoleTypeId )
+						{
+							case VOLUME_CONSOLE_VOLUMEFILES:
+								SendFileListPath(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
+								break;
+							case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
+								SendFileSearchResult(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
+								break;
+							case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
+								SendFileListBrowser(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
+								break;
+						}
 
 						SendUIInitLayout(hwndMDIChild,pd->hWndView);
 					}
@@ -1724,6 +1806,7 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 		case ID_VDSCONSOLE:
 		case ID_SCRATCHPAD:
 		case ID_RECYCLEBIN:
+		case ID_FILE_DATETIME:
 			return UPDUI_ENABLED;
 		case ID_ABOUT:
 		case ID_EXIT:
@@ -1852,6 +1935,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 				case ID_RECYCLEBIN:
 					OpenConsole(hWnd,VOLUME_CONSOLE_SHELL_RECYCLEBIN);
+					break;
+				case ID_FILE_DATETIME:
+					OpenConsole(hWnd,VOLUME_CONSOLE_VOLUMEFILES_DATETIME);
 					break;
 				case ID_FILE_CLOSE:
 					CloseConsole();

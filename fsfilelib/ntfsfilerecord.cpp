@@ -481,8 +481,9 @@ FindNtfsRecordAttribueFromBuffer(
 
 	while( pAttrRecHdr->TypeCode != $END )
 	{
-		if( pAttrRecHdr->TypeCode == TypeCode && pAttrRecHdr->Instance == (USHORT)Index )
+		if( pAttrRecHdr->TypeCode == TypeCode )//&& pAttrRecHdr->Instance == (USHORT)Index )
 		{
+			if( Index == (ULONG)-1 || pAttrRecHdr->Instance == (USHORT)Index ) {
 			if( cbBuffer == 0 )
 			{
 				*((ATTRIBUTE_RECORD_HEADER **)pBuffer) = pAttrRecHdr;
@@ -500,6 +501,7 @@ FindNtfsRecordAttribueFromBuffer(
 				}
 			}
 			break;
+			}
 		}
 
 		pAttrRecHdr = (ATTRIBUTE_RECORD_HEADER *)_ADDOFFSET(pAttrRecHdr,pAttrRecHdr->RecordLength);

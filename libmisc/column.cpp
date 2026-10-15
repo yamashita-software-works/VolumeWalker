@@ -457,7 +457,7 @@ BOOL CColumnList::MakeColumnString(COLUMN_TABLE *pColTblPtr,INT idSort,INT sortD
 		
 			if( pszName )
 			{
-				if( StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s,%d",pszName,sortDirection) == S_OK )
+				if( StringCchPrintf(szInfo,ARRAYSIZE(szInfo),L"%s,%d",pszName,sortDirection==1?1:0) == S_OK )
 				{
 					SIZE_T cch = (wcslen(szInfo) + 1);
 					*ppszSortColumn = (PWSTR)CoTaskMemAlloc( cch * sizeof(WCHAR) );

@@ -59,7 +59,7 @@ public:
 	template <class T>
 	CPageWndBase *GetOrAllocWndObject(int wndId)
 	{
-		if( wndId >= VOLUME_CONSOLE_MAX_ID || wndId < 0 )
+		if( wndId >= VOLUME_CONSOLE_COUNT || wndId < 0 )
 			return NULL;
 
 		CPageWndBase *pobj;

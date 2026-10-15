@@ -1840,38 +1840,20 @@ NTAPI
 GetAlternateStreamNames(
     HANDLE hFile,
     INT *pAltStreamCount,
-    FILE_STREAM_INFORMATION **StreamInformation
+    NT_FILE_STREAM_INFORMATION **StreamInformation
     )
 {
     NTSTATUS Status;
-    IO_STATUS_BLOCK IoStatus;
+    IO_STATUS_BLOCK IoStatus = {0};
     INT cAltStreams = 0;
-    FILE_STREAM_INFORMATION s = {0};
-    FILE_STREAM_INFORMATION *pfsi = &s;
-    ULONG cb = sizeof(FILE_STREAM_INFORMATION);
+    ULONG cb = sizeof(FILE_STREAM_INFORMATION) + WIN32_MAX_PATH_BYTES;
+    FILE_STREAM_INFORMATION *pfsi;
 
     if( pAltStreamCount )
         *pAltStreamCount = 0;
 
-    Status = NtQueryInformationFile(hFile,&IoStatus,pfsi,cb,FileStreamInformation);
-
-    if( Status == STATUS_SUCCESS )
-        return Status;
-
-    // STATUS_BUFFER_OVERFLOW
-    // The output buffer was filled before all of the stream information could be returned. 
-    // Only complete FILE_STREAM_INFORMATION structures are returned.
-    // STATUS_INFO_LENGTH_MISMATCH
-    // The specified information record length does not match the length that is required
-    // for the specified information class.
-
-    if( Status != STATUS_BUFFER_OVERFLOW )
-        return Status;
-
     for(;;)
     {
-        cb += 4096;
-
         pfsi = (FILE_STREAM_INFORMATION *)AllocMemory( cb );
 
         if( pfsi == NULL )
@@ -1884,29 +1866,47 @@ GetAlternateStreamNames(
 
         if( Status == STATUS_SUCCESS )
         {
-            *StreamInformation = pfsi;
-
-            if( pAltStreamCount )
+            *StreamInformation = (NT_FILE_STREAM_INFORMATION *)ReallocMemory(pfsi,IoStatus.Information);
+            if( *StreamInformation != NULL )
             {
-                FILE_STREAM_INFORMATION *psn = pfsi;
-
-                for(;;)
+                if( pAltStreamCount )
                 {
-                    cAltStreams++;
-                    if( psn->NextEntryOffset == 0 )
-                        break;
-                    psn = (FILE_STREAM_INFORMATION *)((ULONG_PTR)psn + psn->NextEntryOffset);
+                    NT_FILE_STREAM_INFORMATION *psn = *StreamInformation;
+
+                    for(;;)
+                    {
+                        cAltStreams++;
+                        if( psn->NextEntryOffset == 0 )
+                            break;
+                        psn = (NT_FILE_STREAM_INFORMATION *)((ULONG_PTR)psn + psn->NextEntryOffset);
+                    }
+                    *pAltStreamCount = cAltStreams;
                 }
-                *pAltStreamCount = cAltStreams;
+            }
+            else
+            {
+                FreeMemory(pfsi);
+                Status = STATUS_NO_MEMORY;
             }
             break;
         }
-
-        FreeMemory(pfsi);
-
-        if( Status != STATUS_BUFFER_OVERFLOW )
+        else
         {
-            break;
+            // STATUS_BUFFER_OVERFLOW
+            // The output buffer was filled before all of the stream information could be returned. 
+            // Only complete FILE_STREAM_INFORMATION structures are returned.
+            //
+            // STATUS_INFO_LENGTH_MISMATCH
+            // The specified information record length does not match the length that is required
+            // for the specified information class.
+            if( Status != STATUS_BUFFER_OVERFLOW )
+            {
+                break;
+            }
+
+            cb += 4096;
+
+            FreeMemory( pfsi );
         }
     }
 

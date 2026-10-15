@@ -1,3 +1,15 @@
+### 0.1.62.0
+
+- File Timestamp Browserウィンドウを追加（暫定）。   
+NTFSボリュームで、ボリュームデータにアクセス出来る場合（一般的にAdministratorモード下で実行）のみ全ての情報が
+表示可能です。MFTのレコードから$FILE_NAME属性の日時データを読み取り表示します。
+
+- Tool Padに[Indirect String]ページを追加。   
+入力文字列を SHLoadIndirectString API に渡して、その出力を表示します。文字列リソースを持つファイル（PEファイルなど）や
+PRIファイル、またはパッケージ名から文字列リソースを取り出して確認したい場合に使用します。
+
+- その他不具合修正。
+
 ### 0.1.61.0
 
 - Volume File Explorerウィンドウに、NTFSボリューム上のファイルのレコード名を表示する "NTFS Record Information"ダイアログを追加。   

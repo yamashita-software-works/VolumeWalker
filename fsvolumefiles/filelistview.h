@@ -17,6 +17,7 @@
 #include "pagewbdbase.h"
 #include "page_volumefilelist.h"
 #include "page_volumefilelist_search_result.h"
+#include "page_volumefilelist_datetime_browser.h"
 #if _ENABLE_FILE_MANAGER
 #include "page_volumefilelist_filemanager.h"
 #endif
@@ -28,7 +29,7 @@
 class CFilesPageHost
 {
 	CPageWndBase *m_pPage;
-	CPageWndBase *m_pPageTable[VOLUME_CONSOLE_MAX_ID];
+	CPageWndBase *m_pPageTable[VOLUME_CONSOLE_COUNT];
 	int m_nView;
 public:
 	HWND m_hWndHost;
@@ -85,6 +86,11 @@ public:
 		return E_FAIL;
 	}
 
+	UINT GetCurConsoleId()
+	{
+		return m_pPage->GetConsoleId();
+	}
+
 	template <class T>
 	CPageWndBase *GetOrAllocWndObjct(int wndId)
 	{
@@ -133,6 +139,12 @@ public:
 #else
 				pNew = GetOrAllocWndObjct<CFileSearchResultPage<CFileListPage>>(nView);
 #endif
+				ASSERT(pNew != NULL);
+				break;
+			}
+			case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
+			{
+				pNew = GetOrAllocWndObjct<CFileDateTimeBrowserPage<CFileManagerPage>>(nView);
 				ASSERT(pNew != NULL);
 				break;
 			}
@@ -227,6 +239,14 @@ public:
 					UpdateFileList(Path);
 				}
 				break;
+			case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
+				nPrevView = m_nView;
+				pPrev = _SelectPage( Path, bCreate );
+				if( bCreate || ((Path->Flags & 0x8)== 0) )
+				{
+					UpdateFileList(Path);
+				}
+				break;
 #if _ENABLE_PAGE_CHANGER
 			case VOLUME_CONSOLE_CHOOSE_VOLUME:
 				nPrevView = m_nView;
@@ -236,14 +256,6 @@ public:
 					UpdateData(Path);
 				}
 				break;
-//			case VOLUME_CONSOLE_FOLDERS:
-//				nPrevView = m_nView;
-//				pPrev = _SelectPage( Path, bCreate );
-//				if( bCreate || ((Path->Flags & 0x8)== 0) )
-//				{
-//					UpdateData(Path);
-//				}
-//				break;
 #endif
 			default:
 				ASSERT(FALSE);

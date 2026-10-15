@@ -116,7 +116,11 @@ enum {
     COLUMN_RecycleBin_DateModified,     /* 47 */
     COLUMN_RecycleBin_ManagementFile,   /* 48 */
     COLUMN_RecycleBin_UsagePer_Volume,  /* 49 */
-    COLUMN_MaxItem,             /* 50 */
+    COLUMN_LastWriteTimeFN,     /* 50 */
+    COLUMN_CreationTimeFN,      /* 51 */
+    COLUMN_LastAccessTimeFN,    /* 52 */
+    COLUMN_ChangeTimeFN,        /* 53 */
+    COLUMN_MaxItem,             /* 54 */
     COLUMN_MaxCount=COLUMN_MaxItem,
 };
 

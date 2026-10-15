@@ -202,7 +202,7 @@ public:
 		SetWindowText(m_hWndPathBox,pszPath);
 
 		_SafeMemFree(m_pszDeviceName);
-		m_pszDeviceName = _MemAllocString(pszDeviceName);
+		m_pszDeviceName = _MemAllocString( pszDeviceName ? pszDeviceName : L"" );
 		
 		return S_OK;
 	}

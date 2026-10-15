@@ -26,7 +26,7 @@
 //                                               41023
 #define ID_RECYCLEBIN                            41024
 //                                               41025
-//                                               41026
+#define ID_FILE_DATETIME                         41026
 #define ID_FILE_CHANGEJOURNAL_VOLUMES            41027
 #define ID_FILE_SIMPLEFILELIST                   41028
 //                                               41029

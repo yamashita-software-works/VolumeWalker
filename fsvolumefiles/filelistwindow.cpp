@@ -196,6 +196,22 @@ public:
 		return 0;
 	}
 
+	LRESULT OnSaveConfig(HWND hWnd,UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		ISaveViewConfig *psvc = (ISaveViewConfig *)lParam;
+
+		if( psvc == NULL )
+		{
+			return ERROR_INVALID_PARAMETER;
+		}
+
+		if( m_pView )
+		{
+			SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam); // forward to current page
+		}
+		return 0;
+	}
+
 	virtual LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		switch(uMsg)
@@ -225,10 +241,14 @@ public:
 				return OnNotifyMessage(hWnd,uMsg,wParam,lParam);
 			case WM_QUERY_MESSAGE:
 				return OnQueryMessage(hWnd,uMsg,wParam,lParam);
+			case PM_SAVECONFIG:
+				return OnSaveConfig(hWnd,uMsg,wParam,lParam);
 			case PM_FINDITEM:
 			case PM_GETSELECTEDFILE:
 			case PM_GETWORKINGDIRECTORY:
-			case PM_SAVECONFIG:
+				if( m_pView )
+					return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam); // forward to current page
+				return 0;
 			case WM_PRETRANSLATEMESSAGE:
 				if( m_pView )
 					return SendMessage(m_pView->GetPageHWND(),uMsg,wParam,lParam); // forward to current page
@@ -297,7 +317,7 @@ public:
 
 			m_ConsoleTypeId = ppg->ConsoleTypeId;
 		}
-		else if( ppg->ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILES )
+		else if( ppg->ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILES || ppg->ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILES_DATETIME )
 		{
 			PWSTR pszPath;
 

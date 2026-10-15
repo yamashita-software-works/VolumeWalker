@@ -206,7 +206,7 @@ namespace CommandHandler
 				(FARPROC&)pfnToolPadDialog = GetProcAddress(hModule,"ToolPadDialog");
 				if( pfnToolPadDialog )
 				{
-					pfnToolPadDialog(hWnd,TPD_PAGE_UNIT,TPAD_TYPE_ALL,nullptr);
+					pfnToolPadDialog(hWnd,TPD_PAGE_UNIT,TPAD_TYPE_MINITOOLS,nullptr);
 				}
 				FreeLibrary(hModule);
 			}

@@ -58,4 +58,9 @@ public:
 		ASSERT(m_hWnd != NULL);
 		return (UINT)GetWindowLong(m_hWnd,GWL_ID);
 	}
+
+	virtual UINT GetConsoleId() const
+	{
+		return 0;
+	}
 };

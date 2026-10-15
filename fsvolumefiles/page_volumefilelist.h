@@ -129,6 +129,7 @@ protected:
 	HRESULT m_LastErrorCode;
 
 	virtual UINT GetConsoleId() const { return VOLUME_CONSOLE_VOLUMEFILES; }
+	virtual PCWSTR GetWindowFrameTitle() const { return L"Volume File Explorer"; }
 
 	CHeaderBar *m_pHeaderBar;
 
@@ -254,7 +255,7 @@ public:
 				pLoadConfig->Release();
 
 				if( columnCurrentSort.IsEmpty() )
-					StringCchCopy(columnCurrentSort,columnCurrentSort.GetLength(),L"Name,1");
+					StringCchCopy(columnCurrentSort,columnCurrentSort.GetBufferSize(),L"Name,0");
 			}
 		}
 
@@ -275,6 +276,11 @@ public:
 
 		StartDirectoryWatch(&m_hWatchHandle,&CFileListPage::NotifyCallback,this);
 
+		return S_OK;
+	}
+
+	virtual HRESULT OnDestoryPage()
+	{
 		return S_OK;
 	}
 
@@ -398,6 +404,8 @@ public:
 		{
 			ImageList_Destroy( himl);
 		}
+
+		OnDestoryPage();
 
 		return 0;
 	}
@@ -591,6 +599,8 @@ public:
 					break;
 				default:
 					pnmlvcd->clrText = GetLineColor((COLORREF)ListView_GetTextColor(m_hWndList),pItem);
+					pnmlvcd->clrTextBk = ListView_GetTextBkColor(m_hWndList);
+					GetCustomDrawColumnColor((int)(hi.lParam),pnmlvcd->clrText,pnmlvcd->clrTextBk,(LPARAM)pItem);
 					break;
 			}
 			return CDRF_NOTIFYPOSTPAINT;
@@ -611,6 +621,11 @@ public:
 		return CDRF_DODEFAULT;
 #endif
 		return 0;
+	}
+
+	virtual BOOL GetCustomDrawColumnColor(int iColumn,COLORREF& crText,COLORREF& crTextBk,LPARAM lParam)
+	{
+		return FALSE;
 	}
 
 	COLORREF GetLineColor(COLORREF crOrgTextColor,CFileLvItem *pItem)
@@ -973,6 +988,10 @@ public:
 			case COLUMN_CreationTime:
 			case COLUMN_LastAccessTime:
 			case COLUMN_ChangeTime:
+			case COLUMN_LastWriteTimeFN:
+			case COLUMN_CreationTimeFN:
+			case COLUMN_LastAccessTimeFN:
+			case COLUMN_ChangeTimeFN:
 				AppendMenu(hMenu,MF_STRING,1,L"Default");
 				AppendMenu(hMenu,MF_STRING,2,L"Displays by UTC");
 				AppendMenu(hMenu,MF_STRING,3,L"Displays by Hex");
@@ -1023,6 +1042,10 @@ public:
 			case COLUMN_CreationTime:
 			case COLUMN_LastAccessTime:
 			case COLUMN_ChangeTime:
+			case COLUMN_LastWriteTimeFN:
+			case COLUMN_CreationTimeFN:
+			case COLUMN_LastAccessTimeFN:
+			case COLUMN_ChangeTimeFN:
 				switch( cmd )
 				{
 					case 1:
@@ -1123,6 +1146,13 @@ public:
 
 		UINT fmt = m_columnShowStyleFlags[ id ];
 
+		formatDateTime(pnmlvdi,dt,fmt);
+
+		return 0;
+	}
+
+	void formatDateTime(NMLVDISPINFO *pnmlvdi,LONGLONG dt,UINT fmt)
+	{
 		PWSTR pszDateFormat = NULL;
 		PWSTR pszTimeFormat = NULL;
 
@@ -1144,8 +1174,6 @@ public:
 				StringCchPrintf(pnmlvdi->item.pszText,pnmlvdi->item.cchTextMax,L"0x%016I64X",dt);
 				break;
 		}
-
-		return 0;
 	}
 
 	LRESULT OnDisp_Size(UINT id,NMLVDISPINFO *pnmlvdi)
@@ -2128,7 +2156,7 @@ public:
 		pFI->PhysicalDriveNumber = (ULONG)-1;
 	}
 
-	void UpdateFileItemInformation(HANDLE hVolume,HANDLE hFile,CFileItemEx *pFI)
+	virtual void UpdateFileItemInformation(HANDLE hVolume,HANDLE hFile,CFileItemEx *pFI)
 	{
 		pFI->ItemTypeFlag |= _FLG_COSTLY_DATA;
 
@@ -2926,7 +2954,7 @@ public:
 		// - Update MDI frame title
 		// - Set MDI child frame title
 		//
-		SendMessage(GetActiveWindow(),PM_UPDATETITLE,0,(LPARAM)L"Volume File Explorer");
+		SendMessage(GetActiveWindow(),PM_UPDATETITLE,0,(LPARAM)GetWindowFrameTitle());
 
 		if( (pszPreviousVolumeDevice && m_pszVolumeDevice && wcsicmp(pszPreviousVolumeDevice,m_pszVolumeDevice) != 0) ||  
             (pszPreviousVolumeDevice == NULL && m_pszVolumeDevice != NULL) ||

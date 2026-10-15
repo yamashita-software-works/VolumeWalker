@@ -39,7 +39,7 @@
 class CViewBase
 {
 	CPageWndBase *m_pPage;
-	CPageWndBase *m_pPageTable[VOLUME_CONSOLE_MAX_ID];
+	CPageWndBase *m_pPageTable[VOLUME_CONSOLE_COUNT];
 
 public:
 	HWND m_hWnd;
@@ -66,9 +66,9 @@ public:
 	CPageWndBase *GetOrAllocWndObject(int wndId)
 	{
 		ASSERT( wndId >= 0 );
-		ASSERT( wndId < VOLUME_CONSOLE_MAX_ID );
+		ASSERT( wndId < VOLUME_CONSOLE_COUNT );
 
-		if( wndId >= VOLUME_CONSOLE_MAX_ID || wndId < 0 )
+		if( wndId >= VOLUME_CONSOLE_COUNT || wndId < 0 )
 			return NULL;
 
 		CPageWndBase *pobj;
@@ -89,9 +89,9 @@ public:
 	CPageWndBase *GetOrAllocWndObjectEx(int wndId,int Type)
 	{
 		ASSERT( wndId >= 0 );
-		ASSERT( wndId < VOLUME_CONSOLE_MAX_ID );
+		ASSERT( wndId < VOLUME_CONSOLE_COUNT );
 
-		if( wndId >= VOLUME_CONSOLE_MAX_ID || wndId < 0 )
+		if( wndId >= VOLUME_CONSOLE_COUNT || wndId < 0 )
 			return NULL;
 
 		CPageWndBase *pobj;
@@ -224,9 +224,9 @@ public:
 		int nView = SelItem->ViewType;
 
 		ASSERT( nView >= 0 );
-		ASSERT( nView < VOLUME_CONSOLE_MAX_ID );
+		ASSERT( nView < VOLUME_CONSOLE_COUNT );
 
-		if( nView >= VOLUME_CONSOLE_MAX_ID || nView < 0 )
+		if( nView >= VOLUME_CONSOLE_COUNT || nView < 0 )
 			return NULL;
 
 		if( m_pPageTable[ nView ] == NULL )

@@ -1453,39 +1453,57 @@ PWSTR CombinePathBuffer(PWSTR lpszDest,int cchDest,PCWSTR lpszDir,PCWSTR lpszFil
 
 PWSTR CombinePath(PCWSTR pszPath,PCWSTR pszFileName)
 {
-    WCHAR *psz;
-    SIZE_T cch,cchPath;
+    WCHAR *psz,*pszBuffer;
+    SIZE_T cch,cchPath,cchFileName;
 
     if( pszFileName == NULL )
         return DuplicateString(pszPath);
 
-    cch = 0;
+    if( pszPath == NULL )
+        return DuplicateString(pszFileName);
 
+    //
+    //  "aaa"  + "bbb"   = "aaa\bbb"
+    //  "aaa\" + "bbb"   = "aaa\bbb"
+    //  "aaa"  + "\bbb"  = "aaa\bbb"
+    //  "aaa\" + "\bbb"  = "aaa\bbb"
+    //  ""     + "bbb"   = "bbb"
+    //  "aaa"  + ""      = "aaa\"
+    //  ""     + "\bbb"  = "\bbb"
+    //  "aaa\" + ""      = "aaa\"
+    //
     cchPath = wcslen(pszPath);
-    if( cchPath > 0 )
+    cchFileName = wcslen(pszFileName);
+
+    cch = cchPath + cchFileName + 1;
+
+    if( ((cchPath > 0) && (pszPath[cchPath-1] != L'\\')) && (*pszFileName != L'\\') )
     {
-        if( pszPath[cchPath-1] != L'\\' )
-        {
-            cch++;
-        }
+        cch++;
     }
 
-    cch += cchPath + wcslen(pszFileName) + 1;
-
-    psz = AllocStringBuffer((ULONG)cch);
+    pszBuffer = psz = AllocStringBuffer((ULONG)cch);
 
     if( psz )
     {
-        StringCchCopy(psz,cch,pszPath);
-        if( *pszFileName != L'\\' && *pszFileName != L'\0' )
+        if( ((cchPath > 0) && (pszPath[cchPath-1] == L'\\')) && (*pszFileName == L'\\') )
         {
-            if( cchPath > 0 && pszPath[cchPath-1] != L'\\' )
-                StringCchCat(psz,cch,L"\\");
+            cchPath--;
+        }		
+
+        memcpy(psz,pszPath,cchPath*sizeof(WCHAR));
+        psz += cchPath;
+
+        if( ((cchPath > 0) && (pszPath[cchPath-1] != L'\\')) && (*pszFileName != L'\\') )
+        {
+            memcpy(psz,L"\\",1*sizeof(WCHAR));
+            psz += 1;
         }
-        StringCchCat(psz,cch,pszFileName);
+
+        memcpy(psz,pszFileName,cchFileName*sizeof(WCHAR));
     }
 
-    return psz;
+    return pszBuffer;
 }
 
 PWSTR CombinePath_U(PCWSTR pszPath,UNICODE_STRING *pusFileName)

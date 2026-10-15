@@ -195,6 +195,23 @@ GetFileId(
     LARGE_INTEGER *pFildId
     );
 
+typedef struct _NT_FILE_STREAM_INFORMATION {
+    ULONG NextEntryOffset;
+    ULONG StreamNameLength;
+    LARGE_INTEGER StreamSize;
+    LARGE_INTEGER StreamAllocationSize;
+    WCHAR StreamName[1];
+} NT_FILE_STREAM_INFORMATION, *PNTFILE_STREAM_INFORMATION;
+
+EXTERN_C
+NTSTATUS
+NTAPI
+GetAlternateStreamNames(
+    HANDLE hFile,
+    INT *pAltStreamCount,
+    NT_FILE_STREAM_INFORMATION **StreamInformation
+    );
+
 EXTERN_C
 NTSTATUS
 NTAPI
