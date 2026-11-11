@@ -173,6 +173,14 @@ typedef struct _PMS_DESCRIPTION_TEXT
 } PMS_DESCRIPTION_TEXT,*PPMS_DESCRIPTION_TEXT;
 
 //
+// PM_GETAPPINFORMATION
+//   wParam  -
+//   lParam  -
+//   lResult -
+//
+#define PM_GETAPPINFORMATION (PM_BASE+25)
+
+//
 // PM_USERBASE
 //
 // User private message base

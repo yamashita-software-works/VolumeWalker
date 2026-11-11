@@ -33,6 +33,7 @@ typedef struct _VOLUME_CONSOLE_CREATE_PARAM
 
 #define VOLFILES_FLG_USE_SHELL_ICON               0x1000
 #define VOLFILES_FLG_USE_PROXY_OPEN               0x8000
+#define VOLFILES_FLG_NO_HEADER_SIZEBAR            0x4000
 
 #define VOLDISKS_FLG_USE_SHELL_ICON                0x1000
 #define VOLDISKS_FLG_USE_PROXY_OPEN                0x8000

@@ -630,3 +630,18 @@ RenameFile_W(
 	PCWSTR pszExistingFileName,
 	PCWSTR pszNewFileName
 	);
+
+EXTERN_C
+NTSTATUS
+NTAPI
+DeleteFileByHandle(
+    HANDLE Handle
+    );
+
+EXTERN_C
+NTSTATUS
+NTAPI
+GetCompressionInformation(
+	HANDLE Handle,
+	PUSHORT CompressionState 
+	);

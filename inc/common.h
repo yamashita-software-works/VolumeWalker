@@ -54,11 +54,16 @@ interface __declspec(novtable)  IInterface {
 interface __declspec(novtable)  ISaveViewConfig : public IInterface {
 	virtual INT WriteValue(HWND hwndView,PCWSTR KeyName,PWSTR Value) = 0;
 	virtual INT WriteValueInt(HWND hwndView,PCWSTR KeyName,INT Value) = 0;
+	virtual INT WriteStringToSection(PCWSTR Section,PCWSTR KeyName,PWSTR Value) = 0;
+	virtual INT WriteValueIntToSection(PCWSTR Section,PCWSTR KeyName,INT Value) = 0;
+	virtual INT RemoveSection(PCWSTR Section) = 0;
 };
 
 interface __declspec(novtable)  ILoadViewConfig : public IInterface {
 	virtual INT ReadValue(HWND hwndView,PCWSTR KeyName,PWSTR Value,UINT ValueLength) = 0;
 	virtual INT ReadValueInt(HWND hwndView,PCWSTR KeyName,INT DefaultValue) = 0;
+	virtual INT ReadStringFromSection(PCWSTR Section,PCWSTR KeyName,PWSTR Value,UINT ValueLength) = 0;
+	virtual INT ReadValueIntFromSection(PCWSTR Section,PCWSTR KeyName,INT DefaultValue) = 0;
 };
 
 interface __declspec(novtable)  IApplication : public IInterface {
@@ -180,6 +185,7 @@ enum {
     UPDUI_CHECKED  = 0x00000200,
     UPDUI_CHECKED2 = 0x00000400,
     UPDUI_RADIO	   = 0x00000800,
+	UPDUI_IGNORE   = 0x80000000,
 };
 
 //
@@ -214,3 +220,18 @@ enum {
 //
 #define WM_MDI_CHILDFRAME_NCDESTROY   (PRIVATE_MESSAGE_BASE+14)
 
+//
+// WM_QUERY_CMDSTATE_EX
+//
+// wParam - LOWORD : Command ID
+//          HIWORD : 0
+// lParam - Pointer to COMMAND_STATE structure.
+//
+#define WM_QUERY_CMDSTATE_EX   (PRIVATE_MESSAGE_BASE+15)
+
+typedef struct _COMMAND_STATE
+{
+	UINT State;   // UPDUI_xxx flags, WM_QUERY_CMDSTATE
+	UINT IdFirst;
+	UINT IdLast;
+} COMMAND_STATE;

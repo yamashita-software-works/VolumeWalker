@@ -50,12 +50,12 @@ template <class T>
 class CFileDateTimeBrowserPage : public T
 {
 	virtual UINT GetConsoleId() const { return VOLUME_CONSOLE_VOLUMEFILES_DATETIME; }
-	virtual PCWSTR GetWindowFrameTitle() const { return L"File Timestamp Browser"; }
+	virtual PCWSTR GetWindowFrameTitle() const { return L"Volume File Explorer - Timestamp Browser"; }
 
 public:
 	CFileDateTimeBrowserPage()
 	{
-		m_pszCurDir = _MemAllocString( L"" ); // dummy, not use
+		m_pszCurDir = _MemAllocString( L"" );
 	}
 
 	virtual ~CFileDateTimeBrowserPage()
@@ -98,6 +98,11 @@ public:
 		}
 
 		return hr;
+	}
+
+	virtual HRESULT OnInitPage(PVOID ptr,DWORD dwFlags,PVOID)
+	{
+		return CFileListPage::OnInitPage(ptr,(dwFlags|VOLFILES_FLG_NO_HEADER_SIZEBAR),nullptr);
 	}
 
 	virtual BOOL GetCustomDrawColumnColor(int idColumn,COLORREF& crText,COLORREF& crTextBk,LPARAM lParam)
@@ -236,21 +241,6 @@ public:
 
 		switch( id )
 		{
-			case COLUMN_VolumeRelativePath:
-			{
-				*pdi->item.pszText = NULL;
-				if( pItem->pFI->hdr.Path )
-				{
-					UNICODE_STRING u;
-					SplitVolumeRelativePath(pItem->pFI->hdr.Path,NULL,&u);
-					if( u.Buffer )
-					{
-						pdi->item.pszText = u.Buffer;
-						RemoveBackslash(pdi->item.pszText);
-					}
-				}
-				return 0;
-			}
 			case COLUMN_LastWriteTimeFN:
 			case COLUMN_CreationTimeFN:
 			case COLUMN_LastAccessTimeFN:
@@ -397,26 +387,44 @@ public:
 		m_columns.SetDefaultColumns(def_columns,ARRAYSIZE(def_columns));
 	}
 
-	virtual BOOL LoadColumns(HWND hWndList,PCWSTR pszSectionName,PCWSTR pszCurrentSortColumn)
+	virtual BOOL LoadColumns(HWND hWndList,PCWSTR pszColumnLayout,PCWSTR pszCurrentSortColumn)
 	{
 		COLUMN_TABLE *pcoltbl;
 
-		WCHAR buf[] = 
-				L"Name=220\0"
-				L"Attributes=80\0"
-				L"LastWriteTime=180\0"
-				L"LastWriteTimeFN=180\0"
-				L"CreationTime=180\0"
-				L"CreationTimeFN=180\0"
-				L"LastAccessTime=180\0"
-				L"LastAccessTimeFN=180\0"
-				L"ChangeTime=180\0"
-				L"ChangeTimeFN=180\0";
+		WCHAR bufDefaultTable[] = 
+				L"Name=220;"
+				L"Attributes=80;"
+				L"LastWriteTime=180;"
+				L"LastWriteTimeFN=180;"
+				L"CreationTime=180;"
+				L"CreationTimeFN=180;"
+				L"LastAccessTime=180;"
+				L"LastAccessTimeFN=180;"
+				L"ChangeTime=180;"
+				L"ChangeTimeFN=180;";
 
-		int cb = sizeof(buf);
+		int cb = sizeof(bufDefaultTable);
+		PWSTR ptr;
 
-		if( m_columns.LoadUserDefinitionColumnTableFromText(&pcoltbl,buf,cb) == 0)
+		if( pszColumnLayout && *pszColumnLayout != 0 )
+		{
+			ptr = ColumnList_ConvertAllocSzToMszColumnString(pszColumnLayout);
+			cb  = ColumnList_GetMszColumnStringSizeCb(ptr);
+		}
+		else
+		{
+			ptr = ColumnList_ConvertAllocSzToMszColumnString(bufDefaultTable);
+			cb  = ColumnList_GetMszColumnStringSizeCb(ptr);
+		}
+
+		int iRet = m_columns.LoadUserDefinitionColumnTableFromText(&pcoltbl,ptr,cb);
+
+		ColumnList_FreeString(ptr);
+
+		if( iRet == 0 )
+		{
 			return FALSE;
+		}
 
 		InsertColumns(hWndList,pcoltbl);
 
@@ -441,9 +449,6 @@ public:
 
 	virtual void init_compare_proc_def_table()
 	{
-		m_comp_proc = new COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileLvItem>[ COLUMN_MaxItem ];
-		ASSERT(m_comp_proc != NULL);
-
 		CFileListPage::init_compare_proc_def_table();
 
 		static COMPARE_HANDLER_PROC_DEF<CFileDateTimeBrowserPage,CFileDateTimeLvItem> _comp_proc[] = 
@@ -510,50 +515,6 @@ public:
 		AppendMenu(hMenu,MF_STRING,0,NULL);
 		AppendMenu(hMenu,MF_STRING,ID_EDIT_COPY,L"&Copy Text");
 		SetMenuDefaultItem(hMenu,ID_OPEN,FALSE);
-
-		AppendMenu(hMenu,MF_STRING,0,NULL);
-		AppendMenu(hMenu,MF_STRING,ID_FILE_SIMPLECHECK,L"Count Selected Files");
-
-		AppendMenu(hMenu,MF_STRING,0,NULL);
-		HMENU hSubMenu;
-		hSubMenu = CreatePopupMenu();
-		{
-			AppendMenu(hSubMenu,MF_STRING,ID_FILE_SIMPLEDUMP,L"Simple Binary &Dump");
-			AppendMenu(hSubMenu,MF_STRING,0,0);
-			AppendMenu(hSubMenu,MF_STRING,ID_FILE_CLUSTER_INFORMATION,L"&Cluster Information");
-			AppendMenu(hSubMenu,MF_STRING,ID_FILE_STREAM_INFORMATION,L"&Stream Information");
-			AppendMenu(hSubMenu,MF_STRING,ID_FILE_NTFS_RECORD_INFORMATION,L"&NTFS Record Information");
-		}
-		AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hSubMenu,L"&Inspect File");
-
-		if( m_pOpenApplications == NULL )
-			CreateApplicationList(&m_pOpenApplications);
-
-		if( m_pOpenApplications )
-		{
-			HMENU hAppMenu = CreatePopupMenu();
-			ULONG cApps = 0;
-			m_pOpenApplications->GetItemCount( &cApps );
-	
-			WCHAR szName[MAX_PATH];
-	
-			for(ULONG i = 0; i < cApps; i++)
-			{
-				if( m_pOpenApplications->IsSeparator(i) == S_FALSE )
-				{
-					m_pOpenApplications->GetFriendlyName(i,szName,MAX_PATH);
-					AppendMenu(hAppMenu,MF_STRING,ID_OPEN_APP_FIRST+i,szName);
-				}
-				else
-				{
-					AppendMenu(hAppMenu,MF_STRING,0,0);
-				}
-			}	
-	
-			AppendMenu(hMenu,MF_STRING,0,0);
-			AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hAppMenu,L"Open with Application");
-		}
-
 		return S_OK;
 	}
 

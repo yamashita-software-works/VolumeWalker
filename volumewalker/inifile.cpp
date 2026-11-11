@@ -292,6 +292,12 @@ static BOOL WriteSectionInfo(PWSTR pszSection,HWND hwndMDIChildFrame,HWND hwndVi
 				SendMessage(hwndView,PM_SAVECONFIG,wndGuid.Data2,(LPARAM)&svc);
 				break;
 			}
+			case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
+			case VOLUME_CONSOLE_VOLUMEFILES_STREAMS:
+			{
+				SendMessage(hwndView,PM_SAVECONFIG,wndGuid.Data2,(LPARAM)&svc);
+				break;
+			}
 			default:
 			{
 				GetWindowText(hwndMDIChildFrame,sz,cch);
@@ -422,6 +428,14 @@ HRESULT FreeLayout(MDICHILDFRAMEINIT_VOLUMEWALKER *mdiFrames,DWORD dwFrames)
 	return S_OK;
 }
 
+
+void MakeRelationalConsoleGuid(UINT ConsoleTypeId,GUID *pGuid,PWSTR pszGuid,int cchGuid)
+{
+	pGuid->Data1 = ConsoleTypeId;
+	StringFromGUID(pGuid,pszGuid,cchGuid);
+	GUIDStringRemoveBrackets(pszGuid);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 static HRESULT RemoveLayoutSectionInfo()
@@ -478,6 +492,23 @@ static HRESULT RemoveLayoutSectionInfo()
 
 			// delete mdi page section
 			WriteSectionString(szSection,NULL,NULL);
+
+			// remove relational view pages
+			{
+				WCHAR szGuid[40];
+				GUID Guid;
+				StringCchPrintf(szGuid,_countof(szGuid),L"{%s}",szSection);
+				GUIDFromString(szGuid,&Guid);
+
+				if( Guid.Data1 == VOLUME_CONSOLE_VOLUMEFILES )
+				{
+					MakeRelationalConsoleGuid(VOLUME_CONSOLE_VOLUMEFILES_DATETIME,&Guid,szGuid,_countof(szGuid));
+					WriteSectionString(szGuid,NULL,NULL);
+
+					MakeRelationalConsoleGuid(VOLUME_CONSOLE_VOLUMEFILES_STREAMS,&Guid,szGuid,_countof(szGuid));
+					WriteSectionString(szGuid,NULL,NULL);
+				}
+			}
 
 			// delete mdi page column section
 			StringCchPrintf(szSection,ARRAYSIZE(szSection),L"%s.columns",szSection);

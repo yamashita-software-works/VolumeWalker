@@ -264,6 +264,8 @@ OpenFileEx_W(
 
     if( phFile == NULL )
         return STATUS_INVALID_PARAMETER;
+	if( PathName == NULL )
+        return STATUS_INVALID_PARAMETER;
 
     *phFile = INVALID_HANDLE_VALUE;
 
@@ -2138,6 +2140,46 @@ _exit_rename:
 //      FreeMemory(pNtFullPathBuffer);
 
     return ReturnNtStatusAndSetLastDosError( Status );
+}
+
+//----------------------------------------------------------------------------
+//
+//  DeleteFileByHandle()
+//
+//  PURPOSE:
+//
+//----------------------------------------------------------------------------
+EXTERN_C
+NTSTATUS
+NTAPI
+DeleteFileByHandle(
+    HANDLE Handle
+    )
+{
+	FILE_DISPOSITION_INFORMATION di = { TRUE };
+	IO_STATUS_BLOCK IoStatus = {0};
+	return NtSetInformationFile(Handle,&IoStatus,&di,sizeof(di),FileDispositionInformation);
+}
+
+//----------------------------------------------------------------------------
+//
+//  GetCompressionInformation()
+//
+//  PURPOSE:
+//
+//----------------------------------------------------------------------------
+EXTERN_C
+NTSTATUS
+NTAPI
+GetCompressionInformation(
+	HANDLE Handle,
+	PUSHORT CompressionState 
+	)
+{
+	IO_STATUS_BLOCK IoStatus = {0};
+	return NtFsControlFile(Handle,NULL,NULL,NULL,&IoStatus,FSCTL_GET_COMPRESSION,
+					NULL,0,
+					CompressionState,sizeof(USHORT));
 }
 
 //----------------------------------------------------------------------------

@@ -63,4 +63,9 @@ public:
 	{
 		return 0;
 	}
+
+	virtual PCWSTR GetSectionName() const
+	{
+		return NULL;
+	}
 };

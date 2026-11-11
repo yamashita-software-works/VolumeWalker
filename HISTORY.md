@@ -1,10 +1,21 @@
+### 0.1.63.0
+
+- Volume File Explorerウィンドウを開くメインメニューまたはコンテキストメニューの従来の項目テキストを\[Display Contained Files\]に変更。
+
+- 他ウィンドウ経由ではなく、Volume File Explorerウィンドウを直接開くメニュー項目を新規に追加。
+  - メニューの\[File\]>\[Miscellaneous\]から\[Volume File Explorer\]を選択します。
+
+- Build62で追加したFile Timestamp Browserウィンドウを単独のウィンドウから、Volume File Explorerウィンドウ内でビューを切り替える仕様に変更。
+  - Volume File Explorerの右上にあるメニューボタンから\[DateTime Browser\]を選択して切り替えます。ファイルリストに戻す場合は\[File List\]を選択します。
+
+
 ### 0.1.62.0
 
 - File Timestamp Browserウィンドウを追加（暫定）。   
 NTFSボリュームで、ボリュームデータにアクセス出来る場合（一般的にAdministratorモード下で実行）のみ全ての情報が
 表示可能です。MFTのレコードから$FILE_NAME属性の日時データを読み取り表示します。
 
-- Tool Padに[Indirect String]ページを追加。   
+- Tool Padに\[Indirect String\]ページを追加。   
 入力文字列を SHLoadIndirectString API に渡して、その出力を表示します。文字列リソースを持つファイル（PEファイルなど）や
 PRIファイル、またはパッケージ名から文字列リソースを取り出して確認したい場合に使用します。
 

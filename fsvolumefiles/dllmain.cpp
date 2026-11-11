@@ -127,29 +127,38 @@ VOID _SetWindowTitleFileName( HWND hWnd, PCWSTR pszFileName )
 
 //////////////////////////////////////////////////////////////////////////////
 
-typedef HWND (WINAPI *PFNCREATEPICTUREVIEWWINDOW)(
-					HWND hWnd,
-					DWORD dwStyle,
-					DWORD dwExStyle,
-					UINT uId);
-
 #define _DLL_PICTUREVIEW L"fspictureview.dll"
 
 HWND _CreatePictureViewWindow(HWND hWnd)
 {
 	static HMODULE hPicLib = NULL;
-	static PFNCREATEPICTUREVIEWWINDOW pfnCreatePictureViewWindow = NULL;
+	static HWND (WINAPI *pfnPictureView_CreateWindow)(
+					HWND hWnd,
+					DWORD dwStyle,
+					DWORD dwExStyle,
+					UINT uId) = NULL;
+	if( hPicLib == INVALID_HANDLE_VALUE )
+	{
+		return NULL;
+	}
 
 	if( hPicLib == NULL )
 	{
 		hPicLib = LoadLibrary( _DLL_PICTUREVIEW );
 		if( hPicLib != NULL )
-			(FARPROC&)pfnCreatePictureViewWindow = GetProcAddress(hPicLib,"CreatePictureViewWindow");
+		{
+			(FARPROC&)pfnPictureView_CreateWindow = GetProcAddress(hPicLib,"PictureView_CreateWindow");
+		}
+		else
+		{
+			hPicLib = (HMODULE)INVALID_HANDLE_VALUE;
+			return NULL;
+		}
 	}
 
-	if( hPicLib && pfnCreatePictureViewWindow )
+	if( hPicLib && pfnPictureView_CreateWindow )
 	{
-		return pfnCreatePictureViewWindow(hWnd,WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,WS_EX_CONTROLPARENT,1);
+		return pfnPictureView_CreateWindow(hWnd,WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,WS_EX_CONTROLPARENT,1);
 	}
 
 	return NULL;

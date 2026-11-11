@@ -277,11 +277,8 @@ public:
 
 	virtual void init_compare_proc_def_table()
 	{
-		m_comp_proc = new COMPARE_HANDLER_PROC_DEF<CFileListPage,CFileLvItem>[ COLUMN_MaxItem ];
-		ASSERT(m_comp_proc != NULL);
-
 		CFileListPage::init_compare_proc_def_table();
-
+	
 		static COMPARE_HANDLER_PROC_DEF<CFileSearchResultPage,CSearchResultLvItem> _comp_proc[] = 
 		{
 			{COLUMN_VolumeRelativePath,  &CFileSearchResultPage::_comp_volumerelativepath}, 

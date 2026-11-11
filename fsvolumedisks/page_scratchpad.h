@@ -274,6 +274,13 @@ class CScratchPadPage :	public CPageWndBase
 {
 	HWND m_hWndEdit;
 
+	BOOL IsTextSelected()
+	{
+		DWORD dw1 = 0,dw2 = 0;
+		SendMessage(m_hWndEdit,EM_GETSEL,(WPARAM)&dw1,(LPARAM)&dw2);
+		return (dw1 != dw2);
+	}
+
 public:
 	CScratchPadPage()
 	{
@@ -358,6 +365,44 @@ public:
 
 	LRESULT OnContextMenu(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
+		int x = GET_X_LPARAM(lParam);
+		int y = GET_Y_LPARAM(lParam);
+
+		POINT pt;
+
+		if( x == -1 && y == -1 )
+		{
+			GetCaretPos( &pt );
+			MapWindowPoints(m_hWnd,GetDesktopWindow(),&pt,1);
+
+			TEXTMETRIC tm = {0};
+			HDC hdc = GetWindowDC(m_hWndEdit);
+			GetTextMetrics(hdc, &tm);
+			ReleaseDC(m_hWndEdit,hdc);
+
+			pt.y += tm.tmAscent;
+		}
+		else
+		{
+			pt.x = x;
+			pt.y = y;
+		}
+
+		HMENU hMenu = CreatePopupMenu();
+		AppendMenu(hMenu,MF_STRING|(Edit_CanUndo(m_hWndEdit) ? MF_ENABLED : MF_DISABLED),ID_EDIT_UNDO,L"&Undo\tCtrl+Z");
+		AppendMenu(hMenu,MF_SEPARATOR,0,0);
+		AppendMenu(hMenu,MF_STRING|(IsTextSelected() ? MF_ENABLED : MF_DISABLED),ID_EDIT_CUT,L"&Cut\tCtrl+X");
+		AppendMenu(hMenu,MF_STRING|(IsTextSelected() ? MF_ENABLED : MF_DISABLED),ID_EDIT_COPY,L"&Copy\tCtrl+C");
+		AppendMenu(hMenu,MF_STRING|(IsClipboardFormatAvailable(CF_TEXT) ? MF_ENABLED : MF_DISABLED),ID_EDIT_PASTE,L"&Paste\tCtrl+V");
+
+		UINT cmd;
+		cmd = TrackPopupMenu(hMenu,TPM_RETURNCMD|TPM_TOPALIGN,pt.x,pt.y,0,m_hWnd,NULL);
+
+		DestroyMenu(hMenu);
+
+		if( cmd != 0 )
+			PostMessage(GetParent(m_hWnd),WM_COMMAND,cmd,0);
+
 		return 0;
 	}
 
@@ -372,7 +417,7 @@ public:
 		}
 		return 0;
 	}
-
+#if 0 // reserved.
 	LRESULT OnNotify(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		NMHDR *pnmhdr = (NMHDR *)lParam;
@@ -393,14 +438,6 @@ public:
 		return 0;
 	}
 
-	VOID UpdateLayout(int cx,int cy)
-	{
-		if( m_hWndEdit )
-		{
-			SetWindowPos(m_hWndEdit,NULL,0,0,cx,cy,SWP_NOZORDER|SWP_NOMOVE);
-		}
-	}
-
 	HRESULT FillItems(SELECT_ITEM *)
 	{
 		CWaitCursor wait;
@@ -410,6 +447,14 @@ public:
 	virtual HRESULT UpdateData(PVOID pFile)
 	{
 		return FillItems((SELECT_ITEM*)pFile);
+	}
+#endif
+	VOID UpdateLayout(int cx,int cy)
+	{
+		if( m_hWndEdit )
+		{
+			SetWindowPos(m_hWndEdit,NULL,0,0,cx,cy,SWP_NOZORDER|SWP_NOMOVE);
+		}
 	}
 
 	virtual LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -425,6 +470,8 @@ public:
 				return OnCreate(hWnd,uMsg,wParam,lParam);
 			case WM_DESTROY:
 				return OnDestroy(hWnd,uMsg,wParam,lParam);
+			case WM_CONTEXTMENU:
+				return OnContextMenu(hWnd,uMsg,wParam,lParam);
 		}
 		return CBaseWindow::WndProc(hWnd,uMsg,wParam,lParam);
 	}
@@ -436,8 +483,15 @@ public:
 	{
 		switch( CmdId )
 		{
+			case ID_EDIT_CUT:
 			case ID_EDIT_COPY:
-				*State = UPDUI_ENABLED;
+				*State = (IsTextSelected() ? UPDUI_ENABLED : UPDUI_DISABLED);
+				return S_OK;
+			case ID_EDIT_PASTE:
+				*State = (IsClipboardFormatAvailable(CF_TEXT) ? UPDUI_ENABLED : UPDUI_DISABLED);
+				return S_OK;
+			case ID_EDIT_UNDO:
+				*State = (Edit_CanUndo(m_hWndEdit) ? UPDUI_ENABLED : UPDUI_DISABLED);
 				return S_OK;
 		}
 		return S_FALSE;
@@ -450,8 +504,14 @@ public:
 			case ID_EDIT_COPY:
 				OnCmdEditCopy();
 				break;
-			case ID_VIEW_REFRESH:
-				OnCmdRefresh();
+			case ID_EDIT_CUT:
+				OnCmdEditCut();
+				break;
+			case ID_EDIT_PASTE:
+				OnCmdEditPaste();
+				break;
+			case ID_EDIT_UNDO:
+				OnCmdEditUndo();
 				break;
 		}
 		return S_OK;
@@ -462,10 +522,19 @@ public:
 		SendMessage(m_hWndEdit,WM_COPY,0,0);
 	}
 
-	void OnCmdRefresh()
+	void OnCmdEditCut()
 	{
-		SELECT_ITEM sel = {0};
-		FillItems(&sel);
+		SendMessage(m_hWndEdit,WM_CUT,0,0);
+	}
+
+	void OnCmdEditPaste()
+	{
+		SendMessage(m_hWndEdit,WM_PASTE,0,0);
+	}
+
+	void OnCmdEditUndo()
+	{
+		SendMessage(m_hWndEdit,WM_UNDO,0,0);
 	}
 
 	VOID SaveDocument()
@@ -480,12 +549,15 @@ public:
 			PWSTR pszBuffer;
 			pszBuffer = (PWSTR)_MemAllocZero( cbBuffer + sizeof(WCHAR) + sizeof(WCHAR) );
 
-			pszBuffer[0] = 0xfeff; // unicode BOM-LE
-			GetWindowText(m_hWndEdit,&pszBuffer[1],cbBuffer);
+			if( pszBuffer != NULL )
+			{
+				pszBuffer[0] = 0xfeff; // unicode BOM-LE
+				GetWindowText(m_hWndEdit,&pszBuffer[1],cbBuffer);
 
-			SaveScratchPadDocument(pszBuffer,cbBuffer+sizeof(WCHAR)); // data+bom
+				SaveScratchPadDocument(pszBuffer,cbBuffer+sizeof(WCHAR)); // data+bom
 
-			_MemFree(pszBuffer);
+				_MemFree(pszBuffer);
+			}
 		}
 	}
 };

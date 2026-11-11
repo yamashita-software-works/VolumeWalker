@@ -86,9 +86,14 @@ public:
 		return E_FAIL;
 	}
 
-	UINT GetCurConsoleId()
+	UINT GetCurConsoleId() const
 	{
 		return m_pPage->GetConsoleId();
+	}
+
+	PCWSTR GetSectionName() const
+	{
+		return m_pPage->GetSectionName();
 	}
 
 	template <class T>
@@ -269,5 +274,10 @@ public:
 		ChangePage(m_pPage,pPrev);
 
 		return S_OK;
+	}
+
+	CPageWndBase *GetPage(UINT ConsoleId) const
+	{
+		return m_pPageTable[ ConsoleId ];
 	}
 };

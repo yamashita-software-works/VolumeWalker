@@ -30,7 +30,7 @@
 #define ID_FILE_CHANGEJOURNAL_VOLUMES            41027
 #define ID_FILE_SIMPLEFILELIST                   41028
 //                                               41029
-//                                               41030
+#define ID_FILE_FILELIST                         41030
 #define ID_OPEN_LOCATION_EXPLORER                41031
 #define ID_OPEN_LOCATION_CMDPROMPT               41032
 #define ID_OPEN_LOCATION_TERMINAL                41033
@@ -71,14 +71,10 @@
 #define ID_DISK_FORMAT                           41080
 #define ID_SHELL_RUNFILE_DIALOG                  41082
 
-#define ID_EDIT_COPY_COUMN_FIRST                 41100
-#define ID_EDIT_COPY_COUMN_LAST                  41149
-#define ID_VIEW_SORT_COUMN_FIRST                 41150
-#define ID_VIEW_SORT_COUMN_LAST                  41199
+#define ID_VIEW_TOGGLE_GROUPVIEWMODE             41120
 
-#define ID_VIEW_TOGGLE_GROUPVIEWMODE             41200
-
-#define ID_VIEW_FILELIST                         41133
+#define ID_VIEW_FILELIST                         41124
+#define ID_VIEW_FILEDATETIME                     41125
 
 #define ID_NEXT                                  41201
 #define ID_BACK                                  41202
@@ -101,6 +97,11 @@
 #define ID_OPEN                                  41217
 #define ID_AUTO_NEXT                             41218
 #define ID_AUTO_BACK                             41219
+
+#define ID_EDIT_COPY_COUMN_FIRST                 43100
+#define ID_EDIT_COPY_COUMN_LAST                  43149
+#define ID_VIEW_SORT_COUMN_FIRST                 43150
+#define ID_VIEW_SORT_COUMN_LAST                  43199
 
 #endif
 

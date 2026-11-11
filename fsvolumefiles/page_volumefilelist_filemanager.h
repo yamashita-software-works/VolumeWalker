@@ -49,23 +49,40 @@ protected:
 	{
 		COLUMN_TABLE *pcoltbl;
 
+		WCHAR bufDefaultTable[] =
+				L"Name=240;"
+				L"Extension=80;"
+				L"FileId=168;"
+				L"Attributes=80;"
+				L"AllocationSize=116;"
+				L"EndOfFile=116;"
+				L"LastWriteTime=180;"
+				L"CreationTime=180;"
+				L"LastAccessTime=180;"
+				L"ChangeTime=180;"
+				L"Lcn=120;"
+				L"PhysicalDrive=120;"
+				L"PhysicalOffset=120;"
+				L"EaSize=100;"
+				L"ShortName=100;";
+
+		int cb = sizeof(bufDefaultTable);
 		PWSTR ptr;
 
-		int cb = 0;
-		if( pszColumnLayout != NULL && *pszColumnLayout )
+		if( pszColumnLayout && *pszColumnLayout != 0 )
 		{
 			ptr = ColumnList_ConvertAllocSzToMszColumnString(pszColumnLayout);
-			cb = ColumnList_GetMszColumnStringSizeCb(ptr);
+			cb  = ColumnList_GetMszColumnStringSizeCb(ptr);
 		}
 		else
 		{
-			return FALSE;
+			ptr = ColumnList_ConvertAllocSzToMszColumnString(bufDefaultTable);
+			cb  = ColumnList_GetMszColumnStringSizeCb(ptr);
 		}
 
 		int iRet = m_columns.LoadUserDefinitionColumnTableFromText(&pcoltbl,ptr,cb);
 
-		if( pszColumnLayout != NULL && *pszColumnLayout != L'\0' )
-			ColumnList_FreeString(ptr);
+		ColumnList_FreeString(ptr);
 
 		if( iRet == 0 )
 		{
@@ -78,7 +95,7 @@ protected:
 
 		LARGE_INTEGER li;
 		PCWSTR pszSortColumn;
-		if( pszCurrentSortColumn && *pszCurrentSortColumn )
+		if( pszCurrentSortColumn )
 			pszSortColumn = pszCurrentSortColumn;
 		else
 			pszSortColumn = L"Name,0";

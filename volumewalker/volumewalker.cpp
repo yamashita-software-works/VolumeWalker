@@ -50,6 +50,7 @@ static HANDLE g_hCommand;
 #if _ENABLE_EXTERNAL_PROXY_OPEN
 static BOOL g_bProxyOpen = FALSE;
 #endif
+struct CApplication *g_pMainApp = NULL;
 
 #define _LAYOUT_FILENAME L"layout.ini"
 
@@ -119,8 +120,6 @@ struct CApplication : public  IApplication
 		return S_OK;
 	}
 };
-
-CApplication *g_pMainApp = NULL;
 
 //////////////////////////////////////////////////////////////////////////////
 #include "..\build.h"
@@ -582,7 +581,6 @@ BOOL IsValidConsoleId( UINT ConsoleTypeId )
 		case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 		case VOLUME_CONSOLE_SCRATCHPAD:
 		case VOLUME_CONSOLE_SHELL_RECYCLEBIN:
-		case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
 			return TRUE;
 	}
 	return FALSE;
@@ -609,7 +607,6 @@ VOID MakeConsoleGUID(LPGUID pwndGuid,UINT ConsoleId,OPEN_MDI_CHILDFRAME_PARAM *O
 		case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 		case VOLUME_CONSOLE_SCRATCHPAD:
 		case VOLUME_CONSOLE_SHELL_RECYCLEBIN:
-		case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
 			Guid.Data1 = (ULONG)ConsoleId;
 			break;
 		case VOLUME_CONSOLE_VOLUMEINFORMAION:
@@ -698,7 +695,7 @@ HICON GetConsoleIcon(UINT ConsoleTypeId,PCWSTR pszInitialPath)
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(67),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
 		FreeLibrary(hmod);
 	}
-	else if( ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILES || ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT || ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILES_DATETIME )
+	else if( ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILES || ConsoleTypeId == VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT )
 	{
 		HMODULE hmod = LoadLibrary(L"shell32.dll");
 		hIcon = (HICON)LoadImage(hmod,MAKEINTRESOURCE(16776),IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
@@ -882,41 +879,40 @@ VOID SendSelectVolumeOrPhysicalDisk(HWND hwndMDIChild,HWND hWndView,UINT Console
 	}
 }
 
-VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam)
+VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam,BOOL bCreate)
 {
-	ASSERT( pOpenParam != NULL );
-
 	PWSTR pszPath = NULL;
 	SIZE_T cchPathLength = 0;
 
 	if( pOpenParam == NULL )
 	{
-		SetLastError(ERROR_INVALID_PARAMETER);
-		return;
-	}
-
-	if( pOpenParam->Path == NULL )
-	{
-		WCHAR sz[MAX_PATH];
-		ZeroMemory(sz,sizeof(sz));
-		pszPath = pOpenParam->Path = _MemAllocString(sz);
-	}
-	else if( FindRootDirectory_W(pOpenParam->Path,NULL) != STATUS_SUCCESS )
-	{
-		// Name is volume device not volume Root.
-		pszPath = _MemAllocString(pOpenParam->Path);
+		pszPath = _MemAllocString( L"\\??\\C:\\" );
 	}
 	else
 	{
-		cchPathLength = wcslen(pOpenParam->Path);
-
-		if( FindRootDirectory_W(pOpenParam->Path,NULL) == 0 )
+		if( pOpenParam->Path == NULL )
 		{
+			WCHAR sz[MAX_PATH];
+			ZeroMemory(sz,sizeof(sz));
+			pszPath = pOpenParam->Path = _MemAllocString(sz);
+		}
+		else if( FindRootDirectory_W(pOpenParam->Path,NULL) != STATUS_SUCCESS )
+		{
+			// Name is volume device not volume Root.
 			pszPath = _MemAllocString(pOpenParam->Path);
 		}
 		else
 		{
-			pszPath = _MemAllocStringCat(pOpenParam->Path,L"\\");
+			cchPathLength = wcslen(pOpenParam->Path);
+	
+			if( FindRootDirectory_W(pOpenParam->Path,NULL) == 0 )
+			{
+				pszPath = _MemAllocString(pOpenParam->Path);
+			}
+			else
+			{
+				pszPath = _MemAllocStringCat(pOpenParam->Path,L"\\");
+			}
 		}
 	}
 
@@ -925,10 +921,8 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 	pg.ConsoleGuid   = pd->wndGuid;
 	pg.pszPath       = pszPath;
 	pg.pszFileName   = NULL;
-	if( pOpenParam )
+	if( bCreate )
 	{
-		pg.Context = (PAGE_CONTEXT *)_MemAllocZero( sizeof(PAGE_CONTEXT) );
-		pg.Context->MainApp = g_pMainApp;
 		pg.dwFlags |= SI_FLAG_CREATE_PAGE;
 	}
 
@@ -938,7 +932,6 @@ VOID SendFileListPath(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,O
 
 	SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
 
-	_SafeMemFree(pg.Context);
 	_SafeMemFree(pszPath);
 }
 
@@ -957,8 +950,6 @@ VOID SendFileSearchResult(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *
 
 VOID SendFileListBrowser(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *pd,OPEN_MDI_CHILDFRAME_PARAM *pOpenParam)
 {
-//	ASSERT( pOpenParam != NULL );
-
 	BOOLEAN	fCreate = true;
 	PWSTR pszPath = NULL;
 	SIZE_T cchPathLength = 0;
@@ -966,36 +957,35 @@ VOID SendFileListBrowser(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *p
 	if( pOpenParam == NULL )
 	{
 		fCreate = true;
-// OPEN_MDI_CHILDFRAME_PARAM
 		pszPath = _MemAllocString( L"\\??\\C:\\" );
 	}
 	else
 	{
 		fCreate = true;
-	if( pOpenParam->Path == NULL )
-	{
-		WCHAR sz[MAX_PATH];
-		ZeroMemory(sz,sizeof(sz));
-		pszPath = pOpenParam->Path = _MemAllocString(sz);
-	}
-	else if( FindRootDirectory_W(pOpenParam->Path,NULL) != STATUS_SUCCESS )
-	{
-		// Name is volume device not volume Root.
-		pszPath = _MemAllocString(pOpenParam->Path);
-	}
-	else
-	{
-		cchPathLength = wcslen(pOpenParam->Path);
-
-		if( FindRootDirectory_W(pOpenParam->Path,NULL) == 0 )
+		if( pOpenParam->Path == NULL )
 		{
+			WCHAR sz[MAX_PATH];
+			ZeroMemory(sz,sizeof(sz));
+			pszPath = pOpenParam->Path = _MemAllocString(sz);
+		}
+		else if( FindRootDirectory_W(pOpenParam->Path,NULL) != STATUS_SUCCESS )
+		{
+			// Name is volume device not volume Root.
 			pszPath = _MemAllocString(pOpenParam->Path);
 		}
 		else
 		{
-			pszPath = _MemAllocStringCat(pOpenParam->Path,L"\\");
+			cchPathLength = wcslen(pOpenParam->Path);
+
+			if( FindRootDirectory_W(pOpenParam->Path,NULL) == 0 )
+			{
+				pszPath = _MemAllocString(pOpenParam->Path);
+			}
+			else
+			{
+				pszPath = _MemAllocStringCat(pOpenParam->Path,L"\\");
+			}
 		}
-	}
 	}
 
 	UIS_PAGE pg = {0};
@@ -1005,8 +995,6 @@ VOID SendFileListBrowser(HWND hwndMDIChild,UINT ConsoleTypeId,MDICHILDWNDDATA *p
 	pg.pszFileName   = NULL;
 	if( fCreate )
 	{
-		pg.Context = (PAGE_CONTEXT *)_MemAllocZero( sizeof(PAGE_CONTEXT) );
-		pg.Context->MainApp = g_pMainApp;
 		pg.dwFlags |= SI_FLAG_CREATE_PAGE;
 	}
 
@@ -1080,8 +1068,20 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 #if _ENABLE_FILELIST_SINGLETON
 			if( GetKeyState(VK_SHIFT) < 0 )
 				hwndChildFrame = NULL;
-			else
-	 			hwndChildFrame = FindSameWindowType(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
+			else {
+				UINT id[] = {
+					VOLUME_CONSOLE_VOLUMEFILES,
+					VOLUME_CONSOLE_VOLUMEFILES_DATETIME,
+					VOLUME_CONSOLE_VOLUMEFILES_STREAMS,
+				};
+
+				for(int i = 0; i < _countof(id); i++)
+				{
+	 				hwndChildFrame = FindSameWindowType(id[i],(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
+					if( hwndChildFrame != NULL )
+						break;
+				}				
+			}
 #else
 			hwndChildFrame = FindSameWindowVolume(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
 #endif
@@ -1090,11 +1090,6 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 		case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 		{
 			hwndChildFrame = FindSameWindowType(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
-			break;
-		}
-		case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
-		{
- 			hwndChildFrame = FindSameWindowType(ConsoleTypeId,(pOpenParam != NULL && pOpenParam->Path != NULL) ? pOpenParam->Path : NULL);
 			break;
 		}
 		default:
@@ -1132,7 +1127,7 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 #if _ENABLE_FILELIST_SINGLETON
 		else if( VOLUME_CONSOLE_VOLUMEFILES == ConsoleTypeId && pOpenParam )
 		{
-			SendFileListPath(hwndChildFrame,ConsoleTypeId,pd,pOpenParam);
+			SendFileListPath(hwndChildFrame,ConsoleTypeId,pd,pOpenParam,FALSE);
 		}
 #endif
 		if( bMaximized )
@@ -1207,7 +1202,6 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 				}
 				case VOLUME_CONSOLE_VOLUMEFILES:
 				case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
-				case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
 				{
 					static HWND (WINAPI *pfnCreateVolumeFileList)(
 							HWND hwnd,
@@ -1246,13 +1240,10 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 						switch( ConsoleTypeId )
 						{
 							case VOLUME_CONSOLE_VOLUMEFILES:
-								SendFileListPath(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
+								SendFileListPath(hwndMDIChild,ConsoleTypeId,pd,pOpenParam,TRUE);
 								break;
 							case VOLUME_CONSOLE_VOLUMEFILESEARCHRESULT:
 								SendFileSearchResult(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
-								break;
-							case VOLUME_CONSOLE_VOLUMEFILES_DATETIME:
-								SendFileListBrowser(hwndMDIChild,ConsoleTypeId,pd,pOpenParam);
 								break;
 						}
 
@@ -1296,16 +1287,11 @@ HWND OpenMDIChild(HWND hWnd,UINT ConsoleTypeId,LPGUID pwndGuid,OPEN_MDI_CHILDFRA
 						UIS_PAGE pg = {0};
 						pg.ConsoleTypeId = ConsoleTypeId;
 						pg.ConsoleGuid   = pd->wndGuid;
-						pg.pszPath       = NULL;//pOpenParam->Path;
+						pg.pszPath       = NULL;
 						pg.pszFileName   = NULL;
-
-						pg.Context = (PAGE_CONTEXT *)_MemAllocZero( sizeof(PAGE_CONTEXT) );
-						pg.Context->MainApp = g_pMainApp;
 						pg.dwFlags |= SI_FLAG_CREATE_PAGE;
 
 						SendMessage(pd->hWndView,WM_CONTROL_MESSAGE,UI_SELECT_PAGE,(LPARAM)&pg);
-
-						_MemFree(pg.Context);
 
 						// Initialize layout.
 						SendUIInitLayout(hwndMDIChild,pd->hWndView);
@@ -1769,10 +1755,12 @@ VOID ExitInstance()
 //  PURPOSE: Query command status.
 //
 //----------------------------------------------------------------------------
-INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
+INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID pMenuCommandState,LPARAM lParam)
 {
 	if( (CmdId & 0xF000) == 0xF000 )
 		return UPDUI_ENABLED;
+
+	MENUCOMMANDSTATE *pmcs = (MENUCOMMANDSTATE *)pMenuCommandState;
 
 	HWND hwndMDIChild = MDIGetActive(g_hWndMDIClient);
 	if( hwndMDIChild )
@@ -1782,6 +1770,17 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 		if( SendMessage(pd->hWndView,WM_QUERY_CMDSTATE,MAKEWPARAM(CmdId,0),(LPARAM)&State) )
 		{
 			return State;
+		}
+
+		COMMAND_STATE cs={0};
+		if( SendMessage(pd->hWndView,WM_QUERY_CMDSTATE_EX,MAKEWPARAM(CmdId,0),(LPARAM)&cs) )
+		{
+			if( pmcs )
+			{
+				pmcs->IdFirst = cs.IdFirst;
+				pmcs->IdLast  = cs.IdLast;
+			}
+			return cs.State;
 		}
 	}
 
@@ -1807,6 +1806,7 @@ INT CALLBACK QueryCmdState(UINT CmdId,UINT MenuState,PVOID,LPARAM /*Param*/)
 		case ID_SCRATCHPAD:
 		case ID_RECYCLEBIN:
 		case ID_FILE_DATETIME:
+		case ID_FILE_FILELIST:
 			return UPDUI_ENABLED;
 		case ID_ABOUT:
 		case ID_EXIT:
@@ -1936,9 +1936,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				case ID_RECYCLEBIN:
 					OpenConsole(hWnd,VOLUME_CONSOLE_SHELL_RECYCLEBIN);
 					break;
-				case ID_FILE_DATETIME:
-					OpenConsole(hWnd,VOLUME_CONSOLE_VOLUMEFILES_DATETIME);
+				case ID_FILE_FILELIST:
+					OpenConsole(hWnd,VOLUME_CONSOLE_VOLUMEFILES);
 					break;
+//				case ID_FILE_DATETIME:
+//					OpenConsole(hWnd,VOLUME_CONSOLE_VOLUMEFILES_DATETIME);
+//					break;
 				case ID_FILE_CLOSE:
 					CloseConsole();
 					break;
@@ -2051,12 +2054,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				MDICHILDWNDDATA *pd = (MDICHILDWNDDATA *)GetWindowLongPtr(hwndChildFrame,GWLP_USERDATA);
 				CONSOLE_VIEW_ID *pcv = (CONSOLE_VIEW_ID *)GetProp(pd->hWndView,_PROP_CONSOLE_VIEW_ID);
 
-				if( pcv )
-					ClearWindowHandle(pcv->wndId,hwndChildFrame);
+				SendMessage(pd->hWndView,WM_MDI_CHILDFRAME_CLOSE,wParam,lParam);
 
 				RemoveProp(pd->hWndView,_PROP_CONSOLE_VIEW_ID);
 
-				delete pcv;
+				if( pcv )
+				{
+					ClearWindowHandle(pcv->wndId,hwndChildFrame);
+					delete pcv;
+				}
 			}
 			return 0;
 		}
@@ -2092,6 +2098,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					return 0;
 				}
 				SetWindowText(hwndMDIChildActive,pszText);
+			}
+			return 0;
+		}
+		case PM_GETAPPINFORMATION:
+		{
+			if( lParam )
+			{
+				*((IApplication **)lParam) = static_cast<IApplication *>(g_pMainApp);
+				return 1;
 			}
 			return 0;
 		}

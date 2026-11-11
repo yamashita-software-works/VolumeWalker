@@ -30,6 +30,10 @@ EXTERN_C INT WINAPI GetConfigValueInt(HWND,UINT,LPCWSTR KeyName,INT Default);
 EXTERN_C INT WINAPI SetConfigValue(HWND,UINT,LPCWSTR KeyName,PWSTR Value);
 EXTERN_C INT WINAPI SetConfigValueInt(HWND hWnd,UINT,LPCWSTR KeyName,INT nVal);
 
+DWORD GetPrivateProfileString(PCWSTR pszSection,PCWSTR pszEntry,PWSTR psz,DWORD cch);
+INT WriteSectionString(PCWSTR pszSection,PCWSTR pszEntry,PWSTR psz);
+INT WriteSectionBuffer(PCWSTR pszSection,PCWSTR pszBuffer);
+
 struct CLoadViewConfig : public ILoadViewConfig
 {
 	virtual VOID Release(void)
@@ -45,6 +49,23 @@ struct CLoadViewConfig : public ILoadViewConfig
 	virtual INT ReadValueInt(HWND hwndView,PCWSTR KeyName,INT DefaultValue)
 	{
 		return GetConfigValueInt(hwndView,0,KeyName,DefaultValue);
+	}
+
+	virtual INT ReadStringFromSection(PCWSTR Section,PCWSTR KeyName,PWSTR Value,UINT ValueLength)
+	{
+		return GetPrivateProfileString(Section,KeyName,Value,ValueLength);
+	}
+
+	virtual INT ReadValueIntFromSection(PCWSTR Section,PCWSTR KeyName,INT DefaultValue)
+	{
+		WCHAR val[64];
+		if( ReadStringFromSection(Section,KeyName,val,ARRAYSIZE(val)) > 0 )
+		{
+			INT iRet;
+			if( StrToIntEx(val,STIF_SUPPORT_HEX,&iRet) )
+				return iRet;
+		}
+		return DefaultValue;
 	}
 };
 
@@ -63,5 +84,23 @@ struct CSaveViewConfig : public ISaveViewConfig
 	virtual INT WriteValueInt(HWND hwndView,PCWSTR KeyName,INT Value)
 	{
 		return SetConfigValueInt(hwndView,0,KeyName,Value);
+	}
+
+	virtual INT WriteStringToSection(PCWSTR Section,PCWSTR KeyName,PWSTR Value)
+	{
+		return WriteSectionString(Section,KeyName,Value);
+	}	
+
+	virtual INT WriteValueIntToSection(PCWSTR Section,PCWSTR KeyName,INT Value)
+	{
+		WCHAR szVal[128];
+		StringCchPrintf(szVal,ARRAYSIZE(szVal),L"%d",Value);
+
+		return WriteSectionString(Section,KeyName,szVal);
+	}
+
+	virtual INT RemoveSection(PCWSTR Section)
+	{
+		return WriteSectionBuffer(Section,NULL);
 	}
 };

@@ -128,10 +128,13 @@ VOID UpdateUI_MenuItem(HMENU hMenu,PFNQUERYCOMMANDSTATE pfnQueryCmdStateCallback
 
 		fMenuItemState = pfnQueryCmdStateCallback(id,fMenuItemState,&mcs,lParam);
 
-		EnableMenuItem(hMenu,i,MF_BYPOSITION | ((fMenuItemState & UPDUI_DISABLED) ? (MF_GRAYED|MF_DISABLED) : MF_ENABLED));
-		CheckMenuItem(hMenu,i,MF_BYPOSITION | (fMenuItemState & UPDUI_CHECKED ? MF_CHECKED : MF_UNCHECKED));
-		if((fMenuItemState & UPDUI_RADIO) != 0)
-			CheckMenuRadioItem(hMenu,mcs.IdFirst,mcs.IdLast,id,MF_BYCOMMAND);
+		if( (UPDUI_IGNORE & fMenuItemState) == 0 )
+		{
+			EnableMenuItem(hMenu,i,MF_BYPOSITION | ((fMenuItemState & UPDUI_DISABLED) ? (MF_GRAYED|MF_DISABLED) : MF_ENABLED));
+			CheckMenuItem(hMenu,i,MF_BYPOSITION | (fMenuItemState & UPDUI_CHECKED ? MF_CHECKED : MF_UNCHECKED));
+			if((fMenuItemState & UPDUI_RADIO) != 0)
+				CheckMenuRadioItem(hMenu,mcs.IdFirst,mcs.IdLast,id,MF_BYCOMMAND);
+		}
 	}
 
 	//

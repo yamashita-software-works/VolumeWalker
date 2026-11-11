@@ -120,7 +120,8 @@ enum {
     COLUMN_CreationTimeFN,      /* 51 */
     COLUMN_LastAccessTimeFN,    /* 52 */
     COLUMN_ChangeTimeFN,        /* 53 */
-    COLUMN_MaxItem,             /* 54 */
+	COLUMN_StreamName,          /* 54 */
+    COLUMN_MaxItem,             /* 55 */
     COLUMN_MaxCount=COLUMN_MaxItem,
 };
 
@@ -172,12 +173,19 @@ enum {
 #define PPM_SELECTSTREAM     (WM_APP+1203)  // todo:
 #define PPM_NOTIFY           (WM_APP+1204)  // todo:
 #define PPM_INITLAYOUT       (WM_APP+1205)  // todo:
+#define PPM_PREVENTUPDATE    (WM_APP+1206)  // todo: 
 
 typedef struct _STREAM_BUFFER
 {
 	int cStreams;
 	NT_FILE_STREAM_INFORMATION_EX *StreamInformation;
 } STREAM_BUFFER;
+
+HWND
+_CreatePictureViewWindow(
+	HWND hWnd
+	);
+
 VOID
 _SetWindowTitleFileName(
 	HWND hWnd,
@@ -192,4 +200,14 @@ inline int _ImageList_LoadIcon(HIMAGELIST himl,UINT idIconRes,int cxIcon,int cyI
 		DestroyIcon(hIcon);
 	}
 	return index;
+}
+
+inline int _GetTextWidth(HWND hWnd,HFONT hFont,PCWSTR psz) {
+	SIZE size;
+	HDC hdc = GetDC(hWnd);
+	HGDIOBJ hfontOld = SelectObject(hdc,hFont);
+	GetTextExtentPoint32(hdc,psz,lstrlen(psz),&size);
+	SelectObject(hdc,hfontOld);
+	ReleaseDC(hWnd,hdc);
+	return size.cx;
 }
